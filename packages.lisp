@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.7 2001/02/23 18:00:11 rtoy Exp $
+;;; $Id: packages.lisp,v 1.8 2001/04/26 21:49:15 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.8  2001/04/26 21:49:15  rtoy
+;;; Add MATLISP-LIB package.
+;;;
 ;;; Revision 1.7  2001/02/23 18:00:11  rtoy
 ;;; Add defpackages for FORTRAN-TO-LISP and QUADPACK for quadpack
 ;;; routines.  Update MATLISP package accordingly.
@@ -147,8 +150,13 @@
    ;; Simplified interface routines
    "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC"))
 
+(defpackage "MATLISP-LIB"
+  (:use "COMMON-LISP")
+  (:export
+   "ZEROIN"))
+
 (defpackage "MATLISP"
-    (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK")
+    (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
     (:nicknames "MATRIX" "M")
     (:export
      "*PRINT-MATRIX*"
