@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.1 2000/05/05 21:35:54 simsek Exp $
+;;; $Id: fft.lisp,v 1.2 2000/05/05 22:04:13 simsek Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.2  2000/05/05 22:04:13  simsek
+;;; o Changed one typo: fftb to ifft
+;;;
 ;;; Revision 1.1  2000/05/05 21:35:54  simsek
 ;;; o Initial revision
 ;;;
@@ -47,7 +50,7 @@
 (use-package "LAPACK")
 (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(fft ffti fftb))
+(export '(fft ffti ifft))
 
 (defgeneric fft (x &optional n wsave)
   (:documentation
