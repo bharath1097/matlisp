@@ -1,8 +1,11 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ;;;
-;;; $Id: geqr.lisp,v 1.5 2001/10/29 18:00:28 rtoy Exp $
+;;; $Id: geqr.lisp,v 1.6 2002/01/08 19:40:45 rtoy Exp $
 ;;;
 ;;; $Log: geqr.lisp,v $
+;;; Revision 1.6  2002/01/08 19:40:45  rtoy
+;;; The functions we use are exported now.
+;;;
 ;;; Revision 1.5  2001/10/29 18:00:28  rtoy
 ;;; Updates from M. Koerber to support QR routines with column pivoting:
 ;;;
@@ -69,7 +72,7 @@
 
   (defun dgeqrf-workspace-inquiry (m n)
     (multiple-value-bind (store-a store-tau store-work lwork info)
-	(lapack::dgeqrf m n xx m xx work -1 0)
+	(lapack:dgeqrf m n xx m xx work -1 0)
 
       (declare (ignore store-a store-tau store-work lwork info))
 
@@ -83,7 +86,7 @@
   (defun zgeqrf-workspace-inquiry (m n)
 
     (multiple-value-bind (store-a store-tau store-work lwork info)
-	(lapack::zgeqrf m n xx m xx work -1 0)
+	(lapack:zgeqrf m n xx m xx work -1 0)
 
       (declare (ignore store-a store-tau store-work lwork info))
       
@@ -103,7 +106,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Do the Householder portion of the decomposition
     (multiple-value-bind (q-r new-tau new-work info)
-	(lapack::dgeqrf m n (store a) m tau work lwork 0)
+	(lapack:dgeqrf m n (store a) m tau work lwork 0)
 
       (declare (ignore new-work))
       ;; Q-R and NEW-TAU aren't needed either since the (STORE A) and WORK
@@ -127,7 +130,7 @@
 	  ;; Now compute Q via DORGQR and return.  This is always
 	  ;; the economy representation of Q.  I.e., Q1 in Q = [Q1 Q2]
 	  (multiple-value-bind (new-q-r new-work info)
-	      (lapack::dorgqr m k k q-r m new-tau work lwork 0)
+	      (lapack:dorgqr m k k q-r m new-tau work lwork 0)
 
 	    (declare (ignore new-work))
 
@@ -158,7 +161,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Do the Householder portion of the decomposition
     (multiple-value-bind (q-r new-tau new-work info)
-	(lapack::zgeqrf m n (store a) m tau work lwork 0)
+	(lapack:zgeqrf m n (store a) m tau work lwork 0)
 
       (declare (ignore new-work))
       ;; Q-R and NEW-TAU aren't needed either since the (STORE A) and WORK
@@ -185,7 +188,7 @@
 	  ;; Now compute Q via ZUNGQR and return.  This is always
 	  ;; the economy representation of Q.  I.e., Q1 in Q = [Q1 Q2]
 	  (multiple-value-bind (new-q-r new-work info)
-	      (lapack::zungqr m k k q-r m new-tau work lwork 0)
+	      (lapack:zungqr m k k q-r m new-tau work lwork 0)
 
 	    (declare (ignore new-work))
 
@@ -249,7 +252,7 @@
 	  
   (defun dgeqp3-workspace-inquiry (m n)
     (multiple-value-bind (a jpvt tau work info)
-	(lapack::dgeqp3 m n xx m xxint xx work -1 0)
+	(lapack:dgeqp3 m n xx m xxint xx work -1 0)
       
 	(declare (ignore a jpvt tau))
 	(unless (zerop info)
@@ -273,7 +276,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Okay...off to work...do the basic decomposition
     (multiple-value-bind (store-a jpvt tau work info)
-	(lapack::dgeqp3 m n (store a) lda jpvt tau work lwork 0)
+	(lapack:dgeqp3 m n (store a) lda jpvt tau work lwork 0)
 
       (declare (ignore work))
 
@@ -292,7 +295,7 @@
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;; and we need to construct the Q portion.
 	(multiple-value-bind (store-a work info)
-	    (lapack::dorgqr m min-nm min-nm store-a m tau work lwork 0)
+	    (lapack:dorgqr m min-nm min-nm store-a m tau work lwork 0)
 
 	  (declare (ignore work))
 
@@ -319,7 +322,7 @@
 	  
   (defun zgeqp3-workspace-inquiry (m n)
     (multiple-value-bind (a jpvt tau work rwork info)
-	(lapack::zgeqp3 m n xx m xxint xx work -1 xx 0)
+	(lapack:zgeqp3 m n xx m xxint xx work -1 xx 0)
       
 	(declare (ignore a jpvt tau rwork))
 	
@@ -345,7 +348,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Okay...off to work...do the basic decomposition
     (multiple-value-bind (store-a jpvt tau work rwork info)
-	(lapack::zgeqp3 m n (store a) lda jpvt tau work lwork rwork 0)
+	(lapack:zgeqp3 m n (store a) lda jpvt tau work lwork rwork 0)
 
       (declare (ignore rwork))
 
@@ -367,7 +370,7 @@
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;; and we need to construct the Q portion.
 	(multiple-value-bind (store-a work info)
-	    (lapack::zungqr m min-nm min-nm store-a m tau work lwork 0)
+	    (lapack:zungqr m min-nm min-nm store-a m tau work lwork 0)
 
 	  (declare (ignore work))
 
