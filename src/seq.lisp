@@ -31,9 +31,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: seq.lisp,v 1.3 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: seq.lisp,v 1.4 2002/06/24 18:05:30 rtoy Exp $
 ;;;
 ;;; $Log: seq.lisp,v $
+;;; Revision 1.4  2002/06/24 18:05:30  rtoy
+;;; Modified SEQ to run much faster by pushing the values onto the
+;;; beginning of the list and reversing the result instead of
+;;; destructively appending to the end, for an O(n^2) process instead of
+;;; O(n).
+;;;
 ;;; Revision 1.3  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -53,6 +59,7 @@
 (if (not (fboundp '%push-on-end%))
 (defmacro %push-on-end% (value location)
   `(setf ,location (nconc ,location (list ,value)))))
+
 
 (defun seq (start step &optional end)
   "
@@ -80,10 +87,9 @@
 
  The optional argument STEP defaults to 1. 
 "
-  (if (not end)
-      (progn
-	(setq end step)
-	(setq step 1)))
+  (when (not end)
+    (setq end step)
+    (setq step 1))
 
   (let ((start (rationalize start))
 	 (type (type-of step))
@@ -91,10 +97,11 @@
 	 (end (rationalize end))
 	 (seq nil))
 
-    (if (zerop step)
-	(error "STEP equal to 0")) 
+    (when (zerop step)
+      (error "STEP equal to 0"))
     (do ((x start (+ x step)))
 	((if (> step 0)
 	     (> x end)
-	   (< x end)) seq)
-      (%push-on-end% (coerce x type) seq))))
+	   (< x end))
+	 (nreverse seq))
+      (push (coerce x type) seq))))
