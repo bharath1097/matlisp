@@ -19,19 +19,21 @@ C THE SUBROUTINE USES SINGLE PRECISION CALCULATIONS
 C FOR SCALING, BOUNDS AND ERROR CALCULATIONS. ALL
 C CALCULATIONS FOR THE ITERATIONS ARE DONE IN DOUBLE
 C PRECISION.
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
       INTEGER N, NN
-      DOUBLE PRECISION OP(101), TEMP(101),
+      DOUBLE PRECISION OP(maxdg1), TEMP(maxdg1),
      * ZEROR(100), ZEROI(100), T, AA, BB, CC, DABS,
      * FACTOR
-      REAL PT(101), LO, MAX, MIN, XX, YY, COSR,
+      REAL PT(maxdg1), LO, MAX, MIN, XX, YY, COSR,
      * SINR, XXX, X, SC, BND, XM, FF, DF, DX, INFIN,
      * SMALNO, BASE
       INTEGER DEGREE, CNT, NZ, I, J, JJ, NM1
@@ -246,11 +248,13 @@ C ITERATIONS AND RETURNS WITH THE NUMBER OF ZEROS
 C FOUND.
 C L2 - LIMIT OF FIXED SHIFT STEPS
 C NZ - NUMBER OF ZEROS FOUND
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
@@ -358,11 +362,13 @@ C QUADRATIC FACTOR CONVERGES ONLY IF THE ZEROS ARE
 C EQUIMODULAR OR NEARLY SO.
 C UU,VV - COEFFICIENTS OF STARTING QUADRATIC
 C NZ - NUMBER OF ZERO FOUND
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
@@ -443,11 +449,13 @@ C SSS   - STARTING ITERATE
 C NZ    - NUMBER OF ZERO FOUND
 C IFLAG - FLAG TO INDICATE A PAIR OF ZEROS NEAR REAL
 C         AXIS.
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
@@ -534,11 +542,13 @@ C COMPUTE THE NEXT K POLYNOMIAL AND NEW ESTIMATES OF
 C THE QUADRATIC COEFFICIENTS.
 C TYPE - INTEGER VARIABLE SET HERE INDICATING HOW THE
 C CALCULATIONS ARE NORMALIZED TO AVOID OVERFLOW
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
@@ -578,11 +588,13 @@ C TYPE=1 INDICATES THAT ALL FORMULAS ARE DIVIDED BY C
       SUBROUTINE NEXTK(TYPE)                                            NEX   10
 C COMPUTES THE NEXT K POLYNOMIALS USING SCALARS
 C COMPUTED IN CALCSC
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
@@ -621,11 +633,13 @@ C USE UNSCALED FORM OF THE RECURRENCE IF TYPE IS 3
       SUBROUTINE NEWEST(TYPE, UU, VV)                                   NEW   10
 C COMPUTE NEW ESTIMATES OF THE QUADRATIC COEFFICIENTS
 C USING THE SCALARS COMPUTED IN CALCSC.
-      COMMON /GLOBAL/ P, QP, K, QK, SVK, SR, SI, U,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON /RPOLYC/ P, QP, K, QK, SVK, SR, SI, U,
      * V, A, B, C, D, A1, A2, A3, A6, A7, E, F, G,
      * H, SZR, SZI, LZR, LZI, ETA, ARE, MRE, N, NN
-      DOUBLE PRECISION P(101), QP(101), K(101),
-     * QK(101), SVK(101), SR, SI, U, V, A, B, C, D,
+      DOUBLE PRECISION P(maxdg1), QP(maxdg1), K(maxdg1),
+     * QK(maxdg1), SVK(maxdg1), SR, SI, U, V, A, B, C, D,
      * A1, A2, A3, A6, A7, E, F, G, H, SZR, SZI,
      * LZR, LZI
       REAL ETA, ARE, MRE
