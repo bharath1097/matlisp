@@ -14,11 +14,14 @@ C OCCURRING. IF IT DOES OCCUR, THERE IS STILL A POSSIBILITY THAT
 C THE ZEROFINDER WILL WORK PROVIDED THE OVERFLOWED QUANTITY IS
 C REPLACED BY A LARGE NUMBER.
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
 C TO CHANGE THE SIZE OF POLYNOMIALS WHICH CAN BE SOLVED, REPLACE
 C THE DIMENSION OF THE ARRAYS IN THE COMMON AREA.
       DOUBLE PRECISION XX,YY,COSR,SINR,SMALNO,BASE,XXX,ZR,ZI,BND,
@@ -114,11 +117,14 @@ C RETURN EMPTY HANDED.
 C COMPUTES  THE DERIVATIVE  POLYNOMIAL AS THE INITIAL H
 C POLYNOMIAL AND COMPUTES L1 NO-SHIFT H POLYNOMIALS.
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
       DOUBLE PRECISION XNI,T1,T2,CMOD
       N = NN-1
       NM1 = N-1
@@ -161,11 +167,14 @@ C L2 - LIMIT OF FIXED SHIFT STEPS
 C ZR,ZI - APPROXIMATE ZERO IF CONV IS .TRUE.
 C CONV  - LOGICAL INDICATING CONVERGENCE OF STAGE 3 ITERATION
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
       DOUBLE PRECISION ZR,ZI,OTR,OTI,SVSR,SVSI,CMOD
           LOGICAL CONV,TEST,PASD,BOOL
       N = NN-1
@@ -228,11 +237,14 @@ C ITERATION CONVERGES IT CONTAINS THE FINAL ITERATE
 C ON EXIT.
 C CONV    -  .TRUE. IF ITERATION CONVERGES
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
       DOUBLE PRECISION ZR,ZI,MP,MS,OMP,RELSTP,R1,R2,CMOD,DSQRT,ERREV,TP
       LOGICAL CONV,B,BOOL
       CONV = .FALSE.
@@ -290,11 +302,14 @@ C CALCULATE NEXT ITERATE.
 C COMPUTES  T = -P(S)/H(S).
 C BOOL   - LOGICAL, SET TRUE IF H(S) IS ESSENTIALLY ZERO.
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
       DOUBLE PRECISION HVR,HVI,CMOD
       LOGICAL BOOL
       N = NN-1
@@ -312,11 +327,14 @@ C EVALUATE H(S).
 C CALCULATES THE NEXT SHIFTED H POLYNOMIAL.
 C BOOL   -  LOGICAL, IF .TRUE. H(S) IS ESSENTIALLY ZERO
 C COMMON AREA
-      COMMON/GLOBAL/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
+      parameter (maxdeg = 100)
+      parameter (maxdg1 = maxdeg + 1)
+      COMMON/CPOLYC/PR,PI,HR,HI,QPR,QPI,QHR,QHI,SHR,SHI,
      *    SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,NN
       DOUBLE PRECISION SR,SI,TR,TI,PVR,PVI,ARE,MRE,ETA,INFIN,
-     *    PR(50),PI(50),HR(50),HI(50),QPR(50),QPI(50),QHR(50),
-     *    QHI(50),SHR(50),SHI(50)
+     *     PR(maxdg1),PI(maxdg1),HR(maxdg1),HI(maxdg1),QPR(maxdg1),
+     $     QPI(maxdg1),QHR(maxdg1),
+     *     QHI(maxdg1),SHR(maxdg1),SHI(maxdg1)
       DOUBLE PRECISION T1,T2
       LOGICAL BOOL
       N = NN-1
@@ -503,10 +521,13 @@ C AND SMALNO IS BASE**N.
 C THE VALUES FOR BASE,T,M,N BELOW CORRESPOND TO THE IBM/360.
       DOUBLE PRECISION ETA,INFINY,SMALNO,BASE
       INTEGER M,N,T
-      BASE = 16.0D0
-      T = 14
-      M = 63
-      N = -65
+c
+c Set constants for IEEE double-precision arithmetic
+c      
+      BASE = 2.0D0
+      T = 53
+      M = 1024
+      N = -1022
       ETA = BASE**(1-T)
       INFINY = BASE*(1.0D0-BASE**(-T))*BASE**(M-1)
       SMALNO = (BASE**(N+3))/BASE**3
