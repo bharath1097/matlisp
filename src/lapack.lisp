@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.9 2003/05/02 01:15:14 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.10 2003/05/31 05:19:17 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.10  2003/05/31 05:19:17  rtoy
+;;; Was missing a paren.
+;;;
 ;;; Revision 1.9  2003/05/02 01:15:14  rtoy
 ;;; Fix arg list for zgetrs:  2 args in wrong order, forget the final INFO
 ;;; arg.
@@ -455,7 +458,7 @@
   (ipiv (* :integer) :input)
   (b (* :complex-double-float) :input-output)
   (ldb :integer :input)
-  (info :integer :output)
+  (info :integer :output))
 
 (def-fortran-routine dgesvd :void
 "
