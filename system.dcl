@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.5 2000/07/11 02:45:15 simsek Exp $
+;;; $Id: system.dcl,v 1.6 2000/10/04 01:19:18 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.6  2000/10/04 01:19:18  simsek
+;;; o Moved version related code to package.lisp
+;;;
 ;;; Revision 1.5  2000/07/11 02:45:15  simsek
 ;;; o Changed version from 1.0a to 1.0b
 ;;;
@@ -52,16 +55,6 @@
 
 (deflogicalpath "matlisp")
 
-(eval-when (load eval compile)
-(defparameter *matlisp-version* "1.0b")
-#-(or :cmu :allegro) (error 
-		      "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
-		      *matlisp-version*)
-(defun matlisp-version () *matlisp-version*)
-(defun matlisp-herald () (format nil "    MATLISP/~a" (matlisp-version)))
-#+:cmu (setf (getf ext:*herald-items* :matlisp)
-	     (list (matlisp-herald))))
-
 (require "FORTRAN-FFI-ACCESSORS" "matlisp:packages")
 (require "BLAS" "matlisp:packages")
 (require "LAPACK" "matlisp:packages")
@@ -75,6 +68,10 @@
       :binary-pathname "matlisp:bin;"
       :components
       ((:file "lazy-loader"
+	      ;; you need the load-only here,
+	      ;; otherwise, Allegro tries to
+	      ;; load the DLL (SO)'s twice
+	      ;; and fails.
 	:load-only t)))
 
 (mk::defsystem matlisp
