@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.1 2000/04/13 23:34:29 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.2 2000/05/05 21:31:00 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.2  2000/05/05 21:31:00  simsek
+;;; o Added the library libdfftpack to the load list
+;;;
 ;;; Revision 1.1  2000/04/13 23:34:29  simsek
 ;;; o This file is used by lisp to load foreign libraries.
 ;;; o Initial revision.
@@ -114,6 +117,7 @@
 				   (translate-logical-pathname "matlisp:lib"))
 				 " "
 				 "-Llib
+                                  -ldfftpack
 			          -llapack
 			          -lblas
                                   @FLIBS@"))))
