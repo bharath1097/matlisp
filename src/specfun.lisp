@@ -5,9 +5,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: specfun.lisp,v 1.4 2001/12/28 16:54:35 rtoy Exp $
+;;; $Id: specfun.lisp,v 1.5 2001/12/28 19:19:23 rtoy Exp $
 ;;;
 ;;; $Log: specfun.lisp,v $
+;;; Revision 1.5  2001/12/28 19:19:23  rtoy
+;;; Add some more documentation for the special functions.
+;;;
 ;;; Revision 1.4  2001/12/28 16:54:35  rtoy
 ;;; Add documentation strings for the special functions.
 ;;;
@@ -564,6 +567,7 @@ Compute the function exp(-x)*Ei(x), x real.
   real matrix A where I0(x) is the modified Bessel function of the
   first kind of order zero:
 
+  I0(x) = J0(x*exp(pi*i/2))
   "))
 (make-real-mapper -bessel-i0 besi0)
 
@@ -580,6 +584,7 @@ Compute the function exp(-x)*Ei(x), x real.
   real matrix A, where I1(x) is the modified Bessel function of the
   first kind of order one:
 
+  I1(x) = exp(-pi*i/2)*J1(x*exp(pi*i/2))
   "))
 (make-real-mapper -bessel-i1 besi1)
 
@@ -595,6 +600,15 @@ Compute the function exp(-x)*Ei(x), x real.
   Computes the Bessel function J0 for each element of the
   real matrix A, where J0(x) is the Bessel function of the
   first kind of order zero:
+
+               INF
+               ====       k  2 k
+               \     (- 1)  z
+   J0(x) =      >    -----------
+               /       2 k   2
+               ====   2    k!
+               k = 0
+
 
   "))
 (make-real-mapper -bessel-j0 besj0)
@@ -612,6 +626,14 @@ Compute the function exp(-x)*Ei(x), x real.
   real matrix A, where J1(x) is the modified Bessel function of the
   first kind of order one:
 
+                      INF
+                      ====         k  2 k
+                  z   \       (- 1)  z
+      J1(z) =    ---   >    ----------------
+                  2   /      2 k
+                      ====  2    k! (k + 1)!
+                      k = 0
+
   "))
 (make-real-mapper -bessel-j1 besj1)
 
@@ -627,6 +649,10 @@ Compute the function exp(-x)*Ei(x), x real.
   Computes the Bessel function K0 for each element of the
   real matrix A, where K0(x) is the modified Bessel function of the
   second kind of order zero:
+
+              pi          I[-n](z) - I[n](z)
+   K0(z) =   ----  limit  -------------------
+              2    n -> 0     sin(pi * n)
 
   "))
 (make-real-mapper -bessel-k0 besk0)
@@ -644,6 +670,9 @@ Compute the function exp(-x)*Ei(x), x real.
   real matrix A, where K1(x) is the modified Bessel function of the
   second kind of order one:
 
+              pi          I[-n](z) - I[n](z)
+   K1(z) =   ----  limit  -------------------
+              2    n -> 1     sin(pi * n)
   "))
 (make-real-mapper -bessel-k1 besk1)
 
@@ -659,6 +688,10 @@ Compute the function exp(-x)*Ei(x), x real.
   Computes the Bessel function Y0 for each element of the
   real matrix A, where Y0(x) is the Bessel function of the
   second kind of order zero:
+
+                      J[n](x) * cos(n * pi) - J[-n](x)
+    Y0(x) =    limit  --------------------------------
+               n -> 0           sin(n * pi)
 
   "))
 (make-real-mapper -bessel-y0 besy0)
@@ -676,6 +709,9 @@ Compute the function exp(-x)*Ei(x), x real.
   real matrix A, where J1(x) is the Bessel function of the
   second kind of order one:
 
+                      J[n](x) * cos(n * pi) - J[-n](x)
+    Y1(x) =    limit  --------------------------------
+               n -> 1           sin(n * pi)
   "))
 (make-real-mapper -bessel-y1 besy1)
 
@@ -769,6 +805,17 @@ Compute the function exp(-x)*Ei(x), x real.
   Purpose
   =======
   Compute the gamma function for each real element, x, of the matrix A.
+
+  The gamma function is
+
+                  INF
+                 /
+                 [     n - 1   - t
+  gamma(n) =     I    t      %E    dt
+                 ]
+                 /
+                  0
+
   "))
 (make-real-mapper -gamma dgamma)
 
@@ -803,6 +850,15 @@ Compute the function exp(-x)*Ei(x), x real.
   =======
   Compute the exponential integral, Ei(x), for each real element, x,
   of the matrix A.
+
+                       z
+                      /       x
+                      [     %E
+       Ei(z) =        I     --- dx
+                      ]      x
+                      /
+                       MINF
+
   "))
 (make-real-mapper -exponential-integral ei)
 
