@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dot.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: dot.lisp,v 1.5 2002/07/28 14:59:31 rtoy Exp $
 ;;;
 ;;; $Log: dot.lisp,v $
+;;; Revision 1.5  2002/07/28 14:59:31  rtoy
+;;; Clean up method dot for complex matrices.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -228,26 +231,16 @@
       )))
 
 (defmethod dot ((x complex-matrix) (y complex-matrix) &optional (conjugate-p t))
-  (let ((nxm (number-of-elements x))
-	(store-x (store x))
-	(store-y (store y)))
-    (if conjugate-p
-	#-:complex-arg-implies-complex-result
-        (let ((dot (zdotc nxm store-x 1 store-y 1)))
-	  (declare (type (complex complex-matrix-element-type) dot))
-	  (if (zerop (imagpart dot))
-	      (realpart dot)
-	    dot))
-	#+:complex-arg-implies-complex-result
-	(zdotc nxm store-x 1 store-y 1)
-      #-:complex-arg-implies-complex-result
-      (let ((dot (zdotu nxm store-x 1 store-y 1)))
-	(declare (type (complex complex-matrix-element-type) dot))
-	(if (zerop (imagpart dot))
-	    (realpart dot)
-	  dot))
-      #+:complex-arg-implies-complex-result
-      (zdotu nxm store-x 1 store-y 1)
-      )))
-
-
+  (let* ((nxm (number-of-elements x))
+	 (store-x (store x))
+	 (store-y (store y))
+	 (dot (if conjugate-p
+		  (zdotc nxm store-x 1 store-y 1)
+		  (zdotu nxm store-x 1 store-y 1))))
+    
+    #-:complex-arg-implies-complex-result
+    (if (zerop (imagpart dot))
+	(realpart dot)
+	dot)
+    #+:complex-arg-implies-complex-result
+    dot))
