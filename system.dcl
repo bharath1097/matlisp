@@ -45,9 +45,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.1 2000/04/13 20:43:15 simsek Exp $
+;;; $Id: system.dcl,v 1.2 2000/05/05 21:34:03 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.2  2000/05/05 21:34:03  simsek
+;;; o Updated defsystem form to include dfftpack stuff
+;;;
 ;;; Revision 1.1  2000/04/13 20:43:15  simsek
 ;;; o Initial revision.
 ;;;
@@ -166,9 +169,9 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(if (fboundp 'deflogicalpath)
+(if (fboundp 'user::deflogicalpath)
     (progn
-      (deflogicalpath "matlisp" "")
+      (user::deflogicalpath "matlisp" "")
       (require "MAKE" (namestring 
 		       (translate-logical-pathname "matlisp:defsystem.lisp"))))
   (flet ((default-dir ()
@@ -209,7 +212,8 @@
 	:binary-pathname ""
 	:depends-on ("foreign-interface")
 	:components ("blas"
-		     "lapack"))
+		     "lapack"
+		     "dfftpack"))
        (:module "matlisp-essentials"
 	:source-pathname ""
 	:source-extension "lisp"
@@ -231,6 +235,7 @@
 	:components ("axpy"
 		     "scal"
 		     "swap"
+		     "symm"
 		     "gemm"))
 
        (:module "matlisp-lapack-wrappers"
@@ -274,7 +279,8 @@
 		     "mminus"
 		     "mtimes"
 		     "mdivide"
-		     "msqrt"))))
+		     "msqrt"
+		     "fft"))))
 
 
 (defun load-matlisp ()
