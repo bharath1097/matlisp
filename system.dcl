@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.22 2003/12/07 15:03:44 rtoy Exp $
+;;; $Id: system.dcl,v 1.23 2004/03/17 03:22:13 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.23  2004/03/17 03:22:13  simsek
+;;; Adding support for DFFTPACK and TOMS on windows.
+;;;
 ;;; Revision 1.22  2003/12/07 15:03:44  rtoy
 ;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 ;;; works.
@@ -159,7 +162,7 @@
 	:depends-on ("foreign-interface")
 	:components ("blas"
 		     "lapack"
-		     #-:mswindows "dfftpack"
+		     "dfftpack"
 		     #+nil "ranlib"))
        (:module "matlisp-essentials"
 	:source-pathname "matlisp:src"
@@ -228,7 +231,7 @@
 		     "mtimes"
 		     "mdivide"
 		     "msqrt"
-		     #-:mswindows "fft"
+		     "fft"
 		     "geqr"))
        (:module "special-functions"
 		:source-pathname "matlisp:src"
