@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fortran.lisp,v 1.11 2000/05/05 18:56:51 rtoy Exp $
+;;; $Id: fortran.lisp,v 1.12 2000/05/08 15:28:20 rtoy Exp $
 ;;;
 ;;; $Log: fortran.lisp,v $
+;;; Revision 1.12  2000/05/08 15:28:20  rtoy
+;;; Removed the variable capture of hidden-complex-return-value by
+;;; gensym'ing a new var.
+;;;
 ;;; Revision 1.11  2000/05/05 18:56:51  rtoy
 ;;; o Try to add comments to routines and stuff.
 ;;; o Some minor simplification of the code
@@ -222,9 +226,7 @@
 
 ;; Create a form specifying a simple Lisp function that calls the
 ;; underlying Fortran routine of the same name.
-(defun def-fortran-interface (name
-			      return-type 
-			      body)
+(defun def-fortran-interface (name return-type body hidden-var-name)
   (multiple-value-bind (doc pars)
       (parse-doc-&-parameters body)
 
@@ -234,7 +236,7 @@
     (let* (
 	   (return-value `(,(gensym "RETURN-VAL-")))
 	   ;; Names of all the args
-	   (args (remove 'hidden-complex-return-variable (mapcar #'first pars)))
+	   (args (remove hidden-var-name (mapcar #'first pars)))
 	   ;; A list of pairs suitable for use with
 	   ;; with-vector-data-addresses
 	   (saps (mapcar #'(lambda (p)
@@ -287,19 +289,19 @@
 		     (declare (ignore ,@(and (eq return-type :void) return-value)))
 		     (values ,@(and (not (eq return-type :void))  return-value)
 			     ,@(mapcar #'(lambda (s)
-					   (if (eq s 'hidden-complex-return-variable)
-					       'hidden-complex-return-variable
+					   (if (eq s hidden-var-name)
+					       hidden-var-name
 					       s)) rvs)))))))
 				      
 
-      (if (find 'hidden-complex-return-variable (mapcar #'first pars))
+      (if (find hidden-var-name (mapcar #'first pars))
 	  `(
 	    ;; Too hard to debug if inlined.
 	    ;;(declaim (inline ,name))
 	    (defun ,name ,args
 	      ,@doc
-	      (let ((hidden-complex-return-variable #c(0d0 0d0)))
-		(declare (type (complex double-float) hidden-complex-return-variable))
+	      (let ((,hidden-var-name #c(0d0 0d0)))
+		(declare (type (complex double-float) ,hidden-var-name))
 		,@defun-body)))
 	  `(
 	    ;; Too hard to debug if inlined.
@@ -565,7 +567,8 @@ for :OUTPUT.
   (let ((fortran-name (make-fortran-name `,name))
 	(lisp-name  (make-fortran-ffi-name `,name))
 	(hack-return-type `,return-type)
-	(hack-body `(,@body)))
+	(hack-body `(,@body))
+	(hidden-var-name nil))
 
     (multiple-value-bind (doc pars)
 	(parse-doc-&-parameters `(,@body))
@@ -582,8 +585,9 @@ for :OUTPUT.
 	;; user better not call this routine with a variable namded
 	;; HIDDEN-COMPLEX-RETURN-VARIABLE!  We should probably gensym
 	;; this.
+	(setq hidden-var-name (gensym "HIDDEN-COMPLEX-RETURN-"))
 	(setq hack-body `(,@doc
-			  (hidden-complex-return-variable ,hack-return-type :out)
+			  (,hidden-var-name ,hack-return-type :out)
 			  ,@pars))
 	(setq hack-return-type :void)))
 			  
@@ -593,7 +597,7 @@ for :OUTPUT.
 	 (declaim (inline ,lisp-name))
 	 (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
 	   ,@(parse-fortran-parameters hack-body))
-	 ,@(def-fortran-interface name hack-return-type hack-body)))))
+	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
 
 ;; Increment an SAP by N, assuming SAP has type TYPE.  Thus, if TYPE
 ;; is double-float, and N is 2, we really want to increment the sap by
