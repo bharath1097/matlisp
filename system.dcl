@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.16 2001/07/21 17:56:04 simsek Exp $
+;;; $Id: system.dcl,v 1.17 2001/07/26 15:48:14 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.17  2001/07/26 15:48:14  rtoy
+;;; Added f77-mangling.lisp.
+;;;
 ;;; Revision 1.16  2001/07/21 17:56:04  simsek
 ;;; Gnuplot not currently suported for Allegro
 ;;;
@@ -100,7 +103,7 @@
       :source-pathname "matlisp:"
       :source-extension "lisp"
       :components
-      ((:file "packages" :load-only t)))
+      ((:file "packages")))
 
 (mk::defsystem lazy-loader
       :source-pathname "matlisp:lib;"
@@ -113,7 +116,7 @@
 	      ;; otherwise, Allegro tries to
 	      ;; load the DLL (SO)'s twice
 	      ;; and fails.
-	:load-only t)))
+	)))
 
 (mk::defsystem matlisp
       :source-pathname "matlisp:"
@@ -126,8 +129,10 @@
 	:source-pathname "matlisp:src"
 	:source-extension "lisp"
 	:binary-pathname ""
-	:components (#+:cmu "ffi-cmu"
-			#+:allegro "ffi-acl"))
+	:components ("f77-mangling"
+		     #+:cmu "ffi-cmu"
+		     #+:allegro "ffi-acl"
+		     ))
        (:module "foreign-functions"
 	:source-pathname "matlisp:src"
 	:source-extension "lisp"
