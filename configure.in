@@ -1,0 +1,100 @@
+dnl Copyright (c) 2000 The Regents of the University of California.
+dnl All rights reserved. 
+dnl
+dnl Permission is hereby granted, without written agreement and without
+dnl license or royalty fees, to use, copy, modify, and distribute this
+dnl software and its documentation for any purpose, provided that the
+dnl above copyright notice and the following two paragraphs appear in all
+dnl copies of this software.
+dnl
+dnl IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
+dnl FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+dnl ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+dnl THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+dnl SUCH DAMAGE.
+dnl
+dnl THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+dnl INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+dnl MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE
+dnl PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF
+dnl CALIFORNIA HAS NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+dnl ENHANCEMENTS, OR MODIFICATIONS.
+dnl
+dnl ======================================================================
+dnl
+dnl Process this file with autoconf to produce a configure script.
+dnl For example:
+dnl
+dnl          autoconf configure.in > configure
+dnl
+dnl ======================================================================
+dnl
+dnl $Id: configure.in,v 1.1 2000/04/13 20:37:25 simsek Exp $
+dnl
+dnl $Log: configure.in,v $
+dnl Revision 1.1  2000/04/13 20:37:25  simsek
+dnl o Created this file to detect machine specific parameters,
+dnl   especially Fortran parameters.
+dnl o In future revisions, this file should be modified to check whether
+dnl   a Fortran DOUBLE PRECISION is a C double (the main assumption in src/fortran.lisp)
+dnl   and should create a src/fortran.lisp file from a src/fortran.lisp.in file
+dnl   in case there are ambiguities.  This will ensure that the Matlisp Fortran interface
+dnl   works correctly with at least the distributed BLAS/LAPACK sources.
+dnl
+dnl
+dnl ======================================================================
+
+AC_INIT(system.dcl)
+dnl     Determine a Fortran 77 compiler to use.  If `F77' is not already
+dnl     set in the environment, check for `g77', `f77' and `f2c', in that
+dnl     order.  Set the output variable `F77' to the name of the compiler
+dnl     found.
+dnl
+dnl     If using `g77' (the GNU Fortran 77 compiler), then `AC_PROG_F77'
+dnl     will set the shell variable `G77' to `yes', and empty otherwise.
+dnl     If the output variable `FFLAGS' was not already set in the
+dnl     environment, then set it to `-g -02' for `g77' (or `-O2' where
+dnl     `g77' does not accept `-g').  Otherwise, set `FFLAGS' to `-g' for
+dnl     all other Fortran 77 compilers.
+AC_PROG_F77
+
+dnl     Set output variable `RANLIB' to `ranlib' if `ranlib' is found,
+dnl     otherwise to `:' (do nothing).
+AC_PROG_RANLIB
+
+
+dnl     Determine the linker flags (e.g. `-L' and `-l') for the "Fortran
+dnl     77 intrinsic and run-time libraries" that are required to
+dnl     successfully link a Fortran 77 program or shared library.  The
+dnl     output variable `FLIBS' is set to these flags.
+dnl
+dnl     This macro is intended to be used in those situations when it is
+dnl     necessary to mix, e.g. C++ and Fortran 77 source code into a single
+dnl     program or shared library (*note Mixing Fortran 77 With C and C++:
+dnl     (automake)Mixing Fortran 77 With C and C++.).
+dnl
+dnl     For example, if object files from a C++ and Fortran 77 compiler
+dnl     must be linked together, then the C++ compiler/linker must be used
+dnl     for linking (since special C++-ish things need to happen at link
+dnl     time like calling global constructors, instantiating templates,
+dnl     enabling exception support, etc.).
+dnl
+dnl     However, the Fortran 77 intrinsic and run-time libraries must be
+dnl     linked in as well, but the C++ compiler/linker doesn't know by
+dnl     default how to add these Fortran 77 libraries.  Hence, the macro
+dnl     `AC_F77_LIBRARY_LDFLAGS' was created to determine these Fortran 77
+dnl     libraries.
+AC_F77_LIBRARY_LDFLAGS
+
+dnl     Determine a C compiler to use.
+AC_PROG_CC
+
+dnl     The following substitutions will be made in the .in files listed
+dnl     under AC_OUTPUT at the end of this file.
+AC_SUBST(F77)
+AC_SUBST(FFLAGS)
+AC_SUBST(FLIBS)
+AC_SUBST(CC)
+AC_SUBST(CLIBS)
+
+AC_OUTPUT(Makefile lib/lazy-loader.lisp)
