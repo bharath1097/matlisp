@@ -1,3 +1,18 @@
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
+;;;
+;;; Fortran interface to the special function package SPECFUN, TOMS 715.
+;;; Written by Raymond Toy
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: specfun.lisp,v 1.4 2001/12/28 16:54:35 rtoy Exp $
+;;;
+;;; $Log: specfun.lisp,v $
+;;; Revision 1.4  2001/12/28 16:54:35  rtoy
+;;; Add documentation strings for the special functions.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (in-package "MATLISP")
 
 (def-fortran-routine anorm :double-float
@@ -424,33 +439,468 @@ Compute the function exp(-x)*Ei(x), x real.
   (ncalc :integer :output))
 
 
+(defgeneric m-normal-cdf (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-normal-cdf a)
+
+  Purpose
+  =======
+  Computes the cumulative normal probability integral defined by
+
+                              / x
+                     1       |       -t*t/2
+          P(x) = ----------- |      e       dt
+                 sqrt(2 pi)  |
+                             /-oo
+
+
+  for each x in the real matrix A.
+  "))
 (make-real-mapper -normal-cdf anorm)
+
+(defgeneric m-bessel-scaled-i0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-scaled-i0 a)
+
+  Purpose
+  =======
+  Computes the scaled Bessel function I0 for each element of the
+  real matrix A.
+
+  The scaled Bessel function I0 is defined by
+
+     exp(-|x|) * I0(x)
+
+  where I0(x) is the modified Bessel function of the first kind of order
+  zero:
+
+  "))
+
 (make-real-mapper -bessel-scaled-i0 besei0)
+
+(defgeneric m-bessel-scaled-i1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-scaled-i1 a)
+
+  Purpose
+  =======
+  Computes the scaled Bessel function I1 for each element of the
+  real matrix A.
+
+  The scaled Bessel function I1 is defined by
+
+     exp(-|x|) * I1(x)
+
+  where I1(x) is the modified Bessel function of the first kind of order
+  one:
+
+  "))
+
 (make-real-mapper -bessel-scaled-i1 besei1)
+
+(defgeneric m-bessel-scaled-k0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-scaled-k0 a)
+
+  Purpose
+  =======
+  Computes the scaled Bessel function K0 for each element of the
+  real matrix A.
+
+  The scaled Bessel function K0 is defined by
+
+     exp(-|x|) * K0(x)
+
+  where K0(x) is the modified Bessel function of the second kind of order
+  zero:
+
+  "))
 (make-real-mapper -bessel-scaled-k0 besek0)
+
+(defgeneric m-bessel-scaled-k1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-scaled-k1 a)
+
+  Purpose
+  =======
+  Computes the scaled Bessel function K1 for each element of the
+  real matrix A.
+
+  The scaled Bessel function K1 is defined by
+
+     exp(-|x|) * K1(x)
+
+  where K1(x) is the modified Bessel function of the second kind of order
+  one:
+
+  "))
 (make-real-mapper -bessel-scaled-k1 besek1)
+
+(defgeneric m-bessel-i0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-i0 a)
+
+  Purpose
+  =======
+  Computes the Bessel function I0 for each element of the
+  real matrix A where I0(x) is the modified Bessel function of the
+  first kind of order zero:
+
+  "))
 (make-real-mapper -bessel-i0 besi0)
+
+(defgeneric m-bessel-i1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-i1 a)
+
+  Purpose
+  =======
+  Computes the Bessel function I1 for each element of the
+  real matrix A, where I1(x) is the modified Bessel function of the
+  first kind of order one:
+
+  "))
 (make-real-mapper -bessel-i1 besi1)
+
+(defgeneric m-bessel-j0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-j0 a)
+
+  Purpose
+  =======
+  Computes the Bessel function J0 for each element of the
+  real matrix A, where J0(x) is the Bessel function of the
+  first kind of order zero:
+
+  "))
 (make-real-mapper -bessel-j0 besj0)
+
+(defgeneric m-bessel-j1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-j1 a)
+
+  Purpose
+  =======
+  Computes the Bessel function J1 for each element of the
+  real matrix A, where J1(x) is the modified Bessel function of the
+  first kind of order one:
+
+  "))
 (make-real-mapper -bessel-j1 besj1)
+
+(defgeneric m-bessel-k0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-k0 a)
+
+  Purpose
+  =======
+  Computes the Bessel function K0 for each element of the
+  real matrix A, where K0(x) is the modified Bessel function of the
+  second kind of order zero:
+
+  "))
 (make-real-mapper -bessel-k0 besk0)
+
+(defgeneric m-bessel-k1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-k1 a)
+
+  Purpose
+  =======
+  Computes the Bessel function K1 for each element of the
+  real matrix A, where K1(x) is the modified Bessel function of the
+  second kind of order one:
+
+  "))
 (make-real-mapper -bessel-k1 besk1)
+
+(defgeneric m-bessel-y0 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-y0 a)
+
+  Purpose
+  =======
+  Computes the Bessel function Y0 for each element of the
+  real matrix A, where Y0(x) is the Bessel function of the
+  second kind of order zero:
+
+  "))
 (make-real-mapper -bessel-y0 besy0)
+
+(defgeneric m-bessel-j1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-j1 a)
+
+  Purpose
+  =======
+  Computes the Bessel function J1 for each element of the
+  real matrix A, where J1(x) is the Bessel function of the
+  second kind of order one:
+
+  "))
 (make-real-mapper -bessel-y1 besy1)
+
+(defgeneric m-dawson-integral (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-dawson-integral a)
+
+  Purpose
+  =======
+  Computes Dawson's integral for each element, x, of the
+  real matrix A, where Dawson's integral is
+
+                       2  / x   2
+                     -x   |    t
+             F(x) = e     |   e    dt
+                          |
+                          / 0
+
+
+  "))
 (make-real-mapper -dawson-integral daw)
+
+
+(defgeneric m-erf (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-erf a)
+
+  Purpose
+  =======
+  Computes erf(x) for each element x of the real matrix A, where
+
+			      x		 
+			     /       2	  
+		     2       [    - t	  
+      erf(x) =   ---------   I   E     dt 
+		 SQRT(%PI)   ]		 
+			     /		 
+			      0           
+
+
+  "))
 (make-real-mapper -erf derf)
+
+(defgeneric m-erfc (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-erfc a)
+
+  Purpose
+  =======
+  Computes erfc(x) for each element x of the real matrix A, where
+
+      erfc(x) = 1 - erf(x)
+
+  "))
 (make-real-mapper -erfc derfc)
+
+(defgeneric m-erfcx (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-erfcx a)
+
+  Purpose
+  =======
+  Computes erfcx(x) for each element x of the real matrix A, where
+
+		    2
+		   x
+      erfcx(x) = %E   erfc(x)
+
+  "))
 (make-real-mapper -erfcx derfcx)
+
+(defgeneric m-gamma (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-gamma a)
+
+  Purpose
+  =======
+  Compute the gamma function for each real element, x, of the matrix A.
+  "))
 (make-real-mapper -gamma dgamma)
+
+(defgeneric m-log-gamma (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-log-gamma a)
+
+  Purpose
+  =======
+  Compute the log of gamma function for each real element, x,
+  of the matrix A.  Each element must be non-negative.
+  "))
 (make-real-mapper -log-gamma dlgama)
 ;; We need to make sure the arguments to dlgama are positive!
 (defmethod m-log-gamma :before ((matrix real-matrix))
   (assert (every #'(lambda (x)
 		     (>= x 0))
 		 (store matrix))))
+
+
+(defgeneric m-exponential-integral (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-exponential-integral a)
+
+  Purpose
+  =======
+  Compute the exponential integral, Ei(x), for each real element, x,
+  of the matrix A.
+  "))
 (make-real-mapper -exponential-integral ei)
+
+(defgeneric m-exponential-integral-1 (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-exponential-integral-1 a)
+
+  Purpose
+  =======
+  Compute the exponential integral, E1(x), for each real element, x,
+  of the matrix A.
+  "))
 (make-real-mapper -exponential-integral-1 eone)
+
+(defgeneric m-psi (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-psi a)
+
+  Purpose
+  =======
+  Compute the derivative of the log gamma function, psi(x), for
+  each real element, x, of the matrix A.
+  "))
 (make-real-mapper -psi psi)
+
+(defgeneric m-bessel-series-i (x alpha n &key scale-p)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-series-i x alpha n &key scale-p)
+
+  Purpose
+  =======
+  Computes Bessel functions I[m+alpha](x) for non-negative
+  argument x and non-negative order m+alpha for m = 0, 1, 2,...,n-1,
+  and 0 <= alpha < 1.  If scale-p is non-NIL, exponential scaling
+  is applied: exp(-x)*I[n+alpha](x).  
+
+  The resulting set of n values is returned as a real column vector.
+  "))
+
+(defgeneric m-bessel-series-j (x alpha n &key scale-p)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-series-j x alpha n &key scale-p)
+
+  Purpose
+  =======
+  Computes Bessel functions J[m+alpha](x) for non-negative
+  argument x and non-negative order m+alpha for m = 0, 1, 2,...,n-1,
+  and 0 <= alpha < 1.  If scale-p is non-NIL, exponential scaling
+  is applied: exp(x)*J[n+alpha](x).  
+
+  The resulting set of n values is returned as a real column vector.
+  "))
+
+(defgeneric m-bessel-series-k (x alpha n &key scale-p)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-series-k x alpha n &key scale-p)
+
+  Purpose
+  =======
+  Computes Bessel functions K[m+alpha](x) for non-negative
+  argument x and non-negative order m+alpha for m = 0, 1, 2,...,n-1,
+  and 0 <= alpha < 1.  If scale-p is non-NIL, exponential scaling
+  is applied: exp(-x)*K[n+alpha](x).  
+
+  The resulting set of n values is returned as a real column vector.
+  "))
+
+(defgeneric m-bessel-series-y (x alpha n &key scale-p)
+  (:documentation
+   "
+  Syntax
+  ======
+  (m-bessel-series-i x alpha n &key scale-p)
+
+  Purpose
+  =======
+  Computes Bessel functions Y[m+alpha](x) for non-negative
+  argument x and non-negative order m+alpha for m = 0, 1, 2,...,n-1,
+  and 0 <= alpha < 1.  If scale-p is non-NIL, exponential scaling
+  is applied: exp(x)*Y[n+alpha](x).  
+
+  The resulting set of n values is returned as a real column vector.
+  "))
 
 (macrolet
     ((frob (name)
