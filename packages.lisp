@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.16 2003/05/31 03:41:43 rtoy Exp $
+;;; $Id: packages.lisp,v 1.17 2003/07/25 16:20:08 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.17  2003/07/25 16:20:08  rtoy
+;;; Use PCL:FIND-CLASS for CMUCL so all versions of CMUCL will still work.
+;;;
 ;;; Revision 1.16  2003/05/31 03:41:43  rtoy
 ;;; Our REAL function was colliding with CL's REAL.  Shadow this
 ;;; appropriately.
@@ -353,7 +356,11 @@
 (deftype real (&optional low high)
   `(cl::real ,low ,high))
 
-(setf (find-class 'real) (find-class 'cl:real))
+;; Although versions of CMUCL after 18e have find-class in CL, it
+;; still exists in the PCL package, so for backward compatibility with
+;; older versions, use PCL:FIND-CLASS for all CMUCL versions.
+#+cmu (setf (pcl:find-class 'real) (pcl:find-class 'cl:real))
+#-cmu (setf (find-class 'real) (find-class 'cl:real))
 
 
 (eval-when (load eval compile)
