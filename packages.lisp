@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.9 2001/04/29 15:52:19 rtoy Exp $
+;;; $Id: packages.lisp,v 1.10 2001/05/01 13:11:06 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.10  2001/05/01 13:11:06  rtoy
+;;; o Export I1MACH, R1MACH, D1MACH from the F2CL package.
+;;; o Export POLYROOTS.
+;;;
 ;;; Revision 1.9  2001/04/29 15:52:19  rtoy
 ;;; Add the external symbols from TOMS 715.
 ;;;
@@ -141,6 +145,8 @@
    "LGE" "LGT" "FLOG" "LOG10" "LT" "MAX" "MAX0"
    "MAX1" "MIN0" "MIN1" "NINT" "FREAL"
    "SIGN" "SNGL" "FSQRT"
+   ;; Utilities
+   "R1MACH" "D1MACH" "I1MACH"
    ))
     
 (defpackage "QUADPACK"
@@ -154,7 +160,7 @@
    "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC"))
 
 (defpackage "MATLISP-LIB"
-  (:use "COMMON-LISP")
+  (:use "COMMON-LISP" "F2CL")
   (:export
    "ZEROIN"))
 
@@ -287,6 +293,8 @@
      "INTEGRATE-QAGI"
      "INTEGRATE-QAWS"
      "INTEGRATE-QAWC"
+     ;; From CPOLY
+     "POLYROOTS"
      ;; From TOMS-715
      "M-NORMAL-CDF"
      "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
