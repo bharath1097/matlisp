@@ -5,10 +5,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package :f2cl)
 
-(defvar *check-array-bounds* nil
-  "If non-NIL, generated code checks for array bounds.  If NIL, checking
-is not included")
-
 ; macros:
 ;	rexpt
 ;	fexport
@@ -45,6 +41,10 @@ is not included")
 ;----------------------------------------------------------------------------
 #+aclpc (defmacro rexpt (x y) `(realpart (expt ,x ,y)))
 #-aclpc (defmacro rexpt (x y) `(expt ,x ,y))
+
+(defvar *check-array-bounds* nil
+  "If non-NIL, generated code checks for array bounds.  If NIL, checking
+is not included")
 
 (deftype logical ()
   `(member t nil))
@@ -511,9 +511,17 @@ is not included")
   (if (>= y 0)
       (abs x)
       (- (abs x))))
+;; Fortran 77 says SIGN is a generic!
 (defun sign (x y)
-  (declare (type single-float x y))
-  (float-sign y x))
+  (declare (type (or integer4 single-float double-float) x y))
+  (etypecase x
+    (integer4
+     (isign x y))
+    (single-float
+     (float-sign y x))
+    (double-float
+     (float-sign y x))))
+
 (defun dsign (x y)
   (declare (type double-float x y))
   (float-sign y x))
@@ -522,9 +530,17 @@ is not included")
 (defun idim (x y)
   (declare (type integer4 x y))
   (abs (- x y)))
+;; Fortran 77 says DIM is a generic! 
 (defun dim (x y)
-  (declare (type single-float x y))
-  (abs (- x y)))
+  (declare (type (or integer4 single-float double-float) x y))
+  (etypecase x
+    (integer4
+     (abs (- x y)))
+    (single-float
+     (abs (- x y)))
+    (double-float
+     (abs (- x y)))))
+
 (defun ddim (x y)
   (declare (type double-float x y))
   (abs (- x y)))
@@ -942,82 +958,47 @@ is not included")
 	  (t
 	   ;; String is too short, so append some spaces
 	   (concatenate 'string string (make-string (- len slen) :initial-element #\Space))))))
-  
+
+
+;;; Strictly speaking, this is not part of Fortran, but so many
+;;; Fortran packages use these routines, we're going to add them here.
+;;; They're much easier to implement in Lisp than in Fortran!
+
+;;
+;;  DOUBLE-PRECISION MACHINE CONSTANTS
+;;  D1MACH( 1) = B**(EMIN-1), THE SMALLEST POSITIVE MAGNITUDE.
+;;  D1MACH( 2) = B**EMAX*(1 - B**(-T)), THE LARGEST MAGNITUDE.
+;;  D1MACH( 3) = B**(-T), THE SMALLEST RELATIVE SPACING.
+;;  D1MACH( 4) = B**(1-T), THE LARGEST RELATIVE SPACING.
+;;  D1MACH( 5) = LOG10(B)
+;;
+(defun d1mach (i)
+  (ecase i
+    (1 least-positive-normalized-double-float)
+    (2 most-positive-double-float)
+    (3 double-float-epsilon)
+    (4 (scale-float double-float-epsilon 1))
+    (5 (log (float-radix 1d0) 10d0))))
+
+(defun r1mach (i)
+  (ecase i
+    (1 least-positive-normalized-single-float)
+    (2 most-positive-single-float)
+    (3 single-float-epsilon)
+    (4 (scale-float single-float-epsilon 1))
+    (5 (log (float-radix 1d0) 10d0))))
+
 
 ;;;-------------------------------------------------------------------------
 ;;; end of macros.l
 ;;;
-;;; $Id: macros.l,v 1.1 2001/02/23 18:03:36 rtoy Exp $
+;;; $Id: macros.l,v 1.2 2001/04/26 18:07:19 rtoy Exp $
 ;;; $Log: macros.l,v $
+;;; Revision 1.2  2001/04/26 18:07:19  rtoy
+;;; Sync up to f2cl's macros.l rev 1.32 which added D1MACH and R1MACH.
+;;;
 ;;; Revision 1.1  2001/02/23 18:03:36  rtoy
 ;;; Initial revision, based on the current release of f2cl macros.l.  (Had
 ;;; to add a defvar for *check-array-bounds* though.)
-;;;
-;;; Revision 1.30  2000/08/30 17:00:42  rtoy
-;;; o In EXECUTE-FORMAT, handle the case where the group is supposed to be
-;;;   repeated "forever" (as indicated by a repetition factor of T).
-;;; o Remove some more unused code.
-;;;
-;;; Revision 1.29  2000/08/27 16:36:07  rtoy
-;;; Clean up handling of format statements.  Should handle many more
-;;; formats correctly now.
-;;;
-;;; Revision 1.28  2000/08/07 19:00:47  rtoy
-;;; Add type ARRAY-STRINGS to denote an array of strings.
-;;;
-;;; Revision 1.27  2000/08/03 13:45:53  rtoy
-;;; Make FFORMAT1 handle lists that we get from implied do loops.
-;;;
-;;; The whole FFORMAT stuff needs to be rethought if we really want to
-;;; support Fortran output.
-;;;
-;;; Revision 1.26  2000/08/01 22:10:41  rtoy
-;;; o Try to make the Fortran functions to convert to integers work the
-;;;   way Fortran says they should.
-;;; o Declaim most of the intrinsics as inline so we don't have an
-;;;   additional function call for simple things.
-;;; o Add some compiler macros for Fortran max/min functions to call the
-;;;   Lisp max/min functions withouth using #'apply.
-;;; o Try to declare the args to functions with branchs appropriately,
-;;;   even in the face of signed zeroes.
-;;;
-;;; Revision 1.25  2000/07/28 22:10:05  rtoy
-;;; Remove unused var from ARRAY-SLICE.
-;;;
-;;; Revision 1.24  2000/07/28 17:09:13  rtoy
-;;; o We are in the f2cl package now.
-;;; o Remove the export expression.
-;;; o // is now called F2CL-//, to prevent problems with the lisp variable
-;;;   //.
-;;; o REAL is now called FREAL, to prevent problems with the lisp type
-;;;   REAL.
-;;;
-;;; Revision 1.23  2000/07/27 16:39:17  rtoy
-;;; We want to be in the CL-USER package, not the USER package.
-;;;
-;;; Revision 1.22  2000/07/20 13:44:38  rtoy
-;;; o Remove old fref macro
-;;; o Add some comments
-;;; o Add macro ARRAY-INITIALIZE to handle creating the appropriate for to
-;;;   give to make-array :initial-contents.
-;;;
-;;; Revision 1.21  2000/07/19 13:54:27  rtoy
-;;; o Add the types ARRAY-DOUBLE-FLOAT, ARRAY-SINGLE-FLOAT, and
-;;;   ARRAY-INTEGER4.
-;;; o All arrays are 1-D now to support slicing of Fortran arrays
-;;;   correctly.
-;;; o All arrays are in column-major order just like Fortran (and the
-;;;   opposite of Lisp).  This is to support slicing of arrays.  Modified
-;;;   FREF to support this by taking an extra arg for the dimensions of
-;;;   the array.
-;;; o Added macro ARRAY-SLICE to slice the array properly.
-;;; o Optimized routine DMIN1 a bit.   (Need to do that for more routines.)
-;;;
-;;; Revision 1.20  2000/07/14 15:50:59  rtoy
-;;; Get rid of *dummy_var*.  It's not used anymore.
-;;;
-;;; Revision 1.19  2000/07/13 16:55:34  rtoy
-;;; To satisfy the Copyright statement, we have placed the RCS logs in
-;;; each source file in f2cl.  (Hope this satisfies the copyright.)
 ;;;
 ;;;-----------------------------------------------------------------------------
