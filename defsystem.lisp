@@ -1197,7 +1197,7 @@
     (mk::home-subdirectory "lisp/systems/")
 
     ;; Global registry
-    "/usr/local/lisp/Registry/")
+    "/usr/local/share/lisp/Registry/")
   "Central directory of system definitions. May be either a single
    directory pathname, or a list of directory pathnames to be checked
    after the local directory.")
@@ -3192,7 +3192,7 @@ D
 		(*load-source-instead-of-binary* load-source-instead-of-binary)
 		(*minimal-load* minimal-load)
 		(system (find-system name :load)))
-	    #-(or CMU CLISP :sbcl)
+	    #-(or CMU CLISP :sbcl :lispworks)
 	    (declare (special *compile-verbose* #-MCL *compile-file-verbose*)
 		     (ignore *compile-verbose* #-MCL *compile-file-verbose*)
 		     (optimize (inhibit-warnings 3)))
@@ -3379,10 +3379,14 @@ D
 	  ;; add the banner if needed
 	  #+cmu
 	  (when (component-banner component)
+	    (unless (stringp (component-banner component))
+	      (error "The banner should be a string, it is: ~S"
+	             (component-banner component)))
 	    (setf (getf ext:*herald-items*
 			(intern (string-upcase  (component-name component))
 				(find-package :keyword)))
-		  (component-banner component))))
+		  (list 
+		     (component-banner component)))))
 
       ;; Reset the package. (Cleanup form of unwind-protect.)
       ;;(in-package old-package)
@@ -3771,9 +3775,8 @@ D
 
 (defun default-output-pathname (path1 path2 type)
   (if (eq path1 t)
-      (merge-pathnames
-       (make-pathname :type type)
-       (translate-logical-pathname (pathname path2)))
+      (translate-logical-pathname
+       (merge-pathnames (make-pathname :type type) (pathname path2)))
       (translate-logical-pathname (pathname path1))))
 
 
@@ -3813,9 +3816,11 @@ D
 	     (setf verbose-stream
 		   (make-useable-stream
 		    #+cmu error-file-stream
-		    (and verbose *standard-input*)))
+		    (and verbose *trace-output*)))
 
-	     (format verbose-stream "Running ~A~@[ ~{~A~^ ~}~]~%" program arguments)
+	     (format verbose-stream "Running ~A~@[ ~{~A~^ ~}~]~%"
+		     program
+		     arguments)
 
 	     (setf fatal-error
 		   #-cmu
@@ -3839,7 +3844,11 @@ D
 
 	     (when output-file-written
 	       (format verbose-stream "~A written~%" output-file))
-	     (format verbose-stream "Running of ~A finished~%" program))
+	     (format verbose-stream "Running of ~A finished~%"
+		     program)
+	     (values (and output-file-written output-file)
+		     fatal-error
+		     fatal-error))
 
 	#+cmu
 	(when error-file
