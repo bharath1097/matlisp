@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reshape.lisp,v 1.5 2001/04/18 15:56:26 rtoy Exp $
+;;; $Id: reshape.lisp,v 1.6 2001/05/07 15:47:09 rtoy Exp $
 ;;;
 ;;; $Log: reshape.lisp,v $
+;;; Revision 1.6  2001/05/07 15:47:09  rtoy
+;;; In the Great Renaming of slots n,m to nrows,ncols, I missed a few
+;;; spots.  Fix them.
+;;;
 ;;; Revision 1.5  2001/04/18 15:56:26  rtoy
 ;;; Fix stupid typo:  :mcols -> :ncols.
 ;;;
@@ -122,10 +126,10 @@
 
 	(dcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))
-    (setf (slot-value mat 'n) new-n)
-    (setf (slot-value mat 'm) new-m)
-    (setf (slot-value mat 'nxm) new-size)
-    (setf (slot-value mat 'store-size) new-size)
+    (setf (nrows mat) new-n)
+    (setf (ncols mat) new-m)
+    (setf (number-of-elements mat) new-size)
+    (setf (store-size mat) new-size)
     mat))
 
 (defmethod reshape ((mat complex-matrix) new-n new-m)
@@ -155,8 +159,8 @@
 	(zcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))
 
-    (setf (slot-value mat 'n) new-m)
-    (setf (slot-value mat 'm) new-m)
-    (setf (slot-value mat 'nxm) new-size)
-    (setf (slot-value mat 'store-size) (* 2 new-size))
+    (setf (nrows mat) new-m)
+    (setf (ncols mat) new-m)
+    (setf (number-of-elements mat) new-size)
+    (setf (store-size mat) (* 2 new-size))
     mat))
