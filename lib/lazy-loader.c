@@ -61,6 +61,8 @@ extern int dgemm_(); extern int dsyrk_(); extern int dsyr2k_(); extern int dtrmm
 extern int dsymm_();
 extern int zgemm_(); extern int ztrmm_(); extern int ztrsm_(); extern int zherk_(); extern int zher2k_();
 
+extern int dgetrs_();
+extern int zgetrs_();
 /*
  * Just make sure all functions are used
  */
@@ -83,6 +85,8 @@ __lazy_loader__(void)
     dsymm_();
     zgemm_(); ztrmm_(); ztrsm_(); zherk_(); zher2k_();
 
+    dgetrs_(); zgetrs_();
+    
     anorm_();
     besei0_();
     besei1_();
