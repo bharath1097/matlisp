@@ -12,7 +12,7 @@
 *     ..
 *     .. Array Arguments ..
       LOGICAL            BWORK( * )
-      DOUBLE PRECISION   A( LDA, * ), VS( LDVS, * ), WI( * ), WORK( * ), 
+      DOUBLE PRECISION   A( LDA, * ), VS( LDVS, * ), WI( * ), WORK( * ),
      $                   WR( * )
 *     ..
 *     .. Function Arguments ..

@@ -4,7 +4,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     December 1, 1999
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIRECT, SIDE, STOREV, TRANS
@@ -151,8 +151,10 @@
 *        W( 1:n, 1:k ) = W( 1:n, 1:k ) + ...
 *                        conjg( C( m-l+1:m, 1:n )' ) * V( 1:k, 1:l )'
 *
-         CALL ZGEMM( 'Transpose', 'Conjugate transpose', N, K, L, ONE,
-     $               C( M-L+1, 1 ), LDC, V, LDV, ONE, WORK, LDWORK )
+         IF( L.GT.0 )
+     $      CALL ZGEMM( 'Transpose', 'Conjugate transpose', N, K, L,
+     $                  ONE, C( M-L+1, 1 ), LDC, V, LDV, ONE, WORK,
+     $                  LDWORK )
 *
 *        W( 1:n, 1:k ) = W( 1:n, 1:k ) * T'  or  W( 1:m, 1:k ) * T
 *
@@ -170,8 +172,9 @@
 *        C( m-l+1:m, 1:n ) = C( m-l+1:m, 1:n ) - ...
 *                    conjg( V( 1:k, 1:l )' ) * conjg( W( 1:n, 1:k )' )
 *
-         CALL ZGEMM( 'Transpose', 'Transpose', L, N, K, -ONE, V, LDV,
-     $               WORK, LDWORK, ONE, C( M-L+1, 1 ), LDC )
+         IF( L.GT.0 )
+     $      CALL ZGEMM( 'Transpose', 'Transpose', L, N, K, -ONE, V, LDV,
+     $                  WORK, LDWORK, ONE, C( M-L+1, 1 ), LDC )
 *
       ELSE IF( LSAME( SIDE, 'R' ) ) THEN
 *
@@ -186,8 +189,9 @@
 *        W( 1:m, 1:k ) = W( 1:m, 1:k ) + ...
 *                        C( 1:m, n-l+1:n ) * conjg( V( 1:k, 1:l )' )
 *
-         CALL ZGEMM( 'No transpose', 'Transpose', M, K, L, ONE,
-     $               C( 1, N-L+1 ), LDC, V, LDV, ONE, WORK, LDWORK )
+         IF( L.GT.0 )
+     $      CALL ZGEMM( 'No transpose', 'Transpose', M, K, L, ONE,
+     $                  C( 1, N-L+1 ), LDC, V, LDV, ONE, WORK, LDWORK )
 *
 *        W( 1:m, 1:k ) = W( 1:m, 1:k ) * conjg( T )  or
 *                        W( 1:m, 1:k ) * conjg( T' )
@@ -215,8 +219,9 @@
          DO 90 J = 1, L
             CALL ZLACGV( K, V( 1, J ), 1 )
    90    CONTINUE
-         CALL ZGEMM( 'No transpose', 'No transpose', M, L, K, -ONE,
-     $               WORK, LDWORK, V, LDV, ONE, C( 1, N-L+1 ), LDC )
+         IF( L.GT.0 )
+     $      CALL ZGEMM( 'No transpose', 'No transpose', M, L, K, -ONE,
+     $                  WORK, LDWORK, V, LDV, ONE, C( 1, N-L+1 ), LDC )
          DO 100 J = 1, L
             CALL ZLACGV( K, V( 1, J ), 1 )
   100    CONTINUE

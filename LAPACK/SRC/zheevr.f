@@ -5,7 +5,7 @@
 *  -- LAPACK driver routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*     March 20, 2000
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE, UPLO
@@ -23,9 +23,9 @@
 *  =======
 *
 *  ZHEEVR computes selected eigenvalues and, optionally, eigenvectors
-*  of a complex Hermitian tridiagonal matrix T.  Eigenvalues and
-*  eigenvectors can be selected by specifying either a range of values
-*  or a range of indices for the desired eigenvalues.
+*  of a complex Hermitian matrix T.  Eigenvalues and eigenvectors can
+*  be selected by specifying either a range of values or a range of
+*  indices for the desired eigenvalues.
 *
 *  Whenever possible, ZHEEVR calls ZSTEGR to compute the
 *  eigenspectrum using Relatively Robust Representations.  ZSTEGR
@@ -75,7 +75,8 @@
 *          = 'V': all eigenvalues in the half-open interval (VL,VU]
 *                 will be found.
 *          = 'I': the IL-th through IU-th eigenvalues will be found.
-********** For RANGE = 'V' or 'I', DSTEBZ and ZSTEIN are called
+********** For RANGE = 'V' or 'I' and IU - IL < N - 1, DSTEBZ and
+********** ZSTEIN are called
 *
 *  UPLO    (input) CHARACTER*1
 *          = 'U':  Upper triangle of A is stored;
@@ -165,6 +166,7 @@
 *          indicating the nonzero elements in Z. The i-th eigenvector
 *          is nonzero only in elements ISUPPZ( 2*i-1 ) through
 *          ISUPPZ( 2*i ).
+********** Implemented only for RANGE = 'A' or 'I' and IU - IL = N - 1
 *
 *  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
@@ -411,7 +413,7 @@
             CALL DCOPY( N-1, RWORK( INDRE ), 1, RWORK( INDREE ), 1 )
             CALL DCOPY( N, RWORK( INDRD ), 1, RWORK( INDRDD ), 1 )
 *
-            CALL ZSTEGR( JOBZ, RANGE, N, RWORK( INDRDD ),
+            CALL ZSTEGR( JOBZ, 'A', N, RWORK( INDRDD ),
      $                   RWORK( INDREE ), VL, VU, IL, IU, ABSTOL, M, W,
      $                   Z, LDZ, ISUPPZ, RWORK( INDRWK ), LWORK, IWORK,
      $                   LIWORK, INFO )

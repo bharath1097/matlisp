@@ -5,7 +5,7 @@
 *  -- LAPACK driver routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     March 20, 2000
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE
@@ -73,7 +73,8 @@
 *          = 'V': all eigenvalues in the half-open interval (VL,VU]
 *                 will be found.
 *          = 'I': the IL-th through IU-th eigenvalues will be found.
-********** For RANGE = 'V' or 'I', DSTEBZ and SSTEIN are called
+********** For RANGE = 'V' or 'I' and IU - IL < N - 1, DSTEBZ and
+********** DSTEIN are called
 *
 *  N       (input) INTEGER
 *          The order of the matrix.  N >= 0.
@@ -157,6 +158,7 @@
 *          indicating the nonzero elements in Z. The i-th eigenvector
 *          is nonzero only in elements ISUPPZ( 2*i-1 ) through
 *          ISUPPZ( 2*i ).
+********** Implemented only for RANGE = 'A' or 'I' and IU - IL = N - 1
 *
 *  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
 *          On exit, if INFO = 0, WORK(1) returns the optimal (and
@@ -349,7 +351,7 @@
             CALL DSTERF( N, W, WORK, INFO )
          ELSE
             CALL DCOPY( N, D, 1, WORK( N+1 ), 1 )
-            CALL DSTEGR( JOBZ, RANGE, N, WORK( N+1 ), WORK, VL, VU, IL,
+            CALL DSTEGR( JOBZ, 'A', N, WORK( N+1 ), WORK, VL, VU, IL,
      $                   IU, ABSTOL, M, W, Z, LDZ, ISUPPZ,
      $                   WORK( 2*N+1 ), LWORK-2*N, IWORK, LIWORK, INFO )
 *

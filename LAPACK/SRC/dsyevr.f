@@ -5,7 +5,7 @@
 *  -- LAPACK driver routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     March 20, 2000
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE, UPLO
@@ -21,9 +21,9 @@
 *  =======
 *
 *  DSYEVR computes selected eigenvalues and, optionally, eigenvectors
-*  of a real symmetric tridiagonal matrix T.  Eigenvalues and
-*  eigenvectors can be selected by specifying either a range of values
-*  or a range of indices for the desired eigenvalues.
+*  of a real symmetric matrix T.  Eigenvalues and eigenvectors can be
+*  selected by specifying either a range of values or a range of
+*  indices for the desired eigenvalues.
 *
 *  Whenever possible, DSYEVR calls DSTEGR to compute the
 *  eigenspectrum using Relatively Robust Representations.  DSTEGR
@@ -73,7 +73,8 @@
 *          = 'V': all eigenvalues in the half-open interval (VL,VU]
 *                 will be found.
 *          = 'I': the IL-th through IU-th eigenvalues will be found.
-********** For RANGE = 'V' or 'I', DSTEBZ and SSTEIN are called
+********** For RANGE = 'V' or 'I' and IU - IL < N - 1, DSTEBZ and
+********** DSTEIN are called
 *
 *  UPLO    (input) CHARACTER*1
 *          = 'U':  Upper triangle of A is stored;
@@ -163,6 +164,7 @@
 *          indicating the nonzero elements in Z. The i-th eigenvector
 *          is nonzero only in elements ISUPPZ( 2*i-1 ) through
 *          ISUPPZ( 2*i ).
+********** Implemented only for RANGE = 'A' or 'I' and IU - IL = N - 1
 *
 *  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
@@ -388,7 +390,7 @@
             CALL DCOPY( N-1, WORK( INDE ), 1, WORK( INDEE ), 1 )
             CALL DCOPY( N, WORK( INDD ), 1, WORK( INDDD ), 1 )
 *
-            CALL DSTEGR( JOBZ, RANGE, N, WORK( INDDD ), WORK( INDEE ),
+            CALL DSTEGR( JOBZ, 'A', N, WORK( INDDD ), WORK( INDEE ),
      $                   VL, VU, IL, IU, ABSTOL, M, W, Z, LDZ, ISUPPZ,
      $                   WORK( INDWK ), LWORK, IWORK, LIWORK, INFO )
 *

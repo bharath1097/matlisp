@@ -5,7 +5,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     December 1, 1999
 *
 *     .. Scalar Arguments ..
       INTEGER            GIVPTR, ICOMPQ, INFO, K, LDB, LDBX, LDGCOL,
@@ -78,7 +78,7 @@
 *  NRHS   (input) INTEGER
 *         The number of columns of B and BX. NRHS must be at least 1.
 *
-*  B      (input/output) DOUBLE PRECISION array, dimension ( LDB, NRHS )
+*  B      (input/output) COMPLEX*16 array, dimension ( LDB, NRHS )
 *         On input, B contains the right hand sides of the least
 *         squares problem in rows 1 through M. On output, B contains
 *         the solution X in rows 1 through N.
@@ -87,7 +87,7 @@
 *         The leading dimension of B. LDB must be at least
 *         max(1,MAX( M, N ) ).
 *
-*  BX     (workspace) DOUBLE PRECISION array, dimension ( LDBX, NRHS )
+*  BX     (workspace) COMPLEX*16 array, dimension ( LDBX, NRHS )
 *
 *  LDBX   (input) INTEGER
 *         The leading dimension of BX.
@@ -131,8 +131,6 @@
 *         updated (undeflated) singular value and the I+1-th
 *         (undeflated) old singular value. And DIFR(I, 2) is the
 *         normalizing factor for the I-th right singular vector.
-*
-*         See DBDED9 for more details on DIFL and DIFR.
 *
 *  Z      (input) DOUBLE PRECISION array, dimension ( K )
 *         Contain the components of the deflation-adjusted updating row
@@ -328,8 +326,9 @@
 *
 *        Move the deflated rows of BX to B also.
 *
-         CALL ZLACPY( 'A', N-K, NRHS, BX( K+1, 1 ), LDBX, B( K+1, 1 ),
-     $                LDB )
+         IF( K.LT.MAX( M, N ) )
+     $      CALL ZLACPY( 'A', N-K, NRHS, BX( K+1, 1 ), LDBX,
+     $                   B( K+1, 1 ), LDB )
       ELSE
 *
 *        Apply back the right orthogonal transformations.
@@ -405,8 +404,9 @@
             CALL ZCOPY( NRHS, B( M, 1 ), LDB, BX( M, 1 ), LDBX )
             CALL ZDROT( NRHS, BX( 1, 1 ), LDBX, BX( M, 1 ), LDBX, C, S )
          END IF
-         CALL ZLACPY( 'A', N-K, NRHS, B( K+1, 1 ), LDB, BX( K+1, 1 ),
-     $                LDBX )
+         IF( K.LT.MAX( M, N ) )
+     $      CALL ZLACPY( 'A', N-K, NRHS, B( K+1, 1 ), LDB, BX( K+1, 1 ),
+     $                   LDBX )
 *
 *        Step (3R): permute rows of B.
 *

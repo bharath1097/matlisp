@@ -4,7 +4,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     December 1, 1999
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIRECT, SIDE, STOREV, TRANS
@@ -151,8 +151,9 @@
 *        W( 1:n, 1:k ) = W( 1:n, 1:k ) + ...
 *                        C( m-l+1:m, 1:n )' * V( 1:k, 1:l )'
 *
-         CALL DGEMM( 'Transpose', 'Transpose', N, K, L, ONE,
-     $               C( M-L+1, 1 ), LDC, V, LDV, ONE, WORK, LDWORK )
+         IF( L.GT.0 )
+     $      CALL DGEMM( 'Transpose', 'Transpose', N, K, L, ONE,
+     $                  C( M-L+1, 1 ), LDC, V, LDV, ONE, WORK, LDWORK )
 *
 *        W( 1:n, 1:k ) = W( 1:n, 1:k ) * T'  or  W( 1:m, 1:k ) * T
 *
@@ -170,8 +171,9 @@
 *        C( m-l+1:m, 1:n ) = C( m-l+1:m, 1:n ) - ...
 *                            V( 1:k, 1:l )' * W( 1:n, 1:k )'
 *
-         CALL DGEMM( 'Transpose', 'Transpose', L, N, K, -ONE, V, LDV,
-     $               WORK, LDWORK, ONE, C( M-L+1, 1 ), LDC )
+         IF( L.GT.0 )
+     $      CALL DGEMM( 'Transpose', 'Transpose', L, N, K, -ONE, V, LDV,
+     $                  WORK, LDWORK, ONE, C( M-L+1, 1 ), LDC )
 *
       ELSE IF( LSAME( SIDE, 'R' ) ) THEN
 *
@@ -186,8 +188,9 @@
 *        W( 1:m, 1:k ) = W( 1:m, 1:k ) + ...
 *                        C( 1:m, n-l+1:n ) * V( 1:k, 1:l )'
 *
-         CALL DGEMM( 'No transpose', 'Transpose', M, K, L, ONE,
-     $               C( 1, N-L+1 ), LDC, V, LDV, ONE, WORK, LDWORK )
+         IF( L.GT.0 )
+     $      CALL DGEMM( 'No transpose', 'Transpose', M, K, L, ONE,
+     $                  C( 1, N-L+1 ), LDC, V, LDV, ONE, WORK, LDWORK )
 *
 *        W( 1:m, 1:k ) = W( 1:m, 1:k ) * T  or  W( 1:m, 1:k ) * T'
 *
@@ -205,8 +208,9 @@
 *        C( 1:m, n-l+1:n ) = C( 1:m, n-l+1:n ) - ...
 *                            W( 1:m, 1:k ) * V( 1:k, 1:l )
 *
-         CALL DGEMM( 'No transpose', 'No transpose', M, L, K, -ONE,
-     $               WORK, LDWORK, V, LDV, ONE, C( 1, N-L+1 ), LDC )
+         IF( L.GT.0 )
+     $      CALL DGEMM( 'No transpose', 'No transpose', M, L, K, -ONE,
+     $                  WORK, LDWORK, V, LDV, ONE, C( 1, N-L+1 ), LDC )
 *
       END IF
 *

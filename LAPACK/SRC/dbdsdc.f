@@ -4,7 +4,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*     December 1, 1999
 *
 *     .. Scalar Arguments ..
       CHARACTER          COMPQ, UPLO
@@ -114,7 +114,7 @@
 *          If COMPQ = 'P' then LWORK >= (6 * N).
 *          If COMPQ = 'I' then LWORK >= (3 * N**2 + 4 * N).
 *
-*  IWORK   (workspace) INTEGER array, dimension (7*N)
+*  IWORK   (workspace) INTEGER array, dimension (8*N)
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit.

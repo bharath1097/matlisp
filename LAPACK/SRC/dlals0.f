@@ -5,7 +5,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
 *     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*     December 1, 1999
 *
 *     .. Scalar Arguments ..
       INTEGER            GIVPTR, ICOMPQ, INFO, K, LDB, LDBX, LDGCOL,
@@ -294,8 +294,9 @@
 *
 *        Move the deflated rows of BX to B also.
 *
-         CALL DLACPY( 'A', N-K, NRHS, BX( K+1, 1 ), LDBX, B( K+1, 1 ),
-     $                LDB )
+         IF( K.LT.MAX( M, N ) )
+     $      CALL DLACPY( 'A', N-K, NRHS, BX( K+1, 1 ), LDBX,
+     $                   B( K+1, 1 ), LDB )
       ELSE
 *
 *        Apply back the right orthogonal transformations.
@@ -344,8 +345,9 @@
             CALL DCOPY( NRHS, B( M, 1 ), LDB, BX( M, 1 ), LDBX )
             CALL DROT( NRHS, BX( 1, 1 ), LDBX, BX( M, 1 ), LDBX, C, S )
          END IF
-         CALL DLACPY( 'A', N-K, NRHS, B( K+1, 1 ), LDB, BX( K+1, 1 ),
-     $                LDBX )
+         IF( K.LT.MAX( M, N ) )
+     $      CALL DLACPY( 'A', N-K, NRHS, B( K+1, 1 ), LDB, BX( K+1, 1 ),
+     $                   LDBX )
 *
 *        Step (3R): permute rows of B.
 *

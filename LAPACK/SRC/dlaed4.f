@@ -3,7 +3,7 @@
 *  -- LAPACK routine (version 3.0) --
 *     Univ. of Tennessee, Oak Ridge National Lab, Argonne National Lab,
 *     Courant Institute, NAG Ltd., and Rice University
-*     September 30, 1994
+*     December 23, 1999
 *
 *     .. Scalar Arguments ..
       INTEGER            I, INFO, N
@@ -90,7 +90,7 @@
 *
 *     .. Parameters ..
       INTEGER            MAXIT
-      PARAMETER          ( MAXIT = 20 )
+      PARAMETER          ( MAXIT = 30 )
       DOUBLE PRECISION   ZERO, ONE, TWO, THREE, FOUR, EIGHT, TEN
       PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0, TWO = 2.0D0,
      $                   THREE = 3.0D0, FOUR = 4.0D0, EIGHT = 8.0D0,
@@ -99,8 +99,9 @@
 *     .. Local Scalars ..
       LOGICAL            ORGATI, SWTCH, SWTCH3
       INTEGER            II, IIM1, IIP1, IP1, ITER, J, NITER
-      DOUBLE PRECISION   A, B, C, DEL, DPHI, DPSI, DW, EPS, ERRETM, ETA,
-     $                   PHI, PREW, PSI, RHOINV, TAU, TEMP, TEMP1, W
+      DOUBLE PRECISION   A, B, C, DEL, DLTLB, DLTUB, DPHI, DPSI, DW,
+     $                   EPS, ERRETM, ETA, MIDPT, PHI, PREW, PSI,
+     $                   RHOINV, TAU, TEMP, TEMP1, W
 *     ..
 *     .. Local Arrays ..
       DOUBLE PRECISION   ZZ( 3 )
@@ -113,7 +114,7 @@
       EXTERNAL           DLAED5, DLAED6
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          ABS, SQRT
+      INTRINSIC          ABS, MAX, MIN, SQRT
 *     ..
 *     .. Executable Statements ..
 *
@@ -152,13 +153,13 @@
 *
 *        Calculate initial guess
 *
-         TEMP = RHO / TWO
+         MIDPT = RHO / TWO
 *
 *        If ||Z||_2 is not one, then TEMP should be set to
 *        RHO * ||Z||_2^2 / TWO
 *
          DO 10 J = 1, N
-            DELTA( J ) = ( D( J )-D( I ) ) - TEMP
+            DELTA( J ) = ( D( J )-D( I ) ) - MIDPT
    10    CONTINUE
 *
          PSI = ZERO
@@ -189,6 +190,8 @@
 *           It can be proved that
 *               D(N)+RHO/2 <= LAMBDA(N) < D(N)+TAU <= D(N)+RHO
 *
+            DLTLB = MIDPT
+            DLTUB = RHO
          ELSE
             DEL = D( N ) - D( N-1 )
             A = -C*DEL + Z( N-1 )*Z( N-1 ) + Z( N )*Z( N )
@@ -202,6 +205,8 @@
 *           It can be proved that
 *               D(N) < D(N)+TAU < LAMBDA(N) < D(N)+RHO/2
 *
+            DLTLB = ZERO
+            DLTUB = MIDPT
          END IF
 *
          DO 30 J = 1, N
@@ -238,6 +243,12 @@
             GO TO 250
          END IF
 *
+         IF( W.LE.ZERO ) THEN
+            DLTLB = MAX( DLTLB, TAU )
+         ELSE
+            DLTUB = MIN( DLTUB, TAU )
+         END IF
+*
 *        Calculate the new step
 *
          NITER = NITER + 1
@@ -249,7 +260,8 @@
      $      C = ABS( C )
          IF( C.EQ.ZERO ) THEN
 *          ETA = B/A
-            ETA = RHO - TAU
+*           ETA = RHO - TAU
+            ETA = DLTUB - TAU
          ELSE IF( A.GE.ZERO ) THEN
             ETA = ( A+SQRT( ABS( A*A-FOUR*B*C ) ) ) / ( TWO*C )
          ELSE
@@ -265,8 +277,13 @@
          IF( W*ETA.GT.ZERO )
      $      ETA = -W / ( DPSI+DPHI )
          TEMP = TAU + ETA
-         IF( TEMP.GT.RHO )
-     $      ETA = RHO - TAU
+         IF( TEMP.GT.DLTUB .OR. TEMP.LT.DLTLB ) THEN
+            IF( W.LT.ZERO ) THEN
+               ETA = ( DLTUB-TAU ) / TWO
+            ELSE
+               ETA = ( DLTLB-TAU ) / TWO
+            END IF
+         END IF
          DO 50 J = 1, N
             DELTA( J ) = DELTA( J ) - ETA
    50    CONTINUE
@@ -309,6 +326,12 @@
                GO TO 250
             END IF
 *
+            IF( W.LE.ZERO ) THEN
+               DLTLB = MAX( DLTLB, TAU )
+            ELSE
+               DLTUB = MIN( DLTUB, TAU )
+            END IF
+*
 *           Calculate the new step
 *
             C = W - DELTA( N-1 )*DPSI - DELTA( N )*DPHI
@@ -330,8 +353,13 @@
             IF( W*ETA.GT.ZERO )
      $         ETA = -W / ( DPSI+DPHI )
             TEMP = TAU + ETA
-            IF( TEMP.LE.ZERO )
-     $         ETA = ETA / TWO
+            IF( TEMP.GT.DLTUB .OR. TEMP.LT.DLTLB ) THEN
+               IF( W.LT.ZERO ) THEN
+                  ETA = ( DLTUB-TAU ) / TWO
+               ELSE
+                  ETA = ( DLTLB-TAU ) / TWO
+               END IF
+            END IF
             DO 70 J = 1, N
                DELTA( J ) = DELTA( J ) - ETA
    70       CONTINUE
@@ -379,9 +407,10 @@
 *
 *        Calculate initial guess
 *
-         TEMP = ( D( IP1 )-D( I ) ) / TWO
+         DEL = D( IP1 ) - D( I )
+         MIDPT = DEL / TWO
          DO 100 J = 1, N
-            DELTA( J ) = ( D( J )-D( I ) ) - TEMP
+            DELTA( J ) = ( D( J )-D( I ) ) - MIDPT
   100    CONTINUE
 *
          PSI = ZERO
@@ -404,7 +433,6 @@
 *           We choose d(i) as origin.
 *
             ORGATI = .TRUE.
-            DEL = D( IP1 ) - D( I )
             A = C*DEL + Z( I )*Z( I ) + Z( IP1 )*Z( IP1 )
             B = Z( I )*Z( I )*DEL
             IF( A.GT.ZERO ) THEN
@@ -412,6 +440,8 @@
             ELSE
                TAU = ( A-SQRT( ABS( A*A-FOUR*B*C ) ) ) / ( TWO*C )
             END IF
+            DLTLB = ZERO
+            DLTUB = MIDPT
          ELSE
 *
 *           (d(i)+d(i+1))/2 <= the ith eigenvalue < d(i+1)
@@ -419,7 +449,6 @@
 *           We choose d(i+1) as origin.
 *
             ORGATI = .FALSE.
-            DEL = D( IP1 ) - D( I )
             A = C*DEL - Z( I )*Z( I ) - Z( IP1 )*Z( IP1 )
             B = Z( IP1 )*Z( IP1 )*DEL
             IF( A.LT.ZERO ) THEN
@@ -427,6 +456,8 @@
             ELSE
                TAU = -( A+SQRT( ABS( A*A+FOUR*B*C ) ) ) / ( TWO*C )
             END IF
+            DLTLB = -MIDPT
+            DLTUB = ZERO
          END IF
 *
          IF( ORGATI ) THEN
@@ -504,6 +535,12 @@
             GO TO 250
          END IF
 *
+         IF( W.LE.ZERO ) THEN
+            DLTLB = MAX( DLTLB, TAU )
+         ELSE
+            DLTUB = MIN( DLTUB, TAU )
+         END IF
+*
 *        Calculate the new step
 *
          NITER = NITER + 1
@@ -572,17 +609,12 @@
          IF( W*ETA.GE.ZERO )
      $      ETA = -W / DW
          TEMP = TAU + ETA
-         DEL = ( D( IP1 )-D( I ) ) / TWO
-         IF( ORGATI ) THEN
-            IF( TEMP.GE.DEL )
-     $         ETA = DEL - TAU
-            IF( TEMP.LE.ZERO )
-     $         ETA = ETA / TWO
-         ELSE
-            IF( TEMP.LE.-DEL )
-     $         ETA = -DEL - TAU
-            IF( TEMP.GE.ZERO )
-     $         ETA = ETA / TWO
+         IF( TEMP.GT.DLTUB .OR. TEMP.LT.DLTLB ) THEN
+            IF( W.LT.ZERO ) THEN
+               ETA = ( DLTUB-TAU ) / TWO
+            ELSE
+               ETA = ( DLTLB-TAU ) / TWO
+            END IF
          END IF
 *
          PREW = W
@@ -649,6 +681,12 @@
                   DLAM = D( IP1 ) + TAU
                END IF
                GO TO 250
+            END IF
+*
+            IF( W.LE.ZERO ) THEN
+               DLTLB = MAX( DLTLB, TAU )
+            ELSE
+               DLTUB = MIN( DLTUB, TAU )
             END IF
 *
 *           Calculate the new step
@@ -738,17 +776,12 @@
             IF( W*ETA.GE.ZERO )
      $         ETA = -W / DW
             TEMP = TAU + ETA
-            DEL = ( D( IP1 )-D( I ) ) / TWO
-            IF( ORGATI ) THEN
-               IF( TEMP.GE.DEL )
-     $            ETA = DEL - TAU
-               IF( TEMP.LE.ZERO )
-     $            ETA = ETA / TWO
-            ELSE
-               IF( TEMP.LE.-DEL )
-     $            ETA = -DEL - TAU
-               IF( TEMP.GE.ZERO )
-     $            ETA = ETA / TWO
+            IF( TEMP.GT.DLTUB .OR. TEMP.LT.DLTLB ) THEN
+               IF( W.LT.ZERO ) THEN
+                  ETA = ( DLTUB-TAU ) / TWO
+               ELSE
+                  ETA = ( DLTLB-TAU ) / TWO
+               END IF
             END IF
 *
             DO 210 J = 1, N
@@ -805,6 +838,7 @@
       END IF
 *
   250 CONTINUE
+*
       RETURN
 *
 *     End of DLAED4
