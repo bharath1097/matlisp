@@ -5,9 +5,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: quadpack.lisp,v 1.1 2001/02/23 18:07:29 rtoy Exp $
+;;; $Id: quadpack.lisp,v 1.2 2001/02/23 18:46:09 rtoy Exp $
 ;;;
 ;;; $Log: quadpack.lisp,v $
+;;; Revision 1.2  2001/02/23 18:46:09  rtoy
+;;; Make sure the integral limits and other parameters that should be
+;;; double-float's are double-float's before calling the routines.
+;;;
 ;;; Revision 1.1  2001/02/23 18:07:29  rtoy
 ;;; Initial revision
 ;;;
@@ -76,7 +80,8 @@
                   result, abserr and neval are set to zero.
 "
   (multiple-value-bind (junk-f junk-a junk-b junk-epsabs junk-epsrel result abserr neval ier)
-      (quadpack:dqng f a b epsabs epsrel 0d0 0d0 0 0)
+      (quadpack:dqng f (float a 1d0) (float b 1d0) (float epsabs 1d0) (float epsrel 1d0)
+		     0d0 0d0 0 0)
     (declare (ignore junk-f junk-a junk-b junk-epsabs junk-epsrel))
     (values result ier abserr neval)))
 
@@ -188,7 +193,8 @@
 			      z-limit z-lenw
 			      last
 			      z-iwork z-work)
-	(quadpack:dqag f a b epsabs epsrel key 0d0 0d0 0 0 limit lenw 0 iwork work)
+	(quadpack:dqag f (float a 1d0) (float b 1d0) (float epsabs 1d0) (float epsrel 1d0)
+		       key 0d0 0d0 0 0 limit lenw 0 iwork work)
       (declare (ignore z-f z-a z-b z-epsabs z-epsrel z-key
 		       z-limit z-lenw z-iwork z-work))
       (values result ier abserr neval last))))
@@ -297,7 +303,8 @@
 			      z-limit z-lenw
 			      last
 			      z-iwork z-work)
-	(quadpack:dqags f a b epsabs epsrel 0d0 0d0 0 0 limit lenw 0 iwork work)
+	(quadpack:dqags f (float a 1d0) (float b 1d0) (float epsabs 1d0) (float epsrel 1d0)
+			0d0 0d0 0 0 limit lenw 0 iwork work)
       (declare (ignore z-f z-a z-b z-epsabs z-epsrel
 		       z-limit z-lenw z-iwork z-work))
       (values result ier abserr neval last))))
@@ -422,7 +429,8 @@ where a and/or b may be infinite.
 			      z-limit z-lenw
 			      last
 			      z-iwork z-work)
-	(quadpack:dqagi f bound inf epsabs epsrel 0d0 0d0 0 0 limit lenw 0 iwork work)
+	(quadpack:dqagi f (float bound 1d0) inf (float epsabs 1d0) (float epsrel 1d0)
+			0d0 0d0 0 0 limit lenw 0 iwork work)
       (declare (ignore z-f z-bound z-inf z-epsabs z-epsrel
 		       z-limit z-lenw z-iwork z-work))
       (values result ier abserr neval last))))
@@ -544,7 +552,8 @@ where w(x) is the weight function below.
 			      z-limit z-lenw
 			      last
 			      z-iwork z-work)
-	(quadpack:dqaws f a b alfa beta integr epsabs epsrel
+	(quadpack:dqaws f (float a 1d0) (float b 1d0) (float alfa 1d0) (float beta 1d0)
+			integr (float epsabs 1d0) (float epsrel 1d0)
 			0d0 0d0 0 0 limit lenw 0 iwork work)
       (declare (ignore z-f z-a z-b z-alfa z-beta z-integr z-epsabs z-epsrel
 		       z-limit z-lenw z-iwork z-work))
@@ -643,7 +652,7 @@ where w(x) is the weight function below.
 			      z-limit z-lenw
 			      last
 			      z-iwork z-work)
-	(quadpack:dqawc f a b c epsabs epsrel
+	(quadpack:dqawc f (float a 1d0) (float b 1d0) (float c 1d0) (float epsabs 1d0) (float epsrel 1d0)
 			0d0 0d0 0 0 limit lenw 0 iwork work)
       (declare (ignore z-f z-a z-b z-c z-epsabs z-epsrel
 		       z-limit z-lenw z-iwork z-work))
