@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: map.lisp,v 1.7 2001/04/28 22:36:39 rtoy Exp $
+;;; $Id: map.lisp,v 1.8 2001/04/29 15:51:37 rtoy Exp $
 ;;;
 ;;; $Log: map.lisp,v $
+;;; Revision 1.8  2001/04/29 15:51:37  rtoy
+;;; o Use declaim instead of proclaim for clog10
+;;; o Divide by a real instead of a complex (faster and more accurate).
+;;;
 ;;; Revision 1.7  2001/04/28 22:36:39  rtoy
 ;;; Rename dlog10 to real-log10 (to prevent collision with F2CL version).
 ;;;
@@ -288,10 +292,10 @@
     (let ((result (copy mat)))
 	  (map-matrix! #',(or real-func func-sym) result))))
 
-(proclaim '(inline clog10))
+(declaim (inline clog10))
 (defun clog10 (x)
   (declare (type (complex double-float) x))
-  (/ (log x) #.(complex (log 10.0d0))))
+  (/ (log x) #.(log 10.0d0)))
 
 ;; For now, we define simple basic transcendental functions for
 ;; matrices.  For simplicity, we use the standard Lisp versions of
