@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: ref.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -69,9 +78,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun get-real-matrix-slice-1d (mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat))
 	 (store (make-array k :element-type 'real-matrix-element-type)))
@@ -92,17 +101,17 @@
 	(setf (aref store i) (aref mat-store idx))))
     
     (make-instance 'real-matrix 
-      :n (if (> n 1)
-	     k
-	   1)
-      :m (if (> m 1)
-	     k
-	   1)
+      :nrows (if (> n 1)
+		 k
+		 1)
+      :ncols (if (> m 1)
+		 k
+		 1)
       :store store)))
 
 (defun get-real-matrix-slice-1d-seq (mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (k (length idx))
 	 (mat-store (store mat))
 	 (store (make-array k :element-type 'real-matrix-element-type)))
@@ -121,20 +130,20 @@
 	(setf (aref store (incf i)) (aref mat-store idx))))
     
     (make-instance 'real-matrix
-      :n (if (> n 1)
-	     k
-	   1)
-      :m (if (> m 1)
-	     k
-	   1)
+      :nrows (if (> n 1)
+		 k
+		 1)
+      :ncols (if (> m 1)
+		 k
+		 1)
       :store store)))
 
 ;;; Extrace a 2-D slice from the matrix.  The row and column indices
 ;;; are given.
 (defun get-real-matrix-slice-2d (mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (slice (make-real-matrix-dim n m))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
@@ -164,7 +173,7 @@
 	 
 
 (defun get-real-matrix-slice-2d-seq (mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (m (length col-idx))
 	 (slice (make-real-matrix-dim n m))
@@ -189,8 +198,8 @@
     slice))
 
 (defun %matrix-every (fn mat)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m)
@@ -209,8 +218,8 @@
      t))
 
 (defmethod matrix-ref ((matrix real-matrix) i &optional (j 0 j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
 	     (type (real-matrix-store-type (*)) store))
@@ -267,17 +276,17 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if  
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (aref store (fortran-matrix-indexing i 0 n))
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (get-real-matrix-slice-1d-seq matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (get-real-matrix-slice-1d matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -285,9 +294,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun set-real-matrix-slice-1d (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -312,8 +321,8 @@
     mat))
 
 (defun set-real-matrix-slice-1d-seq (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
@@ -333,9 +342,9 @@
     mat))
 
 (defun set-real-matrix-slice-2d (new mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
 	 (new-store (store new))
@@ -361,7 +370,7 @@
     mat))
 
 (defun set-real-matrix-slice-2d-seq (new mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -386,9 +395,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun set-real-from-scalar-matrix-slice-1d (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat)))
     
@@ -411,8 +420,8 @@
     mat))
 
 (defun set-real-from-scalar-matrix-slice-1d-seq (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m)
@@ -431,9 +440,9 @@
     mat))
 
 (defun set-real-from-scalar-matrix-slice-2d (new mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
 	 (mat-store (store mat)))
@@ -458,7 +467,7 @@
     mat))
 
 (defun set-real-from-scalar-matrix-slice-2d-seq (new mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (mat-store (store mat)))
     
     (declare (type fixnum l)
@@ -480,11 +489,11 @@
   
 
 (defmethod (setf matrix-ref) ((new real-matrix) (matrix real-matrix) i &optional (j nil j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix))
-	 (new-n (n new))
-	 (new-m (m new))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
@@ -495,7 +504,7 @@
 		 1
 	       (if (listp i)
 		   (length i)
-		 (nxm i)))))
+		 (number-of-elements i)))))
       (if (> p new-n)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -503,7 +512,7 @@
 		 1
 	       (if (listp j)
 		   (length j)
-		 (nxm j)))))
+		 (number-of-elements j)))))
       (if (> q new-m)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -561,18 +570,18 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (setf (aref store (fortran-matrix-indexing i 0 n))
 			(aref new-store 0))
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (set-real-matrix-slice-1d-seq new matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (set-real-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -585,8 +594,8 @@
 
 ;; Tunc: how do I write real-matrix-element-type here instead of double-float
 (defmethod (setf matrix-ref) ((new double-float) (matrix real-matrix) i &optional (j nil j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix)))
     
     (declare (type fixnum n m)
@@ -644,17 +653,17 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (setf (aref store (fortran-matrix-indexing i 0 n)) new)
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (set-real-from-scalar-matrix-slice-1d-seq new matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (set-real-from-scalar-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -666,9 +675,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun get-complex-matrix-slice-1d (mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat))
 	 (store (make-array (* 2 k) :element-type 'complex-matrix-element-type)))
@@ -695,17 +704,17 @@
 	(setf (aref store (1+ (* 2 i))) imagpart)))
     
     (make-instance 'complex-matrix 
-      :n (if (> n 1)
-	     k
-	   1)
-      :m (if (> m 1)
-	     k
-	   1)
+      :nrows (if (> n 1)
+		 k
+		 1)
+      :ncols (if (> m 1)
+		 k
+		 1)
       :store store)))
 
 (defun get-complex-matrix-slice-1d-seq (mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (k (length idx))
 	 (mat-store (store mat))
 	 (store (make-array (* 2 k) :element-type 'complex-matrix-element-type)))
@@ -730,20 +739,20 @@
 	  (setf (aref store (1+ (* 2 i))) imagpart))))
     
     (make-instance 'complex-matrix
-      :n (if (> n 1)
-	     k
-	   1)
-      :m (if (> m 1)
-	     k
-	   1)
+      :nrows (if (> n 1)
+		 k
+		 1)
+      :ncols (if (> m 1)
+		 k
+		 1)
       :store store)))
 
 ;;; Extrace a 2-D slice from the matrix.  The row and column indices
 ;;; are given.
 (defun get-complex-matrix-slice-2d (mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (slice (make-complex-matrix-dim n m))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
@@ -778,7 +787,7 @@
 	 
 
 (defun get-complex-matrix-slice-2d-seq (mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (m (length col-idx))
 	 (slice (make-complex-matrix-dim n m))
@@ -809,8 +818,8 @@
     slice))
 
 (defmethod matrix-ref ((matrix complex-matrix) i &optional (j 0 j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
 	     (type (complex-matrix-store-type (*)) store))
@@ -868,18 +877,18 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (complex (aref store (fortran-complex-matrix-indexing i 0 n))
 			       (aref store (1+ (fortran-complex-matrix-indexing i 0 n))))
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (get-complex-matrix-slice-1d-seq matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (get-complex-matrix-slice-1d matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -888,9 +897,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun set-complex-from-complex-matrix-slice-1d (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -919,8 +928,8 @@
     mat))
 
 (defun set-complex-from-complex-matrix-slice-1d-seq (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (k (length idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -945,9 +954,9 @@
     mat))
 
 (defun set-complex-from-complex-matrix-slice-2d (new mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
 	 (new-store (store new))
@@ -978,7 +987,7 @@
     mat))
 
 (defun set-complex-from-complex-matrix-slice-2d-seq (new mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (m (length col-idx))
 	 (new-store (store new))
@@ -1008,9 +1017,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun set-complex-from-real-matrix-slice-1d (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -1039,8 +1048,8 @@
     mat))
 
 (defun set-complex-from-real-matrix-slice-1d-seq (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (k (length idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
@@ -1066,9 +1075,9 @@
     mat))
 
 (defun set-complex-from-real-matrix-slice-2d (new mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
 	 (new-store (store new))
@@ -1099,7 +1108,7 @@
     mat))
 
 (defun set-complex-from-real-matrix-slice-2d-seq (new mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (m (length col-idx))
 	 (new-store (store new))
@@ -1130,9 +1139,9 @@
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
 (defun set-complex-from-scalar-matrix-slice-1d (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (k (nxm idx))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat)))
     
@@ -1160,8 +1169,8 @@
     mat))
 
 (defun set-complex-from-scalar-matrix-slice-1d-seq (new mat idx)
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (k (length idx))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
@@ -1185,9 +1194,9 @@
     mat))
 
 (defun set-complex-from-scalar-matrix-slice-2d (new mat row-idx col-idx)
-  (let* ((l (n mat))
-	 (n (nxm row-idx))
-	 (m (nxm col-idx))
+  (let* ((l (nrows mat))
+	 (n (number-of-elements row-idx))
+	 (m (number-of-elements col-idx))
 	 (row-idx-store (store row-idx))
 	 (col-idx-store (store col-idx))
 	 (mat-store (store mat)))
@@ -1216,7 +1225,7 @@
     mat))
 
 (defun set-complex-from-scalar-matrix-slice-2d-seq (new mat row-idx col-idx)
-  (let* ((l (n mat))
+  (let* ((l (nrows mat))
 	 (n (length row-idx))
 	 (m (length col-idx))
 	 (mat-store (store mat)))
@@ -1242,11 +1251,11 @@
     mat))
 
 (defmethod (setf matrix-ref) ((new complex-matrix) (matrix complex-matrix) i &optional (j nil j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix))
-	 (new-n (n new))
-	 (new-m (m new))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
@@ -1257,7 +1266,7 @@
 		 1
 	       (if (listp i)
 		   (length i)
-		 (nxm i)))))
+		 (number-of-elements i)))))
       (if (> p new-n)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -1265,7 +1274,7 @@
 		 1
 	       (if (listp j)
 		   (length j)
-		 (nxm j)))))
+		 (number-of-elements j)))))
       (if (> q new-m)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -1326,7 +1335,7 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (let ((realpart (aref new-store 0))
 			    (imagpart (aref new-store 1)))
 			(setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
@@ -1335,22 +1344,22 @@
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (set-complex-from-complex-matrix-slice-1d-seq new matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (set-complex-from-complex-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
 (defmethod (setf matrix-ref) ((new real-matrix) (matrix complex-matrix) i &optional (j nil j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix))
-	 (new-n (n new))
-	 (new-m (m new))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
@@ -1362,7 +1371,7 @@
 		 1
 	       (if (listp i)
 		   (length i)
-		 (nxm i)))))
+		 (number-of-elements i)))))
       (if (> p new-n)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -1370,7 +1379,7 @@
 		 1
 	       (if (listp j)
 		   (length j)
-		 (nxm j)))))
+		 (number-of-elements j)))))
       (if (> q new-m)
 	  (error "cannot do matrix assignment, too many indices")))
 
@@ -1431,7 +1440,7 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (let ((realpart (aref new-store 0))
 			    (imagpart 0.0d0))
 			(setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
@@ -1440,12 +1449,12 @@
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (set-complex-from-real-matrix-slice-1d-seq new matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (set-complex-from-real-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -1457,8 +1466,8 @@
     (setf (matrix-ref matrix i) (complex-coerce new))))
   
 (defmethod (setf matrix-ref) ((new kernel::complex-double-float) (matrix complex-matrix) i &optional (j nil j-p))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (store (store matrix)))
 
     
@@ -1522,7 +1531,7 @@
 	    (t (error "don't know how to access elements ~a of matrix" (list i j))))
 	(typecase i
 	  (fixnum (if 
-			  (and (>= i 0) (< i (nxm matrix)))
+			  (and (>= i 0) (< i (number-of-elements matrix)))
 		      (let ((realpart (realpart new))
 			    (imagpart (imagpart new)))
 			(setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
@@ -1531,12 +1540,12 @@
 		    (error "out of bounds indexing")))
 	  (list (if (every #'(lambda (i)
 			       
-				   (and (>= i 0) (< i (nxm matrix)))) i)
+				   (and (>= i 0) (< i (number-of-elements matrix)))) i)
 		    (set-complex-from-scalar-matrix-slice-1d-seq new matrix i)
 		  (error "out of bounds indexing")))
 	  (real-matrix (if (%matrix-every #'(lambda (i)
 					      
-						  (and (>= i 0) (< i (nxm matrix)))) i)
+						  (and (>= i 0) (< i (number-of-elements matrix)))) i)
 			   (set-complex-from-scalar-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
@@ -1559,36 +1568,36 @@
   (error "argument must be a matrix or a number"))
 
 (defmethod matrix-ref ((matrix standard-matrix) row &optional (col 0 col-p))
-  (with-slots (store n m) matrix
+  (with-slots (store number-of-rows number-of-cols) matrix
       (if col-p
 	  (if (and (integerp row)
 		   (integerp col)
 		   (>= row 0)
 		   (>= col 0)
-		   (< row n)
-		   (< col m))
-	      (aref store (fortran-matrix-indexing row col n))
+		   (< row number-of-rows)
+		   (< col number-of-cols))
+	      (aref store (fortran-matrix-indexing row col number-of-rows))
 	    (error "don't know how to access on indices ~a" (list row col)))
 	(if (and (integerp row)
 		 (>= row 0)
-		 (< row (max n m)))
+		 (< row (max number-of-rows number-of-cols)))
 	    (aref store row)
 	  (error "don't know how to access on index ~a" row)))))
 
 (defmethod (setf matrix-ref) (new (matrix standard-matrix) row &optional (col 0 col-p))
-  (with-slots (store n m) matrix
+  (with-slots (store number-of-rows number-of-cols) matrix
       (if col-p
 	  (if (and (integerp row)
 		   (integerp col)
 		   (>= row 0)
 		   (>= col 0)
-		   (< row n)
-		   (< col m))
-	      (setf (aref store (fortran-matrix-indexing row col n)) new)
+		   (< row number-of-rows)
+		   (< col number-of-cols))
+	      (setf (aref store (fortran-matrix-indexing row col number-of-rows)) new)
 	    (error "don't know how to access on indices ~a" (list row col)))
 	(if (and (integerp row)
 		 (>= row 0)
-		 (< row (max n m)))
+		 (< row (max number-of-rows number-of-cols)))
 	    (setf (aref store row) new)
 	  (error "don't know how to access on index ~a" row)))))
 	 
@@ -1597,8 +1606,8 @@
      (integer (1- item))
      (list (mapcar #'1- item))
      (real-matrix 
-      (let ((n (n item))
-	    (m (m item))
+      (let ((n (nrows item))
+	    (m (ncols item))
 	    (store (store item)))
 	(declare (type fixnum n m)
 		 (type (real-matrix-store-type (*)) store))

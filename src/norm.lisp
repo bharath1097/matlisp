@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: norm.lisp,v 1.2 2000/04/14 00:44:11 simsek Exp $
+;;; $Id: norm.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: norm.lisp,v $
+;;; Revision 1.3  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.2  2000/04/14 00:44:11  simsek
 ;;; o With some Fortran compilers you get a floating point
 ;;;   exception if you call SVD like this: (SVD a).  But it seems to work like this: (SVD a :a)
@@ -94,9 +103,9 @@
   (abs a))
 
 (defmethod norm ((a real-matrix) &optional (p 2))
-  (let ((n (n a))
-	(m (m a))
-	(nxm (nxm a))
+  (let ((n (nrows a))
+	(m (ncols a))
+	(nxm (number-of-elements a))
 	(store (store a)))
     (declare (type fixnum n m nxm)
 	     (type (real-matrix-store-type (*)) store))
@@ -167,9 +176,9 @@
 ;; in either case, the doc for this function should be better defined.
 
 (defmethod norm ((a complex-matrix) &optional (p 2))
-  (let ((n (n a))
-	(m (m a))
-	(nxm (nxm a))
+  (let ((n (nrows a))
+	(m (ncols a))
+	(nxm (number-of-elements a))
 	(store (store a)))
     (declare (type fixnum n m nxm)
 	     (type (complex-matrix-store-type (*)) store))

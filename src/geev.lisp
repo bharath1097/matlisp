@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: geev.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -132,7 +141,7 @@
 
 (defun geev-fix-up-eigvec (n real-eig-p eigval eigvec)
   (if real-eig-p
-      (make-instance 'real-matrix :n n :m n :store eigvec)
+      (make-instance 'real-matrix :nrows n :ncols n :store eigvec)
       ;; We have to carefully handle complex-valued eigenvectors and eigenvalues
       (let ((evec (make-complex-matrix n n)))
 	(do ((col 0 (incf col))
@@ -190,7 +199,7 @@
  
 
 (defmethod geev ((a real-matrix) &optional (job :NN))
-  (let* ((n (n a))
+  (let* ((n (nrows a))
 	 (a (copy a))
 	 (xxx (make-array 1 :element-type 'real-matrix-element-type))
 	 (wr (make-array n :element-type 'real-matrix-element-type))
@@ -306,7 +315,7 @@
 
 
 (defmethod geev ((a complex-matrix) &optional (job :NN))
-  (let* ((n (n a))
+  (let* ((n (nrows a))
 	 (a (copy a))
 	 (w (make-complex-matrix-dim n 1))
 	 (xxx   (make-array 2 :element-type 'complex-matrix-element-type))

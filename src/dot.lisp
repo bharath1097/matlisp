@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dot.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: dot.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: dot.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -87,21 +96,21 @@
       (error "argument X to DOT is not a row or column vector")
     (if (not (row-or-col-vector-p y))
 	(error "argument Y to DOT is not a row or column vector")
-      (let ((nxm-x (nxm x))
-	    (nxm-y (nxm y)))
+      (let ((nxm-x (number-of-elements x))
+	    (nxm-y (number-of-elements y)))
 	(declare (type fixnum nxm-x nxm-y))
 	(if (not (= nxm-x nxm-y))
 	    (error "arguments X,Y to DOT are not of the same size"))))))
 
 (defmethod dot ((x real-matrix) (y real-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     (ddot nxm (store x) 1 (store y) 1)))
 
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(store-x (store x))
 	(store-y (store y)))
     (declare (type fixnum nxm)
@@ -125,7 +134,7 @@
       )))
 
 (defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(store-x (store x))
 	(store-y (store y)))
     (declare (type fixnum nxm)
@@ -152,7 +161,7 @@
       )))
 
 (defmethod dot ((x complex-matrix) (y complex-matrix) &optional (conjugate-p t))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(store-x (store x))
 	(store-y (store y)))
     (if conjugate-p

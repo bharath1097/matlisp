@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: scal.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: scal.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: scal.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -80,7 +89,7 @@
   (* alpha x))
 
 (defmethod scal ((alpha double-float) (x real-matrix))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
     
@@ -91,9 +100,9 @@
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha kernel::complex-double-float) (x real-matrix))
-  (let* ((nxm (nxm x))
-	 (n (n x))
-	 (m (m x))
+  (let* ((nxm (number-of-elements x))
+	 (n (nrows x))
+	 (m (ncols x))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
     
@@ -108,7 +117,7 @@
   (scal (complex-coerce alpha) x))
 
 (defmethod scal ((alpha double-float) (x complex-matrix))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
     (zdscal nxm alpha (store result) 1)
@@ -119,7 +128,7 @@
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha kernel::complex-double-float) (x complex-matrix))
-  (let ((nxm (nxm x))
+  (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
@@ -137,7 +146,7 @@
 be a matrix to SCAL!"))
 
 (defmethod scal! ((alpha double-float) (x real-matrix))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     
     (dscal nxm alpha (store x) 1)
@@ -151,7 +160,7 @@ be a matrix to SCAL!"))
 how to coerce COMPLEX to REAL"))
 
 (defmethod scal! ((alpha double-float) (x complex-matrix))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     (zdscal nxm alpha (store x) 1)
     
@@ -161,7 +170,7 @@ how to coerce COMPLEX to REAL"))
   (scal! (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal! ((alpha kernel::complex-double-float) (x complex-matrix))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))

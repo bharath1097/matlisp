@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: swap.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: swap.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: swap.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -68,19 +77,19 @@
 "))
 
 (defmethod swap! :before ((x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (nxm x))
-	(nxm-y (nxm y)))
+  (let ((nxm-x (number-of-elements x))
+	(nxm-y (number-of-elements y)))
     (declare (type fixnum nxm-x nxm-y))
     (if (not (= nxm-x nxm-y))
 	(error "arguments X,Y to SWAP! not the same size"))))
 
 (defmethod swap! ((x real-matrix) (y real-matrix))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (dswap nxm (store x) 1 (store y) 1)
     y))
 
 (defmethod swap! ((x complex-matrix) (y complex-matrix))
-  (let ((nxm (nxm x)))
+  (let ((nxm (number-of-elements x)))
     (zswap nxm (store x) 1 (store y) 1)
     y))
 

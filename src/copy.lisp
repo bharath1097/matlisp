@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: copy.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -86,22 +95,21 @@
 
 
 (defmethod copy ((matrix standard-matrix))
-  (with-slots (store n m) matrix
-    (make-instance 'standard-matrix :n n :m m :store (copy-seq store))))
+  (make-instance 'standard-matrix :nrows (nrows matrix) :ncols (ncols matrix) :store (copy-seq (store matrix))))
 
 (defmethod copy ((matrix real-matrix))
-  (let* ((size (nxm matrix))
-	 (n (n matrix))
-	 (m (m matrix))
+  (let* ((size (number-of-elements matrix))
+	 (n (nrows matrix))
+	 (m (ncols matrix))
 	 (result (make-real-matrix-dim n m)))
     (declare (type fixnum size n m))
     (blas:dcopy size (store matrix) 1 (store result) 1)
     result))
 
 (defmethod copy ((matrix complex-matrix))
-  (let* ((size (nxm matrix))
-	 (n (n matrix))
-	 (m (m matrix))
+  (let* ((size (number-of-elements matrix))
+	 (n (nrows matrix))
+	 (m (ncols matrix))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum size n m))
     (blas:zcopy size (store matrix) 1 (store result) 1)
@@ -112,24 +120,24 @@
 
 #|
 (defmethod copy! :before ((x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (nxm x))
-	(nxm-y (nxm y)))
+  (let ((nxm-x (number-of-elements x))
+	(nxm-y (number-of-elements y)))
     (declare (type fixnum nxm-x nxm-y))
     (if (not (= nxm-x nxm-y))
 	(error "arguments X,Y to COPY! are of different size"))))
 |#
 
 (defmethod copy! ((x real-matrix) (y real-matrix))
-  (let* ((nxm-x (nxm x))
-	 (nxm-y (nxm y))
+  (let* ((nxm-x (number-of-elements x))
+	 (nxm-y (number-of-elements y))
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
     (dcopy nxm (store x) 1 (store y) 1)
     y))
 
 (defmethod copy! ((x real-matrix) (y complex-matrix))
-  (let* ((nxm-x (nxm x))
-	 (nxm-y (nxm y))
+  (let* ((nxm-x (number-of-elements x))
+	 (nxm-y (number-of-elements y))
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
 
@@ -145,16 +153,16 @@
 don't know how to coerce a COMPLEX to a REAL"))
 
 (defmethod copy! ((x complex-matrix) (y complex-matrix))
-  (let* ((nxm-x (nxm x))
-	 (nxm-y (nxm y))
+  (let* ((nxm-x (number-of-elements x))
+	 (nxm-y (number-of-elements y))
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
     (dcopy (* 2 nxm) (store x) 1 (store y) 1)
     y))
 
 (defmethod copy! ((x standard-matrix) (y standard-matrix))
-  (let* ((nxm-x (nxm x))
-	 (nxm-y (nxm y))
+  (let* ((nxm-x (number-of-elements x))
+	 (nxm-y (number-of-elements y))
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
 
@@ -165,13 +173,13 @@ don't know how to coerce a COMPLEX to a REAL"))
     y))
 
 (defmethod copy! ((x double-float) (y real-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (setf (aref *1x1-real-array* 0) x)
     (dcopy nxm *1x1-real-array* 0 (store y) 1)
     y))
 
 (defmethod copy! ((x real) (y real-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (setf (aref *1x1-real-array* 0) (coerce x 'real-matrix-element-type))
     (dcopy nxm *1x1-real-array* 0 (store y) 1)
     y))
@@ -182,14 +190,14 @@ don't know how to coerce a COMPLEX to a REAL"))
 	 y))
 
 (defmethod copy! ((x kernel::complex-double-float) (y complex-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (setf (aref *1x1-complex-array* 0) (realpart x))
     (setf (aref *1x1-complex-array* 1) (imagpart x))
     (zcopy nxm *1x1-complex-array* 0 (store y) 1)
     y))
 
 (defmethod copy! ((x number) (y complex-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (setq x (complex-coerce x))
     (setf (aref *1x1-complex-array* 0) (realpart x))
     (setf (aref *1x1-complex-array* 1) (imagpart x))

@@ -31,9 +31,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.2 2000/05/05 22:04:13 simsek Exp $
+;;; $Id: fft.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.3  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.2  2000/05/05 22:04:13  simsek
 ;;; o Changed one typo: fftb to ifft
 ;;;
@@ -170,7 +179,7 @@ be an INTEGER > 0"))
   (if wsave
       (progn
 	(unless (and (subtypep (type-of wsave) 'real-matrix)
-		     (> (nxm wsave) (+ (* 4 n) 15)))
+		     (> (number-of-elements wsave) (+ (* 4 n) 15)))
 	  (error "argument WSAVE given to FFTI needs
 to be a REAL-MATRIX of size > 4*N+15"))
 	(zffti n (store wsave))
@@ -187,7 +196,7 @@ to be a REAL-MATRIX of size > 4*N+15"))
 	(unless (and (integerp n)
 		     (> n 0)
 		     (subtypep (type-of wsave) 'real-matrix)
-		     (> (nxm wsave) (wsave-size n)))
+		     (> (number-of-elements wsave) (wsave-size n)))
 	  (error "arguments N,WSAVE to FFT need to be
 INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
       
@@ -195,14 +204,14 @@ INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
 	  (typecase n
 	     ((integer 1 *) t)
 	     (real-matrix (let ((wsave n)
-				(n (n x))
-				(m (m x)))
+				(n (nrows x))
+				(m (ncols x)))
 			    (if (row-or-col-vector-p x)
-				(unless (> (nxm wsave) (wsave-size (max n m)))
+				(unless (> (number-of-elements wsave) (wsave-size (max n m)))
 				  (error "argument WSAVE given to FFT
 needs to be a REAL-MATRIX of size > 4*n+15 where n is 
 the size of argument X"))
-			      (unless (> (nxm wsave) (wsave-size n))
+			      (unless (> (number-of-elements wsave) (wsave-size n))
 				(error "arguement WSAVE given to FFT
 need to be a REAL-MATRIX of size > 4*n+15 where n is the number
 of rows in argument X")))))
@@ -211,23 +220,23 @@ and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
   
 (defmethod fft ((x standard-matrix) &optional n wsave)
   (let* ((n (or n (if (row-or-col-vector-p x)
-		      (max (n x) (m x))
-		    (n x))))
+		      (max (nrows x) (ncols x))
+		    (nrows x))))
 	 (wsave (or wsave (ffti n)))
 	 (result (cond ((row-vector-p x) 
 			(make-complex-matrix-dim 1 n))
 		       ((col-vector-p x)
 			(make-complex-matrix-dim n 1))
-		       (t (make-complex-matrix-dim n (m x))))))
+		       (t (make-complex-matrix-dim n (ncols x))))))
 
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
 	  (zfftf n (store result) (store wsave)))
 
-      (dotimes (j (m x))
+      (dotimes (j (ncols x))
 	(declare (type fixnum j))
-	 (dotimes (i (n x))
+	 (dotimes (i (nrows x))
 	   (declare (type fixnum i))
 	   (setf (matrix-ref result i j) (matrix-ref x i j)))
 	 (with-vector-data-addresses ((addr-result (store result))
@@ -246,7 +255,7 @@ and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
 	(unless (and (integerp n)
 		     (> n 0)
 		     (subtypep (type-of wsave) 'real-matrix)
-		     (> (nxm wsave) (wsave-size n)))
+		     (> (number-of-elements wsave) (wsave-size n)))
 	  (error "arguments N,WSAVE to IFFT need to be
 INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
       
@@ -254,14 +263,14 @@ INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
 	  (typecase n
 	     ((integer 1 *) t)
 	     (real-matrix (let ((wsave n)
-				(n (n x))
-				(m (m x)))
+				(n (nrows x))
+				(m (ncols x)))
 			    (if (row-or-col-vector-p x)
-				(unless (> (nxm wsave) (wsave-size (max n m)))
+				(unless (> (number-of-elements wsave) (wsave-size (max n m)))
 				  (error "argument WSAVE given to IFFT
 needs to be a REAL-MATRIX of size > 4*n+15 where n is 
 the size of argument X"))
-			      (unless (> (nxm wsave) (wsave-size n))
+			      (unless (> (number-of-elements wsave) (wsave-size n))
 				(error "arguement WSAVE given to IFFT
 need to be a REAL-MATRIX of size > 4*n+15 where n is the number
 of rows in argument X")))))
@@ -270,23 +279,23 @@ and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
   
 (defmethod ifft ((x standard-matrix) &optional n wsave)
   (let* ((n (or n (if (row-or-col-vector-p x)
-		      (max (n x) (m x))
-		    (n x))))
+		      (max (nrows x) (ncols x))
+		    (nrows x))))
 	 (wsave (or wsave (ffti n)))
 	 (result (cond ((row-vector-p x) 
 			(make-complex-matrix-dim 1 n))
 		       ((col-vector-p x)
 			(make-complex-matrix-dim n 1))
-		       (t (make-complex-matrix-dim n (m x))))))
+		       (t (make-complex-matrix-dim n (ncols x))))))
 
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
 	  (zfftb n (store result) (store wsave)))
 
-      (dotimes (j (m x))
+      (dotimes (j (ncols x))
 	(declare (type fixnum j))
-	 (dotimes (i (n x))
+	 (dotimes (i (nrows x))
 	   (declare (type fixnum i))
 	   (setf (matrix-ref result i j) (matrix-ref x i j)))
 	 (with-vector-data-addresses ((addr-result (store result))

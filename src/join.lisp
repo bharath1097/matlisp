@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: join.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: join.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: join.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -65,10 +74,10 @@
 "))
   
 (defmethod join :before ((a standard-matrix) (b standard-matrix) &optional orientation)
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b)))
 
     (case orientation
        (:horizontal (unless (= n-a n-b)
@@ -86,9 +95,9 @@
 (defmethod join ((a real-matrix) (b real-matrix) &optional orientation)
   (case orientation
     (:horizontal
-     (let* ((nrows (n a))
-	    (m-a (m a))
-	    (ncols (+ m-a (m b)))
+     (let* ((nrows (nrows a))
+	    (m-a (ncols a))
+	    (ncols (+ m-a (ncols b)))
 	    (res (make-real-matrix nrows ncols)))
        (declare (fixnum nrows m-a ncols))
        ;; Copy A
@@ -99,14 +108,14 @@
 	   (setf (matrix-ref res r c) (matrix-ref a r c))))
        (dotimes (r nrows)
 	 (declare (fixnum r))
-	 (dotimes (c (m b))
+	 (dotimes (c (ncols b))
 	   (declare (fixnum c))
 	   (setf (matrix-ref res r (+ c m-a)) (matrix-ref b r c))))
        res))
     (:vertical
-     (let* ((ncols (m a))
-	    (n-a (n a))
-	    (nrows (+ n-a (n b)))
+     (let* ((ncols (ncols a))
+	    (n-a (nrows a))
+	    (nrows (+ n-a (nrows b)))
 	    (res (make-real-matrix nrows ncols)))
        (declare (fixnum nrows n-a ncols))
        ;; Copy A
@@ -115,62 +124,62 @@
 	 (dotimes (c ncols)
 	   (declare (fixnum c))
 	   (setf (matrix-ref res r c) (matrix-ref a r c))))
-       (dotimes (r (n b))
+       (dotimes (r (nrows b))
 	 (declare (fixnum r))
 	 (dotimes (c ncols)
 	   (declare (fixnum c))
 	   (setf (matrix-ref res (+ r n-a) c) (matrix-ref b r c))))
        res))
     (t
-     (cond ((= (n a) (n b))
+     (cond ((= (nrows a) (nrows b))
 	    (join a b  :horizontal))
-	   ((= (m a) (m b))
+	   ((= (ncols a) (ncols b))
 	    (join a b  :vertical))
 	   (t
 	    (error "Unable to determine how to join a ~d X ~d matrix with a ~d x ~d matrix"
-		   (n a)
-		   (m a)
-		   (n b)
-		   (m b)))))))
+		   (nrows a)
+		   (ncols a)
+		   (nrows b)
+		   (ncols b)))))))
 
 
 (defmethod join ((a complex-matrix) (b complex-matrix) &optional orientation)
   (case orientation
     (:horizontal
-     (let* ((nrows (n a))
-	    (m-a (m a))
-	    (ncols (+ m-a (m b)))
+     (let* ((nrows (nrows a))
+	    (m-a (ncols a))
+	    (ncols (+ m-a (ncols b)))
 	    (res (make-complex-matrix nrows ncols)))
        ;; Copy A
        (dotimes (r nrows)
 	 (dotimes (c m-a)
 	   (setf (matrix-ref res r c) (matrix-ref a r c))))
        (dotimes (r nrows)
-	 (dotimes (c (m b))
+	 (dotimes (c (ncols b))
 	   (setf (matrix-ref res r (+ c m-a)) (matrix-ref b r c))))
        res))
     (:vertical
-     (let* ((ncols (m a))
-	    (n-a (n a))
-	    (nrows (+ n-a (n b)))
+     (let* ((ncols (ncols a))
+	    (n-a (nrows a))
+	    (nrows (+ n-a (nrows b)))
 	    (res (make-complex-matrix nrows ncols)))
        ;; Copy A
        (dotimes (r n-a)
 	 (dotimes (c ncols)
 	   (setf (matrix-ref res r c) (matrix-ref a r c))))
-       (dotimes (r (n b))
+       (dotimes (r (nrows b))
 	 (dotimes (c ncols)
 	   (setf (matrix-ref res (+ r n-a) c) (matrix-ref b r c))))
        res))
     (t
-     (cond ((= (n a) (n b))
+     (cond ((= (nrows a) (nrows b))
 	    (join a b  :horizontal))
-	   ((= (m a) (m b))
+	   ((= (ncols a) (ncols b))
 	    (join a b  :vertical))
 	   (t
 	    (error "Unable to determine how to join a ~d X ~d matrix with a ~d x ~d matrix"
-		   (n a)
-		   (m a)
-		   (n b)
-		   (m b)))))))
+		   (nrows a)
+		   (ncols a)
+		   (nrows b)
+		   (ncols b)))))))
 

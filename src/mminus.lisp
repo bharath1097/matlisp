@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mminus.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: mminus.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: mminus.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -76,10 +85,10 @@
   (m- a b))
 
 (defmethod m- :before ((a standard-matrix) (b standard-matrix))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b)))
     (declare (type fixnum n-a m-a n-b m-b))
 
     (unless (and (= n-a n-b)

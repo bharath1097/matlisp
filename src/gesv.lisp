@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gesv.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: gesv.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: gesv.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -104,9 +113,9 @@
 "))
 
 (defmethod gesv! :before ((a standard-matrix) (b standard-matrix) &key ipiv)
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b)))
     (if (not (= n-a m-a n-b))
 	(error "dimensions of A,B given to GESV do not match"))
     (if ipiv
@@ -119,8 +128,8 @@ where NxN is the dimension of argument A given to GESV!"))))))
 
 (defmethod gesv! ((a real-matrix) (b real-matrix) &key ipiv)
 
-  (let* ((n (n a))
-	 (m (m b))
+  (let* ((n (nrows a))
+	 (m (ncols b))
 	 (ipiv #+:pre-allocate-workspaces
 	       (or ipiv *ipiv*)
 	       #-:pre-allocate-workspaces
@@ -143,17 +152,17 @@ where NxN is the dimension of argument A given to GESV!"))))))
 	       0)
 	
 	(values 
-	 (make-instance 'real-matrix :n n :m m :store x) 
+	 (make-instance 'real-matrix :nrows n :ncols m :store x) 
 	 ipiv 
-	 (make-instance 'real-matrix :n n :m n :store factors) 
+	 (make-instance 'real-matrix :nrows n :ncols n :store factors) 
 	 (if (zerop info)
 	     t
 	   info)))))
 
 (defmethod gesv! ((a complex-matrix) (b complex-matrix) &key ipiv)
 
-  (let* ((n (n a))
-	 (m (m b))
+  (let* ((n (nrows a))
+	 (m (ncols b))
 	 (ipiv #+:pre-allocate-workspaces
 	       (or ipiv *ipiv*)
 	       #-:pre-allocate-workspaces
@@ -176,29 +185,29 @@ where NxN is the dimension of argument A given to GESV!"))))))
 	       0)
 	
 	(values 
-	 (make-instance 'complex-matrix :n n :m m :store x) 
+	 (make-instance 'complex-matrix :nrows n :ncols m :store x) 
 	 ipiv 
-	 (make-instance 'complex-matrix :n n :m n :store factors) 
+	 (make-instance 'complex-matrix :nrows n :ncols n :store factors) 
 	 (if (zerop info)
 	     t
 	   info)))))
 
 (defmethod gesv! ((a standard-matrix) (b standard-matrix) &key ipiv)
   (let ((a (typecase a
-	     (real-matrix (copy! a (make-complex-matrix-dim (n a) (m a))))
+	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
 	     (complex-matrix a)
 	     (t (error "argument A given to GESV! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
 	(b (typecase b
-	     (real-matrix (copy! b (make-complex-matrix-dim (n b) (m b))))
+	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
 	     (complex-matrix b)
 	     (t (error "argument B given to GESV! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
 
     (gesv! a b :ipiv ipiv)))
 
 (defmethod gesv :before ((a standard-matrix) (b standard-matrix))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b)))
     (if (not (= n-a m-a n-b))
 	(error "dimensions of A,B given to GESV do not match"))))
 
@@ -210,11 +219,11 @@ where NxN is the dimension of argument A given to GESV!"))))))
 
 (defmethod gesv ((a standard-matrix) (b standard-matrix))
   (let ((a (typecase a
-	     (real-matrix (copy! a (make-complex-matrix-dim (n a) (m a))))
+	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
 	     (complex-matrix (copy a))
 	     (t (error "argument A given to GESV! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
 	(b (typecase b
-	     (real-matrix (copy! b (make-complex-matrix-dim (n b) (m b))))
+	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
 	     (complex-matrix (copy b))
 	     (t (error "argument B given to GESV! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
 

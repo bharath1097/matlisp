@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: special.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: special.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: special.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -45,7 +54,7 @@
 	  rand))
 
 (defun eye (n &optional (m n))
-"
+  "
   Syntax
   ======
   (EYE n [m])
@@ -59,96 +68,80 @@
 
   See ONES, ZEROS
 "
-  (if (and (integerp n)
-	   (integerp m)
-	   (> n 0)
-	   (> m 0))
-      (let ((result (make-real-matrix-dim n m)))
-	(setf (aref *1x1-real-array* 0) 1.0d0)
-	(dcopy (min n m) *1x1-real-array* 0 (store result) (1+ n))
-	result)
-    (error "arguments N and M to EYE must be positive integers")))
+  (unless (and (typep m '(integer 1))
+	       (typep n '(integer 1)))
+    (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
+
+  (let ((result (make-real-matrix-dim n m)))
+    (setf (aref *1x1-real-array* 0) 1.0d0)
+    (dcopy (min n m) *1x1-real-array* 0 (store result) (1+ n))
+    result))
 
 (defun zeros (n &optional (m n))
-"
+  "
   Syntax
   ======
   (ZEROS n [m])
 
   Purpose
   =======
-  Creates an NxM (default NxN) matrix filled with zeros.
+  Creates an NxM (default NxN) real matrix filled with zeros.
 
   See EYE, ONES
 "
-(if (and (integerp n)
-	 (integerp m)
-	 (> n 0)
-	 (> m 0))
-    (let ((result (make-real-matrix-dim n m)))
-      result)
-  (error "arguments N and M to ZEROS must be positive integers")))
+  
+  (unless (and (typep m '(integer 1))
+	       (typep n '(integer 1)))
+    (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
+  (make-real-matrix-dim n m))
   
 (defun ones (n &optional (m n))
-"
+  "
   Syntax
   ======
   (ONES n [m])
 
   Purpose
   =======
-  Creates an NxM (default NxN) matrix filled with ones
+  Creates an NxM (default NxN) real matrix filled with ones
 
   See EYE, ZEROS
 "
-  (if (and (integerp n)
-	   (integerp m)
-	   (> n 0)
-	   (> m 0))
-      (let ((result (make-real-matrix-dim n m 1.0d0)))
-	result)
-    (error "arguments N and M to ONES must be positive integers")))
+  (unless (and (typep m '(integer 1))
+	       (typep n '(integer 1)))
+    (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
+  (make-real-matrix-dim n m 1.0d0))
 
 (defun rand (n &optional (m n) (state *random-state* state-p))
-"
+  "
   Syntax
   ======
   (RAND n [m] [state])
 
   Purpose
   =======
-  Creates an NxM (default NxN) matrix filled with uniformly 
+  Creates an NxM (default NxN) real matrix filled with uniformly 
   distributed pseudo-random numbers between 0 and 1.  
   STATE (default *RANDOM-STATE*), if given, should be a RANDOM-STATE.
 
   See RANDOM, INIT-RANDOM-STATE, MAKE-RANDOM-STATE, *RANDOM-STATE*
 "
- (multiple-value-bind (m state)
-     (if (not state-p)
-	 (typecase m
-	   (integer (values m state))
-	   (random-state (values n m))
-	   (t (error "arguments to RAND are not of expected type")))
-       (if (and (subtypep (type-of m) 'integer)
-		(subtypep (type-of state) 'random-state))
-	   (values m state)
-	 (error "arguments to RAND are not of expected type")))
+  (unless (and (typep m '(integer 1))
+	       (typep n '(integer 1)))
+    (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
+  (unless (typep state 'random-state)
+    (error "STATE must be a RANDOM-STATE, not a ~A" (type-of state)))
 
-   (if (and (integerp n)
-	    (integerp m)
-	    (> n 0)
-	    (> m ))
-       (locally (declare (type fixnum n m))
-	   (let* ((size (* n m))
-		  (store (make-array size :element-type 'real-matrix-element-type))
-		  (unity #.(coerce 1 'real-matrix-element-type)))
+  (locally (declare (type fixnum n m))
+    (let* ((size (* n m))
+	   (store (make-array size :element-type 'real-matrix-element-type))
+	   (unity #.(coerce 1 'real-matrix-element-type)))
 	     
-	     (declare (fixnum size)
-		      (type (real-matrix-store-type (*)) store))
-	     (dotimes (k size)
-	       (declare (fixnum k))
-	       (setf (aref store k) (random unity state)))
+      (declare (fixnum size)
+	       (type (real-matrix-store-type (*)) store))
+      (dotimes (k size)
+	(declare (fixnum k))
+	(setf (aref store k) (random unity state)))
 	     
-	     (make-instance 'real-matrix :n n :m m :store store)))
-     (error "arguments N and M to RAND must be positive integers"))))
+      (make-instance 'real-matrix :nrows n :ncols m :store store))))
 

@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: sum.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: sum.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: sum.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -64,7 +73,7 @@
   (if (row-or-col-vector-p a)
       (let ((result 0.0d0)
 	    (store (store a))
-	    (nxm (nxm a)))
+	    (nxm (number-of-elements a)))
 	(declare (type fixnum nxm)
 		 (type real-matrix-element-type result)
 		 (type (real-matrix-store-type (*)) store))
@@ -73,8 +82,8 @@
            (incf result (aref store i)))
 	result)
     
-    (let* ((n (n a))
-	   (m (m a))
+    (let* ((n (nrows a))
+	   (m (ncols a))
 	   (result (make-real-matrix-dim n 1))
 	   (store-a (store a))
 	   (store-result (store result)))
@@ -95,7 +104,7 @@
       (let ((realpart 0.0d0)
 	    (imagpart 0.0d0)
 	    (store (store a))
-	    (nxm (nxm a)))
+	    (nxm (number-of-elements a)))
 	(declare (type fixnum nxm)
 		 (type complex-matrix-element-type imagpart realpart)
 		 (type (complex-matrix-store-type (*)) store))
@@ -114,8 +123,8 @@
 
 	)
     
-    (let* ((n (n a))
-	   (m (m a))
+    (let* ((n (nrows a))
+	   (m (ncols a))
 	   (result (make-complex-matrix-dim n 1))
 	   (store-a (store a))
 	   (store-result (store result)))

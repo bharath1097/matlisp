@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mtimes.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: mtimes.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: mtimes.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -114,24 +123,24 @@
 ;;;;;
 
 (defmethod m.* :before ((a standard-matrix) (b standard-matrix))
-  (let ((nxm-a (nxm a))
-	(nxm-b (nxm b)))
+  (let ((nxm-a (number-of-elements a))
+	(nxm-b (number-of-elements b)))
     (declare (type fixnum nxm-a nxm-b))
     (unless (= nxm-a nxm-b)
       (error "arguments A,B given to M.* are not the same size"))))
 
 (defmethod m.*! :before ((a standard-matrix) (b standard-matrix))
-  (let ((nxm-a (nxm a))
-	(nxm-b (nxm b)))
+  (let ((nxm-a (number-of-elements a))
+	(nxm-b (number-of-elements b)))
     (declare (type fixnum nxm-a nxm-b))
     (unless (= nxm-a nxm-b)
       (error "arguments A,B given to M.* are not the same size"))))
 
   
 (defmethod m.* ((a real-matrix) (b real-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-real-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -143,9 +152,9 @@
 	(setf (matrix-ref result k) (* a-val b-val))))))
 
 (defmethod m.* ((a complex-matrix) (b complex-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -157,9 +166,9 @@
 	(setf (matrix-ref result k) (* a-val b-val))))))
 
 (defmethod m.* ((a real-matrix) (b complex-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -178,7 +187,7 @@
 
   
 (defmethod m.*! ((a real-matrix) (b real-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
@@ -189,7 +198,7 @@
 	(setf (matrix-ref b k) (* a-val b-val))))))
 
 (defmethod m.*! ((a complex-matrix) (b complex-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
@@ -200,7 +209,7 @@
 	(setf (matrix-ref b k) (* a-val b-val))))))
 
 (defmethod m.*! ((a real-matrix) (b complex-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
@@ -261,21 +270,21 @@ don't know how to coerce COMPLEX to REAL"))
 don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m* ((a real-matrix) (b real-matrix))
-  (gemm! 1.0d0 a b 0.0d0 (make-real-matrix-dim (n a) (m b))))
+  (gemm! 1.0d0 a b 0.0d0 (make-real-matrix-dim (nrows a) (ncols b))))
 
 (defmethod m* ((a standard-matrix) (b standard-matrix))
-  (gemm! 1.0d0 a b 0.0d0 (make-complex-matrix-dim (n a) (m b))))
+  (gemm! 1.0d0 a b 0.0d0 (make-complex-matrix-dim (nrows a) (ncols b))))
 
 (defmethod m*! :before ((a standard-matrix) (b standard-matrix))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b)))
     (if (not (= n-a m-a n-b))
 	(error "cannot M*! a ~dx~d matrix into a ~dx~d matrix"
 	       n-a
 	       m-a
 	       n-b
-	       (m b)))))
+	       (ncols b)))))
 
 ;; TODO: on installation, try GEMM and see if this swap space
 ;; is necessary.
@@ -286,9 +295,9 @@ don't know how to coerce COMPLEX to REAL"))
 (defparameter *m*!-swap* 
   (make-array (* 2 *m*!-swap-size*) :element-type 'complex-matrix-element-type))
 (defparameter *m*!-complex-wrapper* 
-  (make-instance 'complex-matrix :n *m*!-swap-size* :m 1 :store *m*!-swap*))
+  (make-instance 'complex-matrix :nrows *m*!-swap-size* :ncols 1 :store *m*!-swap*))
 (defparameter *m*!-real-wrapper* 
-  (make-instance 'real-matrix :n *m*!-swap-size* :m 1 :store *m*!-swap*))
+  (make-instance 'real-matrix :nrows *m*!-swap-size* :ncols 1 :store *m*!-swap*))
 
 (declaim (inline set-m*!-swap-size))
 (defun set-m*!-swap-size (nxm)
@@ -331,20 +340,20 @@ don't know how to coerce COMPLEX to REAL"))
     (setf *m*!-swap-size* nxm)
     (setf *m*!-swap* swap)
     (setf (store *m*!-complex-wrapper*) swap) 
-    (setf (n *m*!-complex-wrapper*) nxm) 
-    (setf (m *m*!-complex-wrapper*) 1)     
-    (setf (nxm *m*!-complex-wrapper*) nxm) 
+    (setf (nrows *m*!-complex-wrapper*) nxm) 
+    (setf (ncols *m*!-complex-wrapper*) 1)     
+    (setf (number-of-elements *m*!-complex-wrapper*) nxm) 
     (setf (store *m*!-real-wrapper*) swap) 
-    (setf (n *m*!-real-wrapper*) nxm)
-    (setf (m *m*!-real-wrapper*) 1)
-    (setf (nxm *m*!-real-wrapper*) nxm) 
+    (setf (nrows *m*!-real-wrapper*) nxm)
+    (setf (ncols *m*!-real-wrapper*) 1)
+    (setf (number-of-elements *m*!-real-wrapper*) nxm) 
     
     nxm))
   
 
 (defmethod m*! ((a real-matrix) (b real-matrix))
-  (let ((n (n b))
-	(m (m b)))
+  (let ((n (nrows b))
+	(m (ncols b)))
     (declare (type fixnum n m)
 	     (special *m*!-real-wrapper*))
 
@@ -353,14 +362,14 @@ don't know how to coerce COMPLEX to REAL"))
 	(set-m*!-swap-size (* n m)))
 
     (copy! b *m*!-real-wrapper*)
-    (setf (n *m*!-real-wrapper*) n)
-    (setf (m *m*!-real-wrapper*) m)
-    (setf (nxm *m*!-real-wrapper*) (* n m))
+    (setf (nrows *m*!-real-wrapper*) n)
+    (setf (ncols *m*!-real-wrapper*) m)
+    (setf (number-of-elements *m*!-real-wrapper*) (* n m))
     (gemm! 1.0d0 a b 0.0d0 *m*!-real-wrapper*)
     (copy! *m*!-real-wrapper* b)
-    (setf (n *m*!-real-wrapper*) *m*!-swap-size*)
-    (setf (m *m*!-real-wrapper*) 1)
-    (setf (nxm *m*!-real-wrapper*) *m*!-swap-size*)
+    (setf (nrows *m*!-real-wrapper*) *m*!-swap-size*)
+    (setf (ncols *m*!-real-wrapper*) 1)
+    (setf (number-of-elements *m*!-real-wrapper*) *m*!-swap-size*)
     b))
 
 (defmethod m*! ((a complex-matrix) (b real-matrix))
@@ -368,8 +377,8 @@ don't know how to coerce COMPLEX to REAL"))
 don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m*! ((a standard-matrix) (b complex-matrix))
-  (let ((n (n b))
-	(m (m b)))
+  (let ((n (nrows b))
+	(m (ncols b)))
     (declare (type fixnum n m)
 	     (special *m*!-complex-wrapper*))
 
@@ -378,14 +387,14 @@ don't know how to coerce COMPLEX to REAL"))
 	(set-m*!-swap-size (* n m)))
     
     (copy! b *m*!-complex-wrapper*)
-    (setf (n *m*!-complex-wrapper*) n)
-    (setf (m *m*!-complex-wrapper*) m)
-    (setf (nxm *m*!-complex-wrapper*) (* n m))
+    (setf (nrows *m*!-complex-wrapper*) n)
+    (setf (ncols *m*!-complex-wrapper*) m)
+    (setf (number-of-elements *m*!-complex-wrapper*) (* n m))
     (gemm! 1.0d0 a b 0.0d0 *m*!-complex-wrapper*)
     (copy! *m*!-complex-wrapper* b)
-    (setf (n *m*!-complex-wrapper*) *m*!-swap-size*)
-    (setf (m *m*!-complex-wrapper*) 1)
-    (setf (nxm *m*!-complex-wrapper*) *m*!-swap-size*)
+    (setf (nrows *m*!-complex-wrapper*) *m*!-swap-size*)
+    (setf (ncols *m*!-complex-wrapper*) 1)
+    (setf (number-of-elements *m*!-complex-wrapper*) *m*!-swap-size*)
     b))
 
 

@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mdivide.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: mdivide.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: mdivide.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -136,7 +145,7 @@
 	(standard-matrix (if (not 
 			      (and 
 			       (square-matrix-p a)
-			       (= (n b) (n a))))
+			       (= (nrows b) (nrows a))))
 			     (error "dimensions of A,B given to M/ do not match")))
 	(t (error "argument B given to M/ is not a matrix or a number")))
 
@@ -155,7 +164,7 @@
 			       (error "argument A given to M/ is singular to working machine precision")
 			     x))))
     (multiple-value-bind (x ipiv f info)
-	(gesv a (eye (n a)))
+	(gesv a (eye (nrows a)))
       (declare (ignore ipiv f))
       (if (numberp info)
 	(error "argument A given to M/ is singular to working machine precision")
@@ -169,7 +178,7 @@
 	(standard-matrix (if (not 
 			      (and 
 			       (square-matrix-p a)
-			       (= (n b) (n a))))
+			       (= (nrows b) (nrows a))))
 			     (error "dimensions of A,B given to M/ do not match")))
 	(t (error "argument B given to M/! is not a matrix or a number")))
 
@@ -188,31 +197,31 @@
 			       (error "argument A given to M/! is singular to working machine precision")
 			     x))))
     (multiple-value-bind (x ipiv f info)
-	(gesv! (copy a) (eye (n a)))
+	(gesv! (copy a) (eye (nrows a)))
       (declare (ignore ipiv f))
       (if (numberp info)
 	(error "argument A given to M/! is singular to working machine precision")
 	x))))
 
 (defmethod m./ :before ((a standard-matrix) (b standard-matrix))
-  (let ((nxm-a (nxm a))
-	(nxm-b (nxm b)))
+  (let ((nxm-a (number-of-elements a))
+	(nxm-b (number-of-elements b)))
     (declare (type fixnum nxm-a nxm-b))
     (unless (= nxm-a nxm-b)
       (error "arguments A,B given to M./ are not the same size"))))
 
 (defmethod m./! :before ((a standard-matrix) (b standard-matrix))
-  (let ((nxm-a (nxm a))
-	(nxm-b (nxm b)))
+  (let ((nxm-a (number-of-elements a))
+	(nxm-b (number-of-elements b)))
     (declare (type fixnum nxm-a nxm-b))
     (unless (= nxm-a nxm-b)
       (error "arguments A,B given to M./! are not the same size"))))
 
   
 (defmethod m./ ((a real-matrix) (b real-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-real-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -224,9 +233,9 @@
 	(setf (matrix-ref result k) (/ a-val b-val))))))
 
 (defmethod m./ ((a complex-matrix) (b complex-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -238,9 +247,9 @@
 	(setf (matrix-ref result k) (/ a-val b-val))))))
 
 (defmethod m./ ((a real-matrix) (b complex-matrix))
-  (let* ((n (n b))
-	 (m (m b))
-	 (nxm (nxm b))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
 
@@ -256,7 +265,7 @@
   (m./ b a))
   
 (defmethod m./! ((a real-matrix) (b real-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
@@ -267,7 +276,7 @@
 	(setf (matrix-ref b k) (/ a-val b-val))))))
 
 (defmethod m./! ((a complex-matrix) (b complex-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
@@ -278,7 +287,7 @@
 	(setf (matrix-ref b k) (/ a-val b-val))))))
 
 (defmethod m./! ((a real-matrix) (b complex-matrix))
-  (let* ((nxm (nxm b)))
+  (let* ((nxm (number-of-elements b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)

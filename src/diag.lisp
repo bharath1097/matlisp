@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: diag.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -81,13 +90,13 @@
 
 (defmethod diag ((mat real-matrix))
   (if (row-or-col-vector-p mat)
-      (let* ((nxm (nxm mat))
+      (let* ((nxm (number-of-elements mat))
 	     (result (make-real-matrix-dim nxm nxm)))
 	(declare (type fixnum nxm))
 	(dcopy nxm (store mat) 1 (store result) (1+ nxm))
 	result)
-    (let* ((n (n mat))
-	   (m (m mat))
+    (let* ((n (nrows mat))
+	   (m (ncols mat))
 	   (p (min m n))
 	   (result (make-real-matrix-dim p 1)))
       (declare (type fixnum n m p))
@@ -95,8 +104,8 @@
       result)))
 
 (defmethod (setf diag) ((new-diag double-float) (mat real-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (p (min m n)))
     (declare (type fixnum n m p))
 
@@ -114,11 +123,11 @@ coerce COMPLEX to REAL"
 	 new-diag))
 
 (defmethod (setf diag) ((new-diag real-matrix) (mat real-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (n-new (n new-diag))
-	 (m-new (m new-diag))
-	 (nxm-new (nxm new-diag)))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (n-new (nrows new-diag))
+	 (m-new (ncols new-diag))
+	 (nxm-new (number-of-elements new-diag)))
     (declare (type fixnum n m n-new m-new nxm-new))
 
     (if (row-or-col-vector-p new-diag)
@@ -135,13 +144,13 @@ don't know how to coerce COMPLEX to REAL"
 
 (defmethod diag ((mat complex-matrix))
   (if (row-or-col-vector-p mat)
-      (let* ((nxm (nxm mat))
+      (let* ((nxm (number-of-elements mat))
 	     (result (make-complex-matrix-dim nxm nxm)))
 	(declare (type fixnum nxm))
 	(zcopy nxm (store mat) 1 (store result) (1+ nxm))
 	result)
-    (let* ((n (n mat))
-	   (m (m mat))
+    (let* ((n (nrows mat))
+	   (m (ncols mat))
 	   (p (min m n))
 	   (result (make-complex-matrix-dim p 1)))
 
@@ -151,11 +160,11 @@ don't know how to coerce COMPLEX to REAL"
 	 
 
 (defmethod (setf diag) ((new-diag complex-matrix) (mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (n-new (n new-diag))
-	 (m-new (m new-diag))
-	 (nxm-new (nxm new-diag)))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (n-new (nrows new-diag))
+	 (m-new (ncols new-diag))
+	 (nxm-new (number-of-elements new-diag)))
     (declare (type fixnum n m n-new m-new nxm-new))
     (if (row-or-col-vector-p new-diag)
 	(zcopy (min n m nxm-new) (store new-diag) 1 (store mat) (1+ n))
@@ -164,11 +173,11 @@ don't know how to coerce COMPLEX to REAL"
 
 
 (defmethod (setf diag) ((new-diag real-matrix) (mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (n-new (n new-diag))
-	 (m-new (m new-diag))
-	 (nxm-new (nxm new-diag)))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (n-new (nrows new-diag))
+	 (m-new (ncols new-diag))
+	 (nxm-new (number-of-elements new-diag)))
     (declare (type fixnum n m n-new m-new nxm-new))
 
     (if (row-or-col-vector-p new-diag)
@@ -186,8 +195,8 @@ don't know how to coerce COMPLEX to REAL"
     mat))
 
 (defmethod (setf diag) ((new-diag kernel::complex-double-float) (mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (p (min n m)))
     (declare (type fixnum n m p))
 

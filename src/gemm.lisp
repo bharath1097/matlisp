@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: gemm.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -121,12 +130,12 @@
 			  (beta number) 
 			  (c standard-matrix) 
 			  &optional (job :NN))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b))
-	(n-c (n c))
-	(m-c (m c)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b))
+	(n-c (nrows c))
+	(m-c (ncols c)))
     (declare (type fixnum n-a m-a n-b m-b n-c m-c))
 
     (case job
@@ -148,11 +157,11 @@
 		  (c real-matrix) 
 		  &optional (job :nn))
 
-  (let ((n (n c))
-	(m (m c))
+  (let ((n (nrows c))
+	(m (ncols c))
 	(k (if (member job '(:NN NN :NT NT))
-	       (m a)
-	     (n a))))
+	       (ncols a)
+	     (nrows a))))
     (declare (type fixnum n m k))
     (multiple-value-bind (job-a job-b lda ldb)
 	 (case job
@@ -204,11 +213,11 @@
 		  (c complex-matrix) 
 		  &optional (job :nn))
 
-  (let ((n (n c))
-	(m (m c))
+  (let ((n (nrows c))
+	(m (ncols c))
 	(k (if (member job '(:NN NN :NT NT))
-	       (m a)
-	     (n a))))
+	       (ncols a)
+	     (nrows a))))
     (declare (type fixnum n m k))
     (multiple-value-bind (job-a job-b lda ldb)
 	 (case job
@@ -264,11 +273,11 @@
 		  &optional (job :NN))
 
   (let ((a (typecase a
-	     (real-matrix (copy! a (make-complex-matrix-dim (n a) (m a))))
+	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
 	     (complex-matrix a)
 	     (t (error "argument A given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
 	(b (typecase b
-	     (real-matrix (copy! b (make-complex-matrix-dim (n b) (m b))))
+	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
 	     (complex-matrix b)
 	     (t (error "argument B given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
 
@@ -288,12 +297,12 @@
 			 (beta number) 
 			 (c standard-matrix) 
 			 &optional (job :NN))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b))
-	(n-c (n c))
-	(m-c (m c)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b))
+	(n-c (nrows c))
+	(m-c (ncols c)))
     (declare (type fixnum n-a m-a n-b m-b n-c m-c))
 
     (case job
@@ -334,7 +343,7 @@
 		 &optional (job :NN))
 
   (let	((c (typecase c
-	     (real-matrix (copy! c (make-complex-matrix-dim (n c) (m c))))
+	     (real-matrix (copy! c (make-complex-matrix-dim (nrows c) (ncols c))))
 	     (complex-matrix (copy c))
 	     (t (error "argument C given to GEMM is not a REAL-MATRIX or COMPLEX-MATRIX")))))
 

@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: msqrt.lisp,v 1.2 2000/05/05 21:39:29 simsek Exp $
+;;; $Id: msqrt.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: msqrt.lisp,v $
+;;; Revision 1.3  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.2  2000/05/05 21:39:29  simsek
 ;;; o Fixed some documentation bugs
 ;;;
@@ -68,8 +77,8 @@
       (error "argument A given to MSQRT must be a square matrix")))
 
 (defun %negative-p (mat)
-  (let ((n (n mat))
-	(m (m mat)))
+  (let ((n (nrows mat))
+	(m (ncols mat)))
     (declare (type fixnum n m))
     (dotimes (i n)
       (declare (type fixnum i))
@@ -88,7 +97,7 @@
 	(if (%negative-p e)
 	    (progn
 	      (setq e (map-matrix! #'sqrt (copy! e
-						 (make-complex-matrix-dim (n e) (m e)))))
+						 (make-complex-matrix-dim (nrows e) (ncols e)))))
 	      (m*! v (m* e (m/ v))))
 	  (m*! v (m* (map-matrix #'sqrt e) (m/ v))))
       (error "could not compute MSQRT of A, could not compute eigenvalues"))))

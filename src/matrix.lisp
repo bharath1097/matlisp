@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.2 2000/05/05 21:35:16 simsek Exp $
+;;; $Id: matrix.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.3  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.2  2000/05/05 21:35:16  simsek
 ;;; o Fixed row-vector-p and col-vector-p
 ;;;
@@ -51,9 +60,14 @@
 	  real-matrix-store-type
 	  complex-matrix-element-type
 	  complex-matrix-store-type
+	  #|
 	  n
 	  m
 	  nxm
+	  |#
+	  nrows
+	  ncols
+	  number-of-elements
 	  row-vector-p
 	  col-vector-p
 	  row-or-col-vector-p
@@ -105,6 +119,7 @@
 		 store))
 
 
+#|
 (defgeneric n (matrix)
   (:documentation 
 "
@@ -141,6 +156,7 @@
   Returns the number of elements of MATRIX;
   which is number of rows * number of columns. 
 "))
+|#
 
 (defgeneric store-size (matrix)
   (:documentation
@@ -172,22 +188,22 @@ that way.
 "))
 
 (defclass standard-matrix ()
-  ((n
-    :initarg :n
+  ((number-of-rows
+    :initarg :nrows
     :initform 0
-    :accessor n
+    :accessor nrows
     :type 'fixnum
     :documentation "Number of rows in the matrix")
-   (m
-    :initarg :m
+   (number-of-cols
+    :initarg :ncols
     :initform 0
-    :accessor m
+    :accessor ncols
     :type 'fixnum
     :documentation "Number of columns in the matrix")
-   (nxm
-    :initarg :nxm
+   (number-of-elements
+    :initarg :nels
     :initform 0
-    :accessor nxm
+    :accessor number-of-elements
     :type 'fixnum
     :documentation "Total number of elements in the matrix (nrows * ncols)")
    (store-size
@@ -217,11 +233,11 @@ that way."))
 
 (defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
   (declare (ignore initargs))
-  (let* ((n (n matrix))
-	 (m (m matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
 	 (nxm (* n m)))
     (declare (type fixnum n m nxm))
-    (setf (nxm matrix) nxm)
+    (setf (number-of-elements matrix) nxm)
     (setf (store-size matrix) nxm)))
 
 (defmethod make-load-form ((matrix standard-matrix) &optional env)
@@ -281,11 +297,11 @@ that way."))
 
 (declaim (inline row-vector-p))
 (defmethod row-vector-p ((matrix standard-matrix))
-  (= (n matrix) 1))
+  (= (ncols matrix) 1))
 
 (declaim (inline col-vector-p))
 (defmethod col-vector-p ((matrix standard-matrix))
-  (= (m matrix) 1))
+  (= (nrows matrix) 1))
 
 (declaim (inline row-or-col-vector-p))
 (defmethod row-or-col-vector-p ((matrix standard-matrix))
@@ -293,11 +309,10 @@ that way."))
 
 (declaim (inline square-matrix-p))
 (defmethod square-matrix-p ((matrix standard-matrix))
-  (= (n matrix) (m matrix)))
+  (= (nrows matrix) (ncols matrix)))
 
 (defmethod size ((matrix standard-matrix))
-  (with-slots (n m) matrix
-    (list n m)))
+  (list (nrows matrix) (ncols matrix)))
 
 ;; For compatibility with Fortran, matrices are stored in column major
 ;; order instead of row major order.  Also, we store the matrix as a
@@ -308,6 +323,7 @@ that way."))
 ;; to avoid integer to pointer coercions, since FORTRAN-MATRIX-INDEXING
 ;; will be called too many times.
 
+#+nil
 (defmacro fortran-matrix-indexing (i j l)
   `(let ((i ,i)
 	 (j ,j)
@@ -319,11 +335,17 @@ that way."))
        (declare (type fixnum q p))
        p)))
 
+(declaim (inline fortran-matrix-indexing))
+(defun fortran-matrix-indexing (row col nrows)
+  (declare (type (and fixnum (integer 0)) row col nrows))
+  (+ row (* col nrows)))
+
 ;; For matrices with complex-valued elements, we store the array as a
 ;; double-length double-precision floating-point vector, as Fortran
 ;; does too.  The first element is the real part; the second, the
 ;; imaginary part.
 
+#+nil
 (defmacro fortran-complex-matrix-indexing (i j l)
   `(let ((i ,i)
 	 (j ,j)
@@ -335,6 +357,11 @@ that way."))
 	    (r (* 2 p)))
        (declare (type fixnum q p r))
        r)))
+
+(declaim (inline fortran-complex-matrix-indexing))
+(defun fortran-complex-matrix-indexing (row col nrows)
+  (declare (type (and fixnum (integer 0)) row col nrows))
+  (* 2 (+ row (* col nrows))))
 
 
 
@@ -410,7 +437,7 @@ matrix and a number"))
 	   (t (error "argument FILL-ELEMENT to MAKE-REAL-MATRIX-DIM must be a REAL")))))
 
     (declare (type real-matrix-element-type casted-fill))
-    (make-instance 'real-matrix :n n :m m
+    (make-instance 'real-matrix :nrows n :ncols m
 		   :store (make-array (* n m) 
 				      :element-type 'real-matrix-element-type
 				      :initial-element casted-fill))))
@@ -440,7 +467,7 @@ matrix and a number"))
 	(declare (type fixnum j))
 	(setf (aref store (fortran-matrix-indexing i j n))
 	      (coerce (aref array i j) 'real-matrix-element-type))))
-    (make-instance 'real-matrix :n n :m m :store store)))
+    (make-instance 'real-matrix :nrows n :ncols m :store store)))
 
 (defun make-real-matrix-seq-of-seq (seq)
   (let* ((n (length seq))
@@ -578,7 +605,7 @@ matrix and a number"))
   (let* ((size (* n m))
 	 (store (make-array (* 2 size)
 			    :element-type 'complex-matrix-element-type))
-	 (matrix (make-instance 'complex-matrix :n n :m m :store store)))
+	 (matrix (make-instance 'complex-matrix :nrows n :ncols m :store store)))
     
     (fill-matrix matrix fill)
     matrix))
@@ -613,7 +640,7 @@ matrix and a number"))
 	  (setf (aref store index) realpart)
 	  (setf (aref store (1+ index)) imagpart))))
     
-    (make-instance 'complex-matrix :n n :m m :store store)))
+    (make-instance 'complex-matrix :nrows n :ncols m :store store)))
 
 
 (defun make-complex-matrix-seq-of-seq (seq)
@@ -641,7 +668,7 @@ matrix and a number"))
 	    (setf (aref store index) realpart)
 	    (setf (aref store (1+ index)) imagpart)))))
     
-    (make-instance 'complex-matrix :n n :m m :store store)))
+    (make-instance 'complex-matrix :nrows n :ncols m :store store)))
 
 
 (defun make-complex-matrix-seq (seq)
@@ -662,7 +689,7 @@ matrix and a number"))
 	(setf (aref store index) realpart)
 	(setf (aref store (1+ index)) imagpart)))
     
-    (make-instance 'complex-matrix :n n :m 1 :store store)))
+    (make-instance 'complex-matrix :nrows n :ncols 1 :store store)))
 
 
 (defun make-complex-matrix-sequence (seq)

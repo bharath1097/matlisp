@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: axpy.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: axpy.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: axpy.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -93,8 +102,8 @@
 
 
 (defmethod axpy :before ((alpha number) (x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (nxm x))
-	(nxm-y (nxm y)))
+  (let ((nxm-x (number-of-elements x))
+	(nxm-y (number-of-elements y)))
     (declare (type fixnum nxm-x nxm-y))
 
     (if (not (= nxm-x nxm-y))
@@ -102,7 +111,7 @@
 
 
 (defmethod axpy ((alpha double-float) (x real-matrix) (y real-matrix))
-  (let* ((nxm (nxm y))
+  (let* ((nxm (number-of-elements y))
 	 (result (copy y)))
     (declare (type fixnum nxm))
 
@@ -113,9 +122,9 @@
   (axpy (coerce alpha 'real-matrix-element-type) x y))
 
 (defmethod axpy ((alpha double-float) (x complex-matrix) (y real-matrix))
-  (let* ((nxm (nxm y))
-	 (n (n y))
-	 (m (m y))
+  (let* ((nxm (number-of-elements y))
+	 (n (nrows y))
+	 (m (ncols y))
 	 (result (make-complex-matrix-dim n m))
 	 (store-x (store x))
 	 (store-y (store y))
@@ -134,7 +143,7 @@
 
 
 (defmethod axpy ((alpha double-float) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (nxm y))
+  (let* ((nxm (number-of-elements y))
 	 (result (copy y)))
     (declare (type fixnum nxm))
     (daxpy nxm alpha (store x) 1 (store result) 2)
@@ -144,7 +153,7 @@
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
 (defmethod axpy ((alpha double-float) (x complex-matrix) (y complex-matrix))
-  (let ((nxm (nxm y))
+  (let ((nxm (number-of-elements y))
 	(result (copy y)))
     (declare (type fixnum nxm))
     (daxpy (* 2 nxm) alpha (store x) 1 (store result) 1)
@@ -155,9 +164,9 @@
 
 
 (defmethod axpy ((alpha kernel::complex-double-float) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (nxm y))
-	 (n (n y))
-	 (m (m y))
+  (let* ((nxm (number-of-elements y))
+	 (n (nrows y))
+	 (m (ncols y))
 	 (result (make-complex-matrix-dim n m))
 	 (store-x (store x))
 	 (store-y (store y))
@@ -178,7 +187,7 @@
   (axpy (complex-coerce alpha) x y))
 
 (defmethod axpy ((alpha kernel::complex-double-float) (x complex-matrix) (y real-matrix))
-  (let* ((nxm (nxm y))
+  (let* ((nxm (number-of-elements y))
 	 (result (copy x))
 	 (store-result (store result)))
     (declare (type fixnum nxm)
@@ -195,7 +204,7 @@
   (axpy (complex-coerce alpha) x y))
 
 (defmethod axpy ((alpha kernel::complex-double-float) (x complex-matrix) (y complex-matrix))
-  (let ((nxm (nxm y))
+  (let ((nxm (number-of-elements y))
 	(result (copy y)))
     (declare (type fixnum nxm))
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
@@ -209,8 +218,8 @@
 
 
 (defmethod axpy! :before ((alpha number) (x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (nxm x))
-	(nxm-y (nxm y)))
+  (let ((nxm-x (number-of-elements x))
+	(nxm-y (number-of-elements y)))
     (declare (type fixnum nxm-x nxm-y))
 
     (if (not (= nxm-x nxm-y))
@@ -219,7 +228,7 @@
 
 
 (defmethod axpy! ((alpha double-float) (x real-matrix) (y real-matrix))
-  (let* ((nxm (nxm y)))
+  (let* ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
 
     (daxpy nxm alpha (store x) 1 (store y) 1)
@@ -233,7 +242,7 @@
 don't know how to coerce COMPLEX to REAL"))
 
 (defmethod axpy! ((alpha double-float) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (nxm y)))
+  (let* ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
     (daxpy nxm alpha (store x) 1 (store y) 2)
     y))
@@ -242,7 +251,7 @@ don't know how to coerce COMPLEX to REAL"))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
 (defmethod axpy! ((alpha double-float) (x complex-matrix) (y complex-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
     (daxpy (* 2 nxm) alpha (store x) 1 (store y) 1)
     y))
@@ -251,7 +260,7 @@ don't know how to coerce COMPLEX to REAL"))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
 (defmethod axpy! ((alpha kernel::complex-double-float) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (nxm y))
+  (let* ((nxm (number-of-elements y))
 	 (store-x (store x))
 	 (store-y (store y))
 	 (realpart (realpart alpha))
@@ -273,7 +282,7 @@ don't know how to coerce COMPLEX to REAL"))
   (axpy! (complex-coerce alpha) x y))
 
 (defmethod axpy! ((alpha kernel::complex-double-float) (x complex-matrix) (y complex-matrix))
-  (let ((nxm (nxm y)))
+  (let ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))

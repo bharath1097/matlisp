@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: realimag.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: realimag.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: realimag.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -79,9 +88,9 @@
   (copy mat))
 
 (defmethod real ((mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (nxm (nxm mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
 	 (store (store mat))
 	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
     (declare (type fixnum n m nxm)
@@ -90,7 +99,7 @@
 
     (dcopy nxm store 2 new-store 1)
 
-    (make-instance 'real-matrix :n n :m m :store new-store)))
+    (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
 
 (defmethod real ((mat standard-matrix))
   (error "don't know how to take the real part of a STANDARD-MATRIX,
@@ -100,16 +109,16 @@ its element types are unknown"))
   (imagpart x))
 
 (defmethod imag ((mat real-matrix))
-  (let ((n (n mat))
-	(m (m mat)))
+  (let ((n (nrows mat))
+	(m (ncols mat)))
     (declare (type fixnum n m))
     (make-real-matrix-dim n m)))
 
 
 (defmethod imag ((mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (nxm (nxm mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
 	 (store (store mat))
 	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
     (declare (type fixnum n m nxm)
@@ -121,4 +130,4 @@ its element types are unknown"))
 	(incf-sap :double-float addr-store)
 	(blas::fortran-dcopy nxm addr-store 2 addr-new-store 1))
     
-    (make-instance 'real-matrix :n n :m m :store new-store)))
+    (make-instance 'real-matrix :nrows n :ncols m :store new-store)))

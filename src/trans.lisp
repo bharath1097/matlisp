@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: trans.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: trans.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: trans.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -89,8 +98,8 @@
   x)
 
 (defmethod transpose ((mat standard-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
 	 (new-mat (copy mat)))
 
     (declare (type fixnum n m))
@@ -104,9 +113,9 @@
     new-mat))
 
 (defmethod transpose ((mat real-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (nxm (nxm mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
 	 (store (store mat))
 	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
 
@@ -120,12 +129,12 @@
 	(setf (aref new-store (fortran-matrix-indexing j i m))
 	      (aref store (fortran-matrix-indexing i j n)))))
     
-    (make-instance 'real-matrix :n m :m n :store new-store)))
+    (make-instance 'real-matrix :nrows m :ncols n :store new-store)))
 
 (defmethod transpose ((mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (nxm (nxm mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
 	 (store (store mat))
 	 (new-store (make-array (* 2 nxm) :element-type 'complex-matrix-element-type)))
 
@@ -146,7 +155,7 @@
 	  (setf (aref new-store new-store-index) realpart)
 	  (setf (aref new-store (1+ new-store-index)) imagpart))))
 
-    (make-instance 'complex-matrix :n m :m n :store new-store)))
+    (make-instance 'complex-matrix :nrows m :ncols n :store new-store)))
 
 
 (defmethod ctranspose ((x complex))
@@ -164,9 +173,9 @@ a STANDARD-MATRIX, element types are not known"))
   (transpose mat))
 
 (defmethod ctranspose ((mat complex-matrix))
-  (let* ((n (n mat))
-	 (m (m mat))
-	 (nxm (nxm mat))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
 	 (store (store mat))
 	 (new-store (make-array (* 2 nxm) :element-type 'complex-matrix-element-type)))
 
@@ -187,5 +196,5 @@ a STANDARD-MATRIX, element types are not known"))
 	  (setf (aref new-store new-store-index) realpart)
 	  (setf (aref new-store (1+ new-store-index)) (- imagpart)))))
 
-    (make-instance 'complex-matrix :n m :m n :store new-store)))
+    (make-instance 'complex-matrix :nrows m :ncols n :store new-store)))
 

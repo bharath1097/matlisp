@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mplus.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: mplus.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: mplus.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -107,10 +116,10 @@
   (M+! a b))
 
 (defmethod m+ :before ((a standard-matrix) (b standard-matrix))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b)))
     (declare (type fixnum n-a m-a n-b m-b))
 
     (unless (and (= n-a n-b)
@@ -124,7 +133,7 @@
   (axpy 1.0d0 a b))
 
 (defmethod m+ ((a real-matrix) (b double-float))
-  (let ((nxm (nxm a))
+  (let ((nxm (number-of-elements a))
 	(result (copy a)))
     (declare (type fixnum nxm))
 
@@ -142,8 +151,8 @@
   (m+ b (coerce a 'real-matrix-element-type)))
 
 (defmethod m+ ((a real-matrix) (b kernel::complex-double-float))
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -160,7 +169,7 @@
 
 ;;;
 (defmethod m+ ((a complex-matrix) (b double-float))
-  (let ((nxm (nxm a))
+  (let ((nxm (number-of-elements a))
 	(result (copy a)))
     (declare (type fixnum nxm))
 
@@ -178,8 +187,8 @@
   (m+ b (coerce a 'complex-matrix-element-type)))
 
 (defmethod m+ ((a complex-matrix) (b kernel::complex-double-float))
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -196,10 +205,10 @@
 
 
 (defmethod m+! :before ((a standard-matrix) (b standard-matrix))
-  (let ((n-a (n a))
-	(m-a (m a))
-	(n-b (n b))
-	(m-b (m b)))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b)))
     (declare (type fixnum n-a m-a n-b m-b))
     (unless (and (= n-a n-b)
 		 (= m-a m-b))
@@ -217,7 +226,7 @@ don't know how to coerce COMPLEX to REAL."))
 ;;;
 
 (defmethod m+! ((a real-matrix) (b double-float))
-  (let ((nxm (nxm a)))
+  (let ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
 
     (setf (aref *1x1-real-array* 0) b)
@@ -242,7 +251,7 @@ don't know how to coerce COMPLEX to REAL"))
 don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m+! ((a complex-matrix) (b double-float))
-  (let ((nxm (nxm a)))
+  (let ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
 
     (setf (aref *1x1-real-array* 0) b)
@@ -263,7 +272,7 @@ don't know how to coerce COMPLEX to REAL"))
 	      :initial-contents '(1.0d0 0.0d0)))
 
 (defmethod m+! ((a complex-matrix) (b kernel::complex-double-float))
-  (let* ((nxm (nxm a)))
+  (let* ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
 
     (setf (aref *1x1-complex-array* 0) (realpart b))

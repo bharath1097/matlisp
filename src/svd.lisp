@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: svd.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: svd.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: svd.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -108,8 +117,8 @@
   "))
 
 (defmethod svd ((a real-matrix) &optional (job :n))
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (p (min n m))
 	 (lwork (max (+ (* 3 (min n m)) (max n m))
 		     (* 5 (min n m))))
@@ -202,8 +211,8 @@
 
 
 (defmethod svd ((a complex-matrix) &optional (job :n))
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (p (min n m))
 	 (lwork (+ (* 2 (min n m)) (max n m)))
 	 (work  (make-array (* 2 lwork) :element-type 'complex-matrix-element-type))

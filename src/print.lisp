@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: print.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -108,11 +117,11 @@ but got *PRINT-MATRIX* of type ~a"
 	      imagpart))))
 
 (defun print-matrix (matrix stream)
-  (with-slots (n m) matrix
+  (with-slots (number-of-rows number-of-cols) matrix
       (multiple-value-bind (max-n max-m)
-	     (set-print-limits-for-matrix n m)
+	     (set-print-limits-for-matrix number-of-rows number-of-cols)
 	 (declare (type fixnum max-n max-m))
-	 (format stream " ~d x ~d" n m)
+	 (format stream " ~d x ~d" number-of-rows number-of-cols)
 
 	 (decf max-n)
 	 (decf max-m)  
@@ -124,17 +133,17 @@ but got *PRINT-MATRIX* of type ~a"
 				   (matrix-ref matrix i j)
 				   stream)
 		    (format stream " "))
-		  (if (< max-m (1- m))
+		  (if (< max-m (1- number-of-cols))
 		      (progn
 			(format stream "... ")
 			(print-element matrix 
-				       (matrix-ref matrix i (1- m))
+				       (matrix-ref matrix i (1- number-of-cols))
 				       stream)
 			(format stream " "))
-		    (if (< max-m m)
+		    (if (< max-m number-of-cols)
 			(progn
 			  (print-element matrix 
-					 (matrix-ref matrix i (1- m))
+					 (matrix-ref matrix i (1- number-of-cols))
 					 stream)
 			  (format stream " "))))))
 	   
@@ -142,13 +151,14 @@ but got *PRINT-MATRIX* of type ~a"
 	     (declare (type fixnum i))
 	     (print-row i))
 	   
-	   (if (< max-n (1- n))
+	   (if (< max-n (1- number-of-rows))
 	       (progn
 		 (format stream "~%     :")
-		 (print-row (1- n)))
-	     (if (< max-n n)
-		 (print-row (1- n))))))))
+		 (print-row (1- number-of-rows)))
+	     (if (< max-n number-of-rows)
+		 (print-row (1- number-of-rows))))))))
 
+#+nil
 (defmethod print-object ((matrix standard-matrix) stream)
   (format stream "#<~a" (type-of matrix))
   (if *print-matrix*
@@ -156,8 +166,14 @@ but got *PRINT-MATRIX* of type ~a"
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
 
+(defmethod print-object ((matrix standard-matrix) stream)
+  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
+    (when *print-matrix*
+      (print-matrix matrix stream))))
 
 
+
+#+nil
 (defmethod print-object ((matrix real-matrix) stream)
   (format stream "#<~a" (type-of matrix))
   (if *print-matrix*
@@ -165,7 +181,12 @@ but got *PRINT-MATRIX* of type ~a"
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
 
+(defmethod print-object ((matrix standard-matrix) stream)
+  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
+    (when *print-matrix*
+      (print-matrix matrix stream))))
 
+#+nil
 (defmethod print-object ((matrix complex-matrix) stream)
   (format stream "#<~a" (type-of matrix))
   (if *print-matrix*
@@ -173,3 +194,7 @@ but got *PRINT-MATRIX* of type ~a"
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
 
+(defmethod print-object ((matrix standard-matrix) stream)
+  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
+    (when *print-matrix*
+      (print-matrix matrix stream))))

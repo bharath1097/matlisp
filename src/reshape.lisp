@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reshape.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: reshape.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
 ;;;
 ;;; $Log: reshape.lisp,v $
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -75,7 +84,7 @@
 (defmethod reshape ((mat real-matrix) new-n new-m)
 
   (declare (type fixnum new-n new-m))
-  (let* ((old-size (nxm mat))
+  (let* ((old-size (number-of-elements mat))
 	 (new-size (* new-n new-m))
 	 (new-store (make-array new-size :element-type 'real-matrix-element-type)))
     (declare (fixnum old-size new-size)
@@ -83,12 +92,12 @@
 
     (dcopy (min old-size new-size) (store mat) 1 new-store 1)
 
-    (make-instance 'real-matrix :n new-n :m new-m :store new-store)))
+    (make-instance 'real-matrix :nrows new-n :ncols new-m :store new-store)))
 
 
 (defmethod reshape! ((mat real-matrix) new-n new-m)
   (declare (fixnum new-n new-m))
-  (let ((old-size (nxm mat))
+  (let ((old-size (number-of-elements mat))
 	(new-size (* new-n new-m)))
     (declare (fixnum old-size new-size))
     (when (< old-size new-size)
@@ -108,19 +117,19 @@
 
 (defmethod reshape ((mat complex-matrix) new-n new-m)
   (declare (fixnum new-n new-m))
-  (let* ((old-size (nxm mat))
+  (let* ((old-size (number-of-elements mat))
 	 (new-size (* new-n new-m))
 	 (new-store (make-array (* 2 new-size) :element-type 'complex-matrix-element-type)))
     (declare (fixnum old-size new-size)
 	     (type (complex-matrix-store-type (*)) new-store))
 
     (zcopy (min old-size new-size) (store mat) 1 new-store 1)
-    (make-instance 'complex-matrix :n new-n :m new-m :store new-store)))
+    (make-instance 'complex-matrix :nrows new-n :mcols new-m :store new-store)))
 
 
 (defmethod reshape! ((mat complex-matrix) new-n new-m)
   (declare (fixnum new-n new-m))
-  (let ((old-size (nxm mat))
+  (let ((old-size (number-of-elements mat))
 	(new-size (* new-n new-m)))
     (declare (fixnum old-size new-size))
     (when (< old-size new-size)
