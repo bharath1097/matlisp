@@ -34,9 +34,18 @@ dnl          autoconf configure.in > configure
 dnl
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.6 2001/03/19 17:07:46 rtoy Exp $
+dnl $Id: configure.in,v 1.7 2001/04/25 18:08:13 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.7  2001/04/25 18:08:13  rtoy
+dnl o Added --with-f77 to specify the f77 compiler (and options) to use.
+dnl o Need to make sure the C and F77 compilers understand -c and -o.
+dnl o Strip out any -Xlinker flags we might find in FLIBS (placed there by
+dnl   configure with the Sun F77 compiler)
+dnl o Use SHARED_LIB_LDFLAGS to specify the flags needed to build a shared
+dnl   lib.
+dnl o Export srcdir.
+dnl
 dnl Revision 1.6  2001/03/19 17:07:46  rtoy
 dnl Allow the user to specify using ATLAS libraries.
 dnl
@@ -71,6 +80,8 @@ dnl
 dnl ======================================================================
 
 AC_INIT(system.dcl)
+
+AC_CANONICAL_SYSTEM
 
 dnl Process our additional features
 
@@ -109,34 +120,69 @@ AC_ARG_WITH([lisp-exec],
 )
 
 dnl Allow user to use ATLAS if available.
-dnl If ATLAS is used, set BLAS_OBJS and NO_ATLAS_LAPACK_OBJS to empty.
-dnl If ATLAS is not used, set it BLAS_OBJS and NO_ATLAS_LAPACK_OBJS 
-dnl appropriately so that we build our libmatlisp library with the 
-dnl needed objects.
-
+dnl We assume the standard names for the ATLAS libraries.
 AC_ARG_WITH([atlas],
 [  --with-atlas=libpath    Location of the ATLAS libraries],
-[ATLAS_DIR=$withval
-# Building with ATLAS.  Don't need these objects since they're coming
-# from ATLAS.  Include the ATLAS libraries.
-BLAS_OBJS=
-NO_ATLAS_LAPACK_OBJS=
-ATLAS_LIBS='" " "-llapack" " " "-lf77blas" " " "-latlas" " " "-lcblas" " "'
+[
+  # Building with ATLAS
+  ATLAS_DIR=$withval
+  ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
 ],
 [
-# Building without ATLAS.  Need these objects from our own copy of 
-# LAPACK.
-BLAS_OBJS=dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o \
-	dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o \
-	dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o \
-	daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o \
-	dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o \
-	dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o \
-	ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o
-NO_ATLAS_LAPACK_OBJS=dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o 
+  # Building without ATLAS.  Need these objects from our own copy of 
+  # LAPACK.
+BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
+NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 ]
 )
 
+dnl Specify the fortran compiler to use
+AC_ARG_WITH([f77],
+[  --with-f77=compiler     Fortran 77 compiler to use (default is g77)],
+[
+  # Set the compiler
+  F77="$withval"
+])
+
+dnl     Set output variable `RANLIB' to `ranlib' if `ranlib' is found,
+dnl     otherwise to `:' (do nothing).
+AC_PROG_RANLIB
+
+dnl
+dnl     Determine a C compiler to use.
+dnl
+AC_PROG_CC
+dnl
+dnl	We require -c and -o options for the compiler to work
+dnl
+AC_PROG_CC_C_O
+
+dnl Allow user to specify which linker to use.  Default is ld, wherever 
+dnl that is on the user's path.
+AC_ARG_WITH([ld],
+[  --with-ld=<ld>          Name of the linker to use],
+[LD=$withval],
+[
+  case "$host" in
+    *-*-solaris*)
+      # Always use this one on Solaris, unless told otherwise.
+      LD=/usr/ccs/bin/ld
+      ;;
+    *)
+      LD=ld
+      ;;  
+  esac
+])
+
+dnl
+dnl	Set the Fortran language
+dnl
+AC_LANG_FORTRAN77
+
+dnl
+dnl	We need -c and -o supported by the Fortran compiler
+dnl
+dnl AC_PROG_F77_C_O
 dnl     Determine a Fortran 77 compiler to use.  If `F77' is not already
 dnl     set in the environment, check for `g77', `f77' and `f2c', in that
 dnl     order.  Set the output variable `F77' to the name of the compiler
@@ -149,10 +195,6 @@ dnl     environment, then set it to `-g -02' for `g77' (or `-O2' where
 dnl     `g77' does not accept `-g').  Otherwise, set `FFLAGS' to `-g' for
 dnl     all other Fortran 77 compilers.
 AC_PROG_F77
-
-dnl     Set output variable `RANLIB' to `ranlib' if `ranlib' is found,
-dnl     otherwise to `:' (do nothing).
-AC_PROG_RANLIB
 
 dnl     Determine the linker flags (e.g. `-L' and `-l') for the "Fortran
 dnl     77 intrinsic and run-time libraries" that are required to
@@ -178,42 +220,33 @@ dnl     libraries.
 AC_F77_LIBRARY_LDFLAGS
 
 dnl
-dnl     Determine a C compiler to use.
+dnl	Figure out what the Fortran name mangling is
 dnl
-AC_PROG_CC
+dnl This is only for autoconf 2.49d or later!
+dnl AC_F77_FUNC(foo,[mangle_foo])
 
-dnl Allow user to specify which linker to use.  Default is ld, wherever 
-dnl that is on the user's path.
-AC_ARG_WITH([ld],
-[  --with-ld=<ld>          Name of the linker to use],
-[LD=$withval],
-[
-  case "$host" in
-    *-*-solaris*)
-      # Always use this one on Solaris, unless told otherwise.
-      LD=/usr/ccs/bin/ld
-      ;;
-    *)
-      LD=ld
-      ;;  
-  esac
-])
+dnl echo mangle_foo = $mangle_foo
+
+dnl End autoconf 2.49d stuff
 
 # Determine the argument given to ld to make shared libraries.
 # (We should do a better job here.)
 case "$host" in
   *-*-solaris* | *-*-sunos*)
+	echo FLIBS = $FLIBS
 	# FLIBS=`echo $FLIBS | awk -f purgargs.awk`
-	LDFLAGS="-G"
+	FLIBS=`echo $FLIBS | sed 's;-Xlinker;;g' | awk -f purgargs.awk`
+	echo FLIBS = $FLIBS
+	SHARED_LIB_LDFLAGS="-G"
   	;;  
   *-*-linux*)
-	LDFLAGS="-shared"
+	SHARED_LIB_LDFLAGS="-shared"
   	;;
   *)
 	AC_MSG_WARN([Oops! Matlisp is tested on Solaris, SunOS or Linux])
 	AC_MSG_WARN([Matlisp may not compile on your system $host.])
 	LD="ld"
-	LDFLAGS="-G"
+	SHARED_LIB_LDFLAGS="-G"
   	;;
 esac
 
@@ -226,13 +259,14 @@ AC_SUBST(FLIBS)
 AC_SUBST(CC)
 AC_SUBST(CLIBS)
 AC_SUBST(LD)
-AC_SUBST(LDFLAGS)
+AC_SUBST(SHARED_LIB_LDFLAGS)
 AC_SUBST(LISPEXEC)
 AC_SUBST(LISPEVAL)
 AC_SUBST(BLAS_OBJS)
 AC_SUBST(NO_ATLAS_LAPACK_OBJS)
 AC_SUBST(ATLAS_DIR)
 AC_SUBST(ATLAS_LIBS)
+AC_SUBST(srcdir)
 
 AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp)
 
