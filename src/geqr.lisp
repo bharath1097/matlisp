@@ -1,8 +1,11 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ;;;
-;;; $Id: geqr.lisp,v 1.6 2002/01/08 19:40:45 rtoy Exp $
+;;; $Id: geqr.lisp,v 1.7 2002/01/20 00:42:25 simsek Exp $
 ;;;
 ;;; $Log: geqr.lisp,v $
+;;; Revision 1.7  2002/01/20 00:42:25  simsek
+;;; o removed a spurious ignore
+;;;
 ;;; Revision 1.6  2002/01/08 19:40:45  rtoy
 ;;; The functions we use are exported now.
 ;;;
@@ -278,7 +281,6 @@
     (multiple-value-bind (store-a jpvt tau work info)
 	(lapack:dgeqp3 m n (store a) lda jpvt tau work lwork 0)
 
-      (declare (ignore work))
 
       ;; Check for error
       (unless (zerop info)
