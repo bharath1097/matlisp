@@ -1,0 +1,132 @@
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Base: 10 -*-
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Copyright (c) 2000 The Regents of the University of California.
+;;; All rights reserved. 
+;;; 
+;;; Permission is hereby granted, without written agreement and without
+;;; license or royalty fees, to use, copy, modify, and distribute this
+;;; software and its documentation for any purpose, provided that the
+;;; above copyright notice and the following two paragraphs appear in all
+;;; copies of this software.
+;;; 
+;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
+;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+;;; THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+;;; SUCH DAMAGE.
+;;;
+;;; THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+;;; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+;;; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE
+;;; PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF
+;;; CALIFORNIA HAS NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+;;; ENHANCEMENTS, OR MODIFICATIONS.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;  This file is used to generate 'lazy-loader.lisp'.  Essentially, when
+;;;  the 'configure' script is executed the tokens in this file,
+;;;  e.g. @FLIBS@, get substituted with the appropriate machine specific
+;;;  parameters and the resulting file is saved in 'lazy-loader.lisp'.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: lazy-loader.lisp.in,v 1.1 2000/04/13 23:34:29 simsek Exp $
+;;;
+;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.1  2000/04/13 23:34:29  simsek
+;;; o This file is used by lisp to load foreign libraries.
+;;; o Initial revision.
+;;;
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(in-package "MATLISP")
+
+(export '(load-blas-&-lapack-libraries
+	  load-blas-&-lapack-binaries))
+
+
+#|
+;; example of an optimized BLAS/LAPACK load on a Solaris platform
+
+(eval-when (load eval compile)
+(defun load-blas-&-lapack-libraries ()
+  (ext::load-foreign "matlisp:lib;lazy-loader.o"
+		:libraries `("-R/home/eclair1/shift-uav/meta-shift/lib"
+			     "-L/home/eclair1/shift-uav/meta-shift/lib"
+			     "-R/usr/lib"
+			     "-L/usr/lib"
+			     "-R/usr/sww/lib"
+			     "-L/usr/sww/lib"
+			     "-R/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
+			     "-L/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
+			     "-latlas"
+			     "-llapack"
+			     "-lblas"
+			     "-lM77"
+			     "-lF77"
+			     "-lsunmath"
+			     "-lm"
+			     "-lc"))))
+|#
+
+(eval-when (load compile eval)
+(defun tokenize-ld-args (s)
+  (let ((token "")
+	(n (length s))
+	(tokens nil))
+
+    (dotimes (i n)
+       (declare (type fixnum i))
+       (let ((c (char s i)))
+	 (case c
+	  ((#\^m #\space #\tab #\newline)  (if (not (string= token ""))
+					  (progn
+					    (push token tokens)
+					    (setq token ""))))
+	  (t (setq token (concatenate 'string token (string c)))))))
+
+    (if (not (string= token ""))
+	(push token tokens))
+
+    (let ((library-pathnames nil)
+	  (library-decls nil))
+
+       (dolist (token tokens)
+          (case (char token 0)
+            (#\- (case (char token 1)
+                   (#\L (push token library-pathnames))
+                   (#\l (push token library-decls))
+                   (t (push token library-decls))))
+            (t (push token library-decls))))
+
+        `(,@library-pathnames ,@library-decls))))
+
+(defun load-blas-&-lapack-libraries ()
+  (ext::load-foreign "matlisp:lib;lazy-loader.o"
+		:libraries (tokenize-ld-args
+			     (concatenate 'string
+				 "-L"
+				 (namestring
+				   (translate-logical-pathname "matlisp:lib"))
+				 " "
+				 "-Llib
+			          -llapack
+			          -lblas
+                                  @FLIBS@"))))
+
+(load-blas-&-lapack-libraries))
+
+(defun load-blas-&-lapack-binaries ()
+  (load-blas-&-lapack-libraries)
+  (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
+  (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil))
+
+(unintern 'load-blas-&-lapack-libraries  "COMMON-LISP-USER")
+(unintern 'load-blas-&-lapack-binaries  "COMMON-LISP-USER")
+(import '(load-blas-&-lapack-libraries 
+	  load-blas-&-lapack-binaries)
+	  "COMMON-LISP-USER")
