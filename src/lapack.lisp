@@ -31,9 +31,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.5 2001/10/25 21:51:00 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.6 2001/10/29 18:00:28 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.6  2001/10/29 18:00:28  rtoy
+;;; Updates from M. Koerber to support QR routines with column pivoting:
+;;;
+;;; o Add an integer4 type and allocate-integer4-store routine.
+;;; o Add the necessary Fortran routines
+;;; o Add Lisp interface to the Fortran routines
+;;; o Update geqr for the new routines.
+;;;
 ;;; Revision 1.5  2001/10/25 21:51:00  rtoy
 ;;; Add interface to QR routines.  Mostly done by M. Koerber.
 ;;;
@@ -977,7 +985,7 @@
   (k :integer :input)
   (a (* :complex-double-float) :input-output)
   (lda :integer :input)
-  (tau (* :complex-double-float) :workspace-output)
+  (tau (* :complex-double-float) :input)
   (work (* :complex-double-float) :workspace-output)
   (lwork :integer :input)
   (info :integer :output))
@@ -1145,7 +1153,214 @@
   (k :integer :input)
   (a (* :double-float) :input-output)
   (lda :integer :input)
+  (tau (* :double-float) :input)
+  (work (* :double-float) :workspace-output)
+  (lwork :integer :input)
+  (info :integer :output))
+
+(def-fortran-routine dgeqp3 :void
+"
+      SUBROUTINE DGEQP3( M, N, A, LDA, JPVT, TAU, WORK, LWORK, INFO )
+ 
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+      .. Scalar Arguments ..
+      INTEGER            INFO, LDA, LWORK, M, N
+      ..
+      .. Array Arguments ..
+      INTEGER            JPVT( * )
+      DOUBLE PRECISION   A( LDA, * ), TAU( * ), WORK( * )
+      ..
+ 
+   Purpose
+   =======
+ 
+   DGEQP3 computes a QR factorization with column pivoting of a
+   matrix A:  A*P = Q*R  using Level 3 BLAS.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+ 	   The number of rows of the matrix A. M >= 0.
+ 
+   N       (input) INTEGER
+ 	   The number of columns of the matrix A.  N >= 0.
+ 
+   A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+ 	   On entry, the M-by-N matrix A.
+ 	   On exit, the upper triangle of the array contains the
+ 	   min(M,N)-by-N upper trapezoidal matrix R; the elements below
+ 	   the diagonal, together with the array TAU, represent the
+ 	   orthogonal matrix Q as a product of min(M,N) elementary
+ 	   reflectors.
+ 
+   LDA     (input) INTEGER
+ 	   The leading dimension of the array A. LDA >= max(1,M).
+ 
+   JPVT    (input/output) INTEGER array, dimension (N)
+ 	   On entry, if JPVT(J).ne.0, the J-th column of A is permuted
+ 	   to the front of A*P (a leading column); if JPVT(J)=0,
+ 	   the J-th column of A is a free column.
+ 	   On exit, if JPVT(J)=K, then the J-th column of A*P was the
+ 	   the K-th column of A.
+ 
+   TAU     (output) DOUBLE PRECISION array, dimension (min(M,N))
+ 	   The scalar factors of the elementary reflectors.
+ 
+   WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+ 	   On exit, if INFO=0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+ 	   The dimension of the array WORK. LWORK >= 3*N+1.
+ 	   For optimal performance LWORK >= 2*N+( N+1 )*NB, where NB
+ 	   is the optimal blocksize.
+ 
+ 	   If LWORK = -1, then a workspace query is assumed; the routine
+ 	   only calculates the optimal size of the WORK array, returns
+ 	   this value as the first entry of the WORK array, and no error
+ 	   message related to LWORK is issued by XERBLA.
+ 
+   INFO    (output) INTEGER
+ 	   = 0: successful exit.
+ 	   < 0: if INFO = -i, the i-th argument had an illegal value.
+ 
+   Further Details
+   ===============
+ 
+   The matrix Q is represented as a product of elementary reflectors
+ 
+      Q = H(1) H(2) . . . H(k), where k = min(m,n).
+ 
+   Each H(i) has the form
+ 
+      H(i) = I - tau * v * v'
+ 
+   where tau is a real/complex scalar, and v is a real/complex vector
+   with v(1:i-1) = 0 and v(i) = 1; v(i+1:m) is stored on exit in
+   A(i+1:m,i), and tau in TAU(i).
+ 
+   Based on contributions by
+     G. Quintana-Orti, Depto. de Informatica, Universidad Jaime I, Spain
+     X. Sun, Computer Science Dept., Duke University, USA
+" 
+
+  (m :integer :input)
+  (n :integer :input)
+  (a (* :double-float) :input-output)
+  (lda :integer :input)
+  (jpvt (* :integer) :input-output)
   (tau (* :double-float) :workspace-output)
   (work (* :double-float) :workspace-output)
   (lwork :integer :input)
+  (info :integer :output))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def-fortran-routine zgeqp3 :void
+  "
+      SUBROUTINE ZGEQP3( M, N, A, LDA, JPVT, TAU, WORK, LWORK, RWORK,
+     $                   INFO )
+ 
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+      .. Scalar Arguments ..
+      INTEGER            INFO, LDA, LWORK, M, N
+      ..
+      .. Array Arguments ..
+      INTEGER            JPVT( * )
+      DOUBLE PRECISION   RWORK( * )
+      COMPLEX*16         A( LDA, * ), TAU( * ), WORK( * )
+      ..
+ 
+   Purpose
+   =======
+ 
+   ZGEQP3 computes a QR factorization with column pivoting of a
+   matrix A:  A*P = Q*R  using Level 3 BLAS.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+ 	   The number of rows of the matrix A. M >= 0.
+ 
+   N       (input) INTEGER
+ 	   The number of columns of the matrix A.  N >= 0.
+ 
+   A       (input/output) COMPLEX*16 array, dimension (LDA,N)
+ 	   On entry, the M-by-N matrix A.
+ 	   On exit, the upper triangle of the array contains the
+ 	   min(M,N)-by-N upper trapezoidal matrix R; the elements below
+ 	   the diagonal, together with the array TAU, represent the
+ 	   unitary matrix Q as a product of min(M,N) elementary
+ 	   reflectors.
+ 
+   LDA     (input) INTEGER
+ 	   The leading dimension of the array A. LDA >= max(1,M).
+ 
+   JPVT    (input/output) INTEGER array, dimension (N)
+ 	   On entry, if JPVT(J).ne.0, the J-th column of A is permuted
+ 	   to the front of A*P (a leading column); if JPVT(J)=0,
+ 	   the J-th column of A is a free column.
+ 	   On exit, if JPVT(J)=K, then the J-th column of A*P was the
+ 	   the K-th column of A.
+ 
+   TAU     (output) COMPLEX*16 array, dimension (min(M,N))
+ 	   The scalar factors of the elementary reflectors.
+ 
+   WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+ 	   On exit, if INFO=0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+ 	   The dimension of the array WORK. LWORK >= N+1.
+ 	   For optimal performance LWORK >= ( N+1 )*NB, where NB
+ 	   is the optimal blocksize.
+ 
+ 	   If LWORK = -1, then a workspace query is assumed; the routine
+ 	   only calculates the optimal size of the WORK array, returns
+ 	   this value as the first entry of the WORK array, and no error
+ 	   message related to LWORK is issued by XERBLA.
+ 
+   RWORK   (workspace) DOUBLE PRECISION array, dimension (2*N)
+ 
+   INFO    (output) INTEGER
+ 	   = 0: successful exit.
+ 	   < 0: if INFO = -i, the i-th argument had an illegal value.
+ 
+   Further Details
+   ===============
+ 
+   The matrix Q is represented as a product of elementary reflectors
+ 
+      Q = H(1) H(2) . . . H(k), where k = min(m,n).
+ 
+   Each H(i) has the form
+ 
+      H(i) = I - tau * v * v'
+ 
+   where tau is a real/complex scalar, and v is a real/complex vector
+   with v(1:i-1) = 0 and v(i) = 1; v(i+1:m) is stored on exit in
+   A(i+1:m,i), and tau in TAU(i).
+ 
+   Based on contributions by
+     G. Quintana-Orti, Depto. de Informatica, Universidad Jaime I, Spain
+     X. Sun, Computer Science Dept., Duke University, USA
+"
+  (m :integer :input)
+  (n :integer :input)
+  (a (* :complex-double-float) :input-output)
+  (lda :integer :input)
+  (jpvt (* :integer) :input-output)
+  (tau (* :complex-double-float) :workspace-output)
+  (work (* :complex-double-float) :workspace-output)
+  (lwork :integer :input)
+  (rwork (* :double-float) :workspace-output)
   (info :integer :output))

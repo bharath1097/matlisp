@@ -26,9 +26,17 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.7 2001/04/28 13:28:51 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.8 2001/10/29 18:00:28 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.8  2001/10/29 18:00:28  rtoy
+# Updates from M. Koerber to support QR routines with column pivoting:
+#
+# o Add an integer4 type and allocate-integer4-store routine.
+# o Add the necessary Fortran routines
+# o Add Lisp interface to the Fortran routines
+# o Update geqr for the new routines.
+#
 # Revision 1.7  2001/04/28 13:28:51  rtoy
 # Added TOMS 715 (SPECFUN) objects.
 #
@@ -98,6 +106,7 @@ LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dgelq2.o  dlahrd.o  dlasq2.o  dsteqr.o	 zgeev.o   zlange.o  zung2r.o \
 	dgelqf.o  dlaln2.o  dlasq3.o  dsterf.o	 zgehd2.o  zlanhe.o  zungbr.o \
 	dgelss.o  dlasq4.o  dsyev.o   zgehrd.o   zlanhs.o  zunghr.o \
+	dgeqp3.o  dlaqp2.o  dlaqps.o  zgeqp3.o   zlaqp2.o  zlaqps.o \
 	dgeqpf.o  dlasr.o   dsytd2.o  zgelq2.o   zlarf.o   zungl2.o \
 	dgeqr2.o  dlasrt.o  dsytrd.o  zgelqf.o   zlarfb.o  zunglq.o \
 	dgeqrf.o  dlassq.o  dtrevc.o  zgelss.o   zlarfg.o  zungql.o \

@@ -30,9 +30,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.9 2001/06/22 12:51:49 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.10 2001/10/29 18:00:28 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.10  2001/10/29 18:00:28  rtoy
+;;; Updates from M. Koerber to support QR routines with column pivoting:
+;;;
+;;; o Add an integer4 type and allocate-integer4-store routine.
+;;; o Add the necessary Fortran routines
+;;; o Add Lisp interface to the Fortran routines
+;;; o Update geqr for the new routines.
+;;;
 ;;; Revision 1.9  2001/06/22 12:51:49  rtoy
 ;;; o Added ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE functions to
 ;;;   allocate appropriately sized arrays for holding real and complex
@@ -112,6 +120,9 @@
 	  make-complex-matrix))
 
 (eval-when (load eval compile)
+(deftype integer4-matrix-element-type ()
+  '(signed-byte 32))
+
 (deftype real-matrix-element-type () 
   "The type of the elements stored in a REAL-MATRIX"
   'double-float)
@@ -482,6 +493,14 @@ don't know how to coerce COMPLEX to REAL"))
 matrix and a number"))
 
 ;; Allocate an array suitable for the store part of a real matrix.
+
+(declaim (inline allocate-integer4-store))
+(defun allocate-integer4-store (size &optional (initial-element 0))
+  "(ALLOCATE-INTEGER-STORE SIZE [INITIAL-ELEMENT]).  Allocates
+integer storage.  Default INITIAL-ELEMENT = 0."
+  (make-array size
+	      :element-type 'integer4-matrix-element-type
+	      :initial-element initial-element))
 
 (declaim (inline allocate-real-store))
 (defun allocate-real-store (size &optional (initial-element 0))
