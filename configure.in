@@ -32,11 +32,20 @@ dnl For example:
 dnl
 dnl          autoconf configure.in > configure
 dnl
+dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.8 2001/04/26 13:43:33 rtoy Exp $
+dnl $Id: configure.in,v 1.9 2001/06/06 14:24:22 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.9  2001/06/06 14:24:22  rtoy
+dnl Update to autoconf 2.50 and add tests
+dnl o Check that -c and -o are supported by the Fortran compiler
+dnl o Check the Fortran name mangling.  We give up if it doesn't match our
+dnl   current assumptions of lower case, underscore, and no extra
+dnl   underscore.  (Should probably communicate this info to lisp so we
+dnl   can support this type of mangling.)
+dnl
 dnl Revision 1.8  2001/04/26 13:43:33  rtoy
 dnl o ATLAS_DIR variable needs to contain the -L flag.  Otherwise, we get
 dnl   a dangling -L option if we're not using ATLAS.
@@ -186,8 +195,9 @@ AC_LANG_FORTRAN77
 
 dnl
 dnl	We need -c and -o supported by the Fortran compiler
-dnl
-dnl AC_PROG_F77_C_O
+dnl     (Available in autoconf 2.49d or later?)
+AC_PROG_F77_C_O
+
 dnl     Determine a Fortran 77 compiler to use.  If `F77' is not already
 dnl     set in the environment, check for `g77', `f77' and `f2c', in that
 dnl     order.  Set the output variable `F77' to the name of the compiler
@@ -228,10 +238,13 @@ dnl
 dnl	Figure out what the Fortran name mangling is
 dnl
 dnl This is only for autoconf 2.49d or later!
-dnl AC_F77_FUNC(foo,[mangle_foo])
-
-dnl echo mangle_foo = $mangle_foo
-
+AC_F77_FUNC(foo_name)
+if test "$ac_cv_f77_mangling" != "lower case, underscore, no extra underscore" ; then
+  AC_MSG_WARN([F77 name mangling doesn't match our expectations.])
+  AC_MSG_WARN([You may need to change some the FFI code.])
+fi 
+dnl Make sure it matches our expectations
+  	
 dnl End autoconf 2.49d stuff
 
 # Determine the argument given to ld to make shared libraries.
@@ -272,7 +285,3 @@ AC_SUBST(ATLAS_LIBS)
 AC_SUBST(srcdir)
 
 AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp)
-
-
-
-
