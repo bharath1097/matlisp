@@ -471,7 +471,7 @@ Compute the function exp(-x)*Ei(x), x real.
 	       (assert (= ncalc n) nil
 		       "Could not compute all values to desired precision"))
 	     result)))))
-  (frob bessel-series-i)
-  (frob bessel-series-j)
-  (frob bessel-series-k)
-  (frob bessel-series-y))
+  (frob m-bessel-series-i)
+  (frob m-bessel-series-j)
+  (frob m-bessel-series-k)
+  (frob m-bessel-series-y))
