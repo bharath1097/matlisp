@@ -5,6 +5,7 @@
 ;;;           (:array-slicing t))
 
 
+(in-package "QUADPACK")
 (use-package :f2cl)
 
 (defun xerror (messg nmessg nerr level)

@@ -4,7 +4,7 @@
 ;;;           (:coerce-assigns :as-needed) (:array-type 'simple-array)
 ;;;           (:array-slicing t))
 
-
+(in-package "QUADPACK")
 (use-package :f2cl)
 
 (let ((wg (make-array 13 :element-type 'double-float))

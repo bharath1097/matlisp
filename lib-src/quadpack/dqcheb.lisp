@@ -4,7 +4,7 @@
 ;;;           (:coerce-assigns :as-needed) (:array-type 'simple-array)
 ;;;           (:array-slicing t))
 
-
+(in-package "QUADPACK")
 (use-package :f2cl)
 
 (defun dqcheb (x fval cheb12 cheb24)
