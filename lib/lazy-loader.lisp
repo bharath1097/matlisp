@@ -28,14 +28,17 @@
 ;;;
 ;;;  This file is used to generate 'lazy-loader.lisp'.  Essentially, when
 ;;;  the 'configure' script is executed the tokens in this file,
-;;;  e.g.  -L/usr/ccs/lib -L/usr/lib -L/usr/sww/pkg/gcc-2.95.2/lib/gcc-lib/sparc-sun-solaris2.6/2.95.2 -L/usr/ccs/bin -L/usr/ccs/lib -L/usr/sww/pkg/gcc-2.95.2/lib -lg2c -lm -R /usr/sww/pkg/gcc-2.95.2/lib:/usr/sww/lib -lm, get substituted with the appropriate machine specific
+;;;  e.g. FLIBS, get substituted with the appropriate machine specific
 ;;;  parameters and the resulting file is saved in 'lazy-loader.lisp'.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp,v 1.1 2000/07/11 02:09:52 simsek Exp $
+;;; $Id: lazy-loader.lisp,v 1.2 2000/07/11 02:51:15 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp,v $
+;;; Revision 1.2  2000/07/11 02:51:15  simsek
+;;; *** empty log message ***
+;;;
 ;;; Revision 1.1  2000/07/11 02:09:52  simsek
 ;;; *** empty log message ***
 ;;;

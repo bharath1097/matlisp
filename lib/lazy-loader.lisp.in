@@ -28,14 +28,17 @@
 ;;;
 ;;;  This file is used to generate 'lazy-loader.lisp'.  Essentially, when
 ;;;  the 'configure' script is executed the tokens in this file,
-;;;  e.g. @FLIBS@, get substituted with the appropriate machine specific
+;;;  e.g. FLIBS, get substituted with the appropriate machine specific
 ;;;  parameters and the resulting file is saved in 'lazy-loader.lisp'.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.3 2000/07/11 02:08:19 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.4 2000/07/11 02:49:55 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.4  2000/07/11 02:49:55  simsek
+;;; *** empty log message ***
+;;;
 ;;; Revision 1.3  2000/07/11 02:08:19  simsek
 ;;; Added support for Allegro CL
 ;;;
