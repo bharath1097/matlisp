@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.7 2003/02/14 05:42:12 rtoy Exp $
+;;; $Id: copy.lisp,v 1.8 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.8  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.7  2003/02/14 05:42:12  rtoy
 ;;; Undo previous change.  We really need the 1x1-complex-array for
 ;;; Allegro because we don't (currently) pass in complex double-floats as
@@ -209,6 +213,7 @@ don't know how to coerce a COMPLEX to a REAL"))
 	 y))
 
 (defmethod copy! ((x #+:cmu kernel::complex-double-float
+                     #+:sbcl sb-kernel::complex-double-float
 		     #+:allegro complex) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
 

@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: norm.lisp,v 1.6 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: norm.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: norm.lisp,v $
+;;; Revision 1.7  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.6  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -117,7 +121,7 @@
   (declare (ignore p))
   (abs a))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod norm ((a real-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))
@@ -266,7 +270,7 @@
 ;;
 ;; in either case, the doc for this function should be better defined.
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod norm ((a complex-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))

@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.10 2003/05/31 05:19:17 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.11 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.11  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.10  2003/05/31 05:19:17  rtoy
 ;;; Was missing a paren.
 ;;;
@@ -76,6 +80,7 @@
 #+nil
 (defpackage "LAPACK"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
 "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"

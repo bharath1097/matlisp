@@ -35,9 +35,13 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.13 2004/03/17 03:38:41 simsek Exp $
+dnl $Id: configure.in,v 1.14 2004/05/24 16:34:21 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.14  2004/05/24 16:34:21  rtoy
+dnl More SBCL support from Robert Sedgewick.  The previous SBCL support
+dnl was incomplete.
+dnl
 dnl Revision 1.13  2004/03/17 03:38:41  simsek
 dnl Adding support for MinGW on windows
 dnl
@@ -135,8 +139,13 @@ case $LISPSYS in
     LISPEVAL='-noinit -eval'
     LISPEXEC=lisp
     ;;
+  sbcl)
+    # Don't run the user's init function!
+    LISPEVAL='--sysinit /dev/null --userinit /dev/null --eval'
+    LISPEXEC=sbcl
+    ;;
   *)
-     AC_MSG_ERROR([Unknown Lisp system:  $LISPSYS.  Supported systems are acl and cmucl])
+     AC_MSG_ERROR([Unknown Lisp system:  $LISPSYS.  Supported systems are acl, sbcl and cmucl])
      ;;
 esac
 ])
@@ -309,6 +318,12 @@ case "$host" in
 	SHARED_LIB_LDFLAGS="-shared"
 	MATLIB="libmatlisp.so"
   	;;
+  *-*-darwin*)
+        LD="ld"
+        FLIBS="-L/sw/lib -lf2c -lSystem -lcc_dynamic /usr/lib/bundle1.o"
+#        SHARED_LIB_LDFLAGS="-dynamiclib -flat_namespace -undefined suppress"
+        SHARED_LIB_LDFLAGS="-bundle -flat_namespace -undefined suppress"
+        ;;
   *-*-cygwin32)
 	AC_MSG_WARN([Configure has detected that you are compiling])
 	AC_MSG_WARN([for Cygwin.  We hope that you have a fairly])
@@ -320,7 +335,7 @@ case "$host" in
 	MATLIB="libmatlisp.dll"
 	;;
   *)
-	AC_MSG_WARN([Oops! Matlisp is tested on Solaris, SunOS or Linux])
+	AC_MSG_WARN([Oops! Matlisp is tested on Solaris, SunOS, Darwin or Linux])
 	AC_MSG_WARN([Matlisp may not compile on your system $host.])
 	LD="ld"
 	SHARED_LIB_LDFLAGS="-G"

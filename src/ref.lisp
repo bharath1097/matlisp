@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.9 2004/02/20 18:08:12 rtoy Exp $
+;;; $Id: ref.lisp,v 1.10 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.10  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.9  2004/02/20 18:08:12  rtoy
 ;;; Fix a few compiler warnings and notes.
 ;;;
@@ -1551,6 +1555,7 @@
     (complex (aref store (fortran-complex-matrix-indexing i j n))
 	     (aref store (1+ (fortran-complex-matrix-indexing i j n))))))
 
+
 (defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j list))
   (get-complex-matrix-slice-2d-seq matrix (list i) j))
 
@@ -2484,6 +2489,7 @@
   
 #+nil
 (defmethod (setf matrix-ref) ((new #+:cmu kernel::complex-double-float
+                                   #+:sbcl sb-kernel::complex-double-float
 				   #+:allegro complex) 
 			      (matrix complex-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
@@ -2572,6 +2578,7 @@
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
 (defmethod (setf matrix-ref-1d) ((new #+:cmu kernel::complex-double-float
+                                      #+:sbcl sb-kernel::complex-double-float
 				      #+:allegro complex) 
 				 (matrix complex-matrix) i)
   (let* ((n (nrows matrix))
@@ -2614,6 +2621,7 @@
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
 (defmethod (setf matrix-ref-2d) ((new #+:cmu kernel::complex-double-float
+                                      #+:sbcl sb-kernel::complex-double-float
 				      #+:allegro complex) 
 				 (matrix complex-matrix) i j)
   (let* ((n (nrows matrix))

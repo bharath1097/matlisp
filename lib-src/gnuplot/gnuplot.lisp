@@ -20,9 +20,17 @@
     :accessor gnuplot-z-data)))
 
 (defun open-gnuplot-stream ()
-  (ext:run-program *gnuplot-binary* nil :input :stream :wait nil :output t))
+  (#-:sbcl
+   ext:run-program
+   #+:sbcl
+   sb-ext:run-program
+   *gnuplot-binary* nil :input :stream :wait nil :output t))
 
-(defun gnuplot-plot (info &key (stream (ext:process-input *current-gnuplot-stream*)))
+(defun gnuplot-plot (info &key (stream (#-:sbcl
+                                        ext:process-input
+                                        #+:sbcl
+                                        sb-ext:process-input
+                                        *current-gnuplot-stream*)))
   (with-accessors ((title gnuplot-title)
 		   (x-label gnuplot-x-label)
 		   (y-label gnuplot-y-label)

@@ -5,6 +5,8 @@
 ;;;           (:array-slicing t) (:declare-common nil)
 ;;;           (:float-format single-float))
 
+(in-package :matlisp-lib)
+
 (defun zeroin (ax bx f tol)
   (declare (type double-float tol f bx ax)
    (type (function (double-float) (values double-float &rest t)) f))

@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.6 2002/07/29 00:29:36 rtoy Exp $
+;;; $Id: diag.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.7  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.6  2002/07/29 00:29:36  rtoy
 ;;; Don't use *1x1-real-array*
 ;;;
@@ -203,6 +207,7 @@ don't know how to coerce COMPLEX to REAL"
     mat))
 
 (defmethod (setf diag) ((new-diag #+:cmu kernel::complex-double-float
+                                  #+:sbcl sb-kernel::complex-double-float
 				  #+:allegro complex) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))

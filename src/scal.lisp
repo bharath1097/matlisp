@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: scal.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: scal.lisp,v 1.5 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: scal.lisp,v $
+;;; Revision 1.5  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -110,6 +114,7 @@
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro complex) (x real-matrix))
   (let* ((nxm (number-of-elements x))
 	 (n (nrows x))
@@ -126,7 +131,7 @@
 
     result))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod scal ((alpha complex) (x real-matrix))
   (scal (complex-coerce alpha) x))
 
@@ -142,6 +147,7 @@
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro complex) (x complex-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
@@ -155,7 +161,7 @@
 
     result))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod scal ((alpha complex) (x complex-matrix))
   (scal (complex-coerce alpha) x))
 
@@ -189,6 +195,7 @@ how to coerce COMPLEX to REAL"))
   (scal! (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal! ((alpha #+:cmu kernel::complex-double-float
+                         #+:sbcl sb-kernel::complex-double-float
 			 #+:allegro complex) (x complex-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
@@ -201,7 +208,7 @@ how to coerce COMPLEX to REAL"))
 
     x))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod scal! ((alpha complex) (x complex-matrix))
   (scal! (complex-coerce alpha) x))
 

@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: realimag.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: realimag.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: realimag.lisp,v $
+;;; Revision 1.6  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.5  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -128,7 +132,7 @@ its element types are unknown"))
     (declare (type fixnum n m))
     (make-real-matrix-dim n m)))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))

@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dfftpack.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: dfftpack.lisp,v 1.5 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: dfftpack.lisp,v $
+;;; Revision 1.5  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -52,6 +56,7 @@
 #+nil
 (defpackage "DFFTPACK"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))
 

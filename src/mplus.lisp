@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mplus.lisp,v 1.5 2002/07/29 01:06:59 rtoy Exp $
+;;; $Id: mplus.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: mplus.lisp,v $
+;;; Revision 1.6  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.5  2002/07/29 01:06:59  rtoy
 ;;; Don't use *1x1-real-array*.
 ;;;
@@ -165,6 +169,7 @@
   (m+ b (coerce a 'real-matrix-element-type)))
 
 (defmethod m+ ((a real-matrix) (b #+:cmu kernel::complex-double-float
+                                  #+:sbcl sb-kernel::complex-double-float
 				  #+:allegro complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
@@ -174,15 +179,16 @@
 
     (axpy! 1.0d0 a result)))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+ ((a real-matrix) (b complex))
   (m+ a (complex-coerce b)))
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
+                  #+:sbcl sb-kernel::complex-double-float
 		  #+:allegro complex) (b real-matrix))
   (m+ b a))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+ ((a complex) (b real-matrix))
   (m+ b (complex-coerce a)))
 
@@ -207,6 +213,7 @@
   (m+ b (coerce a 'complex-matrix-element-type)))
 
 (defmethod m+ ((a complex-matrix) (b #+:cmu kernel::complex-double-float
+                                     #+:sbcl sb-kernel::complex-double-float
 				     #+:allegro complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
@@ -216,15 +223,16 @@
 
     (axpy! 1.0d0 a result)))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+ ((a complex-matrix) (b complex))
   (m+ a (complex-coerce b)))
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
+                  #+:sbcl sb-kernel::complex-double-float
 		  #+:allegro complex) (b complex-matrix))
   (m+ b a))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+ ((a complex) (b complex-matrix))
   (m+ b (complex-coerce a)))
 
@@ -293,11 +301,18 @@ don't know how to coerce COMPLEX to REAL"))
 (defmethod m+! ((a real) (b complex-matrix))
   (m+! b (coerce a 'complex-matrix-element-type)))
 
+#-:sbcl  ;; sbcl doesn't like constant arrays
 (defconstant *complex-unity-as-array* 
   (make-array 2 :element-type 'complex-matrix-element-type
 	      :initial-contents '(1.0d0 0.0d0)))
 
+#+:sbcl
+(defvar *complex-unity-as-array* 
+  (make-array 2 :element-type 'complex-matrix-element-type
+	      :initial-contents '(1.0d0 0.0d0)))
+
 (defmethod m+! ((a complex-matrix) (b #+:cmu kernel::complex-double-float
+                                      #+:sbcl sb-kernel::complex-double-float
 				      #+:allegro complex))
   (let* ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
@@ -309,15 +324,16 @@ don't know how to coerce COMPLEX to REAL"))
     (zaxpy nxm #c(1d0 0) b 0 (store a) 1)
     a))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+! ((a complex-matrix) (b complex))
   (m+! a (complex-coerce b)))
 
 (defmethod m+! ((a #+:cmu kernel::complex-double-float
+                   #+:sbcl sb-kernel::complex-double-float
 		   #+:allegro complex) (b complex-matrix))
   (m+! b a))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod m+! ((a complex) (b complex-matrix))
   (m+! b (complex-coerce a)))
 

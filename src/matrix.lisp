@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.13 2003/05/31 22:20:26 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.14 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.14  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.13  2003/05/31 22:20:26  rtoy
 ;;; o Add some support for CMUCL with Gerd's PCL so we can inline
 ;;;   accessors and such for the matrix classes.
@@ -242,7 +246,7 @@ parts in successive elements of the matrix because Fortran stores them
 that way.
 "))
 
-#+(and cmu gerds-pcl)
+#+(and (or cmu sbcl) gerds-pcl)
 (declaim (ext:slots (slot-boundp real-matrix complex-matrix)
 		    (inline standard-matrix real-matrix complex-matrix)))
 

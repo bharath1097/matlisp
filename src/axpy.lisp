@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: axpy.lisp,v 1.6 2003/02/14 05:42:11 rtoy Exp $
+;;; $Id: axpy.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: axpy.lisp,v $
+;;; Revision 1.7  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.6  2003/02/14 05:42:11  rtoy
 ;;; Undo previous change.  We really need the 1x1-complex-array for
 ;;; Allegro because we don't (currently) pass in complex double-floats as
@@ -179,6 +183,7 @@
 
 
 (defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro complex) (x real-matrix) (y complex-matrix))
   (let* ((nxm (number-of-elements y))
 	 (n (nrows y))
@@ -201,11 +206,12 @@
 
     result))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod axpy ((alpha complex) (x real-matrix) (y complex-matrix))
   (axpy (complex-coerce alpha) x y))
 
 (defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro complex) (x complex-matrix) (y real-matrix))
   (let* ((nxm (number-of-elements y))
 	 (result (copy x))
@@ -222,11 +228,12 @@
     
     result))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod axpy ((alpha complex) (x complex-matrix) (y real-matrix))
   (axpy (complex-coerce alpha) x y))
 
 (defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro complex) (x complex-matrix) (y complex-matrix))
   (let ((nxm (number-of-elements y))
 	(result (copy y)))
@@ -240,7 +247,7 @@
     (zaxpy nxm *1x1-complex-array* (store x) 1 (store result) 1)
     result))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod axpy ((alpha complex) (x complex-matrix) (y complex-matrix))
   (axpy (complex-coerce alpha) x y))
 
@@ -288,8 +295,11 @@ don't know how to coerce COMPLEX to REAL"))
 (defmethod axpy! ((alpha real) (x complex-matrix) (y complex-matrix))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
-#+:cmu
-(defmethod axpy! ((alpha kernel::complex-double-float) (x real-matrix) (y complex-matrix))
+#+(or :cmu :sbcl)
+(defmethod axpy! ((alpha #+:cmu kernel::complex-double-float
+                         #+:sbcl sb-kernel::complex-double-float)
+                  (x real-matrix)
+                  (y complex-matrix))
   (let* ((nxm (number-of-elements y))
 	 (store-x (store x))
 	 (store-y (store y))
@@ -308,7 +318,7 @@ don't know how to coerce COMPLEX to REAL"))
 
     y))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod axpy! ((alpha complex) (x real-matrix) (y complex-matrix))
   (axpy! (complex-coerce alpha) x y))
 
@@ -327,6 +337,7 @@ don't know how to coerce COMPLEX to REAL"))
     y))
 
 (defmethod axpy! ((alpha #+:cmu kernel::complex-double-float
+                         #+:sbcl sb-kernel::complex-double-float
 			 #+:allegro complex) (x complex-matrix) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
@@ -338,7 +349,7 @@ don't know how to coerce COMPLEX to REAL"))
     (zaxpy nxm *1x1-complex-array* (store x) 1 (store y) 1)
     y))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod axpy! ((alpha complex) (x complex-matrix) (y complex-matrix))
   (axpy! (complex-coerce alpha) x y))
 

@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dot.lisp,v 1.5 2002/07/28 14:59:31 rtoy Exp $
+;;; $Id: dot.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: dot.lisp,v $
+;;; Revision 1.6  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.5  2002/07/28 14:59:31  rtoy
 ;;; Clean up method dot for complex matrices.
 ;;;
@@ -122,7 +126,7 @@
     (declare (type fixnum nxm))
     (ddot nxm (store x) 1 (store y) 1)))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
   (let ((nxm (number-of-elements x))
@@ -175,7 +179,7 @@
 	(complex realpart imagpart))
       )))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
   (let ((nxm (number-of-elements x))
 	(store-x (store x))

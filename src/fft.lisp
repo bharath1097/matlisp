@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.10 2004/04/07 18:01:55 rtoy Exp $
+;;; $Id: fft.lisp,v 1.11 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.11  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.10  2004/04/07 18:01:55  rtoy
 ;;; IFFT! was not scaling the result by 1/n.
 ;;;
@@ -218,7 +222,7 @@
 		 (format t "Key = ~D, Val = ~A~%" key val))
 	     wsave-hash-table))))
 
-#+:cmu  
+#+(or :cmu :sbcl)  
 (defmethod fft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
@@ -286,7 +290,7 @@
       result))
 
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod ifft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
@@ -370,7 +374,7 @@
   (:documentation "See IFFT but note that the optional N is NOT permitted.
   Performs in place IFFT modifying X.  This will only work for a complex matrix."))
 
-#+:cmu  
+#+(or :cmu :sbcl)  
 (defmethod fft! ((x complex-matrix))
   (let* ((n (if (row-or-col-vector-p x)
 		(max (nrows x) (ncols x))
@@ -390,7 +394,7 @@
 	    (dfftpack::fortran-zfftf n addr-x addr-wsave))))))
 
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod ifft! ((x complex-matrix))
   (let* ((n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))

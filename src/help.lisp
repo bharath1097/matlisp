@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: help.lisp,v 1.3 2001/02/21 19:38:01 simsek Exp $
+;;; $Id: help.lisp,v 1.4 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: help.lisp,v $
+;;; Revision 1.4  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.3  2001/02/21 19:38:01  simsek
 ;;; o Shortened print width and changed message
 ;;;
@@ -65,8 +69,8 @@
   To provide a specialized manual for a function, class etc ...
   you may add a method to MAN.  See MAN.
 "
-  `(if ,item-p
-      (let ((item ',item))
+  (if item-p
+      `(let ((item ',item))
 	(typecase item
 	  (symbol (man item))
 	  (list (if (eq (first item) 'quote)
@@ -76,7 +80,7 @@
 	  (t (error "don't know how to help ~a" item)))
 	
 	(values))
-    (progn
+    `(progn
        (format t "~&~%Help is available for the packages")
        (format t   "~%==================================")
        (dolist (p (list-all-packages))

@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.6 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: gemm.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.7  2004/05/24 16:34:22  rtoy
+;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
+;;; was incomplete.
+;;;
 ;;; Revision 1.6  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -182,12 +186,11 @@
 	     (nrows a))))
     (declare (type fixnum n m k))
     (multiple-value-bind (job-a job-b lda ldb)
-	 (case job
+	 (ecase job
           (:NN (values "N" "N"  n k))
 	  (:NT (values "N" "T"  n m))
 	  (:TN (values "T" "N"  k k))
-	  (:TT (values "T" "T"  k m))
-	  (t (values)))
+	  (:TT (values "T" "T"  k m)))
 
 	 (declare (type fixnum lda ldb)
 		  (type (string 1) job-a job-b))
@@ -225,10 +228,12 @@
       (complex-beta (allocate-complex-store 1)))
 
 (defmethod gemm! ((alpha #+:cmu kernel::complex-double-float
+                         #+:sbcl sb-kernel::complex-double-float
 			 #+:allegro number) 
 		  (a complex-matrix) 
 		  (b complex-matrix)
 		  (beta #+:cmu kernel::complex-double-float
+                        #+:sbcl sb-kernel::complex-double-float
 			#+:allegro number) 
 		  (c complex-matrix) 
 		  &optional (job :nn))
@@ -240,12 +245,11 @@
 	     (nrows a))))
     (declare (type fixnum n m k))
     (multiple-value-bind (job-a job-b lda ldb)
-	 (case job
+	 (ecase job
           (:NN (values "N" "N"  n k))
 	  (:NT (values "N" "T"  n m))
 	  (:TN (values "T" "N"  k k))
-	  (:TT (values "T" "T"  k m))
-	  (t (values)))
+	  (:TT (values "T" "T"  k m)))
 
 	 (declare (type fixnum lda ldb)
 		  (type (string 1) job-a job-b))
@@ -275,7 +279,7 @@
 	 c)))
 )
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defmethod gemm! ((alpha number) 
 		  (a complex-matrix) 
 		  (b complex-matrix)
