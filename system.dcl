@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.20 2002/09/30 18:28:52 simsek Exp $
+;;; $Id: system.dcl,v 1.21 2003/06/01 15:21:59 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.21  2003/06/01 15:21:59  rtoy
+;;; Add conditions.lisp to dependencies.
+;;;
 ;;; Revision 1.20  2002/09/30 18:28:52  simsek
 ;;; o Added changes by N.Neuss for getrs functions
 ;;;
@@ -157,7 +160,8 @@
 	:binary-pathname ""
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
-	:components ("matrix"
+	:components ("conditions"
+		     "matrix"
 		     "ref"
 		     "print"
 		     "copy"))
