@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: map.lisp,v 1.6 2000/10/05 17:36:18 simsek Exp $
+;;; $Id: map.lisp,v 1.7 2001/04/28 22:36:39 rtoy Exp $
 ;;;
 ;;; $Log: map.lisp,v $
+;;; Revision 1.7  2001/04/28 22:36:39  rtoy
+;;; Rename dlog10 to real-log10 (to prevent collision with F2CL version).
+;;;
 ;;; Revision 1.6  2000/10/05 17:36:18  simsek
 ;;; o Fixed a typo
 ;;;
@@ -208,8 +211,8 @@
     (let ((result (copy mat)))
 	  (map-matrix! #',(or real-func func-sym) result))))
 
-(proclaim '(inline dlog10))
-(defun dlog10 (x)
+(declaim (inline real-log10))
+(defun real-log10 (x)
   (declare (type double-float x))
   (/ (log x) #.(log 10.0d0)))
 
@@ -225,7 +228,7 @@
 ;;(make-real-mapper sqrt)
 (make-real-mapper exp)
 (make-real-mapper log)
-(make-real-mapper log10 dlog10)
+(make-real-mapper log10 real-log10)
 (make-real-mapper sinh)
 (make-real-mapper cosh)
 (make-real-mapper tanh)
