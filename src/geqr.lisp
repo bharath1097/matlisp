@@ -1,8 +1,11 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ;;;
-;;; $Id: geqr.lisp,v 1.2 2001/10/26 13:37:03 rtoy Exp $
+;;; $Id: geqr.lisp,v 1.3 2001/10/26 15:19:25 rtoy Exp $
 ;;;
 ;;; $Log: geqr.lisp,v $
+;;; Revision 1.3  2001/10/26 15:19:25  rtoy
+;;; Renamed optional SKINNY parameter to ECON.
+;;;
 ;;; Revision 1.2  2001/10/26 13:37:03  rtoy
 ;;; Correctly handle the case when rows > cols and we want the [q1 q2]
 ;;; form.  Fix from M. Koerber.
@@ -15,11 +18,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set up the standard user interface for calling the QR decomposition
-(defun qr! (a &optional (skinny t))
+(defun qr! (a &optional (econ t))
   "
   SYNTAX 
   ======
-  (QR! A [SKINNY])
+  (QR! A [ECON])
 
   PURPOSE
   =======
@@ -30,7 +33,7 @@
          IT AFTER THE CALL."
 
   (cond
-   (skinny
+   (econ
     (geqr! a))
    (t
     ;; Okay ... A [Q1 Q2] form was requested, but this only makes sense
@@ -50,17 +53,19 @@
 	 (join r1 (zeros (- (number-of-rows a) (number-of-cols a))
 			 (number-of-cols a)) :vertical)))))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun qr (a &optional (skinny t))
+(defun qr (a &optional (econ t))
   "
   SYNTAX 
   ======
-  (QR A [SKINNY])
+  (QR A [ECON])
   
   INPUT
   -----
   A       A Matlisp matrix of size M x N
-  SKINNY  T of NIL, Default is T which means return Q1 and R1 only.
+  ECON    Produce the economy size QR decomposition which means return Q1 and R1 only.
+          T or NIL. Default is T.
   
   OUTPUT: (VALUES Q R)
   ------
@@ -74,13 +79,13 @@
   A = [Q1 Q2] * [ R1 ]
                 [ -- ]
                 [ 0  ]
-  When SKINNY == T only Q1 and R1 is return. Otherwise Q and R are returned.
-  Note that when SKINNY == NULL the value of Q2 is taken from the SVD of A;
+  When ECON == T only Q1 and R1 is return. Otherwise Q and R are returned.
+  Note that when ECON == NULL the value of Q2 is taken from the SVD of A;
   this matches the results of OCTAVE and MATLAB.
 "
 
   (cond
-   (skinny
+   (econ
     (geqr! (copy a)))
    (t
     ;; Okay ... A [Q1 Q2] form was requested, but this only makes sense
