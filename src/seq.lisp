@@ -31,9 +31,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: seq.lisp,v 1.4 2002/06/24 18:05:30 rtoy Exp $
+;;; $Id: seq.lisp,v 1.5 2004/12/03 18:01:38 rtoy Exp $
 ;;;
 ;;; $Log: seq.lisp,v $
+;;; Revision 1.5  2004/12/03 18:01:38  rtoy
+;;; We were doing (type-of step) and doing (coerce x type).  But (type-of
+;;; 1) can be (integer 1 1), and that doesn't work so well with coerce.
+;;; So make type be either integer or rational, as appropriate.
+;;;
+;;; But the real question is why we need to do this at all.
+;;;
 ;;; Revision 1.4  2002/06/24 18:05:30  rtoy
 ;;; Modified SEQ to run much faster by pushing the values onto the
 ;;; beginning of the list and reversing the result instead of
@@ -92,16 +99,18 @@
     (setq step 1))
 
   (let ((start (rationalize start))
-	 (type (type-of step))
-	 (step (rationalize step))
-	 (end (rationalize end))
-	 (seq nil))
+	(type (if (typep step 'integer)
+		  'integer
+		  'rational))
+	(step (rationalize step))
+	(end (rationalize end))
+	(seq nil))
 
     (when (zerop step)
       (error "STEP equal to 0"))
     (do ((x start (+ x step)))
 	((if (> step 0)
 	     (> x end)
-	   (< x end))
+	     (< x end))
 	 (nreverse seq))
       (push (coerce x type) seq))))
