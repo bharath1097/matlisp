@@ -5,9 +5,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: quadpack.lisp,v 1.3 2001/02/26 17:43:06 rtoy Exp $
+;;; $Id: quadpack.lisp,v 1.4 2001/02/26 22:56:07 rtoy Exp $
 ;;;
 ;;; $Log: quadpack.lisp,v $
+;;; Revision 1.4  2001/02/26 22:56:07  rtoy
+;;; Add a few more test cases/examples.
+;;;
 ;;; Revision 1.3  2001/02/26 17:43:06  rtoy
 ;;; o Fix typo:  integrate-gnq -> integrate-qng
 ;;; o Add some examples.
@@ -762,7 +765,6 @@ alpha = -0.9 (ier = 3)
 				     (* (expt x alpha)
 					(log (/ x))))
 				 0d0 1d0 :epsrel relerr :limit limit)
-	       (declare (ignorable junk a b epsabs epsrel result abserr neval ier z-limit z-lenw last))
 	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
 		       alpha result abserr neval ier
 		       (soln alpha) (abs-error result (soln alpha)))
@@ -831,5 +833,165 @@ QAG: alpha = -0.9 (ier = 3)
       (do ((alpha 0.2d0 (+ alpha 0.2d0)))
 	  ((> alpha 2.6d0))
 	(quad-qag alpha 1)))))
+
+;; Test 9
+;; integral (1 - x*x)^(-1/2)/(x + 1 + 2^(-alpha))
+;; Solution: pi*((1+2^(-alpha))^2-1)^(-1/2)
+;;
+;; alpha = 1(1)20
+;;
+;; DQAGS, DQAWS
+;;
+;; Failures:
+;; DQAGS: alpha >= 17 (ier = 4 or 5)
+(defun tst9 (&key (limit 200) (relerr 1d-8))
+  (labels ((abs-error (est true)
+	     (abs (- est true)))
+	   (soln (alpha)
+	     (declare (double-float alpha))
+	     (let ((2alpha (expt 2 (- alpha))))
+	       (float (/ pi
+			 (sqrt (* 2alpha (+ 2 2alpha))))
+		      1d0)))
+	   (quad (alpha)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qags #'(lambda (x)
+				     (declare (type (double-float -1d0 1d0) x))
+				     (/ (/ (sqrt (- 1d0 (* x x))))
+					(+ x 1d0 (expt 2d0 (- alpha)))))
+				 -1d0 1d0 :epsrel relerr
+				 :limit limit)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha)))))
+	   (quad-qaws (alpha)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qaws #'(lambda (x)
+				     (declare (type (double-float -1d0 1d0) x))
+				     (/ (float (+ x 1d0 (expt 2d0 (- alpha))) 1d0)))
+				 -1d0 1d0
+				 -0.5d0 -0.5d0 1
+				 :epsrel relerr
+				 :limit limit)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha))))))
+    (format t "Test integral 9:
+
+      1
+     /                                                   alpha      
+     [                  1		            %PI 2	      
+     I    ----------------------------- dx =    ------------------  
+     ]           1                   2	                alpha	      
+     /    (x + ------ + 1) SQRT(1 - x )	        SQRT(2 2      + 1)  
+      - 1       alpha
+               2
+
+
+
+for alpha = 1(1)20
+
+Characteristics: singular integrand factor (and end-points) times
+factor which increases the effect of the singularity as alpha
+increases.
+
+Best integrator: QAWS wider applicable, more efficient and accurate.
+
+Expect non-zero error code for:
+
+ QAGS: alpha >= 17 (ier = 4 or 5)
+~2%")
+    (let ((header
+	   "alpha   est result              est abserr             neval    ier   true answer            true abs err"))
+      (format t "~2&QAGS~%")
+      (format t "~A~%" header)
+      (do ((alpha 1d0 (+ alpha 1d0)))
+	  ((> alpha 20d0))
+	(quad alpha))
+      (format t "~2&QAWS~%")
+      (format t "~A~%" header)
+      (do ((alpha 1d0 (+ alpha 1d0)))
+	  ((> alpha 20d0))
+	(quad-qaws alpha)))))
+
+;; Test 17
+;; Cauchy integral 0 to 5 2^(-alpha)*(((x-1)^2 + 4^(-alpha))*(x-2))^(-1)
+;; Solution: (2^(-alpha)*ln(3/2) - 2^(-alpha-1)*ln((16 + 4^(-alpha))/(1+4^(-alpha))) - atan(2^(alpha +  2)) - atan(2^alpha))/(1 + 4^(-alpha))
+;;
+;; alpha = 0(1)10
+;;
+;; DQAWC
+;;
+;; Failures: none
+(defun tst17 (&key (limit 200) (relerr 1d-8))
+  (labels ((abs-error (est true)
+	     (abs (- est true)))
+	   (soln (alpha)
+	     (declare (type (double-float 0d0) alpha))
+	     (/ (- (* (expt 2 (- alpha))
+		      (log 1.5d0))
+		   (* (expt 2 (- (- alpha) 1))
+		      (log (/ (+ 16 (expt 4 (- alpha)))
+			      (+ 1 (expt 4 (- alpha))))))
+		   (atan (expt 2 (+ alpha 2)))
+		   (atan (expt 2 alpha)))
+		(+ 1 (expt 4 (- alpha)))))
+	   (quad (alpha)
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qawc #'(lambda (x)
+				     (/ (expt 2 (- alpha))
+					(+ (expt (- x 1) 2)
+					   (expt 4 (- alpha)))))
+				 0d0 5d0 2d0
+				 :epsrel relerr
+				 :limit limit)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha))))))
+    (format t "Test integral 17:
+
+Cauchy principal value of
+
+    5
+   /
+   [               1
+   I  --------------------------- dx
+   ]          2     1
+   /  ((x - 1)  + ------) (x - 2)
+    0              alpha
+                  4
+   ---------------------------------
+                 alpha
+                2
+
+
+							       1
+							     ------ + 16       3
+							      alpha         ln(-)
+		 alpha + 2          alpha     - alpha - 1    4                 2
+	 - ATAN(2         ) - ATAN(2     ) - 2            ln(-----------) + ------
+							       1             alpha
+							     ------ + 1     2
+							      alpha
+							     4
+    =    -------------------------------------------------------------------------
+					  1
+					------ + 1
+					 alpha
+					4
+
+for alpha = 0(1)10
+
+Expect no non-zero error codes
+~2%")
+    (let ((header
+	   "alpha   est result              est abserr             neval    ier   true answer            true abs err"))
+      (format t "~2&QAWC~%")
+      (format t "~A~%" header)
+      (do ((alpha 0.0d0 (+ alpha 1d0)))
+	  ((> alpha 10d0))
+	(quad alpha)))))
 
 ||#
