@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.24 2004/05/20 21:41:54 rtoy Exp $
+;;; $Id: system.dcl,v 1.25 2004/05/24 16:38:40 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.25  2004/05/24 16:38:40  rtoy
+;;; Remove unused code.
+;;;
 ;;; Revision 1.24  2004/05/20 21:41:54  rtoy
 ;;; DEFLOGICALPATH is in the MATLISP-START package now.
 ;;;
@@ -378,14 +381,7 @@
 		:binary-pathname ""
 		:depends-on ("f2cl-macros")
 		:components
-		(
-		 #+nil
-		 (:module "quadpack-interface"
-			  :source-pathname "matlisp:src"
-			  :binary-pathname ""
-			  :components
-			  ((:file "quadpack")))
-		 (:module "minpack-lib"
+		((:module "minpack-lib"
 			  :source-pathname "matlisp:lib-src;minpack"
 			  :binary-pathname ""
 			  :package "MINPACK"
