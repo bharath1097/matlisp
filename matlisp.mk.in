@@ -26,9 +26,17 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.1 2000/07/11 02:03:13 simsek Exp $
+# $Id: matlisp.mk.in,v 1.2 2001/03/06 17:54:16 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.2  2001/03/06 17:54:16  rtoy
+# o configure can specify the lisp system, so let's use the config'ed
+#   values.
+# o Added target all as the default target.  We always build the shared
+#   lib version now for ACL and CMUCL.  (But left the static library
+#   rules there.)
+# o For make clean, show the files that are being deleted.
+#
 # Revision 1.1  2000/07/11 02:03:13  simsek
 # o Initial revision
 # o Derived from obsolete Makefile.in
@@ -47,6 +55,8 @@ LD = @LD@
 LDFLAGS = @LDFLAGS@
 AR = ar
 ARFLAGS = rv
+LISPEXEC = @LISPEXEC@
+LISPEVAL = @LISPEVAL@
 
 BLAS_OBJS =  dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o \
 	dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o \
@@ -146,18 +156,17 @@ LAZY_LOADER=$(prefix)/lib/lazy-loader.o
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-shared: $(OBJS)
-	@echo $(LD) $(LDFLAGS) -o $(LIB)shared.so ... many object files ...
-	@$(LD) $(LDFLAGS) -o $(LIB)shared.so $(OBJS) $(FLIBS)
+all : $(LIB)shared.so
+	$(LISPEXEC) $(LISPEVAL) '(progn (load "start.lisp"))'
+
+$(LIB)shared.so: $(OBJS)
+	$(LD) $(LDFLAGS) -o $(LIB)shared.so $(OBJS) $(FLIBS)
 
 static: $(LAZY_LOADER) $(OBJS)
-	@echo $(AR) $(ARFLAGS) ... many object files ... $(LIB)static.a
-	@$(AR) $(ARFLAGS) $(LIB)static.a $(OBJS)
-	
+	$(AR) $(ARFLAGS) $(LIB)static.a $(OBJS)
 
 clean:
-	@echo \rm -f ... many object files ...
-	@\rm -f $(OBJS)
+	\rm -f $(OBJS)
 
 distclean:
 	\rm -f $(LIB)shared.so
