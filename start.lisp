@@ -26,13 +26,10 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;;  If you're a first time user, please browse through the documentation
-;;;  in README and system.dcl before installation. The impatient, however, 
-;;;  may simply:
+;;;  To compile and load MATLISP:
 ;;;
 ;;;      from the shell prompt (this needs to be done only once):
 ;;;
-;;;                 $ ./configure
 ;;;                 $ make
 ;;;
 ;;;      and from within lisp:
@@ -41,14 +38,105 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.1 2000/04/13 20:47:28 simsek Exp $
+;;; $Id: start.lisp,v 1.2 2000/07/11 02:05:48 simsek Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.2  2000/07/11 02:05:48  simsek
+;;; o Added support for Allegro CL
+;;; o Fixed up DEFLOGICALPATH
+;;;
 ;;; Revision 1.1  2000/04/13 20:47:28  simsek
 ;;; o Initial revision.
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(in-package "COMMON-LISP-USER")
 
-(load "system.dcl")
-(matlisp::load-matlisp)
+
+(pushnew :matlisp *features*)
+
+(unintern 'deflogicalpath)
+(defun deflogicalpath (name)
+  "
+  Syntax
+  ======
+  (DEFLOGICALPATH name)
+
+  Purpose
+  =======
+  Defines a reasonable logical pathname translation for NAME, which
+  must be a string.
+  The translations are defined for the directory and subdirectories
+  in which the file that contained the form was loaded.
+"
+  (flet ((default-dir ()
+	     #+:cmu (ext:default-directory)
+	     #+:allegro (user::current-directory)))
+    (flet ((load-pathname ()
+	     (merge-pathnames 
+	      (if *load-pathname* 
+		  (if (subtypep (type-of *load-pathname*) 'logical-pathname)
+		      (let ((pathname 
+			     (namestring
+			      (translate-logical-pathname *load-pathname*))))
+			(make-pathname 
+			 ;; Perhaps we don't need the conditional here,
+			 ;; that is, the :device arg is needed on Allegro/Win
+			 ;; but it may do no harm on Unix/Linux etc ...
+			 #+(and :allegro :mswindows) :device
+			 #+(and :allegro :mswindows) (pathname-device pathname)
+			 :directory (pathname-directory pathname)))
+		    (make-pathname
+		     #+(and :allegro :mswindows) :device
+		     #+(and :allegro :mswindows) (pathname-device *load-pathname*)		       
+		     :directory (pathname-directory *load-pathname*))))
+	      "") (default-dir)))
+
+      #+:cmu
+      (setf (logical-pathname-translations name)
+	    (list (list "**;*.*.*"  
+			(namestring (merge-pathnames "**/*.*.*" (load-pathname))))
+		  (list "*.*.*" "*.*.*")))
+      
+      #+:allegro
+      (setf (logical-pathname-translations name)
+	    (list (list "**;*.*"  
+			(namestring (merge-pathnames "**/*.*" (load-pathname))))
+		  (list "*.*" "*.*")))
+
+      )))
+
+
+(deflogicalpath "matlisp")
+
+(load "matlisp:config")
+(load "matlisp:system.dcl")
+
+(mk::operate-on-system 'matlisp
+		       'load
+		       :minimal-load t
+		       :verbose nil
+		       :compile-during-load 
+		       #+:allegro-cl-lite nil
+		       #-:allegro-cl-lite t)
+
+(format t "
+
+ ** MATLISP is loaded.  Type (HELP MATLISP)
+    to see a list of available symbols.
+    To use matlisp:
+
+          (use-package \"MATLISP\")
+
+    or
+
+          (in-package \"MATLISP\")
+
+ ** The logical pathname matlisp has been
+    set to:
+
+          ~a
+
+"
+	(namestring
+	 (translate-logical-pathname "matlisp:")))
