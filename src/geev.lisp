@@ -30,9 +30,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.5 2001/02/23 13:13:56 rtoy Exp $
+;;; $Id: geev.lisp,v 1.6 2001/02/23 14:04:20 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.6  2001/02/23 14:04:20  rtoy
+;;; The Fortran geev routines allow the user to inquire about the optimum
+;;; size of the work array.  Use that to allocate the appropriate amount
+;;; of space.
+;;;
 ;;; Revision 1.5  2001/02/23 13:13:56  rtoy
 ;;; The length of the work array was half-sized!  (Despite the name,
 ;;; complex-matrix-element-type is not a complex number.  It's just a real
@@ -105,7 +110,7 @@
 
  The left eigenvectors of A are denoted by u(i) where:
 
-                    H                      H
+                     H                      H
                  u(i) * A = lambda(i) * u(i)
 
  In matrix notation:
@@ -213,46 +218,72 @@
     (values-list (nreverse res))))
  
 
+(let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
+      (work (make-array 1 :element-type 'real-matrix-element-type)))
+  (defun dgeev-workspace-inquiry (n job)
+    ;; Ask geev how much space it wants for the work array
+    (multiple-value-bind (jobvl jobvr)
+	(case job
+	  (:nn (values "N" "N"))
+	  ((:vn t) (values "N" "V"))
+	  (:nv (values "V" "N"))
+	  (:vv (values "V" "V")))
+      
+      (multiple-value-bind (store-a store-w store-vl store-vr work info)
+	  (dgeev jobvl
+		 jobvr
+		 n			; N
+		 xxx			; A
+		 n			; LDA
+		 xxx			; W
+		 xxx			; VL
+		 1			; LDVL
+		 xxx			; VR
+		 1			; LDVR
+		 work			; WORK
+		 -1			; LWORK
+		 xxx			; RWORK
+		 0 )			; INFO
+	(declare (ignore store-a store-w store-vl store-vr info))
+	(ceiling (aref work 0)))))
+  )
+
 (defmethod geev ((a real-matrix) &optional (job :NN))
   (let* ((n (nrows a))
 	 (a (copy a))
 	 (xxx (make-array 1 :element-type 'real-matrix-element-type))
 	 (wr (make-array n :element-type 'real-matrix-element-type))
-	 (wi (make-array n :element-type 'real-matrix-element-type)))
+	 (wi (make-array n :element-type 'real-matrix-element-type))
+	 (lwork (dgeev-workspace-inquire n job))
+	 (work (make-array lwork :element-type 'real-matrix-element-type)))
 
     (declare (type fixnum n)
 	     (type (simple-array real-matrix-element-type (*)) xxx wr wi))
 
     (case job
       (:nn
-          (let* ((lwork (* 3 n))
-		 (work (make-array lwork :element-type 'real-matrix-element-type)))
-
-	    (multiple-value-bind (a wr wi vl vr work info)
-		(dgeev "N"       ;; JOBVL
-		       "N"       ;; JOBVR
-		       n         ;; N
-		       (store a) ;; A
-		       n         ;; LDA
-		       wr        ;; WR
-		       wi        ;; WI
-		       xxx        ;; VL
-		       1         ;; LDVL
-		       xxx        ;; VR
-		       1         ;; LDVR
-		       work      ;; WORK
-		       lwork     ;; LWORK
-		       0 )       ;; INFO
-	      (declare (ignore a work))
-	      (if (zerop info)
-		  (geev-fix-up-eigen n wr wi vr vl nil nil)
-		(values nil nil)))))
+       (multiple-value-bind (a wr wi vl vr work info)
+	   (dgeev "N"			; JOBVL
+		  "N"			; JOBVR
+		  n			; N
+		  (store a)		; A
+		  n			; LDA
+		  wr			; WR
+		  wi			; WI
+		  xxx			; VL
+		  1			; LDVL
+		  xxx			; VR
+		  1			; LDVR
+		  work			; WORK
+		  lwork			; LWORK
+		  0 )			; INFO
+	 (declare (ignore a work))
+	 (if (zerop info)
+	     (geev-fix-up-eigen n wr wi vr vl nil nil)
+	     (values nil nil))))
 
       ((:vn t)
-          (let* ((vr (make-array (* n n) :element-type 'real-matrix-element-type))
-		 (lwork (* 4 n))
-		 (work (make-array lwork :element-type 'real-matrix-element-type)))
-
+          (let* ((vr (make-array (* n n) :element-type 'real-matrix-element-type)))
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "N"       ;; JOBVL
 		       "V"       ;; JOBVR
@@ -274,9 +305,7 @@
 		(values nil nil)))))
 
       (:nv
-          (let* ((vl (make-array (* n n) :element-type 'real-matrix-element-type))
-		 (lwork (* 4 n))
-		 (work (make-array lwork :element-type 'real-matrix-element-type)))
+          (let* ((vl (make-array (* n n) :element-type 'real-matrix-element-type)))
 
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "V"       ;; JOBVL
@@ -300,9 +329,7 @@
 
       (:vv
           (let* ((vl (make-array (* n n) :element-type 'real-matrix-element-type))
-		 (vr (make-array (* n n) :element-type 'real-matrix-element-type))
-		 (lwork (* 4 n))
-		 (work (make-array lwork :element-type 'real-matrix-element-type)))
+		 (vr (make-array (* n n) :element-type 'real-matrix-element-type)))
 
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "V"       ;; JOBVL
@@ -328,13 +355,47 @@
       )))
 
 
+(let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
+      (work (make-array 1 :element-type 'real-matrix-element-type)))
+  (defun zgeev-workspace-inquiry (n job)
+    ;; Ask geev how much space it wants for the work array
+    (multiple-value-bind (jobvl jobvr)
+	(case job
+	  (:nn (values "N" "N"))
+	  ((:vn t) (values "N" "V"))
+	  (:nv (values "V" "N"))
+	  (:vv (values "V" "V")))
+      
+      (multiple-value-bind (store-a store-w store-vl store-vr work info)
+	  (zgeev jobvl
+		 jobvr
+		 n			; N
+		 xxx			; A
+		 n			; LDA
+		 xxx			; W
+		 xxx			; VL
+		 1			; LDVL
+		 xxx			; VR
+		 1			; LDVR
+		 work			; WORK
+		 -1			; LWORK
+		 xxx			; RWORK
+		 0 )			; INFO
+	(declare (ignore store-a store-w store-vl store-vr info))
+	;; The desired size in in work[0], which we convert to an
+	;; integer.
+	(ceiling (aref work 0)))))
+  )
+
+;; Hmm, should this really be 4 (5) different methods, one for each
+;; possible value of job?
 
 (defmethod geev ((a complex-matrix) &optional (job :NN))
   (let* ((n (nrows a))
 	 (a (copy a))
 	 (w (make-complex-matrix-dim n 1))
 	 (xxx   (make-array 2 :element-type 'complex-matrix-element-type))
-	 (lwork (* 2 n))
+	 (lwork (zgeev-workspace-inquiry n job))
 	 (work  (make-array (* 2 lwork) :element-type 'complex-matrix-element-type))
 	 (rwork (make-array (* 2 n) :element-type 'real-matrix-element-type)))
 
@@ -344,27 +405,25 @@
 
     (case job
       (:nn
-          (let* ()
-
-	    (multiple-value-bind (store-a store-w store-vl store-vr work info)
-		(zgeev "N"       ;; JOBVL
-		       "N"       ;; JOBVR
-		       n         ;; N
-		       (store a) ;; A
-		       n         ;; LDA
-		       (store w) ;; W
-		       xxx        ;; VL
-		       1         ;; LDVL
-		       xxx        ;; VR
-		       1         ;; LDVR
-		       work      ;; WORK
-		       lwork     ;; LWORK
-		       rwork     ;; RWORK
-		       0 )       ;; INFO
-	      (declare (ignore store-a store-w store-vl store-vr work))
-	      (if (zerop info)
-		  (values  w t)
-		(values nil nil)))))
+	  (multiple-value-bind (store-a store-w store-vl store-vr work info)
+	      (zgeev "N"		; JOBVL
+		     "N"		; JOBVR
+		     n			; N
+		     (store a)		; A
+		     n			; LDA
+		     (store w)		; W
+		     xxx		; VL
+		     1			; LDVL
+		     xxx		; VR
+		     1			; LDVR
+		     work		; WORK
+		     lwork		; LWORK
+		     rwork		; RWORK
+		     0 )		; INFO
+	    (declare (ignore store-a store-w store-vl store-vr work))
+	    (if (zerop info)
+		(values  w t)
+		(values nil nil))))
 
       ((:vn t)
           (let* ((vr (make-complex-matrix-dim n n)))
