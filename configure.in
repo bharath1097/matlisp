@@ -29,9 +29,12 @@ dnl          autoconf configure.in > configure
 dnl
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.1 2000/04/13 20:37:25 simsek Exp $
+dnl $Id: configure.in,v 1.2 2000/07/11 02:16:12 simsek Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.2  2000/07/11 02:16:12  simsek
+dnl o Added support for shared libraries
+dnl
 dnl Revision 1.1  2000/04/13 20:37:25  simsek
 dnl o Created this file to detect machine specific parameters,
 dnl   especially Fortran parameters.
@@ -62,7 +65,6 @@ dnl     Set output variable `RANLIB' to `ranlib' if `ranlib' is found,
 dnl     otherwise to `:' (do nothing).
 AC_PROG_RANLIB
 
-
 dnl     Determine the linker flags (e.g. `-L' and `-l') for the "Fortran
 dnl     77 intrinsic and run-time libraries" that are required to
 dnl     successfully link a Fortran 77 program or shared library.  The
@@ -86,8 +88,31 @@ dnl     `AC_F77_LIBRARY_LDFLAGS' was created to determine these Fortran 77
 dnl     libraries.
 AC_F77_LIBRARY_LDFLAGS
 
+dnl
 dnl     Determine a C compiler to use.
+dnl
 AC_PROG_CC
+
+dnl
+dnl     Determine the argument given to ld to make shared libraries.
+dnl
+case "$host" in
+  *-*-solaris* | *-*-sunos*)
+	FLIBS=`echo $FLIBS | awk -f purgargs.awk`
+	LD="ld"
+	LDFLAGS="-G"
+  	;;  
+  *-*-linux*)
+	LD="ld"
+	LDFLAGS="-shared"
+  	;;
+  *)
+	AC_MSG_WARN([Oops! Matlisp is tested on Solaris, SunOS or Linux])
+	AC_MSG_WARN([Matlisp may not compile on your system $host.])
+	LD="ld"
+	LDFLAGS="-G"
+  	;;
+esac
 
 dnl     The following substitutions will be made in the .in files listed
 dnl     under AC_OUTPUT at the end of this file.
@@ -96,5 +121,11 @@ AC_SUBST(FFLAGS)
 AC_SUBST(FLIBS)
 AC_SUBST(CC)
 AC_SUBST(CLIBS)
+AC_SUBST(LD)
+AC_SUBST(LDFLAGS)
 
-AC_OUTPUT(Makefile lib/lazy-loader.lisp)
+AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp)
+
+
+
+
