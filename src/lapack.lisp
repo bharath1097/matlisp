@@ -26,15 +26,19 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: lapack.lisp,v 1.2 2000/06/19 22:21:45 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.2  2000/06/19 22:21:45  rtoy
+;;; Define packages elsewhere.
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#+nil
 (defpackage "LAPACK"
   (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
   (:export

@@ -31,15 +31,19 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dfftpack.lisp,v 1.1 2000/05/05 21:35:54 simsek Exp $
+;;; $Id: dfftpack.lisp,v 1.2 2000/06/19 22:21:45 rtoy Exp $
 ;;;
 ;;; $Log: dfftpack.lisp,v $
+;;; Revision 1.2  2000/06/19 22:21:45  rtoy
+;;; Define packages elsewhere.
+;;;
 ;;; Revision 1.1  2000/05/05 21:35:54  simsek
 ;;; o Initial revision
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#+nil
 (defpackage "DFFTPACK"
   (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))

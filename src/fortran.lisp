@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fortran.lisp,v 1.12 2000/05/08 15:28:20 rtoy Exp $
+;;; $Id: fortran.lisp,v 1.13 2000/06/19 22:21:45 rtoy Exp $
 ;;;
 ;;; $Log: fortran.lisp,v $
+;;; Revision 1.13  2000/06/19 22:21:45  rtoy
+;;; Define packages elsewhere.
+;;;
 ;;; Revision 1.12  2000/05/08 15:28:20  rtoy
 ;;; Removed the variable capture of hidden-complex-return-value by
 ;;; gensym'ing a new var.
@@ -107,6 +110,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#+nil
 (defpackage "FORTRAN-FFI-ACCESSORS"
   (:use "COMMON-LISP" "ALIEN" "C-CALL")
   (:export
