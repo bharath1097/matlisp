@@ -26,9 +26,12 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.6 2001/04/25 18:04:09 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.7 2001/04/28 13:28:51 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.7  2001/04/28 13:28:51  rtoy
+# Added TOMS 715 (SPECFUN) objects.
+#
 # Revision 1.6  2001/04/25 18:04:09  rtoy
 # o Add some comments
 # o Add cpoly
@@ -159,13 +162,54 @@ DFFTPACK_OBJS = zfftb.o \
 	sint1.o \
 	dsinti.o
 
+# Special functions from TOMS 715
+SPECFUN_OBJS = \
+	anorm.o \
+	besei0.o \
+	besei1.o \
+	besek0.o \
+	besek1.o \
+	besi0.o \
+	besi1.o \
+	besj0.o \
+	besj1.o \
+	besk0.o \
+	besk1.o \
+	besy0.o \
+	besy1.o \
+	calcei.o \
+	calci0.o \
+	calci1.o \
+	calck0.o \
+	calck1.o \
+	calerf.o \
+	caljy0.o \
+	caljy1.o \
+	daw.o \
+	derf.o \
+	derfc.o \
+	derfcx.o \
+	dgamma.o \
+	dlgama.o \
+	dsubn.o \
+	ei.o \
+	eone.o \
+	expei.o \
+	machar.o \
+	psi.o \
+	ribesl.o \
+	rjbesl.o \
+	rkbesl.o \
+	rybesl.o
+
 # The cpoly (polynomial root) package
 CPOLY_OBJS = cpoly.o
 
 OBJS = $(BLAS_OBJS:%=$(srcdir)/LAPACK/BLAS/SRC/%) \
 	$(LAPACK_OBJS:%=$(srcdir)/LAPACK/SRC/%) \
 	$(DFFTPACK_OBJS:%=$(srcdir)/dfftpack/%) \
-	$(CPOLY_OBJS:%=$(srcdir)/lib-src/cpoly/%)
+	$(CPOLY_OBJS:%=$(srcdir)/lib-src/cpoly/%) \
+	$(SPECFUN_OBJS:%=$(srcdir)/lib-src/toms715/%)
 
 MATLIB = $(srcdir)/lib/libmatlisp.so
 LAZY_LOADER=$(srcdir)/lib/lazy-loader.o
