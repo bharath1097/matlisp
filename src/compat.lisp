@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: compat.lisp,v 1.3 2001/02/21 07:58:09 simsek Exp $
+;;; $Id: compat.lisp,v 1.4 2001/07/23 17:38:48 rtoy Exp $
 ;;;
 ;;; $Log: compat.lisp,v $
+;;; Revision 1.4  2001/07/23 17:38:48  rtoy
+;;; Oops.  mref forgot the matrix arg.
+;;;
 ;;; Revision 1.3  2001/02/21 07:58:09  simsek
 ;;; o Fixed typo in mref
 ;;;
@@ -128,7 +131,7 @@
   "Calls JOIN on its arguments"
   (apply #'join args))
 
-(defun mref (i &optional j)
+(defun mref (m i &optional j)
   "Same as MATRIX-REF"
   (if j
     (matrix-ref m i j)
