@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.17 2001/07/26 15:48:14 rtoy Exp $
+;;; $Id: system.dcl,v 1.18 2001/10/25 21:52:29 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.18  2001/10/25 21:52:29  rtoy
+;;; Add geqr for QR support.
+;;;
 ;;; Revision 1.17  2001/07/26 15:48:14  rtoy
 ;;; Added f77-mangling.lisp.
 ;;;
@@ -207,7 +210,8 @@
 		     "mtimes"
 		     "mdivide"
 		     "msqrt"
-		     #-:mswindows "fft"))
+		     #-:mswindows "fft"
+		     "geqr"))
        (:module "special-functions"
 		:source-pathname "matlisp:src"
 		:binary-pathname ""
