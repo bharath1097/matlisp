@@ -35,9 +35,12 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.12 2003/12/07 15:03:44 rtoy Exp $
+dnl $Id: configure.in,v 1.13 2004/03/17 03:38:41 simsek Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.13  2004/03/17 03:38:41  simsek
+dnl Adding support for MinGW on windows
+dnl
 dnl Revision 1.12  2003/12/07 15:03:44  rtoy
 dnl Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 dnl works.
@@ -300,21 +303,35 @@ case "$host" in
 	# FLIBS=`echo $FLIBS | awk -f purgargs.awk`
 	FLIBS=`echo $FLIBS | sed 's;-Xlinker;;g' | awk -f purgargs.awk`
 	SHARED_LIB_LDFLAGS="-G"
+	MATLIB="libmatlisp.so"
   	;;  
   *-*-linux*)
 	SHARED_LIB_LDFLAGS="-shared"
+	MATLIB="libmatlisp.so"
   	;;
+  *-*-cygwin32)
+	AC_MSG_WARN([Configure has detected that you are compiling])
+	AC_MSG_WARN([for Cygwin.  We hope that you have a fairly])
+	AC_MSG_WARN([complete set of MinGW environment installed])
+	AC_MSG_WARN([on your system.  We currently do now know how])
+	AC_MSG_WARN([to produce MSVC compatible DLL's using the])
+	AC_MSG_WARN([Cygwin compilers.  We hope that gcc and g77])
+	AC_MSG_WARN([refers to the MinGW version of gcc and g77.])
+	MATLIB="libmatlisp.dll"
+	;;
   *)
 	AC_MSG_WARN([Oops! Matlisp is tested on Solaris, SunOS or Linux])
 	AC_MSG_WARN([Matlisp may not compile on your system $host.])
 	LD="ld"
 	SHARED_LIB_LDFLAGS="-G"
+	MATLIB="libmatlisp.so"
   	;;
 esac
 
 dnl     The following substitutions will be made in the .in files listed
 dnl     under AC_OUTPUT at the end of this file.
 
+AC_SUBST(MATLIB)
 AC_SUBST(F77)
 AC_SUBST(FFLAGS)
 AC_SUBST(FLIBS)

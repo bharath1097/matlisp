@@ -26,9 +26,12 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.8 2001/10/29 18:00:28 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.9 2004/03/17 03:38:55 simsek Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.9  2004/03/17 03:38:55  simsek
+# Adding support for MinGW on windows
+#
 # Revision 1.8  2001/10/29 18:00:28  rtoy
 # Updates from M. Koerber to support QR routines with column pivoting:
 #
@@ -220,7 +223,7 @@ OBJS = $(BLAS_OBJS:%=$(srcdir)/LAPACK/BLAS/SRC/%) \
 	$(CPOLY_OBJS:%=$(srcdir)/lib-src/cpoly/%) \
 	$(SPECFUN_OBJS:%=$(srcdir)/lib-src/toms715/%)
 
-MATLIB = $(srcdir)/lib/libmatlisp.so
+MATLIB = $(srcdir)/lib/@MATLIB@
 LAZY_LOADER=$(srcdir)/lib/lazy-loader.o
 
 .f.o:
@@ -230,13 +233,21 @@ LAZY_LOADER=$(srcdir)/lib/lazy-loader.o
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 all : $(MATLIB) lib/lazy-loader.o
+	@echo ===============================================
+	@echo Required fortran libraries have been built.
+	@echo The following statement will sometimes fail.
+	@echo If it fails, manually start your lisp and
+	@echo load the file start.lisp.
+	@echo
+	@echo ==============================================
 	$(LISPEXEC) $(LISPEVAL) '(progn (load "start.lisp"))'
 
-$(MATLIB): $(OBJS)
+$(srcdir)/lib/libmatlisp.so: $(OBJS)
 	$(LD) $(SHARED_LIB_LDFLAGS) $(LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS)
 
-static: $(LAZY_LOADER) $(OBJS)
-	$(AR) $(ARFLAGS) $(LIB)static.a $(OBJS)
+$(srcdir)/lib/libmatlisp.dll: $(OBJS)
+	$(AR) $(ARFLAGS) $(srcdir)/lib/libmatlisp.a $(OBJS)
+	a2dll $(srcdir)/lib/libmatlisp.a -o $(srcdir)/lib/libmatlisp.dll $(FLIBS)
 
 clean:
 	\rm -f $(OBJS)
