@@ -57,7 +57,7 @@
 	  (dotimes (k info)
 	    (setf (aref roots k) (complex (aref zeror k)
 					  (aref zeroi k))))
-	  roots)))))
+	  (make-complex-matrix roots))))))
 
 (defmethod polyroots :before ((coef standard-matrix))
   (assert (row-or-col-vector-p coef)))
