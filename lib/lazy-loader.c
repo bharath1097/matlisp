@@ -2,6 +2,7 @@ extern int zffti_();
 extern int zfftf_();
 extern int zfftb_();
 
+extern int dgesv_(); extern int dgeev_(); extern int dgetrf_(); extern int dgesvd_();
 extern int zgesv_(); extern int zgeev_(); extern int zgetrf_(); extern int zgesvd_();
 extern int idamax_(); extern int dasum_(); extern int ddot_(); extern int dnrm2_();
 extern int dcabs1_(); extern int dzasum_(); extern int dznrm2_(); extern int izamax_();
