@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.7 2001/02/21 19:35:23 simsek Exp $
+;;; $Id: fft.lisp,v 1.8 2001/10/25 21:48:45 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.8  2001/10/25 21:48:45  rtoy
+;;; IFFT wasn't scaling the result by 1/N for the case of row or column
+;;; vectors.  Fixed.  Bug noted by Michael Koerber.
+;;;
 ;;; Revision 1.7  2001/02/21 19:35:23  simsek
 ;;; o Fixed exporting and docstrings
 ;;;
@@ -281,7 +285,11 @@
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
-	  (zfftb n (store result) wsave))
+	  (zfftb n (store result) wsave)
+	  (let ((scale-factor (/ (float n 1d0))))
+	    (dotimes (k n)
+	      (setf (matrix-ref result k)
+		    (* scale-factor (matrix-ref result k))))))
 
 	(let ((scale-factor (/ (float n 1d0))))
 	  (dotimes (j (ncols x))
@@ -317,7 +325,11 @@
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
-	  (zfftb n (store result) wsave))
+	  (zfftb n (store result) wsave)
+	  (let ((scale-factor (/ (float n 1d0))))
+	    (dotimes (k n)
+	      (setf (matrix-ref result k)
+		    (* scale-factor (matrix-ref result k))))))
 
       (dotimes (j (ncols x))
 	(declare (type fixnum j))
