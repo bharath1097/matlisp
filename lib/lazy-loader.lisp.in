@@ -33,9 +33,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.6 2000/10/04 15:38:18 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.7 2001/03/06 17:49:56 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.7  2001/03/06 17:49:56  rtoy
+;;; CMUCL can use the shared library, so make it so.  Also, it seems we
+;;; don't need FLIBS so take that out as well.
+;;;
 ;;; Revision 1.6  2000/10/04 15:38:18  simsek
 ;;; o Added dfftpack to loaded binaries
 ;;;  o Added unload-blas-&-lapack-libraries for Allegro image
@@ -119,8 +123,11 @@
 				 (namestring
 				   (translate-logical-pathname "matlisp:lib"))
 				 " "
-			         "-lmatlispstatic
-                                  @FLIBS@"))))
+				 "-R"
+				 (namestring
+				   (translate-logical-pathname "matlisp:lib"))
+				 " "
+			         "-lmatlispshared"))))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
