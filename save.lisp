@@ -29,11 +29,10 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.3 2000/10/05 19:20:36 simsek Exp $
+;;; $Id: save.lisp,v 1.4 2000/10/06 18:59:00 simsek Exp $
 ;;; $Log: save.lisp,v $
-;;; Revision 1.3  2000/10/05 19:20:36  simsek
-;;; o Added Setq-default for readtable and default
-;;;   flow formats for Allegro images
+;;; Revision 1.4  2000/10/06 18:59:00  simsek
+;;; o Added CMUCLLIB to generated CMU startup script
 ;;;
 ;;; Revision 1.1  2000/10/04 22:47:11  simsek
 ;;; o Initial revision
@@ -81,6 +80,12 @@ execute the shell script")
        (force-output)
        
        (with-open-file (f matlisp-name :DIRECTION :OUTPUT :if-exists :supersede)
+	 (format f "#!/bin/sh~%")
+	 (let ((lib-path (assoc :cmucllib ext::*environment-list*)))
+	   (if lib-path
+	       (format f "CMUCLLIB=~s~%" (cdr lib-path))
+	     (format f "CMUCLLIB=~%")))
+	 (format f "export CMUCLLIB~%")
 	 (write-string (car ext::*command-line-strings*) f)
 	 (write-string " -core " f)
 	 (write-string core-name f)
@@ -151,6 +156,7 @@ execute the executable file")
 
        #-:mswindows
        (with-open-file (f matlisp-name :DIRECTION :OUTPUT :if-exists :supersede)
+	 (format f "#!/bin/sh~%")
 	 (write-string (car (sys:command-line-arguments)) f)
 	 (write-string " -I " f)
 	 (write-string core-name f)
