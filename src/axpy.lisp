@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: axpy.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: axpy.lisp,v 1.5 2002/07/29 00:03:26 rtoy Exp $
 ;;;
 ;;; $Log: axpy.lisp,v $
+;;; Revision 1.5  2002/07/29 00:03:26  rtoy
+;;; Don't use *1x1-complex-array*.  Make it a local array instead.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -189,9 +192,7 @@
     #+:allegro (setq alpha (complex-coerce alpha))
 
     (dcopy nxm store-x 1 store-result 2)
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zscal nxm *1x1-complex-array* store-result 1)
+    (zscal nxm alpha store-result 1)
     (daxpy (* 2 nxm) 1.0d0 store-y 1 store-result 1)
 
     result))
@@ -210,9 +211,7 @@
    
     #+:allegro (setq alpha (complex-coerce alpha))
 
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zscal nxm *1x1-complex-array* store-result 1)
+    (zscal nxm alpha store-result 1)
     (daxpy nxm 1.0d0 (store y) 1 store-result 2)
     
     result))
@@ -230,9 +229,7 @@
 
     #+:allegro (setq alpha (complex-coerce alpha))
 
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zaxpy nxm *1x1-complex-array* (store x) 1 (store result) 1)
+    (zaxpy nxm alpha (store x) 1 (store result) 1)
     result))
 
 #+:cmu
@@ -328,9 +325,7 @@ don't know how to coerce COMPLEX to REAL"))
 
     #+:allegro (setq alpha (complex-coerce alpha))
 
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zaxpy nxm *1x1-complex-array* (store x) 1 (store y) 1)
+    (zaxpy nxm alpha (store x) 1 (store y) 1)
     y))
 
 #+:cmu
