@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.8 2003/10/11 01:49:24 rtoy Exp $
+;;; $Id: ref.lisp,v 1.9 2004/02/20 18:08:12 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.9  2004/02/20 18:08:12  rtoy
+;;; Fix a few compiler warnings and notes.
+;;;
 ;;; Revision 1.8  2003/10/11 01:49:24  rtoy
 ;;; MATRIX-REF-1D and MATRIX-REF-2D methods for COMPLEX-MATRIX were both
 ;;; missing the STORE local variable.  Stupid typo.
@@ -414,11 +417,9 @@
 
 (defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j real-matrix))
   (let ((m (ncols matrix)))
-    (flet ((consistent-col (c)
-	     (<= 0 c m))))
     (unless (every #'(lambda (k)
 		       (<= 0 k m))
-		   j)
+		   (store j))
       (error "out of bounds indexing"))))
 
 (defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j real-matrix))
@@ -818,13 +819,10 @@
 
 (defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i fixnum))
   (let* ((n (nrows matrix))
-	 (m (ncols matrix))
 	 (store (store matrix))
-	 (new-n (nrows new))
-	 (new-m (ncols new))
 	 (new-store (store new)))
     
-    (declare (type fixnum n m new-n new-m)
+    (declare (type fixnum m)
 	     (type (real-matrix-store-type (*)) store new-store))
     
     (setf (aref store (fortran-matrix-indexing i 0 n))
@@ -833,45 +831,27 @@
 (defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i list))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
-	 (store (store matrix))
-	 (new-n (nrows new))
-	 (new-m (ncols new))
-	 (new-store (store new)))
+	 (new-n (nrows new)))
     
     (declare (type fixnum n m new-n new-m)
 	     (type (real-matrix-store-type (*)) store new-store))
-    
-  
-    (let ((p (if (integerp i)
-		 1
-		 (if (listp i)
-		     (length i)
-		     (number-of-elements i)))))
-      (if (> p new-n)
-	  (error "cannot do matrix assignment, too many indices")))
 
-    (labels ((consistent-i (i)
-	       (and (integerp i)
-		    (>= i 0)
-		    (< i n)))
-	     (consistent-j (j)
-	       (and (integerp j)
-		    (>= j 0)
-		    (< j m))))
+    (let ((p (length i)))
+      (when (> p new-n)
+	(error "cannot do matrix assignment, too many indices")))
 
-      (if (every #'(lambda (i)
+    (if (every #'(lambda (i)
 			       
-		     (and (>= i 0) (< i (number-of-elements matrix)))) i)
-	  (set-real-matrix-slice-1d-seq new matrix i)
-	  (error "out of bounds indexing")))))
+		   (and (>= i 0) (< i (number-of-elements matrix))))
+	       i)
+	(set-real-matrix-slice-1d-seq new matrix i)
+	(error "out of bounds indexing"))))
 
 (defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i real-matrix))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
-	 (store (store matrix))
 	 (new-n (nrows new))
-	 (new-m (ncols new))
-	 (new-store (store new)))
+	 )
     
     (declare (type fixnum n m new-n new-m)
 	     (type (real-matrix-store-type (*)) store new-store))
@@ -886,20 +866,11 @@
 	  (error "cannot do matrix assignment, too many indices")))
 
     
-    (labels ((consistent-i (i)
-	       (and (integerp i)
-		    (>= i 0)
-		    (< i n)))
-	     (consistent-j (j)
-	       (and (integerp j)
-		    (>= j 0)
-		    (< j m))))
-
-      (if (%matrix-every #'(lambda (i)
+    (if (%matrix-every #'(lambda (i)
 					      
-			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
-	  (set-real-matrix-slice-1d new matrix i)
-	  (error "out of bounds indexing")))))
+			   (and (>= i 0) (< i (number-of-elements matrix)))) i)
+	(set-real-matrix-slice-1d new matrix i)
+	(error "out of bounds indexing"))))
 
 #+nil
 (defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) i j)
