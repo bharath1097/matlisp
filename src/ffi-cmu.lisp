@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.4 2001/02/21 19:40:52 simsek Exp $
+;;; $Id: ffi-cmu.lisp,v 1.5 2001/02/26 22:54:23 rtoy Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.5  2001/02/26 22:54:23  rtoy
+;;; It appears to be ok to inline the def-alien-routine and
+;;; vector-data-addresses.  The copy! bug isn't tickled.
+;;;
 ;;; Revision 1.4  2001/02/21 19:40:52  simsek
 ;;; o Added the :long keyword (equivalent to :long)
 ;;;
@@ -622,7 +626,7 @@ for :OUTPUT.
 	 ;; lisp image is saved.  Until
 	 ;; the matter is clarified we
 	 ;; leave out 'inline's
-	 ;; (declaim (inline ,lisp-name))
+	 (declaim (inline ,lisp-name))
 	 (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
 	   ,@(parse-fortran-parameters hack-body))
 	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
@@ -675,7 +679,7 @@ for :OUTPUT.
 ;; lisp image is saved.  Until
 ;; the matter is clarified we
 ;; leave out 'inline's
-;; (declaim (inline vector-data-address))
+(declaim (inline vector-data-address))
 (defun vector-data-address (vec)
   "Return the physical address of where the actual data of the object
 VEC is stored.
