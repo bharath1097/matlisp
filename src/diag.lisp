@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: diag.lisp,v 1.5 2001/10/29 16:21:02 rtoy Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.5  2001/10/29 16:21:02  rtoy
+;;; (setf diag) was broken on CMUCL.  Use the Allegro version.
+;;; From M. Koerber.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -63,8 +67,6 @@
 #+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
 #+nil (export 'diag)
-
-;; note: here and in copy change fortran-dscal to dcopy.
 
 (defgeneric diag (matrix)
   (:documentation
@@ -182,30 +184,6 @@ don't know how to coerce COMPLEX to REAL"
     mat))
 
 
-#+:cmu
-(defmethod (setf diag) ((new-diag real-matrix) (mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (n-new (nrows new-diag))
-	 (m-new (ncols new-diag))
-	 (nxm-new (number-of-elements new-diag)))
-    (declare (type fixnum n m n-new m-new nxm-new))
-
-    (if (row-or-col-vector-p new-diag)
-	(progn
-	  (with-vector-data-addresses ((addr-mat (store mat))) 
-	      (incf-sap :double-float addr-mat)
-	      (blas::fortran-dscal (min n m nxm-new) 0.0d0 addr-mat (+ 2 (* 2 n))))
-	  (dcopy (min n m nxm-new) (store new-diag) 1 (store mat) (+ 2 (* 2 n))))
-      (progn
-	(with-vector-data-addresses ((addr-mat (store mat))) 
-	   (incf-sap :double-float addr-mat)
-	   (blas::fortran-dscal (min n m n-new m-new) 0.0d0 addr-mat (+ 2 (* 2 n))))
-	(dcopy (min n m n-new m-new) (store new-diag) (1+ n-new) (store mat) (+ 2 (* 2 n)))))
-
-    mat))
-
-#+:allegro
 (defmethod (setf diag) ((new-diag real-matrix) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
