@@ -33,9 +33,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp,v 1.3 2000/10/04 01:22:21 simsek Exp $
+;;; $Id: lazy-loader.lisp,v 1.4 2000/10/04 15:38:17 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp,v $
+;;; Revision 1.4  2000/10/04 15:38:17  simsek
+;;; o Added dfftpack to loaded binaries
+;;;  o Added unload-blas-&-lapack-libraries for Allegro image
+;;;    saving support
+;;;
 ;;; Revision 1.3  2000/10/04 01:22:21  simsek
 ;;; o Changed package to MATLISP
 ;;;   This avoids interning symbols in packages other
@@ -117,6 +122,7 @@
 			         "-lmatlispstatic
                                    -L/usr/ccs/lib -L/usr/lib -L/usr/sww/pkg/gcc-2.95.2/lib/gcc-lib/sparc-sun-solaris2.6/2.95.2 -L/usr/ccs/bin -L/usr/ccs/lib -L/usr/sww/pkg/gcc-2.95.2/lib -lg2c -lm -R /usr/sww/pkg/gcc-2.95.2/lib:/usr/sww/lib -lm"))))
 
+
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
   #+(or :unix :linux) (load "matlisp:lib;libmatlispshared.so")
@@ -128,4 +134,19 @@
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
   (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
-  (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil))
+  (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil)
+  #-:mswindows (load (translate-logical-pathname
+		      "matlisp:bin;dfftpack") :verbose nil))
+
+#+:cmu
+(defun unload-blas-&-lapack-libraries ()
+  nil)
+
+#+(and :allegro (not :mswindows))
+(defun unload-blas-&-lapack-libraries ()
+  (ff:unload-foreign-library "matlisp:lib;libmatlispshared.so"))
+
+#+(and :allegro :mswindows)
+(defun unload-blas-&-lapack-libraries ()
+  (ff:unload-foreign-library "matlisp:lib;lapack.dll")
+  (ff:unload-foreign-library "matlisp:lib;blas.dll"))
