@@ -1,0 +1,49 @@
+The current implementation of Matlisp relies on the foreign function 
+interface of the free Common Lisp implementation CMUCL.  This means 
+that Matlisp is available whenever CMUCL is.  In particular, Matlisp 
+is tested with CMUCL on Sun/Solaris and Linux operating systems. 
+
+An immediate goal is to make Matlisp available for CLISP -- another 
+free Common Lisp implementation that is supported on a wider range of 
+platforms than CMUCL. 
+
+One of the design goals of Matlisp was to ensure the consistency of 
+installation.  Matlisp is currently distributed as source code and the 
+user must do a compilation.  A great deal of effort was put into a 
+configure script that determines machine parameters, system libraries 
+and without bothering the user. 
+
+The installation follows in a few easy steps: 
+                         
+1. Download the Matlisp sources from http://matlisp.sourceforge.net
+2. Unpack the source file
+
+	gunzip matlisp.tgz 
+	tar -vxf matlisp.tar
+
+3. Change to that directory 
+
+	cd matlisp
+
+4. Configure your system
+
+	./configure
+
+5. Build the Fortran libraries BLAS/LAPACK
+
+	make
+
+6. Fire up CMU Common Lisp
+
+	cmucl
+
+7. Load Matlisp
+
+	(load "start.lisp")
+                       
+That's all there is to it.  In order for this to work, configure must 
+be able to detect a Fortran compiler and a C compiler in your path.  
+This is usually the case.  If configure fails  you should contact your 
+system administrator.
+
+Enjoy!
