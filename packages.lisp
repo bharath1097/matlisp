@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.17 2003/07/25 16:20:08 rtoy Exp $
+;;; $Id: packages.lisp,v 1.18 2003/10/25 17:01:49 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.18  2003/10/25 17:01:49  rtoy
+;;; o Remove the nicknames "MATRIX" and "M".
+;;; o Minor indentation changes.
+;;;
 ;;; Revision 1.17  2003/07/25 16:20:08  rtoy
 ;;; Use PCL:FIND-CLASS for CMUCL so all versions of CMUCL will still work.
 ;;;
@@ -195,7 +199,6 @@
 
 (defpackage "MATLISP"
     (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
-    (:nicknames "MATRIX" "M")
     (:shadow "REAL")
     (:export
      "*PRINT-MATRIX*"
@@ -365,10 +368,15 @@
 
 (eval-when (load eval compile)
 (defparameter *matlisp-version* "Pre 2.0")
-#-(or :cmu :allegro) (error 
-		      "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
-		      *matlisp-version*)
+
+#-(or :cmu :allegro)
+(error "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
+       *matlisp-version*)
+
 (defun matlisp-version () *matlisp-version*)
+
 (defun matlisp-herald () (format nil "    MATLISP/~a" (matlisp-version)))
-#+:cmu (setf (getf ext:*herald-items* :matlisp)
+
+#+:cmu
+(setf (getf ext:*herald-items* :matlisp)
 	     (list (matlisp-herald))))
