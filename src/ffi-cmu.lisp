@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: ffi-cmu.lisp,v 1.3 2000/10/04 01:11:19 simsek Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.3  2000/10/04 01:11:19  simsek
+;;; o Removed inlines (see comments in code)
+;;;
 ;;; Revision 1.2  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -607,8 +610,14 @@ for :OUTPUT.
 			  
     `(eval-when (load eval compile)
        (progn
-       
-	 (declaim (inline ,lisp-name))
+
+	 ;; Removing 'inlines'
+	 ;; It seems that CMUCL has a problem
+	 ;; with inlines of FFI's when a
+	 ;; lisp image is saved.  Until
+	 ;; the matter is clarified we
+	 ;; leave out 'inline's
+	 ;; (declaim (inline ,lisp-name))
 	 (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
 	   ,@(parse-fortran-parameters hack-body))
 	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
@@ -654,7 +663,13 @@ for :OUTPUT.
        (simple-array (unsigned-byte 16) *)
        (simple-array (unsigned-byte  8) *)))
 
-(declaim (inline vector-data-address))
+;; Removing 'inlines'
+;; It seems that CMUCL has a problem
+;; with inlines of FFI's when a
+;; lisp image is saved.  Until
+;; the matter is clarified we
+;; leave out 'inline's
+;; (declaim (inline vector-data-address))
 (defun vector-data-address (vec)
   "Return the physical address of where the actual data of the object
 VEC is stored.
