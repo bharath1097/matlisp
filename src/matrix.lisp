@@ -30,9 +30,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.8 2000/10/04 15:56:50 simsek Exp $
+;;; $Id: matrix.lisp,v 1.9 2001/06/22 12:51:49 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.9  2001/06/22 12:51:49  rtoy
+;;; o Added ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE functions to
+;;;   allocate appropriately sized arrays for holding real and complex
+;;;   matrix elements.
+;;; o Use it to allocate space.
+;;;
 ;;; Revision 1.8  2000/10/04 15:56:50  simsek
 ;;; o Fixed bug in (MAKE-COMPLEX-MATRIX n)
 ;;;
@@ -475,6 +481,18 @@ don't know how to coerce COMPLEX to REAL"))
   (error "arguments MATRIX and FILL to FILL-MATRIX must be a
 matrix and a number"))
 
+;; Allocate an array suitable for the store part of a real matrix.
+
+(declaim (inline allocate-real-store))
+(defun allocate-real-store (size &optional (initial-element 0))
+  (make-array size :element-type 'real-matrix-element-type
+	      :initial-element (coerce initial-element 'real-matrix-element-type)))
+
+(declaim (inline allocate-complex-store))
+(defun allocate-complex-store (size)
+  (make-array (* 2 size) :element-type 'complex-matrix-element-type
+	      :initial-element (coerce 0 'complex-matrix-element-type)))
+
 (defun make-real-matrix-dim (n m &optional (fill 0.0d0))
   "
   Syntax
@@ -498,9 +516,7 @@ matrix and a number"))
 
     (declare (type real-matrix-element-type casted-fill))
     (make-instance 'real-matrix :nrows n :ncols m
-		   :store (make-array (* n m) 
-				      :element-type 'real-matrix-element-type
-				      :initial-element casted-fill))))
+		   :store (allocate-real-store (* n m) casted-fill))))
 
 
 ;;; Make a matrix from a 2-D Lisp array
@@ -517,8 +533,7 @@ matrix and a number"))
   (let* ((n (array-dimension array 0))
 	 (m (array-dimension array 1))
 	 (size (* n m))
-	 (store (make-array size
-			    :element-type 'real-matrix-element-type)))
+	 (store (allocate-real-store size)))
     (declare (type fixnum n m size)
 	     (type (real-matrix-store-type (*)) store))
     (dotimes (i n)
@@ -533,7 +548,7 @@ matrix and a number"))
   (let* ((n (length seq))
 	 (m (length (elt seq 0)))
 	 (size (* n m))
-	 (store (make-array size :element-type 'real-matrix-element-type)))
+	 (store (allocate-real-store size)))
     (declare (type fixnum n m size)
 	     (type (real-matrix-store-type (*)) store))
     (dotimes (i n)
@@ -549,7 +564,7 @@ matrix and a number"))
 
 (defun make-real-matrix-seq (seq)
   (let* ((n (length seq))
-	 (store (make-array n :element-type 'real-matrix-element-type)))
+	 (store (allocate-real-store n)))
     (declare (type fixnum n))
     (dotimes (k n)
       (declare (type fixnum k))
@@ -664,8 +679,7 @@ matrix and a number"))
 "
   (declare (type fixnum n m))
   (let* ((size (* n m))
-	 (store (make-array (* 2 size)
-			    :element-type 'complex-matrix-element-type))
+	 (store (allocate-complex-store size))
 	 (matrix (make-instance 'complex-matrix :nrows n :ncols m :store store)))
     
     (fill-matrix matrix fill)
@@ -684,7 +698,7 @@ matrix and a number"))
   (let* ((n (array-dimension array 0))
 	 (m (array-dimension array 1))
 	 (size (* n m))
-	 (store (make-array (* 2 size) :element-type 'complex-matrix-element-type)))
+	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
 	     (type (complex-matrix-store-type (*)) store))
     (dotimes (i n)
@@ -708,7 +722,7 @@ matrix and a number"))
   (let* ((n (length seq))
 	 (m (length (elt seq 0)))
 	 (size (* n m))
-	 (store (make-array (* 2 size) :element-type 'complex-matrix-element-type)))
+	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
 	     (type (complex-matrix-store-type (*)) store))
     
@@ -734,7 +748,7 @@ matrix and a number"))
 
 (defun make-complex-matrix-seq (seq)
   (let* ((n (length seq))
-	 (store (make-array (* 2 n) :element-type 'complex-matrix-element-type)))
+	 (store (allocate-complex-store n)))
     (declare (type fixnum n)
 	     (type (complex-matrix-store-type (*)) store))
     
