@@ -26,9 +26,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.18 2003/10/25 17:01:49 rtoy Exp $
+;;; $Id: packages.lisp,v 1.19 2003/12/07 15:03:44 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.19  2003/12/07 15:03:44  rtoy
+;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+;;; works.
+;;;
+;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
+;;;
 ;;; Revision 1.18  2003/10/25 17:01:49  rtoy
 ;;; o Remove the nicknames "MATRIX" and "M".
 ;;; o Minor indentation changes.
@@ -106,6 +112,16 @@
    "INCF-SAP"
    "WITH-VECTOR-DATA-ADDRESSES"))
 
+#+:sbcl
+(defpackage "FORTRAN-FFI-ACCESSORS"
+  (:use "COMMON-LISP" "SB-ALIEN" "SB-C")
+  (:export
+   ;; Interface functions
+   "DEF-FORTRAN-ROUTINE"
+   "VECTOR-DATA-ADDRESS"
+   "INCF-SAP"
+   "WITH-VECTOR-DATA-ADDRESSES"))
+
 #+:allegro
 (defpackage "FORTRAN-FFI-ACCESSORS"
   (:use "COMMON-LISP" "FOREIGN-FUNCTIONS")
@@ -114,6 +130,7 @@
 
 (defpackage "BLAS"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "IDAMAX" "DASUM" "DDOT" "DNRM2"
@@ -127,6 +144,7 @@
 
 (defpackage "LAPACK"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
@@ -136,6 +154,7 @@
 
 (defpackage "DFFTPACK"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))
 
@@ -350,7 +369,11 @@
      "M-BESSEL-SERIES-Y"))
 
 (defpackage "MATLISP-USER"
-  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL" #+:cmu "EXT")
+  (:use "COMMON-LISP"
+        "MATLISP"
+        #+:allegro "EXCL"
+        #+:cmu "EXT"
+        #+:sbcl "SB-EXT")
   (:shadowing-import-from "MATLISP" "REAL"))
 
 (in-package "MATLISP")
@@ -369,8 +392,8 @@
 (eval-when (load eval compile)
 (defparameter *matlisp-version* "Pre 2.0")
 
-#-(or :cmu :allegro)
-(error "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
+#-(or :cmu :allegro :sbcl)
+(error "MATLISP version ~a requires CMUCL, SBCL or ALLEGRO CL" 
        *matlisp-version*)
 
 (defun matlisp-version () *matlisp-version*)

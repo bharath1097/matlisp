@@ -26,9 +26,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.21 2003/06/01 15:21:59 rtoy Exp $
+;;; $Id: system.dcl,v 1.22 2003/12/07 15:03:44 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.22  2003/12/07 15:03:44  rtoy
+;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+;;; works.
+;;;
+;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
+;;;
 ;;; Revision 1.21  2003/06/01 15:21:59  rtoy
 ;;; Add conditions.lisp to dependencies.
 ;;;
@@ -143,6 +149,7 @@
 	:binary-pathname ""
 	:components ("f77-mangling"
 		     #+:cmu "ffi-cmu"
+		     #+:sbcl "ffi-sbcl"
 		     #+:allegro "ffi-acl"
 		     ))
        (:module "foreign-functions"
@@ -407,7 +414,7 @@
 			  ((:file "cpoly")
 			   (:file "zeroin"
 				  :package "MATLISP-LIB")))
-		 #+:cmu
+		 #+(or :cmu :sbcl)
 		 (:module "gnuplot"
 			  :source-extension "lisp"
 			  :binary-pathname ""

@@ -43,9 +43,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.9 2003/06/27 03:42:49 rtoy Exp $
+;;; $Id: start.lisp,v 1.10 2003/12/07 15:03:44 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.10  2003/12/07 15:03:44  rtoy
+;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+;;; works.
+;;;
+;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
+;;;
 ;;; Revision 1.9  2003/06/27 03:42:49  rtoy
 ;;; Clean up logical pathname translations for CMUCL.  Don't include the
 ;;; version part for the translation.  (Why doesn't this work anymore?)
@@ -104,7 +110,8 @@
 "
   (flet ((default-dir ()
 	     #+:cmu (ext:default-directory)
-	     #+:allegro (user::current-directory)))
+	     #+:allegro (user::current-directory)
+             #+:sbcl *default-pathname-defaults*))
     (flet ((load-pathname ()
 	     (merge-pathnames 
 	      (if *load-pathname* 
@@ -135,7 +142,7 @@
 	      "")
 	      (default-dir))))
 
-      #+:cmu
+      #+(or :cmu :sbcl)
       (setf (logical-pathname-translations name)
 	(list 
 	 (list "**;*.*.*"  
@@ -183,7 +190,7 @@
 (mk::operate-on-system :matlisp
 		       :load
 		       :minimal-load t
-		       :verbose nil
+		       :verbose t
 		       :compile-during-load 
 		       #+:allegro-cl-lite nil
 		       #-:allegro-cl-lite t)

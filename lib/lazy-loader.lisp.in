@@ -33,9 +33,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.11 2001/04/26 13:42:57 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.12 2003/12/07 15:03:44 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.12  2003/12/07 15:03:44  rtoy
+;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+;;; works.
+;;;
+;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
+;;;
 ;;; Revision 1.11  2001/04/26 13:42:57  rtoy
 ;;; ATLAS_DIR variable needs to contain the -L flag.  Otherwise, we get a
 ;;; dangling -L option if we're not using ATLAS.
@@ -106,7 +112,7 @@
 |#
 
 (eval-when (load eval compile)
-#+:cmu
+#+(or :cmu :sbcl)
 (defun tokenize-ld-args (s)
   (let ((token "")
 	(n (length s))
@@ -148,6 +154,11 @@
 			         "-lmatlisp"
 				 " "
 				 "@FLIBS@"))))
+#+:sbcl
+(defun load-blas-&-lapack-libraries ()
+  (sb-alien:load-1-foreign "matlisp:lib;libmatlisp.so"))
+
+
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
@@ -164,7 +175,7 @@
   #-:mswindows (load (translate-logical-pathname
 		      "matlisp:bin;dfftpack") :verbose nil))
 
-#+:cmu
+#+(or :cmu :sbcl)
 (defun unload-blas-&-lapack-libraries ()
   nil)
 

@@ -35,9 +35,15 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.11 2001/10/26 13:51:46 rtoy Exp $
+dnl $Id: configure.in,v 1.12 2003/12/07 15:03:44 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.12  2003/12/07 15:03:44  rtoy
+dnl Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+dnl works.
+dnl
+dnl From Robbie Sedgewick on matlisp-users, 2003-11-13.
+dnl
 dnl Revision 1.11  2001/10/26 13:51:46  rtoy
 dnl ACL doesn't want the trailing underscore added by our name-mangler
 dnl because it does it by itself.
@@ -109,7 +115,7 @@ dnl Process our additional features
 dnl --with-lisp for the Lisp system we want to use.
 AC_ARG_WITH([lisp],
 [  --with-lisp=name        Which lisp system to use.  Currently supported
-                           systems are acl and cmucl.],
+                           systems are acl, sbcl and cmucl.],
 [LISPSYS=$withval
 
 dnl Verify we got a supported system and figure out the command

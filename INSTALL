@@ -1,8 +1,8 @@
 -*- Mode: text -*-
 Requirements:
 =============
-Either CMUCL (version 18b) or Allegro CL (version 5.0 or later)
-is required.
+Either CMUCL (version 18b), SBCL (version 0.8.5) or 
+Allegro CL (version 5.0 or later) is required.
 
 * Allegro CL: Matlisp should compile on Linux, Solaris, Windows.
               In particular, Matlisp relies on the foreign
@@ -13,9 +13,15 @@ is required.
           interface of CMU CL and the built-in type 
           kernel::complex-double-float.
 
+* SBCL: Matlisp should compile on Linux and MacOS X
+        In particular, Matlisp relies on the foreign function
+        interface of SBCL.
+        
+        
+
 An immediate goal is to make Matlisp available for CLISP -- another 
 free Common Lisp implementation that is supported on a wider range of 
-platforms than CMUCL and AllegroCL. 
+platforms than CMUCL, SBCL and AllegroCL. 
 
 
 Linux/Unix Installation:
@@ -42,6 +48,7 @@ The installation follows in a few easy steps:
 4. Configure the system.
    o If you're using Allegro CL, specify --with-lisp=acl.
    o If you're using CMU CL, specify --with-lisp=cmucl
+   o If you're using SBCL, specify --with-lisp=sbcl
    o Give the name of the Lisp executable via --with-lisp-exec=<name>
    o Run configure:
 

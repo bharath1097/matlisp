@@ -29,8 +29,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.5 2002/01/08 00:36:42 rtoy Exp $
+;;; $Id: save.lisp,v 1.6 2003/12/07 15:03:44 rtoy Exp $
 ;;; $Log: save.lisp,v $
+;;; Revision 1.6  2003/12/07 15:03:44  rtoy
+;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
+;;; works.
+;;;
+;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
+;;;
 ;;; Revision 1.5  2002/01/08 00:36:42  rtoy
 ;;; Add SAVE-MATLISP-LIBRARY to concatenate all the fasl files into one
 ;;; giant fasl file for CMULISP.  This gives an intermediate form that is
@@ -108,6 +114,63 @@ execute the shell script")
 	       (format t "~%")
 	       (defparameter sys::*command-index* 0)
 	       (cl::%top-level))))))
+
+#+:sbcl
+(defmacro save-matlisp ()
+  "
+  Syntax
+  ======
+  (SAVE-MATLISP)
+
+  Purpose
+  =======
+  Dumps a Lisp core image to the file \"matlisp.core\" in 
+  the (EXT::DEFAULT-DIRECTORY), ie. the directory where 
+  you loaded matlisp, and also dumps the script file 
+  \"matlisp-sbcl\" which loads Matlisp with that core.
+
+  Notes
+  =====
+  The script file \"matlisp-sbcl\" will use the lisp executable 
+  that was used to dump the \"matlisp.core\" core image.
+"
+  `(progn
+     (in-package "MATLISP")
+     (let ((core-name  "matlisp.core")
+	   (matlisp-name "matlisp-sbcl" )
+	   
+	   )
+
+       (format t "~&~% ** To start Matlisp after core dump \
+execute the shell script")
+       (format t "~%     ~a" matlisp-name)
+       (format t "~% ** It may be necessary to:")
+       (format t "~%      chmod +x ~a" matlisp-name)   
+       (format t "~%~%")
+       (force-output)
+       
+       (with-open-file (f matlisp-name :DIRECTION :OUTPUT :if-exists :supersede)
+	 (format f "#!/bin/sh~%")
+         #+nil
+	 (let ((home-path (sb-ext:posix-getenv "SBCL_HOME")))
+	   (if home-path
+	       (format f "SBCL_HOME=~s~%" home-path)
+               (format f "SBCL_HOME=~%")))
+         (format f "export SBCL_HOME~%")
+	 (write-string (car sb-ext:*posix-argv*) f)
+	 (write-string " --core " f)
+	 (write-string core-name f)
+	 (write-string " $@" f)
+         (format f "~%"))
+       (sb-ext:save-lisp-and-die
+	   core-name
+	   :toplevel 
+	   #'(lambda () 
+	       (in-package "MATLISP-USER")
+	       (matlisp::load-blas-&-lapack-binaries)
+	       (format t "Loaded matlisp~%")
+	       (format t "~%")
+	       (sb-impl::toplevel-init))))))
 
 #+:allegro
 (defmacro save-matlisp ()
