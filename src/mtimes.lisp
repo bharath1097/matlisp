@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mtimes.lisp,v 1.6 2002/06/13 16:54:08 rtoy Exp $
+;;; $Id: mtimes.lisp,v 1.7 2002/07/29 01:08:45 rtoy Exp $
 ;;;
 ;;; $Log: mtimes.lisp,v $
+;;; Revision 1.7  2002/07/29 01:08:45  rtoy
+;;; Fix typos and initialization errors in m.* methods for (real-matrix
+;;; complex-matrix) and (complex-matrix real-matrix).
+;;;
 ;;; Revision 1.6  2002/06/13 16:54:08  rtoy
 ;;; Jefferson Provost reports that m.* runs very, very slowly.  Fix this.
 ;;; The slowness was mostly likely caused by calling matrix-ref for each
@@ -206,14 +210,14 @@
 
     (do ((k 0 (1+ k))
 	 (b-r 0 (+ b-r 2))
-	 (b-i 0 (+ b-i 2)))
+	 (b-i 1 (+ b-i 2)))
 	((>= k nxm))
       (declare (type fixnum k b-r b-i))
-      (let ((a-val (aref a-store k))
-	    (b-val (complex (aref b-store b-r) (aref b-store b-i)))
-	    (r-val (* a-val b-val)))
-	(setf (aref r-store b-r) (realpart r-val))
-	(setf (aref r-store b-i) (realpart i-val))))
+      (let* ((a-val (aref a-store k))
+	     (r-val (* a-val (aref b-store b-r)))
+	     (i-val (* a-val (aref b-store b-i))))
+	(setf (aref r-store b-r) r-val)
+	(setf (aref r-store b-i) i-val)))
     result))
 
 (defmethod m.* ((a complex-matrix) (b real-matrix))
@@ -258,14 +262,14 @@
 
     (do ((k 0 (1+ k))
 	 (b-r 0 (+ b-r 2))
-	 (b-i 0 (+ b-i 2)))
+	 (b-i 1 (+ b-i 2)))
 	((>= k nxm))
       (declare (type fixnum k b-r b-i))
-      (let ((a-val (aref a-store k))
-	    (b-val (complex (aref b-store b-r) (aref b-store b-i)))
-	    (r-val (* a-val b-val)))
-	(setf (aref b-store b-r) (realpart r-val))
-	(setf (aref b-store b-i) (realpart i-val))))
+      (let* ((a-val (aref a-store k))
+	     (r-val (* a-val (aref b-store b-r)))
+	     (i-val (* a-val (aref b-store b-i))))
+	(setf (aref b-store b-r) r-val)
+	(setf (aref b-store b-i) i-val)))
     b))
 
 (defmethod m.*! ((a complex-matrix) (b real-matrix))
