@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.6 2000/10/04 23:54:47 simsek Exp $
+;;; $Id: packages.lisp,v 1.7 2001/02/23 18:00:11 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.7  2001/02/23 18:00:11  rtoy
+;;; Add defpackages for FORTRAN-TO-LISP and QUADPACK for quadpack
+;;; routines.  Update MATLISP package accordingly.
+;;;
 ;;; Revision 1.6  2000/10/04 23:54:47  simsek
 ;;; o Importing EXCL (EXT) for CMUCL (Allegro) in Matlisp-user package
 ;;;
@@ -97,8 +101,54 @@
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))
 
+;; Stolen from f2cl.  
+(defpackage "FORTRAN-TO-LISP"
+    (:use "CL")
+  (:documentation "The package holding all symbols need by the Fortran to Lisp converter")
+  (:nicknames "F2CL")
+  (:export
+   ;; Constants
+   "%FALSE%" "%TRUE%"
+   ;; Types
+   "INTEGER4" "INTEGER2" "INTEGER1" "REAL8" "REAL4" "COMPLEX8" "COMPLEX16"
+   "ARRAY-DOUBLE-FLOAT" "ARRAY-SINGLE-FLOAT" "ARRAY-INTEGER4" "LOGICAL"
+   ;; Macros
+   "FREF" "FSET"
+   "F2CL-INIT-STRING" "FREF-STRING" "FSET-STRING" "F2CL-SET-STRING"
+   "F2CL-//" "FSTRING-/=" "FSTRING-=" "FSTRING->" "FSTRING->=" "FSTRING-<" "FSTRING-<="
+   "FORTRAN_COMMENT" "FDO" "F2CL/" "ARITHMETIC-IF" "COMPUTED-GOTO"
+   "ASSIGNED-GOTO"
+   "FFORMAT"
+   "DATA-IMPLIED-DO"
+   ;; Utilities
+   "ARRAY-SLICE" "ARRAY-INITIALIZE"
+   ;; Intrinsic functions
+   "ABS" "ACOS" "AIMAG" "AINT" "ALOG" "ALOG10" "AMAX0" "AMAX1"
+   "AMIN1" "AMOD" "ANINT" "ASIN" "ATAN" "ATAN2"
+   "CABS" "CEXP" "FCHAR" "CLOG" "CMPLX" "CONJG" "CCOS"
+   "CSIN" "CSQRT" "DABS" "DACOS" "DASIN"
+   "DATAN" "DATAN2" "DBLE" "DCOS" "DCOSH" "DEXP" "DIM"
+   "DINT" "DLOG" "DLOG10" "DMAX1" "DMIN1" "DMOD"
+   "DNINT" "DPROD" "DSIGN" "DSIN" "DSINH" "DSQRT" "DTAN"
+   "DTANH" "FFLOAT" "IABS" "ICHAR" "IDIM" "IDINT"
+   "IDNINT" "IFIX" "INDEX" "INT" "ISIGN" "LE" "LEN"
+   "LGE" "LGT" "FLOG" "LOG10" "LT" "MAX" "MAX0"
+   "MAX1" "MIN0" "MIN1" "NINT" "FREAL"
+   "SIGN" "SNGL" "FSQRT"
+   ))
+    
+(defpackage "QUADPACK"
+    (:use "COMMON-LISP" "FORTRAN-TO-LISP")
+  (:export
+   ;; Do we want to export the core integration routines too?
+
+   ;; The basic integrators
+   "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
+   ;; Simplified interface routines
+   "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC"))
+
 (defpackage "MATLISP"
-    (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK")
+    (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK")
     (:nicknames "MATRIX" "M")
     (:export
      "*PRINT-MATRIX*"
@@ -219,6 +269,13 @@
      "VEC"
      "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
      "ZEROS"
+     ;; From Quadpack
+     "INTEGRATE-QNG"
+     "INTEGRATE-QAG"
+     "INTEGRATE-QAGS"
+     "INTEGRATE-QAGI"
+     "INTEGRATE-QAWS"
+     "INTEGRATE-QAWC"
      ))
 
 (defpackage "MATLISP-USER"
