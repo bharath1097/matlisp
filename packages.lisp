@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.12 2001/10/25 21:52:57 rtoy Exp $
+;;; $Id: packages.lisp,v 1.13 2002/01/08 00:32:52 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.13  2002/01/08 00:32:52  rtoy
+;;; Add defpackage for the new MINPACK package.
+;;;
 ;;; Revision 1.12  2001/10/25 21:52:57  rtoy
 ;;; Export QR, QR!, and GEQR!.
 ;;;
@@ -164,6 +167,11 @@
    "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
    ;; Simplified interface routines
    "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC"))
+
+(defpackage "MINPACK"
+  (:use "COMMON-LISP" "FORTRAN-TO-LISP")
+  (:export
+   "LMDIF1"))
 
 (defpackage "MATLISP-LIB"
   (:use "COMMON-LISP" "F2CL")
