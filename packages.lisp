@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.14 2002/01/20 00:41:52 simsek Exp $
+;;; $Id: packages.lisp,v 1.15 2002/09/30 18:28:52 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.15  2002/09/30 18:28:52  simsek
+;;; o Added changes by N.Neuss for getrs functions
+;;;
 ;;; Revision 1.14  2002/01/20 00:41:52  simsek
 ;;; o exporting some forgotton symbols from LAPACK
 ;;;
@@ -115,8 +118,8 @@
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
-   "DGESV" "DGEEV" "DGETRF" "DGESVD"
-   "ZGESV" "ZGEEV" "ZGETRF" "ZGESVD" 
+   "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
+   "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
    "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
    "DORGQR" "ZUNGQR"))
 
@@ -217,6 +220,8 @@
      "GESV!"
      "GESV"
      "GETRF!"
+     "GETRS"
+     "GETRS!"
      "HELP"
      "IFFT"
      "IMAG"

@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.6 2001/10/29 18:00:28 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.7 2002/09/30 18:28:03 simsek Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.7  2002/09/30 18:28:03  simsek
+;;; o Added changes by N.Neuss for getrs functions
+;;;
 ;;; Revision 1.6  2001/10/29 18:00:28  rtoy
 ;;; Updates from M. Koerber to support QR routines with column pivoting:
 ;;;
@@ -65,8 +68,8 @@
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
-"DGESV" "DGEEV" "DGETRF" "DGESVD"
-"ZGESV" "ZGEEV" "ZGETRF" "ZGESVD" ))
+"DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
+"ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" ))
 
 (in-package "LAPACK")
 
@@ -318,6 +321,133 @@
   (ipiv (* :integer) :output)
   (info :integer :output)
 )
+
+(def-fortran-routine dgetrs :void
+"
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      March 31, 1993
+
+   Purpose
+   =======
+
+   DGETRS solves a system of linear equations
+      A * X = B  or  A' * X = B
+   with a general N-by-N matrix A using the LU factorization computed
+   by DGETRF.
+
+   Arguments
+   =========
+
+   TRANS   (input) CHARACTER*1
+           Specifies the form of the system of equations:
+           = 'N':  A * X = B  (No transpose)
+           = 'T':  A'* X = B  (Transpose)
+           = 'C':  A'* X = B  (Conjugate transpose = Transpose)
+
+   N       (input) INTEGER
+           The order of the matrix A.  N >= 0.
+
+   NRHS    (input) INTEGER
+           The number of right hand sides, i.e., the number of columns
+           of the matrix B.  NRHS >= 0.
+
+   A       (input) DOUBLE PRECISION array, dimension (LDA,N)
+           The factors L and U from the factorization A = P*L*U
+           as computed by DGETRF.
+
+   LDA     (input) INTEGER
+           The leading dimension of the array A.  LDA >= max(1,N).
+
+   IPIV    (input) INTEGER array, dimension (N)
+           The pivot indices from DGETRF; for 1<=i<=N, row i of the
+           matrix was interchanged with row IPIV(i).
+
+   B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+           On entry, the right hand side matrix B.
+           On exit, the solution matrix X.
+
+   LDB     (input) INTEGER
+           The leading dimension of the array B.  LDB >= max(1,N).
+
+   INFO    (output) INTEGER
+           = 0:  successful exit
+           < 0:  if INFO = -i, the i-th argument had an illegal value
+
+"
+  (trans :string :input)
+  (n :integer :input)
+  (nhrs :integer :input)
+  (a (* :double-float) :input)
+  (lda :integer :input)
+  (ipiv (* :integer) :input)
+  (b (* :double-float) :input-output)
+  (ldb :integer :input)
+  (info :integer :output)
+)
+
+(def-fortran-routine zgetrs :void
+"
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      September 30, 1994
+ 
+   Purpose
+   =======
+ 
+   ZGETRS solves a system of linear equations
+      A * X = B,  A**T * X = B,  or  A**H * X = B
+   with a general N-by-N matrix A using the LU factorization computed
+   by ZGETRF.
+ 
+   Arguments
+   =========
+ 
+   TRANS   (input) CHARACTER*1
+           Specifies the form of the system of equations:
+           = 'N':  A * X = B     (No transpose)
+           = 'T':  A**T * X = B  (Transpose)
+           = 'C':  A**H * X = B  (Conjugate transpose)
+ 
+   N       (input) INTEGER
+           The order of the matrix A.  N >= 0.
+ 
+   NRHS    (input) INTEGER
+           The number of right hand sides, i.e., the number of columns
+           of the matrix B.  NRHS >= 0.
+ 
+   A       (input) COMPLEX*16 array, dimension (LDA,N)
+           The factors L and U from the factorization A = P*L*U
+           as computed by ZGETRF.
+ 
+   LDA     (input) INTEGER
+           The leading dimension of the array A.  LDA >= max(1,N).
+ 
+   IPIV    (input) INTEGER array, dimension (N)
+           The pivot indices from ZGETRF; for 1<=i<=N, row i of the
+           matrix was interchanged with row IPIV(i).
+ 
+   B       (input/output) COMPLEX*16 array, dimension (LDB,NRHS)
+           On entry, the right hand side matrix B.
+           On exit, the solution matrix X.
+ 
+   LDB     (input) INTEGER
+           The leading dimension of the array B.  LDB >= max(1,N).
+ 
+   INFO    (output) INTEGER
+           = 0:  successful exit
+           < 0:  if INFO = -i, the i-th argument had an illegal value
+"
+  (trans :string :input)
+  (n :integer :input)
+  (nhrs :integer :input)
+  (a (* :complex-double-float) :input)
+  (lda :integer :input)
+  (ipiv (* :integer) :input)
+  (ldb :integer :input)
+  (b (* :complex-double-float) :input-output)
 
 (def-fortran-routine dgesvd :void
 "

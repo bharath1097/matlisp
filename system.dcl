@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.19 2002/01/08 00:33:40 rtoy Exp $
+;;; $Id: system.dcl,v 1.20 2002/09/30 18:28:52 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.20  2002/09/30 18:28:52  simsek
+;;; o Added changes by N.Neuss for getrs functions
+;;;
 ;;; Revision 1.19  2002/01/08 00:33:40  rtoy
 ;;; Add defsystem definition for the MINPACK package.
 ;;;
@@ -180,7 +183,8 @@
 		     "matlisp-essentials")
 	:components ("gesv"
 		     "geev"
-		     "getrf"))
+		     "getrf"
+		     "getrs"))
 
        (:module "matlisp-functions"
         :source-pathname "matlisp:src"
