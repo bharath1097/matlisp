@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.10 2001/05/01 13:11:06 rtoy Exp $
+;;; $Id: packages.lisp,v 1.11 2001/07/26 15:47:15 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.11  2001/07/26 15:47:15  rtoy
+;;; Updated version number to "Pre 2.0" since this isn't 1.0b anymore!
+;;;
 ;;; Revision 1.10  2001/05/01 13:11:06  rtoy
 ;;; o Export I1MACH, R1MACH, D1MACH from the F2CL package.
 ;;; o Export POLYROOTS.
@@ -318,7 +321,7 @@
 (in-package "MATLISP")
 
 (eval-when (load eval compile)
-(defparameter *matlisp-version* "1.0b")
+(defparameter *matlisp-version* "Pre 2.0")
 #-(or :cmu :allegro) (error 
 		      "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
 		      *matlisp-version*)
