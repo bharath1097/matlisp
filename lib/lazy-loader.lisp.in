@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.2 2000/05/05 21:31:00 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.3 2000/07/11 02:08:19 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.3  2000/07/11 02:08:19  simsek
+;;; Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/05 21:31:00  simsek
 ;;; o Added the library libdfftpack to the load list
 ;;;
@@ -45,12 +48,7 @@
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(in-package "MATLISP")
-
-(export '(load-blas-&-lapack-libraries
-	  load-blas-&-lapack-binaries))
-
+(in-package "COMMON-LISP-USER")
 
 #|
 ;; example of an optimized BLAS/LAPACK load on a Solaris platform
@@ -76,7 +74,8 @@
 			     "-lc"))))
 |#
 
-(eval-when (load compile eval)
+(eval-when (load eval compile)
+#+:cmu
 (defun tokenize-ld-args (s)
   (let ((token "")
 	(n (length s))
@@ -86,7 +85,8 @@
        (declare (type fixnum i))
        (let ((c (char s i)))
 	 (case c
-	  ((#\^m #\space #\tab #\newline)  (if (not (string= token ""))
+	  ((#\return #\linefeed 
+	    #\space #\tab #\newline)  (if (not (string= token ""))
 					  (progn
 					    (push token tokens)
 					    (setq token ""))))
@@ -95,19 +95,9 @@
     (if (not (string= token ""))
 	(push token tokens))
 
-    (let ((library-pathnames nil)
-	  (library-decls nil))
+    (nreverse tokens)))
 
-       (dolist (token tokens)
-          (case (char token 0)
-            (#\- (case (char token 1)
-                   (#\L (push token library-pathnames))
-                   (#\l (push token library-decls))
-                   (t (push token library-decls))))
-            (t (push token library-decls))))
-
-        `(,@library-pathnames ,@library-decls))))
-
+#+:cmu
 (defun load-blas-&-lapack-libraries ()
   (ext::load-foreign "matlisp:lib;lazy-loader.o"
 		:libraries (tokenize-ld-args
@@ -116,11 +106,14 @@
 				 (namestring
 				   (translate-logical-pathname "matlisp:lib"))
 				 " "
-				 "-Llib
-                                  -ldfftpack
-			          -llapack
-			          -lblas
+			         "-lmatlispstatic
                                   @FLIBS@"))))
+
+#+:allegro
+(defun load-blas-&-lapack-libraries ()
+  #+(or :unix :linux) (load "matlisp:lib;libmatlispshared.so")
+  #+:mswindows (load "matlisp:lib;blas.dll")
+  #+:mswindows (load "matlisp:lib;lapack.dll"))
 
 (load-blas-&-lapack-libraries))
 
@@ -128,9 +121,3 @@
   (load-blas-&-lapack-libraries)
   (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
   (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil))
-
-(unintern 'load-blas-&-lapack-libraries  "COMMON-LISP-USER")
-(unintern 'load-blas-&-lapack-binaries  "COMMON-LISP-USER")
-(import '(load-blas-&-lapack-libraries 
-	  load-blas-&-lapack-binaries)
-	  "COMMON-LISP-USER")
