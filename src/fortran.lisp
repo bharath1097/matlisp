@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fortran.lisp,v 1.9 2000/05/02 13:48:34 rtoy Exp $
+;;; $Id: fortran.lisp,v 1.10 2000/05/02 14:32:13 rtoy Exp $
 ;;;
 ;;; $Log: fortran.lisp,v $
+;;; Revision 1.10  2000/05/02 14:32:13  rtoy
+;;; Convert CR/LF to standard Unix LF.
+;;;
 ;;; Revision 1.9  2000/05/02 13:48:34  rtoy
 ;;; Turn off invalid trap when calling out to Fortran routines.  Needed
 ;;; to fix a problem with SVD stopping with an invalid exception.
