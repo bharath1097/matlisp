@@ -3,8 +3,6 @@
 ;;;
 ;;;
 
-(in-package #:minpack)
-
 ;; A simplified interface to LMDIF1.  We dynamically allocate the work arrays.
 (defun lisp-lmdif1 (fcn m-fcns n-vars x tol)
   (let* ((lwa (+ (* m-fcns n-vars) (* 5 n-vars) m-fcns))
@@ -134,11 +132,9 @@
 ;;------------------------------------------------------------------------------
 ;;
 ;; $Log: examples.lisp,v $
-;; Revision 1.2  2002/01/09 03:17:04  rtoy
-;; This file should be in the minpack package.
-;;
-;; Revision 1.1  2002/01/08 00:29:23  rtoy
-;; Initial revision.
+;; Revision 1.3  2004/02/20 17:37:02  rtoy
+;; Regenerated routines with new f2cl.  Fixes an issue wherein bad
+;; declarations of functions existed in the old code.  (Caught by sbcl.)
 ;;
 ;; Revision 1.1  2002/01/07 03:10:46  rtoy
 ;; Initial revision.

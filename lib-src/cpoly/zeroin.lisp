@@ -1,51 +1,42 @@
-;;; Compiled by f2cl version 2.0 beta on 2001/04/26 at 10:14:17
+;;; Compiled by f2cl version 2.0 beta 2002-05-06
 ;;; 
 ;;; Options: ((:prune-labels nil) (:auto-save t) (:relaxed-array-decls t)
-;;;           (:coerce-assigns :as-needed) (:array-type 'simple-array)
-;;;           (:array-slicing t))
-
-
-(use-package :f2cl)
+;;;           (:coerce-assigns :as-needed) (:array-type ':simple-array)
+;;;           (:array-slicing t) (:declare-common nil)
+;;;           (:float-format single-float))
 
 (defun zeroin (ax bx f tol)
   (declare (type double-float tol f bx ax)
-           (type (function (double-float) (values double-float &rest t)) f))
+   (type (function (double-float) (values double-float &rest t)) f))
   (prog ((a 0.0d0) (b 0.0d0) (c 0.0d0) (d 0.0d0) (e 0.0d0) (eps 0.0d0)
          (fa 0.0d0) (fb 0.0d0) (fc 0.0d0) (tol1 0.0d0) (xm 0.0d0) (p 0.0d0)
          (q 0.0d0) (r 0.0d0) (s 0.0d0) (zeroin 0.0d0))
     (declare (type double-float zeroin s r q p xm tol1 fc fb fa eps e d c b a))
-    (declare
-     (ftype (function (integer4) (values double-float &rest t)) d1mach))
-    (declare (ftype (function (double-float) (values double-float)) dabs))
    label10
-    (setf eps double-float-epsilon)
+    (setf eps (f2cl-lib:d1mach 4))
     (setf tol1 (+ eps 1.0d0))
     (setf a ax)
     (setf b bx)
     (setf fa
-            (coerce
-             (multiple-value-bind
-                 (ret-val var-0)
-                 (funcall f a)
-               (declare (ignore))
-               (when var-0 (setf a var-0))
-               ret-val)
-             'double-float))
+            (multiple-value-bind
+                (ret-val var-0)
+                (funcall f a)
+              (declare (ignore))
+              (when var-0 (setf a var-0))
+              ret-val))
     (setf fb
-            (coerce
-             (multiple-value-bind
-                 (ret-val var-0)
-                 (funcall f b)
-               (declare (ignore))
-               (when var-0 (setf b var-0))
-               ret-val)
-             'double-float))
+            (multiple-value-bind
+                (ret-val var-0)
+                (funcall f b)
+              (declare (ignore))
+              (when var-0 (setf b var-0))
+              ret-val))
     (if (or (= fa 0.0d0) (= fb 0.0d0)) (go label20))
-    (if (<= (* fa (/ fb (dabs fb))) 0.0d0) (go label20))
-    (fformat 6
-             ("~1@T" "f(ax) and f(bx) do not have different signs,"
-              " zeroin is aborting" "~%")
-             nil)
+    (if (<= (* fa (/ fb (f2cl-lib:dabs fb))) 0.0d0) (go label20))
+    (f2cl-lib:fformat 6
+                      ("~1@T" "f(ax) and f(bx) do not have different signs,"
+                       " zeroin is aborting" "~%")
+                      nil)
     (go end_label)
    label20
     (setf c a)
@@ -53,7 +44,7 @@
     (setf d (- b a))
     (setf e d)
    label30
-    (if (>= (dabs fc) (dabs fb)) (go label40))
+    (if (>= (f2cl-lib:dabs fc) (f2cl-lib:dabs fb)) (go label40))
     (setf a b)
     (setf b c)
     (setf c a)
@@ -61,10 +52,13 @@
     (setf fb fc)
     (setf fc fa)
    label40
-    (setf tol1 (+ (* 2.0d0 eps (dabs b)) (* 0.5d0 tol)))
+    (setf tol1 (+ (* 2.0d0 eps (f2cl-lib:dabs b)) (* 0.5d0 tol)))
     (setf xm (* 0.5d0 (- c b)))
-    (if (or (<= (dabs xm) tol1) (= fb 0.0d0)) (go label150))
-    (if (and (>= (dabs e) tol1) (> (dabs fa) (dabs fb))) (go label50))
+    (if (or (<= (f2cl-lib:dabs xm) tol1) (= fb 0.0d0)) (go label150))
+    (if
+     (and (>= (f2cl-lib:dabs e) tol1)
+          (> (f2cl-lib:dabs fa) (f2cl-lib:dabs fb)))
+     (go label50))
     (setf d xm)
     (setf e d)
     (go label110)
@@ -89,8 +83,8 @@
     (setf s e)
     (setf e d)
     (if
-     (or (>= (* 2.0d0 p) (- (* 3.0d0 xm q) (dabs (* tol1 q))))
-         (>= p (dabs (* 0.5d0 s q))))
+     (or (>= (* 2.0d0 p) (- (* 3.0d0 xm q) (f2cl-lib:dabs (* tol1 q))))
+         (>= p (f2cl-lib:dabs (* 0.5d0 s q))))
      (go label100))
     (setf d (/ p q))
     (go label110)
@@ -100,7 +94,7 @@
    label110
     (setf a b)
     (setf fa fb)
-    (if (<= (dabs d) tol1) (go label120))
+    (if (<= (f2cl-lib:dabs d) tol1) (go label120))
     (setf b (+ b d))
     (go label140)
    label120
@@ -111,19 +105,17 @@
     (setf b (- b tol1))
    label140
     (setf fb
-            (coerce
-             (multiple-value-bind
-                 (ret-val var-0)
-                 (funcall f b)
-               (declare (ignore))
-               (when var-0 (setf b var-0))
-               ret-val)
-             'double-float))
-    (if (> (* fb (/ fc (dabs fc))) 0.0d0) (go label20))
+            (multiple-value-bind
+                (ret-val var-0)
+                (funcall f b)
+              (declare (ignore))
+              (when var-0 (setf b var-0))
+              ret-val))
+    (if (> (* fb (/ fc (f2cl-lib:dabs fc))) 0.0d0) (go label20))
     (go label30)
    label150
     (setf zeroin b)
     (go end_label)
    end_label
-    (return (values zeroin ax bx f tol))))
+    (return (values zeroin nil nil nil nil))))
 

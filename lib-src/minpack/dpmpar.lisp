@@ -1,29 +1,27 @@
-;;; Compiled by f2cl version 2.0 beta on 2002/01/07 at 17:53:51
+;;; Compiled by f2cl version 2.0 beta 2002-05-06
 ;;; 
 ;;; Options: ((:prune-labels nil) (:auto-save t) (:relaxed-array-decls nil)
 ;;;           (:coerce-assigns :as-needed) (:array-type ':array)
-;;;           (:array-slicing t))
+;;;           (:array-slicing t) (:declare-common nil)
+;;;           (:float-format single-float))
 
-(in-package "MINPACK")
+(in-package :minpack)
 
-
-
-(use-package :f2cl)
 
 (let ((dmach (make-array 3 :element-type 'double-float)))
   (declare (type (array double-float (3)) dmach))
-  (fset (fref dmach (1) ((1 3))) 2.2204460492599998d-16)
-  (fset (fref dmach (2) ((1 3))) 2.2250738585199997d-308)
-  (fset (fref dmach (3) ((1 3))) 1.79769313485d+308)
+  (f2cl-lib:fset (f2cl-lib:fref dmach (1) ((1 3))) 2.2204460492599998d-16)
+  (f2cl-lib:fset (f2cl-lib:fref dmach (2) ((1 3))) 2.2250738585199997d-308)
+  (f2cl-lib:fset (f2cl-lib:fref dmach (3) ((1 3))) 1.79769313485d+308)
   (defun dpmpar (i)
-    (declare (type integer4 i))
-    (prog ((maxmag (make-array 4 :element-type 'integer4))
-           (minmag (make-array 4 :element-type 'integer4))
-           (mcheps (make-array 4 :element-type 'integer4)) (dpmpar 0.0d0)
-           (equivalence 0.0f0))
+    (declare (type f2cl-lib:integer4 i))
+    (prog ((maxmag (make-array 4 :element-type 'f2cl-lib:integer4))
+           (minmag (make-array 4 :element-type 'f2cl-lib:integer4))
+           (mcheps (make-array 4 :element-type 'f2cl-lib:integer4))
+           (dpmpar 0.0d0) (equivalence 0.0))
       (declare (type single-float equivalence)
                (type double-float dpmpar)
-               (type (array integer4 (4)) mcheps minmag maxmag))
+               (type (array f2cl-lib:integer4 (4)) mcheps minmag maxmag))
       '"     **********"
       '""
       '"     function dpmpar"
@@ -86,39 +84,39 @@
       '""
       '"     machine constants for the pdp-10 (ka processor)."
       '""
-      (fortran_comment "     data mcheps(1),mcheps(2) / \\"
-                       114400000000
-                       |,|
-                       |\\|
-                       "000000000000 /")
-      (fortran_comment "     data minmag(1),minmag(2) / \\"
-                       33400000000
-                       |,|
-                       |\\|
-                       "000000000000 /")
-      (fortran_comment "     data maxmag(1),maxmag(2) / \\"
-                       377777777777
-                       |,|
-                       |\\|
-                       "344777777777 /")
+      (f2cl-lib:fortran_comment "     data mcheps(1),mcheps(2) / \\"
+                                114400000000
+                                |,|
+                                |\\|
+                                "000000000000 /")
+      (f2cl-lib:fortran_comment "     data minmag(1),minmag(2) / \\"
+                                33400000000
+                                |,|
+                                |\\|
+                                "000000000000 /")
+      (f2cl-lib:fortran_comment "     data maxmag(1),maxmag(2) / \\"
+                                377777777777
+                                |,|
+                                |\\|
+                                "344777777777 /")
       '""
       '"     machine constants for the pdp-10 (ki processor)."
       '""
-      (fortran_comment "     data mcheps(1),mcheps(2) / \\"
-                       104400000000
-                       |,|
-                       |\\|
-                       "000000000000 /")
-      (fortran_comment "     data minmag(1),minmag(2) / \\"
-                       400000000
-                       |,|
-                       |\\|
-                       "000000000000 /")
-      (fortran_comment "     data maxmag(1),maxmag(2) / \\"
-                       377777777777
-                       |,|
-                       |\\|
-                       "377777777777 /")
+      (f2cl-lib:fortran_comment "     data mcheps(1),mcheps(2) / \\"
+                                104400000000
+                                |,|
+                                |\\|
+                                "000000000000 /")
+      (f2cl-lib:fortran_comment "     data minmag(1),minmag(2) / \\"
+                                400000000
+                                |,|
+                                |\\|
+                                "000000000000 /")
+      (f2cl-lib:fortran_comment "     data maxmag(1),maxmag(2) / \\"
+                                377777777777
+                                |,|
+                                |\\|
+                                "377777777777 /")
       '""
       '"     machine constants for the pdp-11."
       '""
@@ -210,11 +208,11 @@
       '"     machine constants for ieee machines."
       '""
       '""
-      (setf dpmpar (fref dmach (i) ((1 3))))
+      (setf dpmpar (f2cl-lib:fref dmach (i) ((1 3))))
       (go end_label)
       '""
       '"     last card of function dpmpar."
       '""
      end_label
-      (return (values dpmpar i)))))
+      (return (values dpmpar nil)))))
 
