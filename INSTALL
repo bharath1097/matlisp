@@ -1,3 +1,4 @@
+-*- Mode: text -*-
 Requirements:
 =============
 Either CMUCL (version 18b) or Allegro CL (version 5.0 or later)
@@ -52,13 +53,13 @@ The installation follows in a few easy steps:
 
    F77=f77 FFLAGS='-g -O -KPIC' ./configure ...
 
-5. Build the Lisp files
+5. Build the Fortran and Lisp files
 
 	make
                          
 That's all there is to it.  In order for this to work, configure must 
 be able to detect a Fortran compiler and a C compiler in your path.  
-This is usually the case.  If configure fails  you should contact your 
+This is usually the case.  If configure fails you should contact your 
 system administrator.
 
 In addition, if you use some other Fortran compiler besides g77 or
@@ -73,6 +74,13 @@ the file lib/lazy-loader.lisp contains sample code that would
 use the ATLAS (http://www.netlib.org/atlas) replacement library
 for BLAS.
 
+If you want to build Matlisp with ATLAS, you may configure with the
+option --with-atlas=<libpath> to enable ATLAS support.  You need to
+specify the full path to where the ATLAS libraries are located.  The
+libraries themselves must be named liblapack, libf77blas, libatlas,
+and libcblas.  If other names are used, you'll have to manually change
+lazy-loader.lisp after configuring.
+
 MS Windows installation:
 ========================
 
@@ -86,6 +94,6 @@ That should be all.  The precompiled BLAS/LAPACK libraries were obtained
 from http://www.che.chalmers.se/~agris/Programming/clapack/clapack.html
 
 Unfortunately, we currently do not support the functions FFT, IFFT
-which rely of DFFTPACK for MSWindows.
+which rely on DFFTPACK for MSWindows.
 
 Enjoy!
