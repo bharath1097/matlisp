@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.5 2000/10/04 22:49:52 simsek Exp $
+;;; $Id: packages.lisp,v 1.6 2000/10/04 23:54:47 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.6  2000/10/04 23:54:47  simsek
+;;; o Importing EXCL (EXT) for CMUCL (Allegro) in Matlisp-user package
+;;;
 ;;; Revision 1.5  2000/10/04 22:49:52  simsek
 ;;; o Added matlisp-user package
 ;;;
@@ -219,9 +222,7 @@
      ))
 
 (defpackage "MATLISP-USER"
-  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL")
-  #+:cmu (:shadowing-import-from "COMMON-LISP"
-				 "QUIT"))
+  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL" #+:cmu "EXT"))
 
 (in-package "MATLISP")
 
