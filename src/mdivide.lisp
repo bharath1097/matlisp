@@ -30,9 +30,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mdivide.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: mdivide.lisp,v 1.5 2001/06/22 12:54:28 rtoy Exp $
 ;;;
 ;;; $Log: mdivide.lisp,v $
+;;; Revision 1.5  2001/06/22 12:54:28  rtoy
+;;; o Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;;   instead of using the error-prone make-array.
+;;; o Fix a bug in (m./ <complex> <real>).  The implementation was totally
+;;;   broken.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -272,7 +278,20 @@
 	(setf (matrix-ref result k) (/ a-val b-val))))))
 
 (defmethod m./ ((a complex-matrix) (b real-matrix))
-  (m./ b a))
+  (let* ((n (nrows b))
+	 (m (ncols b))
+	 (nxm (number-of-elements b))
+	 (result (make-complex-matrix-dim n m)))
+    (declare (type fixnum n m nxm))
+
+    (dotimes (k nxm result)
+      (declare (type fixnum k))
+      (let ((a-val (matrix-ref a k))
+	    (b-val (matrix-ref b k)))
+	(declare (type (complex complex-matrix-element-type)  a-val)
+		 (type real-matrix-element-type b-val))
+	(setf (matrix-ref result k) (/ a-val b-val))))))
+
   
 (defmethod m./! ((a real-matrix) (b real-matrix))
   (let* ((nxm (number-of-elements b)))
