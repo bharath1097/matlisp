@@ -30,11 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.6 2002/07/29 01:11:32 rtoy Exp $
+;;; $Id: copy.lisp,v 1.7 2003/02/14 05:42:12 rtoy Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
-;;; Revision 1.6  2002/07/29 01:11:32  rtoy
-;;; Don't use *1x1-complex-array*.
+;;; Revision 1.7  2003/02/14 05:42:12  rtoy
+;;; Undo previous change.  We really need the 1x1-complex-array for
+;;; Allegro because we don't (currently) pass in complex double-floats as
+;;; an array.  (Not needed for CMUCL which handles this correctly.)
 ;;;
 ;;; Revision 1.5  2001/10/29 16:23:10  rtoy
 ;;; COPY! was broken on CMUCL because FORTRAN-DSCAL is no longer
@@ -212,13 +214,17 @@ don't know how to coerce a COMPLEX to a REAL"))
 
     #+:allegro (setq x (complex-coerce x))
 
-    (zcopy nxm x 0 (store y) 1)
+    (setf (aref *1x1-complex-array* 0) (realpart x))
+    (setf (aref *1x1-complex-array* 1) (imagpart x))
+    (zcopy nxm *1x1-complex-array* 0 (store y) 1)
     y))
 
 (defmethod copy! ((x number) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
     (setq x (complex-coerce x))
-    (zcopy nxm x 0 (store y) 1)
+    (setf (aref *1x1-complex-array* 0) (realpart x))
+    (setf (aref *1x1-complex-array* 1) (imagpart x))
+    (zcopy nxm *1x1-complex-array* 0 (store y) 1)
     y))
 
     
