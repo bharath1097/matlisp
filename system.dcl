@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.18 2001/10/25 21:52:29 rtoy Exp $
+;;; $Id: system.dcl,v 1.19 2002/01/08 00:33:40 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.19  2002/01/08 00:33:40  rtoy
+;;; Add defsystem definition for the MINPACK package.
+;;;
 ;;; Revision 1.18  2001/10/25 21:52:29  rtoy
 ;;; Add geqr for QR support.
 ;;;
@@ -349,6 +352,40 @@
 				     (:file "dqawc"
 					    :depends-on ("dqawce"
 							 "xerror"))))))))
+       (:module "minpack-functions"
+		:source-pathname ""
+		:binary-pathname ""
+		:depends-on ("f2cl-macros")
+		:components
+		(
+		 #+nil
+		 (:module "quadpack-interface"
+			  :source-pathname "matlisp:src"
+			  :binary-pathname ""
+			  :components
+			  ((:file "quadpack")))
+		 (:module "minpack-lib"
+			  :source-pathname "matlisp:lib-src;minpack"
+			  :binary-pathname ""
+			  :package "MINPACK"
+			  :components
+			  ((:file "dpmpar")
+			   (:file "enorm")
+			   (:file "fdjac2")
+			   (:file "qrsolv")
+			   (:file "lmpar")
+			   (:file "qrfac")
+			   (:file "lmdif")
+			   (:file "lmdif1")
+			   (:file "lmder")
+			   (:file "lmder1")
+			   (:file "dogleg")
+			   (:file "qform")
+			   (:file "r1mpyq")
+			   (:file "r1updt")
+			   (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
+			   (:file "hybrj1" :depends-on ("hybrj"))
+			   ))))
        (:module "lib-src"
 		:binary-pathname ""
 		:components
