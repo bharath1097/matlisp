@@ -51,6 +51,12 @@ be able to detect a Fortran compiler and a C compiler in your path.
 This is usually the case.  If configure fails  you should contact your 
 system administrator.
 
+For higher performance you may consider using optimized BLAS/LAPACK
+libraries that may be available for your system.  For example,
+the file lib/lazy-loader.lisp contains sample code that would
+use the ATLAS (http://www.netlib.org/atlas) replacement library
+for BLAS.
+
 MS Windows installation:
 ========================
 
