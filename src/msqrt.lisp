@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: msqrt.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: msqrt.lisp,v 1.2 2000/05/05 21:39:29 simsek Exp $
 ;;;
 ;;; $Log: msqrt.lisp,v $
+;;; Revision 1.2  2000/05/05 21:39:29  simsek
+;;; o Fixed some documentation bugs
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -62,7 +65,7 @@
 
 (defmethod msqrt :before ((a standard-matrix))
   (if (not (square-matrix-p a))
-      (error "argument A given to SQRTM must be a square matrix")))
+      (error "argument A given to MSQRT must be a square matrix")))
 
 (defun %negative-p (mat)
   (let ((n (n mat))
@@ -88,11 +91,11 @@
 						 (make-complex-matrix-dim (n e) (m e)))))
 	      (m*! v (m* e (m/ v))))
 	  (m*! v (m* (map-matrix #'sqrt e) (m/ v))))
-      (error "could not compute SQRTM of A, could not compute eigenvalues"))))
+      (error "could not compute MSQRT of A, could not compute eigenvalues"))))
 
 (defmethod msqrt ((a standard-matrix))
   (multiple-value-bind (v e info)
       (geev a t)
     (if info
 	(m*! v (m* (map-matrix! #'sqrt e) (m/ v)))
-      (error "could not compute SQRTM of A, could not compute eigenvalues"))))
+      (error "could not compute MSQRT of A, could not compute eigenvalues"))))
