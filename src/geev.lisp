@@ -30,9 +30,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.7 2001/03/06 21:58:06 rtoy Exp $
+;;; $Id: geev.lisp,v 1.8 2001/03/07 00:14:56 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.8  2001/03/07 00:14:56  rtoy
+;;; Asking dgeev for the desired workspace size now works.  (Didn't have
+;;; the return values matched up correctly!)  (Needs a fix to dgeev.f for
+;;; this to work, though.)
+;;;
 ;;; Revision 1.7  2001/03/06 21:58:06  rtoy
 ;;; o The workspace inquiry function doesn't seem to work for DGEEV.
 ;;;   Don't use it in geev.
@@ -225,7 +230,7 @@
  
 
 (let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
-      (work (make-array 2 :element-type 'real-matrix-element-type)))
+      (work (make-array 1 :element-type 'real-matrix-element-type)))
   (defun dgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -234,8 +239,9 @@
 	  ((:vn t) (values "N" "V"))
 	  (:nv (values "V" "N"))
 	  (:vv (values "V" "V")))
-      
-      (multiple-value-bind (store-a store-w store-vl store-vr work info)
+
+      (multiple-value-bind (store-a store-wr store-wi store-vl store-vr
+				    work info)
 	  (dgeev jobvl
 		 jobvr
 		 n			; N
@@ -250,9 +256,8 @@
 		 work			; WORK
 		 -1			; LWORK
 		 0 )			; INFO
-	(declare (ignore store-a store-w store-vl store-vr))
-	(format t "info = ~A~%" info)
-	(format t "work = ~A~%" (realpart (aref work 0)))
+	(declare (ignore store-a store-wr store-wi store-vl store-vr))
+	(assert (zerop info))
 	(ceiling (realpart (aref work 0))))))
   )
 
@@ -262,14 +267,12 @@
 	 (xxx (make-array 1 :element-type 'real-matrix-element-type))
 	 (wr (make-array n :element-type 'real-matrix-element-type))
 	 (wi (make-array n :element-type 'real-matrix-element-type))
-	 ;;(lwork (dgeev-workspace-inquiry n job))
-	 (lwork (* n 8))
+	 (lwork (dgeev-workspace-inquiry n job))
 	 (work (make-array lwork :element-type 'real-matrix-element-type)))
 
     (declare (type fixnum n)
 	     (type (simple-array real-matrix-element-type (*)) xxx wr wi))
 
-    (format t "Lisp lwork = ~A~%" lwork)
     (case job
       (:nn
        (multiple-value-bind (a wr wi vl vr work info)
