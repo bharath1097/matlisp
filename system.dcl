@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.12 2001/04/26 21:54:48 rtoy Exp $
+;;; $Id: system.dcl,v 1.13 2001/04/28 13:32:52 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.13  2001/04/28 13:32:52  rtoy
+;;; Added interface to TOMS 715 (SPECFUN).
+;;;
 ;;; Revision 1.12  2001/04/26 21:54:48  rtoy
 ;;; o Try to get the correct source-path for all modules/files so that it
 ;;;   works on Allegro and CMUCL.
@@ -190,6 +193,12 @@
 		     "mdivide"
 		     "msqrt"
 		     #-:mswindows "fft"))
+       (:module "special-functions"
+		:source-pathname "matlisp:src"
+		:binary-pathname ""
+		:depends-on ("matlisp-functions")
+		:components
+		((:file "specfun")))
        ;; Various add-on packages for matlisp
        ;; This is just the f2cl macros we need, not all of f2cl.
        (:module "f2cl-macros"
