@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: map.lisp,v 1.5 2000/10/04 23:55:29 simsek Exp $
+;;; $Id: map.lisp,v 1.6 2000/10/05 17:36:18 simsek Exp $
 ;;;
 ;;; $Log: map.lisp,v $
+;;; Revision 1.6  2000/10/05 17:36:18  simsek
+;;; o Fixed a typo
+;;;
 ;;; Revision 1.5  2000/10/04 23:55:29  simsek
 ;;; o Hacked methods specializing to functions
 ;;;
@@ -259,7 +262,7 @@
       (declare (type fixnum k))
       (setf (matrix-ref mat k) (funcall func (matrix-ref mat k))))))
 
-(defmethod map-matrix (function (mat complex-matrix))
+(defmethod map-matrix (func (mat complex-matrix))
   (unless (functionp func)
     (error "argument ~a given to ~a should have been a ~a"
 	   func
