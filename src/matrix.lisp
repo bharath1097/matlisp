@@ -26,9 +26,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.4 2000/05/11 18:02:55 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.4  2000/05/11 18:02:55  rtoy
+;;; o After the great standard-matrix renaming, I forgot a few initargs
+;;;   that needed to be changed
+;;; o MAKE-REAL-MATRIX and MAKE-COMPLEX-MATRIX didn't properly handle
+;;;   things like #(1 2 3 4) and #((1 2 3 4)).  Make them accept these.
+;;;
 ;;; Revision 1.3  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -485,7 +491,7 @@ matrix and a number"))
           (declare (type fixnum j))
 	  (setf (aref store (fortran-matrix-indexing i j n)) 
 		(coerce (elt this-row j) 'real-matrix-element-type)))))
-    (make-instance 'real-matrix :n n :m m :store store)))
+    (make-instance 'real-matrix :nrows n :ncols m :store store)))
 
 (defun make-real-matrix-seq (seq)
   (let* ((n (length seq))
@@ -494,7 +500,7 @@ matrix and a number"))
     (dotimes (k n)
       (declare (type fixnum k))
       (setf (aref store k) (coerce (elt seq k) 'real-matrix-element-type)))
-    (make-instance 'real-matrix :n n :m 1 :store store)))
+    (make-instance 'real-matrix :nrows n :ncols 1 :store store)))
   
 (defun make-real-matrix-sequence (seq)
   (cond ((or (listp seq) (vectorp seq))
@@ -548,41 +554,42 @@ matrix and a number"))
 
               1 2 3
               4 5 6
+ (make-real-matrix #(1 2 3 4))
+        4x1 matrix (column vector)
+
+          1
+          2
+          3
+          4
+
+ (make-real-matrix #((1 2 3 4))
+        1x4 matrix (row vector)
+
+          1 2 3 4
 "
 
   (let ((nargs (length args)))
     (case nargs
-      (0
-       (error "require 1 or 2 arguments to make a matrix"))
       (1
        (let ((arg (first args)))
 	 (typecase arg
 	   (integer
-	    (if (> arg 0)
-		(make-real-matrix-dim arg arg)
-	      (error "matrix dimension ~a must be > 0" arg)))
+	    (assert (plusp arg) nil
+		    "matrix dimension must be positive, not ~A" arg)
+	    (make-real-matrix-dim arg arg))
 	   (sequence
-	    (let* ((n (length arg))
-		   (elt (car arg))
-		   (m (if (subtypep (type-of elt) 'sequence)
-			  (length elt)
-			1)))
-	      (if (and (> n 0)
-		       (> m 0))
-		  (make-real-matrix-sequence arg)
-		(error "don't know how to make matrix from ~a" arg))))
+	    (make-real-matrix-sequence arg))
 	   ((array * (* *))
 	    (make-real-matrix-array arg))
 	   (t (error "don't know how to make matrix from ~a" arg)))))
       (2
        (destructuring-bind (n m)
 	   args
-	 (if (and (integerp n)
-		  (integerp m)
-		  (> n 0)
-		  (> m 0))
-	     (make-real-matrix-dim n m)
-	   (error "don't know how to make matrix from ~a and ~a" n m))))
+	 (assert (and (typep n '(integer 1))
+		      (typep n '(integer 1)))
+		 nil
+		 "cannot make a ~A x ~A matrix" n m)
+	 (make-real-matrix-dim n m)))
       (t
        (error "require 1 or 2 arguments to make a matrix")))))
 
@@ -749,37 +756,26 @@ matrix and a number"))
 "
   (let ((nargs (length args)))
     (case nargs
-      (0
-       (error "require 1 or 2 arguments to make a matrix"))
       (1
        (let ((arg (first args)))
 	 (typecase arg
 	   (integer
-	    (if (> arg 0)
-		(make-complex-matrix-dim arg arg)
-	      (error "matrix dimension ~a must be > 0" arg)))
+	    (assert (plusp arg) nil
+		    "matrix dimension must be positive, not ~A" arg)
+	    (error "matrix dimension ~a must be > 0" arg))
 	   (sequence
-	    (let* ((n (length arg))
-		   (elt (car arg))
-		   (m (if (subtypep (type-of elt) 'sequence)
-			  (length elt)
-			1)))
-	      (if (and (> n 0)
-		       (> m 0))
-		  (make-complex-matrix-sequence arg)
-		(error "don't know how to make matrix from ~a" arg))))
+	    (make-complex-matrix-sequence arg))
 	   ((array * (* *))
 	    (make-complex-matrix-array arg))
 	   (t (error "don't know how to make matrix from ~a" arg)))))
       (2
        (destructuring-bind (n m)
 	   args
-	 (if (and (integerp n)
-		  (integerp m)
-		  (> n 0)
-		  (> m 0))
-	     (make-complex-matrix-dim n m)
-	   (error "don't know how to make matrix from ~a and ~a" n m))))
+	 (assert (and (typep n '(integer 1))
+		      (typep n '(integer 1)))
+		 nil
+		 "cannot make a ~A x ~A matrix" n m)
+	 (make-complex-matrix-dim n m)))
       (t
        (error "require 1 or 2 arguments to make a matrix")))))
 
