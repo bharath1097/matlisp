@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mplus.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: mplus.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: mplus.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -150,20 +153,25 @@
 (defmethod m+ ((a real) (b real-matrix))
   (m+ b (coerce a 'real-matrix-element-type)))
 
-(defmethod m+ ((a real-matrix) (b kernel::complex-double-float))
+(defmethod m+ ((a real-matrix) (b #+:cmu kernel::complex-double-float
+				  #+:allegro complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
+	 #+:allegro (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
     (axpy! 1.0d0 a result)))
 
+#+:cmu
 (defmethod m+ ((a real-matrix) (b complex))
   (m+ a (complex-coerce b)))
 
-(defmethod m+ ((a kernel::complex-double-float) (b real-matrix))
+(defmethod m+ ((a #+:cmu kernel::complex-double-float
+		  #+:allegro complex) (b real-matrix))
   (m+ b a))
 
+#+:cmu
 (defmethod m+ ((a complex) (b real-matrix))
   (m+ b (complex-coerce a)))
 
@@ -186,20 +194,25 @@
 (defmethod m+ ((a real) (b complex-matrix))
   (m+ b (coerce a 'complex-matrix-element-type)))
 
-(defmethod m+ ((a complex-matrix) (b kernel::complex-double-float))
+(defmethod m+ ((a complex-matrix) (b #+:cmu kernel::complex-double-float
+				     #+:allegro complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
+	 #+:allegro (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
     (axpy! 1.0d0 a result)))
 
+#+:cmu
 (defmethod m+ ((a complex-matrix) (b complex))
   (m+ a (complex-coerce b)))
 
-(defmethod m+ ((a kernel::complex-double-float) (b complex-matrix))
+(defmethod m+ ((a #+:cmu kernel::complex-double-float
+		  #+:allegro complex) (b complex-matrix))
   (m+ b a))
 
+#+:cmu
 (defmethod m+ ((a complex) (b complex-matrix))
   (m+ b (complex-coerce a)))
 
@@ -271,21 +284,27 @@ don't know how to coerce COMPLEX to REAL"))
   (make-array 2 :element-type 'complex-matrix-element-type
 	      :initial-contents '(1.0d0 0.0d0)))
 
-(defmethod m+! ((a complex-matrix) (b kernel::complex-double-float))
+(defmethod m+! ((a complex-matrix) (b #+:cmu kernel::complex-double-float
+				      #+:allegro complex))
   (let* ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
+
+    #+:allegro (setq b (complex-coerce b))
 
     (setf (aref *1x1-complex-array* 0) (realpart b))
     (setf (aref *1x1-complex-array* 1) (imagpart b))
     (zaxpy nxm *complex-unity-as-array* *1x1-complex-array* 0 (store a) 1)
     a))
 
+#+:cmu
 (defmethod m+! ((a complex-matrix) (b complex))
   (m+! a (complex-coerce b)))
 
-(defmethod m+! ((a kernel::complex-double-float) (b complex-matrix))
+(defmethod m+! ((a #+:cmu kernel::complex-double-float
+		   #+:allegro complex) (b complex-matrix))
   (m+! b a))
 
+#+:cmu
 (defmethod m+! ((a complex) (b complex-matrix))
   (m+! b (complex-coerce a)))
 

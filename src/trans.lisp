@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: trans.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: trans.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: trans.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -60,7 +63,7 @@
 ;; for example, taking the transpose of a row/column vector is easy, due to
 ;; representation, but this will not create a new matrix.
 
-(export '(transpose
+#+nil (export '(transpose
 	  ctranspose))
 
 (defgeneric transpose (matrix)

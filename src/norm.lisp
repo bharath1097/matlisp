@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: norm.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: norm.lisp,v 1.4 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: norm.lisp,v $
+;;; Revision 1.4  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.3  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -52,11 +55,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export 'norm)
+#+nil (export 'norm)
 
 (defgeneric norm (a &optional p)
   (:documentation
@@ -102,6 +105,7 @@
   (declare (ignore p))
   (abs a))
 
+#+:cmu
 (defmethod norm ((a real-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))
@@ -169,12 +173,88 @@
 
 
 
+#+:allegro
+(defmethod norm ((a real-matrix) &optional (p 2))
+  (let ((n (nrows a))
+	(m (ncols a))
+	(nxm (number-of-elements a))
+	(store (store a)))
+    (declare (type fixnum n m nxm)
+	     (type (real-matrix-store-type (*)) store))
+
+    (if (row-or-col-vector-p a)
+	(case p
+	 ((1 :1) (dasum nxm store 1))
+	 ((2 :2) (dnrm2 nxm store 1))
+	 ((:oo :inf :i :infinity)
+	                         (let ((k (idamax nxm store 1)))
+				    (abs (aref store (1- k)))))
+	 ((:-oo :-inf :-i :-infinity)
+	                           (let ((nrm 0.0d0))
+				     (dotimes (k nxm)
+				       (declare (type fixnum k))
+				       (setq nrm (min nrm (abs (aref store k)))))
+				     nrm))
+	 (t (if (and (integerp p)
+		     (> p 2))
+		(let ((nrm 0.0d0))
+		  (dotimes (i nxm)
+		    (declare (type fixnum i))
+		    (incf nrm (expt (abs (aref store i)) (the fixnum p))))
+		  (expt nrm (/ p)))
+	      (error "don't know how to take a ~a-norm of a vector" p))))
+      
+      (case p
+	((1 :1) (let ((nrm 0.0d0))
+	     (dotimes (j m)
+	       (declare (type fixnum j))
+	       (setq nrm (max nrm 
+			      (let ((colsum 0.0d0))
+				(dotimes (i n)
+				    (declare (type fixnum i))
+				    (incf colsum (abs (matrix-ref a i j))))
+				colsum))))
+	     nrm))
+	((2 :2) (multiple-value-bind (up sigma vp status)
+		    (svd a :a)
+		  (declare (ignore up vp))
+	      (if status
+		  (matrix-ref sigma 0)
+		(error "SVD did not converge, cannot compute 2-norm of matrix"))))
+	((:oo :inf :i :infinity)
+	    (let ((nrm 0.0d0))
+	      (dotimes (i n)
+		(declare (type fixnum i))
+		(setq nrm (max nrm
+			       (let ((rowsum 0.0d0))
+				 (dotimes (j m)
+				    (declare (type fixnum j))
+				    (incf rowsum (abs (matrix-ref a i j))))
+				 rowsum))))
+	      nrm))
+	((:f :fro :frob :frobenius)
+	         (let ((nrm 0.0d0))
+		   (dotimes (j m)
+		     (declare (type fixnum j))
+		     (incf nrm 
+			   (let ((colsqrtsum 0.0d0))
+				 (dotimes (i n)
+				    (declare (type fixnum i))
+				    (let ((abs (abs (matrix-ref a i j))))
+				      (incf colsqrtsum (* abs abs))))
+				 colsqrtsum)))
+		   (sqrt nrm)))
+	(t (error "don't know how to take a ~a-norm of a matrix" p))
+	))))
+
+
 
 ;; there may be a theoretical bug here, with the use of DZASUM for 
 ;; 1,oo norms ... either that or matlab has a bug.
 ;;
 ;; in either case, the doc for this function should be better defined.
 
+#+:cmu
 (defmethod norm ((a complex-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))
@@ -243,6 +323,81 @@
 	(t (error "don't know how to take a ~a-norm of a matrix" p))
 	))))
 
+
+
+
+#+:allegro
+(defmethod norm ((a complex-matrix) &optional (p 2))
+  (let ((n (nrows a))
+	(m (ncols a))
+	(nxm (number-of-elements a))
+	(store (store a)))
+    (declare (type fixnum n m nxm)
+	     (type (complex-matrix-store-type (*)) store))
+
+    (if (row-or-col-vector-p a)
+	(case p
+	 ((1 :1) (dzasum nxm store 1))
+	 ((2 :2) (dznrm2 nxm store 1))
+	 ((:oo :inf :i :infinity) (let ((k (izamax nxm store 1)))
+				    (abs (matrix-ref a (1- k)))))
+	 ((:-oo :-inf :-i :-infinity)
+	                           (let ((nrm 0.0d0))
+				     (dotimes (k nxm)
+				       (declare (type fixnum k))
+				       (setq nrm (min nrm (abs (matrix-ref a k)))))
+				     nrm))
+	 (t (if (and (integerp p)
+		     (> p 2))
+		(let ((nrm 0.0d0))
+		  (dotimes (i nxm)
+		    (declare (type fixnum i))
+		    (incf nrm (expt (abs (matrix-ref a i)) (the fixnum p))))
+		  (expt nrm (/ p)))
+	      (error "don't know how to take a ~a-norm of a vector" p))))
+      
+      (case p
+	((1 :1) (let ((nrm 0.0d0))
+	     (dotimes (j m)
+	       (declare (type fixnum j))
+	       (setq nrm (max nrm 
+			      (let ((colsum 0.0d0))
+				(dotimes (i n)
+				    (declare (type fixnum i))
+				    (incf colsum (abs (matrix-ref a i j))))
+				colsum))))
+	     nrm))
+	((2 :2) (multiple-value-bind (up sigma vp status)
+		    (svd a :a)
+		  (declare (ignore up vp))
+		  (if status
+		      (matrix-ref sigma 0 0)
+		(error "SVD did not converge, cannot compute 2-norm of matrix"))))
+	((:oo :inf :i :infinity)
+	    (let ((nrm 0.0d0))
+	      (dotimes (i n)
+		(declare (type fixnum i))
+		(setq nrm (max nrm
+			       (let ((rowsum 0.0d0))
+				 (dotimes (j m)
+				    (declare (type fixnum j))
+				    (incf rowsum (abs (matrix-ref a i j))))
+				 rowsum))))
+	      nrm))
+	((:f :fro :frob :frobenius)
+	         (let ((nrm 0.0d0))
+		   (dotimes (j m)
+		     (declare (type fixnum j))
+		     (incf nrm 
+			   (let ((colsqrtsum 0.0d0))
+				 (dotimes (i n)
+				    (declare (type fixnum i))
+				    (let ((abs (abs (matrix-ref a i j))))
+				      (incf colsqrtsum (* abs abs))))
+				 colsqrtsum)))
+		   (sqrt nrm)))
+	(t (error "don't know how to take a ~a-norm of a matrix" p))
+	))))
 
 
 

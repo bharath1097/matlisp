@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: sum.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: sum.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: sum.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -46,7 +49,7 @@
 
 (in-package "MATLISP")
 
-(export '(sum))
+#+nil (export '(sum))
 
 (defgeneric sum (a)
   (:documentation

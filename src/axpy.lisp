@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: axpy.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: axpy.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: axpy.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,12 +51,12 @@
 
 (in-package "MATLISP")
 
-(use-package "LAPACK")
-(use-package "BLAS")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "BLAS")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(axpy!
-	  axpy))
+#+nil (export '(axpy!
+		axpy))
 
 ;; note: we should optimize the calls to axpy from other axpy's since
 ;; we know exactly which one we are calling.
@@ -163,7 +166,8 @@
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
 
-(defmethod axpy ((alpha kernel::complex-double-float) (x real-matrix) (y complex-matrix))
+(defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+			#+:allegro complex) (x real-matrix) (y complex-matrix))
   (let* ((nxm (number-of-elements y))
 	 (n (nrows y))
 	 (m (ncols y))
@@ -175,6 +179,8 @@
 	     (type (real-matrix-store-type (*)) store-x)
 	     (type (complex-matrix-store-type (*)) store-y store-result))
 
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (dcopy nxm store-x 1 store-result 2)
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
@@ -183,16 +189,20 @@
 
     result))
 
+#+:cmu
 (defmethod axpy ((alpha complex) (x real-matrix) (y complex-matrix))
   (axpy (complex-coerce alpha) x y))
 
-(defmethod axpy ((alpha kernel::complex-double-float) (x complex-matrix) (y real-matrix))
+(defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+			#+:allegro complex) (x complex-matrix) (y real-matrix))
   (let* ((nxm (number-of-elements y))
 	 (result (copy x))
 	 (store-result (store result)))
     (declare (type fixnum nxm)
 	     (type (complex-matrix-store-type (*)) store-result))
    
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
     (zscal nxm *1x1-complex-array* store-result 1)
@@ -200,18 +210,25 @@
     
     result))
 
+#+:cmu
 (defmethod axpy ((alpha complex) (x complex-matrix) (y real-matrix))
   (axpy (complex-coerce alpha) x y))
 
-(defmethod axpy ((alpha kernel::complex-double-float) (x complex-matrix) (y complex-matrix))
+(defmethod axpy ((alpha #+:cmu kernel::complex-double-float
+			#+:allegro complex) (x complex-matrix) (y complex-matrix))
   (let ((nxm (number-of-elements y))
 	(result (copy y)))
     (declare (type fixnum nxm))
+
+
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
     (zaxpy nxm *1x1-complex-array* (store x) 1 (store result) 1)
     result))
 
+#+:cmu
 (defmethod axpy ((alpha complex) (x complex-matrix) (y complex-matrix))
   (axpy (complex-coerce alpha) x y))
 
@@ -259,6 +276,7 @@ don't know how to coerce COMPLEX to REAL"))
 (defmethod axpy! ((alpha real) (x complex-matrix) (y complex-matrix))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
+#+:cmu
 (defmethod axpy! ((alpha kernel::complex-double-float) (x real-matrix) (y complex-matrix))
   (let* ((nxm (number-of-elements y))
 	 (store-x (store x))
@@ -278,17 +296,37 @@ don't know how to coerce COMPLEX to REAL"))
 
     y))
 
+#+:cmu
 (defmethod axpy! ((alpha complex) (x real-matrix) (y complex-matrix))
   (axpy! (complex-coerce alpha) x y))
 
-(defmethod axpy! ((alpha kernel::complex-double-float) (x complex-matrix) (y complex-matrix))
+
+#+:allegro
+(defmethod axpy! ((alpha complex) (x real-matrix) (y complex-matrix))
+  (let* ((nxm (number-of-elements y)))
+    (declare (type fixnum nxm))
+
+    (setq alpha (complex-coerce alpha))
+
+    (dotimes (i nxm)
+	(declare (type fixnum i))
+	(setf (matrix-ref y i) (+ (matrix-ref y i) (* alpha (matrix-ref x i)))))
+
+    y))
+
+(defmethod axpy! ((alpha #+:cmu kernel::complex-double-float
+			 #+:allegro complex) (x complex-matrix) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
+
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
     (zaxpy nxm *1x1-complex-array* (store x) 1 (store y) 1)
     y))
 
+#+:cmu
 (defmethod axpy! ((alpha complex) (x complex-matrix) (y complex-matrix))
   (axpy! (complex-coerce alpha) x y))
 

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: compat.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: compat.lisp,v 1.2 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: compat.lisp,v $
+;;; Revision 1.2  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -65,17 +68,18 @@
 		 make-float-matrix
 		 mref))
 
+
 (defun number-of-rows (mat)
-  "Calls N on its arguments"
-  (n mat))
+  "Calls NROWS on its arguments"
+  (nrows mat))
 
 (defun number-of-cols (mat)
-  "Calls M on its arguments"
-  (m mat))
+  "Calls NCOLS on its arguments"
+  (ncols mat))
 
 (defun number-of-elems (mat)
-  "Calls NxM on its arguments"
-  (nxm mat))
+  "Calls NUMBER-OF-ELEMENTS on its arguments"
+  (number-of-elements mat))
 
 (deftype float-matrix-element-type ()
   "Defines the same type as REAL-MATRIX-ELEMENT-TYPE"

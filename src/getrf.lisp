@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: getrf.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: getrf.lisp,v 1.2 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: getrf.lisp,v $
+;;; Revision 1.2  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -39,12 +42,12 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(getrf!
-	  lu))
+#+nil (export '(getrf!
+		lu))
 	  
 
 (defgeneric getrf! (a &optional ipiv)
@@ -111,8 +114,8 @@
 "))
 
 (defmethod getrf! :before ((a standard-matrix) &optional ipiv)
-  (let ((n (n a))
-	(m (m a)))
+  (let ((n (ncols a))
+	(m (nrows a)))
     (if ipiv
 	(progn
 	  (check-type ipiv (simple-array (unsigned-byte 32) (*)))
@@ -121,8 +124,8 @@
 where N,M are the dimensions of argument A given to GETRF!"))))))
 
 (defmethod getrf! ((a real-matrix) &optional ipiv)
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (ipiv #+:pre-allocate-workspaces
 	       (or ipiv *ipiv*)
 	       #-:pre-allocate-workspaces
@@ -142,8 +145,8 @@ where N,M are the dimensions of argument A given to GETRF!"))))))
 		       info)))))
 
 (defmethod getrf! ((a complex-matrix) &optional ipiv)
-  (let* ((n (n a))
-	 (m (m a))
+  (let* ((n (nrows a))
+	 (m (ncols a))
 	 (ipiv #+:pre-allocate-workspaces
 	       (or ipiv *ipiv*)
 	       #-:pre-allocate-workspaces
@@ -170,8 +173,8 @@ where N,M are the dimensions of argument A given to GETRF!"))))))
     (declare (ignore info))
 
     (let* ((result (list lu))
-	   (n (n a))
-	   (m (m a))
+	   (n (nrows a))
+	   (m (ncols a))
 	   (p (min n m)))
 
       (declare (type fixnum n m p))

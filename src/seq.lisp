@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: seq.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: seq.lisp,v 1.2 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: seq.lisp,v $
+;;; Revision 1.2  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -37,7 +40,7 @@
 
 (in-package "MATLISP")
 
-(export '(seq))
+#+nil (export '(seq))
 
 (if (not (fboundp '%push-on-end%))
 (defmacro %push-on-end% (value location)

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: ref.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -431,11 +434,13 @@
 	     (> m 1))
 	(error "underspecified index"))
     
-    (let ((i -1))
-      (declare (type fixnum i))
+    ;; What is this (let ((i doing here ???
+    ;; (let ((i -1))
+    ;;  (declare (type fixnum i))
       (dolist (idx idx)
 	(declare (type fixnum idx))
-	(setf (aref mat-store idx) new)))
+	(setf (aref mat-store idx) new))
+    ;;  )
     
     mat))
 
@@ -474,17 +479,19 @@
 	     (type (real-matrix-store-type (*))
 		   mat-store))
     
+
     (let ((i -1))
       (declare (type fixnum i))
       (dolist (i-idx row-idx)
         (declare (type fixnum i-idx))
 	(incf i)
-	(let ((j -1))
-	  (declare (type fixnum j))
+	;;(let ((j -1))
+	;;  (declare (type fixnum j))
 	  (dolist (j-idx col-idx)
 	    (declare (type fixnum j-idx))	  
-	    (setf (aref mat-store (fortran-matrix-indexing i-idx j-idx l)) new)))))
-    
+	    (setf (aref mat-store (fortran-matrix-indexing i-idx j-idx l)) new))))
+     ;; )
+     
     mat))
   
 
@@ -930,11 +937,11 @@
 (defun set-complex-from-complex-matrix-slice-1d-seq (new mat idx)
   (let* ((n (nrows mat))
 	 (m (ncols mat))
-	 (k (length idx))
+	 ;; (k (length idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
-	     (type fixnum n m k)
+	     (type fixnum n m) ;; k)
 	     (type (complex-matrix-store-type (*)) new-store mat-store))
     
     (if (and (> n 1)
@@ -989,11 +996,11 @@
 (defun set-complex-from-complex-matrix-slice-2d-seq (new mat row-idx col-idx)
   (let* ((l (nrows mat))
 	 (n (length row-idx))
-	 (m (length col-idx))
+	 ;; (m (length col-idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
     
-    (declare (type fixnum l n m)
+    (declare (type fixnum l n) ;;m)
 	     (type (complex-matrix-store-type (*))
 		   new-store
 		   mat-store))
@@ -1050,11 +1057,11 @@
 (defun set-complex-from-real-matrix-slice-1d-seq (new mat idx)
   (let* ((n (nrows mat))
 	 (m (ncols mat))
-	 (k (length idx))
+	 ;; (k (length idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
-	     (type fixnum n m k)
+	     (type fixnum n m) ;; k)
 	     (type (real-matrix-store-type (*)) new-store)
 	     (type (complex-matrix-store-type (*)) mat-store))
     
@@ -1110,11 +1117,11 @@
 (defun set-complex-from-real-matrix-slice-2d-seq (new mat row-idx col-idx)
   (let* ((l (nrows mat))
 	 (n (length row-idx))
-	 (m (length col-idx))
+	 ;; (m (length col-idx))
 	 (new-store (store new))
 	 (mat-store (store mat)))
     
-    (declare (type fixnum l n m)
+    (declare (type fixnum l n) ;; m)
 	     (type (real-matrix-store-type (*))
 		   new-store)
 	     (type (complex-matrix-store-type (*))
@@ -1171,25 +1178,27 @@
 (defun set-complex-from-scalar-matrix-slice-1d-seq (new mat idx)
   (let* ((n (nrows mat))
 	 (m (ncols mat))
-	 (k (length idx))
+	 ;; (k (length idx))
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
-	     (type fixnum n m k)
+	     (type fixnum n m) ;; k)
 	     (type (complex-matrix-store-type (*)) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
 	(error "underspecified index"))
-    
-    (let ((i -1))
-      (declare (type fixnum i))
+
+     ;; Hmm, another redundant (let ((i (see above)
+    ;;(let ((i -1))
+    ;;  (declare (type fixnum i))
       (dolist (idx idx)
 	(declare (type fixnum idx))
 	(let ((realpart (realpart new))
 	      (imagpart (imagpart new)))
 	  (declare (type complex-matrix-element-type realpart imagpart))
 	  (setf (aref mat-store (* 2 idx)) realpart)
-	  (setf (aref mat-store (1+ (* 2 idx))) imagpart))))
+	  (setf (aref mat-store (1+ (* 2 idx))) imagpart)))
+     ;; )
 
     mat))
 
@@ -1226,27 +1235,30 @@
 
 (defun set-complex-from-scalar-matrix-slice-2d-seq (new mat row-idx col-idx)
   (let* ((l (nrows mat))
-	 (n (length row-idx))
-	 (m (length col-idx))
+	 ;; (n (length row-idx))
+	 ;; (m (length col-idx))
 	 (mat-store (store mat)))
     
-    (declare (type fixnum l n m)
+    (declare (type fixnum l) ;; n m)
 	     (type (complex-matrix-store-type (*))
 		   mat-store))
     
-    (let ((i -1))
-      (declare (type fixnum i))
+   ;; Hmm, another redundant i,j (see above)
+    ;; (let ((i -1))
+    ;;  (declare (type fixnum i))
       (dolist (i-idx row-idx)
-	(incf i)
-	(let ((j -1))
-	  (declare (type fixnum j))
+	;; (incf i)
+	
+	;;(let ((j -1))
+	;;  (declare (type fixnum j))
 	  (dolist (j-idx col-idx)
 		  (let ((realpart (realpart new))
 			(imagpart (imagpart new)))
 		    (declare (type complex-matrix-element-type realpart imagpart))
 		    
 		    (setf (aref mat-store (fortran-complex-matrix-indexing i-idx j-idx l)) realpart)
-		    (setf (aref mat-store (1+ (fortran-complex-matrix-indexing i-idx j-idx l))) imagpart))))))
+		    (setf (aref mat-store (1+ (fortran-complex-matrix-indexing i-idx j-idx l))) imagpart))))
+     ;; ))
 
     mat))
 
@@ -1465,7 +1477,9 @@
       (setf (matrix-ref matrix i j) (complex-coerce new))
     (setf (matrix-ref matrix i) (complex-coerce new))))
   
-(defmethod (setf matrix-ref) ((new kernel::complex-double-float) (matrix complex-matrix) i &optional (j nil j-p))
+(defmethod (setf matrix-ref) ((new #+:cmu kernel::complex-double-float
+				   #+:allegro complex) 
+			      (matrix complex-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
 	 (store (store matrix)))
@@ -1474,7 +1488,8 @@
     (declare (type fixnum n m)
 	     (type (complex-matrix-store-type (*)) store))
     
-    
+    #+:allegro (setq new (complex-coerce new))    
+
     (labels ((consistent-i (i)
 	       (and (integerp i)
 		    (>= i 0)
@@ -1556,7 +1571,7 @@
   (error "argument must be a matrix"))
 
 (defmethod (setf matrix-ref) (new (matrix t) row &optional col)
-  (declare (ignore row col))
+  (declare (ignore row col new))
   (error "argument must be a matrix"))
 
 (defmethod (setf matrix-ref) ((new t) (matrix real-matrix) row &optional col)

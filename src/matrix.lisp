@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.5 2000/05/11 18:28:10 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.6 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.6  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.5  2000/05/11 18:28:10  rtoy
 ;;; After the great standard-matrix renaming, row-vector-p and
 ;;; col-vector-p were swapped.
@@ -63,7 +66,7 @@
 
 (in-package "MATLISP")
 
-(export '(real-matrix
+#+nil (export '(real-matrix
 	  complex-matrix
 	  standard-matrix
 	  real-matrix-element-type
@@ -92,6 +95,7 @@
 	  make-complex-matrix-dim
 	  make-complex-matrix))
 
+(eval-when (load eval compile)
 (deftype real-matrix-element-type () 
   "The type of the elements stored in a REAL-MATRIX"
   'double-float)
@@ -107,6 +111,7 @@
 (deftype complex-matrix-store-type (size) 
   "The type of the storage structure for a COMPLEX-MATRIX"
   `(simple-array double-float ,size))
+)
 
 (declaim (ftype (function (standard-matrix) fixnum)
 		n
@@ -197,6 +202,7 @@ parts in successive elements of the matrix because Fortran stores them
 that way.
 "))
 
+#+:cmu
 (defclass standard-matrix ()
   ((number-of-rows
     :initarg :nrows
@@ -221,6 +227,40 @@ that way.
     :initform 0
     :accessor store-size
     :type 'fixnum
+    :documentation "Total number of elements needed to store the matrix.  (Usually
+the same as nels, but not necessarily so!")
+   (store
+    :initarg :store
+    :accessor store
+    :documentation "The actual storage for the matrix.  It is typically a one dimensional
+array but not necessarily so.  The float and complex matrices do use
+1-D arrays.  The complex matrix actually stores the real and imaginary
+parts in successive elements of the matrix because Fortran stores them
+that way."))
+  (:documentation "Basic matrix class."))
+
+
+#+:allegro
+(defclass standard-matrix ()
+  ((number-of-rows
+    :initarg :nrows
+    :initform 0
+    :accessor nrows
+    :documentation "Number of rows in the matrix")
+   (number-of-cols
+    :initarg :ncols
+    :initform 0
+    :accessor ncols
+    :documentation "Number of columns in the matrix")
+   (number-of-elements
+    :initarg :nels
+    :initform 0
+    :accessor number-of-elements
+    :documentation "Total number of elements in the matrix (nrows * ncols)")
+   (store-size
+    :initarg :store-size
+    :initform 0
+    :accessor store-size
     :documentation "Total number of elements needed to store the matrix.  (Usually
 the same as nels, but not necessarily so!")
    (store

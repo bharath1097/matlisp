@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: special.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: special.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: special.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,7 +51,7 @@
 
 (in-package "MATLISP")
 
-(export '(eye
+#+nil (export '(eye
 	  ones
 	  zeros
 	  rand))
@@ -112,7 +115,7 @@
     (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
   (make-real-matrix-dim n m 1.0d0))
 
-(defun rand (n &optional (m n) (state *random-state* state-p))
+(defun rand (n &optional (m n) (state *random-state*))
   "
   Syntax
   ======

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mdivide.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: mdivide.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: mdivide.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,14 +51,14 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(m/
-	  m./
-	  m/!
-	  m./!))
+#+nil (export '(m/
+		m./
+		m/!
+		m./!))
 
 (defgeneric m/ (a &optional b)
   (:documentation

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: copy.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,12 +51,12 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(copy!
-	  copy))
+#+nil (export '(copy!
+		copy))
 
 (defvar *1x1-real-array* (make-array 1 :element-type 'double-float))
 (defvar *1x1-complex-array* (make-array 2 :element-type 'double-float))
@@ -141,10 +144,13 @@
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
 
+    #+:cmu
     (with-vector-data-addresses ((addr-y (store y)))
       (incf-sap :double-float addr-y)
       (blas::fortran-dscal nxm 0.0d0 addr-y 2))
-        
+    #+:allegro
+    (zdscal nxm 0.0d0 (store y) 1)    
+
     (dcopy nxm (store x) 1 (store y) 2)
     y))
   
@@ -189,8 +195,12 @@ don't know how to coerce a COMPLEX to a REAL"))
 	 x
 	 y))
 
-(defmethod copy! ((x kernel::complex-double-float) (y complex-matrix))
+(defmethod copy! ((x #+:cmu kernel::complex-double-float
+		     #+:allegro complex) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
+
+    #+:allegro (setq x (complex-coerce x))
+
     (setf (aref *1x1-complex-array* 0) (realpart x))
     (setf (aref *1x1-complex-array* 1) (imagpart x))
     (zcopy nxm *1x1-complex-array* 0 (store y) 1)

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: realimag.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: realimag.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: realimag.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,7 +51,7 @@
 
 (in-package "MATLISP")
 
-(export '(real
+#+nil (export '(real
 	  imag))
 
 (defgeneric real (matrix)
@@ -114,7 +117,7 @@ its element types are unknown"))
     (declare (type fixnum n m))
     (make-real-matrix-dim n m)))
 
-
+#+:cmu
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
@@ -131,3 +134,18 @@ its element types are unknown"))
 	(blas::fortran-dcopy nxm addr-store 2 addr-new-store 1))
     
     (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
+
+
+#+:allegro
+(defmethod imag ((mat complex-matrix))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (nxm (number-of-elements mat))
+	 (imag (make-real-matrix-dim n m)))
+    (declare (type fixnum n m nxm))
+
+    (dotimes (i nxm)
+      (declare (type fixnum i))
+      (setf (matrix-ref imag i) (imagpart (matrix-ref mat i))))
+
+    imag))

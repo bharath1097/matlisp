@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: swap.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: swap.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: swap.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,11 +51,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(swap!))
+#+nil (export '(swap!))
 
 (defgeneric swap! (x y)
   (:documentation

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: print.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -50,7 +53,7 @@
 
 (in-package "MATLISP")
 
-(export '(*print-matrix*
+#+nil (export '(*print-matrix*
 	  print-element))
 
 (defvar *print-matrix*
@@ -158,6 +161,12 @@ but got *PRINT-MATRIX* of type ~a"
 	     (if (< max-n number-of-rows)
 		 (print-row (1- number-of-rows))))))))
 
+
+(defmethod print-object ((matrix standard-matrix) stream)
+  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
+    (when *print-matrix*
+      (print-matrix matrix stream))))
+
 #+nil
 (defmethod print-object ((matrix standard-matrix) stream)
   (format stream "#<~a" (type-of matrix))
@@ -165,13 +174,6 @@ but got *PRINT-MATRIX* of type ~a"
       (print-matrix matrix stream)
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
-
-(defmethod print-object ((matrix standard-matrix) stream)
-  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
-    (when *print-matrix*
-      (print-matrix matrix stream))))
-
-
 
 #+nil
 (defmethod print-object ((matrix real-matrix) stream)
@@ -181,11 +183,6 @@ but got *PRINT-MATRIX* of type ~a"
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
 
-(defmethod print-object ((matrix standard-matrix) stream)
-  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
-    (when *print-matrix*
-      (print-matrix matrix stream))))
-
 #+nil
 (defmethod print-object ((matrix complex-matrix) stream)
   (format stream "#<~a" (type-of matrix))
@@ -193,8 +190,3 @@ but got *PRINT-MATRIX* of type ~a"
       (print-matrix matrix stream)
     (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
   (format stream " >~%"))
-
-(defmethod print-object ((matrix standard-matrix) stream)
-  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
-    (when *print-matrix*
-      (print-matrix matrix stream))))

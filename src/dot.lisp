@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: dot.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: dot.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: dot.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -46,11 +49,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export 'dot)
+#+nil (export 'dot)
 
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
@@ -108,6 +111,7 @@
     (declare (type fixnum nxm))
     (ddot nxm (store x) 1 (store y) 1)))
 
+#+:cmu
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
   (let ((nxm (number-of-elements x))
@@ -133,6 +137,34 @@
 	(complex realpart imagpart))
       )))
 
+
+#+:allegro
+(defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
+  (declare (ignore conjugate-p))
+  (let ((nxm (number-of-elements x)))
+    (declare (type fixnum nxm))
+
+    (let ((realpart 0.0d0)
+	  (imagpart 0.0d0))
+      (declare (type complex-matrix-element-type realpart imagpart))
+
+      (dotimes (i nxm)
+        (declare (type fixnum i))
+        (let ((x-elt (matrix-ref x i))
+	      (y-elt (matrix-ref y i)))
+	  (incf realpart (+ x-elt (realpart y-elt)))
+	  (incf imagpart (+ x-elt (imagpart y-elt)))))
+
+
+      #+:complex-arg-implies-complex-result
+      (complex realpart imagpart)
+      #-:complex-arg-implies-comples-result
+      (if (zerop imagpart)
+	  realpart
+	(complex realpart imagpart))
+      )))
+
+#+:cmu
 (defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
   (let ((nxm (number-of-elements x))
 	(store-x (store x))
@@ -148,6 +180,33 @@
 			  (blas::fortran-ddot nxm addr-x 2 addr-y 1))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
+
+      (if conjugate-p
+	  (setq imagpart (- imagpart)))
+
+      #+:complex-arg-implies-complex-result
+      (complex realpart  imagpart)
+      #-:complex-arg-implies-comples-result
+      (if (zerop imagpart)
+	  realpart
+	(complex realpart imagpart))
+      )))
+
+#+:allegro
+(defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
+  (let ((nxm (number-of-elements x)))
+    (declare (type fixnum nxm))
+
+    (let ((realpart 0.0d0)
+	  (imagpart 0.0d0))
+      (declare (type complex-matrix-element-type realpart imagpart))
+
+      (dotimes (i nxm)
+        (declare (type fixnum i))
+        (let ((x-elt (matrix-ref x i))
+	      (y-elt (matrix-ref y i)))
+	  (incf realpart (+ y-elt (realpart x-elt)))
+	  (incf imagpart (+ y-elt (imagpart x-elt)))))
 
       (if conjugate-p
 	  (setq imagpart (- imagpart)))
@@ -182,3 +241,5 @@
       #+:complex-arg-implies-complex-result
       (zdotu nxm store-x 1 store-y 1)
       )))
+
+

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reader.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: reader.lisp,v 1.2 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: reader.lisp,v $
+;;; Revision 1.2  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -176,7 +179,8 @@
 		   (n 0))
 	       (%push-on-end% (loop for i upfrom 1
 				  do (multiple-value-bind (entry more)
-					 (read-from-string (subseq row n))
+					 (read-from-string (subseq row n)
+							   #+:allegro nil)
 				       (setf n (+ n more))
 				       (if (= more 0)
 					   (loop-finish))

@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.4 2000/05/12 14:13:37 rtoy Exp $
+;;; $Id: fft.lisp,v 1.5 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.5  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.4  2000/05/12 14:13:37  rtoy
 ;;; o Change the interface to fft and ifft:  We don't need the wsave
 ;;;   argument anymore because fft and ifft compute them (and cache them
@@ -173,6 +176,7 @@
 
 ;; Create the hash table used to keep track of all of the tables we
 ;; need for fft and ifft.
+(eval-when (load eval compile)
 (let ((wsave-hash-table (make-hash-table)))
   (defun lookup-wsave-entry (n)
     "Find the wsave entry for an FFT size of N"
@@ -186,8 +190,9 @@
   (defun dump-wsave-entries ()
     (maphash #'(lambda (key val)
 		 (format t "Key = ~D, Val = ~A~%" key val))
-	     wsave-hash-table)))
-  
+	     wsave-hash-table))))
+
+#+:cmu  
 (defmethod fft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
@@ -215,6 +220,43 @@
 
       result))
 
+
+#+:allegro
+(defmethod fft ((x standard-matrix) &optional n)
+  (let* ((n (or n (if (row-or-col-vector-p x)
+		      (max (nrows x) (ncols x))
+		    (nrows x))))
+	 (wsave (lookup-wsave-entry n))
+	 (tmp (make-complex-matrix-dim n 1))
+	 (result (cond ((row-vector-p x) 
+			(make-complex-matrix-dim 1 n))
+		       ((col-vector-p x)
+			(make-complex-matrix-dim n 1))
+		       (t (make-complex-matrix-dim n (ncols x))))))
+
+    (if (row-or-col-vector-p x)
+	(progn
+	  (copy! x result)
+	  (zfftf n (store result) wsave))
+
+      (dotimes (j (ncols x))
+	(declare (type fixnum j))
+	 (dotimes (i (nrows x))
+	   (declare (type fixnum i))
+	   (setf (matrix-ref tmp i) (matrix-ref x i j)))
+
+	 (zfftf n (store tmp) wsave)
+
+	 (dotimes (i (nrows x))
+	   (declare (type fixnum i))
+	   (setf (matrix-ref result i j) (matrix-ref tmp i)))
+
+	 ))
+
+      result))
+
+
+#+:cmu
 (defmethod ifft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
@@ -247,3 +289,40 @@
 	      (setf (matrix-ref result i j) (* scale-factor (matrix-ref x i j)))))))
 
     result))
+
+
+#+:allegro
+(defmethod ifft ((x standard-matrix) &optional n)
+  (let* ((n (or n (if (row-or-col-vector-p x)
+		      (max (nrows x) (ncols x))
+		    (nrows x))))
+	 (wsave (lookup-wsave-entry n))
+	 (tmp (make-complex-matrix-dim n 1))
+	 (result (cond ((row-vector-p x) 
+			(make-complex-matrix-dim 1 n))
+		       ((col-vector-p x)
+			(make-complex-matrix-dim n 1))
+		       (t (make-complex-matrix-dim n (ncols x))))))
+
+    (if (row-or-col-vector-p x)
+	(progn
+	  (copy! x result)
+	  (zfftb n (store result) wsave))
+
+      (dotimes (j (ncols x))
+	(declare (type fixnum j))
+
+	 (dotimes (i (nrows x))
+	   (declare (type fixnum i))
+	   (setf (matrix-ref tmp i) (matrix-ref x i j)))
+
+	 (zfftb n (store tmp) wsave)
+
+	 (dotimes (i (nrows x))
+	   (declare (type fixnum i))
+	   (setf (matrix-ref result i j) (matrix-ref tmp i)))
+
+	 ))
+
+      result))
+

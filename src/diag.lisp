@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: diag.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,11 +51,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export 'diag)
+#+nil (export 'diag)
 
 ;; note: here and in copy change fortran-dscal to dcopy.
 
@@ -172,6 +175,7 @@ don't know how to coerce COMPLEX to REAL"
     mat))
 
 
+#+:cmu
 (defmethod (setf diag) ((new-diag real-matrix) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
@@ -194,11 +198,35 @@ don't know how to coerce COMPLEX to REAL"
 
     mat))
 
-(defmethod (setf diag) ((new-diag kernel::complex-double-float) (mat complex-matrix))
+#+:allegro
+(defmethod (setf diag) ((new-diag real-matrix) (mat complex-matrix))
+  (let* ((n (nrows mat))
+	 (m (ncols mat))
+	 (n-new (nrows new-diag))
+	 (m-new (ncols new-diag))
+	 (nxm-new (number-of-elements new-diag)))
+    (declare (type fixnum n m n-new m-new nxm-new))
+
+    (if (row-or-col-vector-p new-diag)
+	(dotimes (i (min n m nxm-new))
+            (declare (type fixnum i))
+	    (setf (matrix-ref mat (+ i (* n i)))
+		  (matrix-ref new-diag i)))
+      (dotimes (i (min n m n-new m-new))
+          (declare (type fixnum i))
+          (setf (matrix-ref mat (+ i (* n i)))
+		(matrix-ref new-diag (+ i (* n-new i))))))
+
+    mat))
+
+(defmethod (setf diag) ((new-diag #+:cmu kernel::complex-double-float
+				  #+:allegro complex) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
 	 (p (min n m)))
     (declare (type fixnum n m p))
+
+    #+:allegro (setf new-diag (complex-coerce new-diag))
 
     (setf (aref *1x1-complex-array* 0) (realpart new-diag))
     (setf (aref *1x1-complex-array* 1) (imagpart new-diag))

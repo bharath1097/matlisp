@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: gemm.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,12 +51,12 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(gemm!
-	  gemm))
+#+nil (export '(gemm!
+		gemm))
 
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation
@@ -206,10 +209,12 @@
 (defvar *complex-alpha* (make-array 2 :element-type 'complex-matrix-element-type))
 (defvar *complex-beta* (make-array 2 :element-type 'complex-matrix-element-type))
 
-(defmethod gemm! ((alpha kernel::complex-double-float) 
+(defmethod gemm! ((alpha #+:cmu kernel::complex-double-float
+			 #+:allegro number) 
 		  (a complex-matrix) 
 		  (b complex-matrix)
-		  (beta kernel::complex-double-float) 
+		  (beta #+:cmu kernel::complex-double-float
+			#+:allegro number) 
 		  (c complex-matrix) 
 		  &optional (job :nn))
 
@@ -229,6 +234,9 @@
 
 	 (declare (type fixnum lda ldb)
 		  (type (string 1) job-a job-b))
+
+	 #+:allegro (setq alpha (complex-coerce alpha))
+	 #+:allegro (setq beta (complex-coerce beta))
 
 	 (setf (aref *complex-alpha* 0) (realpart alpha))
 	 (setf (aref *complex-alpha* 1) (imagpart alpha))
@@ -251,6 +259,7 @@
  
 	 c)))
 
+#+:cmu
 (defmethod gemm! ((alpha number) 
 		  (a complex-matrix) 
 		  (b complex-matrix)

@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: blas.lisp,v 1.2 2000/06/19 22:21:45 rtoy Exp $
+;;; $Id: blas.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: blas.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/06/19 22:21:45  rtoy
 ;;; Define packages elsewhere.
 ;;;
@@ -40,7 +43,8 @@
 
 #+nil
 (defpackage "BLAS"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
 "IDAMAX" "DASUM" "DDOT" "DNRM2"
 "DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"

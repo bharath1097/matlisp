@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: scal.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: scal.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: scal.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,11 +51,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(scal!
+#+nil (export '(scal!
 	  scal))
 
 (defgeneric scal (alpha x)
@@ -99,13 +102,16 @@
 (defmethod scal ((alpha real) (x real-matrix))
   (scal (coerce alpha 'real-matrix-element-type) x))
 
-(defmethod scal ((alpha kernel::complex-double-float) (x real-matrix))
+(defmethod scal ((alpha #+:cmu kernel::complex-double-float
+			#+:allegro complex) (x real-matrix))
   (let* ((nxm (number-of-elements x))
 	 (n (nrows x))
 	 (m (ncols x))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
     
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (copy! x result)
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
@@ -113,6 +119,7 @@
 
     result))
 
+#+:cmu
 (defmethod scal ((alpha complex) (x real-matrix))
   (scal (complex-coerce alpha) x))
 
@@ -127,16 +134,21 @@
 (defmethod scal ((alpha real) (x complex-matrix))
   (scal (coerce alpha 'real-matrix-element-type) x))
 
-(defmethod scal ((alpha kernel::complex-double-float) (x complex-matrix))
+(defmethod scal ((alpha #+:cmu kernel::complex-double-float
+			#+:allegro complex) (x complex-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
+ 
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
     (zscal nxm *1x1-complex-array* (store result) 1)
 
     result))
 
+#+:cmu
 (defmethod scal ((alpha complex) (x complex-matrix))
   (scal (complex-coerce alpha) x))
 
@@ -169,21 +181,21 @@ how to coerce COMPLEX to REAL"))
 (defmethod scal! ((alpha real) (x complex-matrix))
   (scal! (coerce alpha 'real-matrix-element-type) x))
 
-(defmethod scal! ((alpha kernel::complex-double-float) (x complex-matrix))
+(defmethod scal! ((alpha #+:cmu kernel::complex-double-float
+			 #+:allegro complex) (x complex-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
+
+    #+:allegro (setq alpha (complex-coerce alpha))
+
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
     (zscal nxm *1x1-complex-array* (store x) 1)
 
     x))
 
+#+:cmu
 (defmethod scal! ((alpha complex) (x complex-matrix))
   (scal! (complex-coerce alpha) x))
 
 
-
-    
-
-    
-    

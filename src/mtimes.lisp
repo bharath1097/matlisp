@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mtimes.lisp,v 1.2 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: mtimes.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
 ;;;
 ;;; $Log: mtimes.lisp,v $
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.2  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -48,11 +51,11 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(m*
+#+nil (export '(m*
 	  m*!
 	  m.*
 	  m.*!
@@ -266,7 +269,7 @@ don't know how to coerce COMPLEX to REAL"))
   (scal! a b))
 
 (defmethod m*! ((a complex-matrix) (b real-matrix))
-  (error "cannot M#! a COMPLEX-MATRIX into a REAL-MATRIX,
+  (error "cannot M*! a COMPLEX-MATRIX into a REAL-MATRIX,
 don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m* ((a real-matrix) (b real-matrix))
@@ -371,10 +374,6 @@ don't know how to coerce COMPLEX to REAL"))
     (setf (ncols *m*!-real-wrapper*) 1)
     (setf (number-of-elements *m*!-real-wrapper*) *m*!-swap-size*)
     b))
-
-(defmethod m*! ((a complex-matrix) (b real-matrix))
-  (error "cannot M*! a COMPLEX-MATRIX A into a REAL-MATRIX B,
-don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m*! ((a standard-matrix) (b complex-matrix))
   (let ((n (nrows b))
