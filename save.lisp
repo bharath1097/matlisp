@@ -29,11 +29,11 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.2 2000/10/05 17:34:12 simsek Exp $
+;;; $Id: save.lisp,v 1.3 2000/10/05 19:20:36 simsek Exp $
 ;;; $Log: save.lisp,v $
-;;; Revision 1.2  2000/10/05 17:34:12  simsek
-;;; o Changed USER::... to EXCL::...
-;;;   for some misplaced Allegro package specifiers
+;;; Revision 1.3  2000/10/05 19:20:36  simsek
+;;; o Added Setq-default for readtable and default
+;;;   flow formats for Allegro images
 ;;;
 ;;; Revision 1.1  2000/10/04 22:47:11  simsek
 ;;; o Initial revision
@@ -158,12 +158,16 @@ execute the executable file")
 	 )
 
        (tpl:setq-default *package* (find-package "MATLISP-USER"))
+       (tpl:setq-default *read-default-float-format* 
+	 *read-default-float-format*)
+       (tpl:setq-default *readtable* *readtable*)
        (push (namestring
 	      (translate-logical-pathname "matlisp:logical"))
 	     (excl::logical-pathname-translations-database-pathnames))
        (setq excl::*restart-init-function*
 	 #'(lambda () 
 	     (matlisp::load-blas-&-lapack-binaries)
+	     (load "matlisp:bin;reader" :verbose nil)
 	     (format t "~%")
 	     (format t "~a" (matlisp::matlisp-herald))
 	     (format t "~%")))
