@@ -681,7 +681,7 @@ if test "${with_atlas+set}" = set; then
   withval="$with_atlas"
   
   # Building with ATLAS
-  ATLAS_DIR=$withval
+  ATLAS_DIR="-L$withval"
   ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
 
 else
