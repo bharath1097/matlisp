@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.7 2002/09/30 18:28:03 simsek Exp $
+;;; $Id: lapack.lisp,v 1.8 2002/10/23 00:47:57 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.8  2002/10/23 00:47:57  rtoy
+;;; Fix typo:  zgetrs was missing a closing paren.
+;;;
 ;;; Revision 1.7  2002/09/30 18:28:03  simsek
 ;;; o Added changes by N.Neuss for getrs functions
 ;;;
@@ -447,7 +450,7 @@
   (lda :integer :input)
   (ipiv (* :integer) :input)
   (ldb :integer :input)
-  (b (* :complex-double-float) :input-output)
+  (b (* :complex-double-float) :input-output))
 
 (def-fortran-routine dgesvd :void
 "
