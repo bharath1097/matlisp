@@ -26,9 +26,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.19 2003/12/07 15:03:44 rtoy Exp $
+;;; $Id: packages.lisp,v 1.20 2004/02/20 17:34:31 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.20  2004/02/20 17:34:31  rtoy
+;;; Update to latest f2cl code, so
+;;; o Fix defpackage stuff for f2cl
+;;; o Update macros.l.
+;;;
 ;;; Revision 1.19  2003/12/07 15:03:44  rtoy
 ;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 ;;; works.
@@ -159,6 +164,58 @@
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))
 
 ;; Stolen from f2cl.  
+(defpackage :f2cl-lib
+  (:use :cl)
+  (:documentation "The package holding all symbols used by the fortran to lisp library.")
+  (:nicknames :fortran-to-lisp-library)
+  (:export
+   ;; constants
+   #:%false% #:%true%
+   ;; user-settable runtime options
+   #:*check-array-bounds*
+   ;; types
+   #:integer4 #:integer2 #:integer1 #:real8 #:real4 #:complex8 #:complex16
+   #:array-double-float #:array-single-float #:array-integer4 #:array-strings
+   #:logical
+   ;; macros
+   #:fref #:fset #:with-array-data #:with-multi-array-data
+   #:f2cl-init-string #:fref-string #:fset-string #:f2cl-set-string
+   #:f2cl-// #:fstring-/= #:fstring-= #:fstring-> #:fstring->= #:fstring-< #:fstring-<=
+   #:fortran_comment #:fdo #:f2cl/ #:arithmetic-if #:computed-goto
+   #:assigned-goto
+   #:fformat
+   #:data-implied-do
+   #:int-add #:int-sub #:int-mul
+   ;; utilities
+   #:array-slice #:array-initialize
+   ;; intrinsic functions
+   #:abs #:acos #:aimag #:aint #:alog #:alog10 #:amax0 #:amax1
+   #:amin1 #:amod #:anint #:asin #:atan #:atan2
+   #:cabs #:cexp #:fchar #:clog #:cmplx #:conjg #:ccos
+   #:csin #:csqrt #:dabs #:dacos #:dasin
+   #:datan #:datan2 #:dble #:dcos #:dcosh #:dexp #:dim
+   #:dint #:dlog #:dlog10 #:dmax1 #:dmin1 #:dmod
+   #:dnint #:dprod #:dsign #:dsin #:dsinh #:dsqrt #:dtan
+   #:dtanh #:ffloat #:iabs #:ichar #:idim #:idint
+   #:idnint #:ifix #:index #:int #:isign #:le #:len
+   #:lge #:lgt #:flog #:log10 #:lt #:max #:max0
+   #:max1 #:min0 #:min1 #:nint #:freal
+   #:sign #:sngl #:fsqrt
+   ;; other functions
+   #:d1mach #:r1mach #:i1mach
+   ))
+
+(defpackage :fortran-to-lisp
+    (:use :cl)
+  (:documentation "the package holding all symbols need by the fortran to lisp converter")
+  (:nicknames :f2cl)
+  (:export
+   ;; main routines
+   #:f2cl
+   #:f2cl-compile
+   ))
+
+#+nil
 (defpackage "FORTRAN-TO-LISP"
   (:use "CL")
   (:documentation "The package holding all symbols need by the Fortran to Lisp converter")

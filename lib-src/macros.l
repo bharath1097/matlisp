@@ -3,7 +3,7 @@
 ;;;;;;;;Copyright (c) University of Waikato;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;Hamilton, New Zeland 1992-95 - all rights reserved;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package :f2cl)
+(in-package :f2cl-lib)
 
 ; macros:
 ;	rexpt
@@ -34,7 +34,6 @@
 ;	assigned-goto
 ;	eqv
 ;	constant-list
-;       Fortran intrinsic functions imax, dabs,...
 ;----------------------------------------------------------------------------
 
 (eval-when (compile load eval) (proclaim '(special *verbose*)))
@@ -46,6 +45,10 @@
   "If non-NIL, generated code checks for array bounds.  If NIL, checking
 is not included")
 
+;;------------------------------------------------------------------------------
+;;
+;; Define the equivalent types between Fortran and Lisp.  This MUST
+;; match the types given in f2cl1.l so keep it in sync!
 (deftype logical ()
   `(member t nil))
 
@@ -57,10 +60,10 @@ is not included")
 ;; If you change this, you may need to change some of the macros
 ;; below, such as INT and AINT!
 
-#+cmu
+#+(or cmu scl)
 (deftype integer4 ()
   `(signed-byte 32))
-#-cmu
+#-(or cmu scl)
 (deftype integer4 ()
   'fixnum)
 
@@ -88,50 +91,9 @@ is not included")
 
 (defconstant %false% nil)
 (defconstant %true% t)
+;;------------------------------------------------------------------------------
 
-(defmacro fexport (x) `(eval-when (compile load eval) (export ,x)))
-
-(defmacro fproclaim (x) `(eval-when (compile load eval) (proclaim ,x)))
-
-(defmacro fin-package (x)
-  `(prog nil 
-     (defpackage ,x)
-     (in-package ,x)))
-
-(defmacro fuse-package (x) `(eval-when (compile load eval) ,x))
-;-------------------------------------------------------------------------
-
-(defmacro apply! (fun args) (eval `(cons ,fun ,args)))
-
-;-----------------------------------------------------------------------------
-
-(defmacro do! (var init step end &rest body)
-   `(do ((,var ,init ,step)) (,end) ,@body))
-
-; the body is an unquoted list of the terms of the actual body
-(defmacro do1 (var end body)
-   `(do ((,var 1 (1+ i))) ((> ,var ,end)) ,@body))
-
-(defmacro double-cdr (lis)
-   `(mapcar #'cdr (cdr ,lis)))
-
-(defun putproperty (a b c) (setf (get a c) b))
-
-(defmacro defprop (sym prop ind)
-  `(putproperty ',sym ',prop ',ind))
-
-(defmacro def (name body) `(defun ,name ,(cadr body) ,(caddr body)))
-
-(defmacro array-cl (name type &rest dims)
- `(set ',name 
-        (make-array ',(mapcar #'eval dims) 
-           :element-type ,(cond ((equal type 'fixnum-block) ''integer)
-                                ((equal type 'flonum-block)  ''flonum) ;###
-                                ((equal type t) t)))))
-
-(defmacro store-cl (name-indices val)
-  `(setf (aref ,(car name-indices) ,@(cdr name-indices)) ,val))
-;-----------------------------------------------------------------------------
+;;-----------------------------------------------------------------------------
 
 ;; Array dimensions are (d1, d2, d3, ...)
 ;;
@@ -147,7 +109,7 @@ is not included")
 	   (let ((lo (first bound)))
 	     (if (and (numberp lo) (zerop lo))
 		 n
-		 `(- ,n ,lo))))
+		 `(the fixnum (- (the fixnum ,n) (the fixnum ,lo))))))
 	 (get-size (bound)
 	   (destructuring-bind (lo hi)
 	       bound
@@ -159,7 +121,7 @@ is not included")
 			  (t
 			   `(- ,hi ,(- lo 1)))))
 		   (t
-		    `(- ,hi (- ,lo 1)))))))
+		    `(the fixnum (- ,hi (the fixnum (- (the fixnum ,lo) 1)))))))))
     (let* ((rev-idx (reverse indices))
 	   (rev-dim (reverse dims))
 	   (idx (get-offset (first rev-idx) (first rev-dim))))
@@ -167,21 +129,21 @@ is not included")
 	   (n (rest rev-idx) (rest n)))
 	  ((endp d)
 	   idx)
-	(setf idx `(+ ,(get-offset (first n) (first d))
-		    (* ,(get-size (first d)) ,idx)))))))
+	(setf idx `(the fixnum (+ ,(get-offset (first n) (first d))
+				  (the fixnum (* ,(get-size (first d)) ,idx)))))))))
 
 (defun check-array-bounds (indices bounds)
   `(and ,@(mapcar #'(lambda (idx dim)
 		     `(<= ,(first dim) ,idx ,(second dim)))
 		 indices bounds)))
 
-(defmacro fref (arr indices bounds)
+(defmacro fref (arr indices bounds &optional offset)
   (if *check-array-bounds*
       `(aref ,arr (if ,(check-array-bounds indices bounds)
-		      ,(col-major-index indices bounds)
+		      (the fixnum (+ (the fixnum ,(or offset 0)) ,(col-major-index indices bounds)))
 		      (error "Out of bounds index for array ~S"
 			     ',arr)))
-      `(aref ,arr ,(col-major-index indices bounds))))
+      `(aref ,arr (the fixnum (+ (the fixnum ,(or offset 0)) ,(col-major-index indices bounds))))))
 
 (defmacro fset (a b) 
   `(setf (fref ,(second a) ,@(cddr a)) ,b))
@@ -195,12 +157,52 @@ is not included")
 (defmacro f2cl-// (a b)
   `(concatenate 'string ,a ,b))
 
+;; (with-array-data ((data-var offset-var array))
+;;   ...
+;; )
+
+(defun find-array-data (array)
+  (declare (type (array * (*)) array))
+  (let ((offset 0))
+    (declare (type fixnum offset)
+	     (optimize (speed 3) (safety 0)))
+    (loop
+	(multiple-value-bind (displaced-to index-offset)
+	    (array-displacement array)
+	  (when (null displaced-to)
+	    (return-from find-array-data (values array offset)))
+	  (incf offset index-offset)
+	  (setf array displaced-to)))))
+
+(defmacro with-array-data ((data-var offset-var array) &rest body)
+  `(multiple-value-bind (,data-var ,offset-var)
+    (find-array-data ,array)
+     ,@body))
+
+(defun multi-array-data-aux (array-info body)
+  (let ((results body))
+    (dolist (a (reverse array-info))
+      (destructuring-bind (array a-type var-name offset-var)
+	  a
+	(setf results
+	      `((multiple-value-bind (,var-name ,offset-var)
+		    (find-array-data ,array)
+		  (declare (ignorable ,offset-var ,var-name)
+			   (type f2cl-lib:integer4 ,offset-var)
+			   (type (simple-array ,a-type (*)) ,var-name))
+		  ,@results)))))
+    (first results)))
+
+(defmacro with-multi-array-data (array-info &rest body)
+  (multi-array-data-aux array-info body))
+
 ;; Create an array slice for the array named VNAME whose elements are
 ;; of type TYPE.  The slice starts at the indices INDICES and the
 ;; original array has dimensions given by BOUND.
 ;;
 ;; This is done by making a displaced array to VNAME with the
 ;; appropriate offset.
+#+nil
 (defmacro array-slice (vname type indices bounds)
   (let ((dims `(* ,@(mapcar #'(lambda (idx bnd)
 				(if (and (numberp idx)
@@ -211,7 +213,28 @@ is not included")
     `(make-array ,dims
       :element-type ',type
       :displaced-to ,vname
-      :displaced-index-offset ,(col-major-index indices bounds))))  
+      :displaced-index-offset ,(col-major-index indices bounds))))
+
+(defmacro array-slice (vname type indices bounds)
+  ;; To figure the size of the sliced array, use ARRAY-TOTAL-SIZE
+  ;; instead of the f2cl derived/declared BOUNDS, just in case we
+  ;; screwed up or in case we changed the size of the array in some
+  ;; other way.  This isn't possible in a function, but the array
+  ;; might be in a common block and we could change the dimensions of
+  ;; the common block at runtime.  (Some Fortran code like mpfun does
+  ;; this, although it's actually illegal.  Neat hack to "dynamically"
+  ;; change the dimensions.  Of course, for this to work in Fortran,
+  ;; the common block has to contain exactly that one array, or the
+  ;; array must be the last element of the common block.)
+  `(make-array (- (array-total-size ,vname) ,(col-major-index indices bounds))
+    :element-type ',type
+    :displaced-to ,vname
+    :displaced-index-offset ,(col-major-index indices bounds)))
+
+#+nil
+(defmacro array-slice (vname type indices bounds)
+  (declare (ignore type indices bounds))
+  vname)
 
 ;; Compute an initializer for make-array given the data in the list
 ;; DATA.  The array has en element type of TYPE and has dimensions of
@@ -242,26 +265,24 @@ is not included")
   (declare (ignore args)))
 
 ;----------------------------------------------------------------------------
-(defun reset-vble (pred-clause) ; ((> i 4) nil)
-   `(,(first pred-clause)
-          (setq ,(second (first pred-clause)) ,(third (first pred-clause)))
-          ,(second pred-clause)))
-
 ; fdo has similar syntax as do except there will only be one do_vble
 
 (defmacro fdo (do_vble_clause predicate_clause &rest body)
-  (let ((step (gensym))
-	(iteration_count (gensym)))
+  (let ((step (gensym (symbol-name '#:step-)))
+	(iteration_count (gensym (symbol-name '#:cnt-)))
+	(loop-var (first do_vble_clause)))
     `(prog* ((,step ,(third (third do_vble_clause)))
 	     (,iteration_count 
-	      (max 0 (truncate (+ (- ,(third (first predicate_clause))
-				     ,(second do_vble_clause))
-				  ,step)
-			       ,step)
+	      (max 0 (the integer4
+		       (truncate (the integer4
+				   (+ (the integer4 (- ,(third (first predicate_clause))
+						       ,(second do_vble_clause)))
+				      ,step))
+				 ,step))
 		   )))
       (declare (type integer4 ,step ,iteration_count))
       ;; initialise loop variable
-      (setq ,(first do_vble_clause) ,(second do_vble_clause))
+      (setq ,loop-var ,(second do_vble_clause))
       loop
       (return
 	(cond				; all iterations done
@@ -270,10 +291,8 @@ is not included")
 	  ,(cons 't 
 		 (append 
 		  (append body
-			  `((setq ,(first do_vble_clause) 
-			     ,(third do_vble_clause)
-			     ,iteration_count 
-			     (1- ,iteration_count))))
+			  `((setq ,loop-var (the integer4 ,(third do_vble_clause))
+			     ,iteration_count (the integer4 (1- ,iteration_count)))))
 		  '((go loop)))))))))
 
 ;(defmacro fdo (do-vbles predicate-clause &rest body)
@@ -309,13 +328,6 @@ is not included")
 ;                        '((go loop))))))))
 
 ;----------------------------------------------------------------------------
-(defun constant-list (x n)
-  (do  ((i 1 (1+ i)) 
-        (ret nil (cons x ret))) 
-       ((> i n) ret)))
-     
-
-;----------------------------------------------------------------------------
 ;; macro for division 
 
 (defmacro f2cl/ (x y)
@@ -327,6 +339,37 @@ is not included")
 	       (typep ,bot 'integer))
 	  (values (the integer4 (truncate ,top ,bot)))
 	  (/ ,top ,bot)))))
+
+(defmacro int-add (arg &rest more-args)
+  (if (null more-args)
+      arg
+      (if (> (length more-args) 1)
+	  `(the integer4 (+ ,arg (int-add ,@more-args)))
+	  `(the integer4 (+ ,arg ,@more-args)))))
+
+(defun convert-int-sub (args)
+  (let ((nargs (length args)))
+    (case nargs
+      (1
+       `(the integer4 (- ,(first args))))
+      (2
+       `(the integer4 (- ,(first args) ,(second args))))
+      (t
+       (let ((result `(the integer4 (- ,(first args) ,(second args)))))
+	 (dolist (arg (rest (rest args)))
+	   (setf result `(the integer4 (- ,result ,arg))))
+	 result)))))
+
+(defmacro int-sub (&rest args)
+  (convert-int-sub args))
+  
+(defmacro int-mul (arg &rest more-args)
+  (if (null more-args)
+      arg
+      (if (> (length more-args) 1)
+	  `(the integer4 (* ,arg (int-mul ,@more-args)))
+	  `(the integer4 (* ,arg ,@more-args)))))
+
 
 ;; macro for a lisp equivalent of Fortran arithmetic IFs
 (defmacro arithmetic-if (pred s1 s2 s3)
@@ -349,6 +392,7 @@ is not included")
     ,@(computed-goto-aux tag-lst)))
 
 ;; macro for a lisp equivalent of Fortran assigned GOTOs
+#+nil
 (defmacro assigned-goto (i &optional tag-lst)
    `(if ,tag-lst
         (if (member ,i ,tag-lst) 
@@ -356,29 +400,37 @@ is not included")
             (error "bad statement number in assigned goto"))
         (go ,i)))
 
-;-----------------------------------------------------------------------------       
-; set up a list of intrinsic function names
-;real xxx
-(defvar *intrinsic_function_names*
-  '(int ifix idint real float sngl dble cmplx ichar char aint dint
-    anint dnint nint idnint iabs abs dabs cabs mod amod dmod isign sign dsign
-    idim dim ddim dprod max max0 max1 amax1 dmax1 amax0 amax1 min min0 amin1 dmin1
-    min1 len index lge lgt lle llt aimag conjg sqrt dsqrt csqrt 
-    exp dexp cexp log alog dlog clog log10 alog10 dlog10 sin dsin csin
-    cos dcos ccos tan dtan asin dasin acos dacos atan datan atan2 datan2
-    sinh dsinh cosh dcosh tanh dtanh))
+(defun assigned-goto-aux (tag-list)
+  (let ((cases nil))
+    (dolist (tag tag-list)
+      (push `(,tag (go ,(make-label tag)))
+	    cases))
+    (push `(t (error "Unknown label for assigned goto")) cases)
+    (nreverse cases)))
+
+(defmacro assigned-goto (var tag-list)
+  `(case ,var
+     ,@(assigned-goto-aux tag-list)))
+
+;;-----------------------------------------------------------------------------
+;;
+;; Define the intrinsic functions
+;;
+;; Reference:  The Fortran 77 standard found at www.fortran.com.  Section 15.10
+
+;; INT is the generic name as well as the integer version.  IFIX is
+;; the same.  IDINT is the double version.
 
 (declaim (inline int ifix idfix))
 
-;; Define the intrinsic functions.
-#-cmu
+#-(or cmu scl)
 (defun int (x)
   ;; We use fixnum here because f2cl thinks Fortran integers are
   ;; fixnums.  If this should change, we need to change the ranges
   ;; here as well.
   (etypecase x
     (integer
-     x)
+     (the integer4 x))
     (single-float
      (truncate (the (single-float #.(float most-negative-fixnum)
 				  #.(float most-positive-fixnum))
@@ -388,64 +440,142 @@ is not included")
 				  #.(float most-positive-fixnum 1d0))
 		 x)))))
 
-#+cmu
+#+(or cmu scl)
 (defun int (x)
-  ;; We use fixnum here because f2cl thinks Fortran integers are
-  ;; fixnums.  If this should change, we need to change the ranges
-  ;; here as well.
+  ;; For CMUCL, we support the full 32-bit integer range, so INT can
+  ;; return a full 32-bit integer.  Tell CMUCL that this is true so we
+  ;; generate fast code.  If this is not true, the original Fortran
+  ;; code was wrong.
   (etypecase x
     (integer
-     x)
+     (the integer4 x))
     (single-float
-     (truncate (the (single-float #.(float (- (ash 1 31)))
-				  #.(float (1- (ash 1 31))))
-		 x)))
+     (the integer4
+       (truncate (the (single-float #.(float (- (ash 1 31)))
+				    #.(float (1- (ash 1 31))))
+		   x))))
     (double-float
-     (truncate (the (double-float #.(float (- (ash 1 31)) 1d0)
-				  #.(float (1- (ash 1 31)) 1d0))
-		 x)))))
+     (the integer4
+       (truncate (the (double-float #.(float (- (ash 1 31)) 1d0)
+				    #.(float (1- (ash 1 31)) 1d0))
+		   x))))))
   
 (defun ifix (x)
   (int x))
 (defun idfix (x)
   (int x))
 
+;; AINT is the generic and specific function for real; DINT, for
+;; double.  It truncates its arg towards zero and returns the integer
+;; as a floating-point number of the same type as its arg.
+;;
+;; ANINT is the generic and specific function for real; DNINT, for
+;; double. It rounds to the nearest integer and returns the result as
+;; a float of the same type.
+;;
+;; NINT is the generic and specific function for real; IDNINT, for
+;; double.  Does the same as ANINT, but the result is an integer.
+
 (declaim (inline aint dint anint dnint nint idnint))
+
+;; This is based on the algorithm given by Anton Ertl in
+;; comp.arch.arithmetic on Oct. 26, 2002:
+;;
+;; #define X 9007199254740992. /* 2^53 */
+;; double rint(double r)
+;; {
+;;   if (r<0.0)
+;;     return (r+X)-X;
+;;   else
+;;     return (r-X)+X;
+;; }
+;;
+;; We modified this to do truncation instead of directed rounding.
+;; This assumes that we in round-to-nearest mode (the default).
+;;
+;; These only work if you have IEEE FP arithmetic.  There are 2
+;; versions given below.  One is for non-x86, which assumes that
+;; single and double FP numbers are properly rounded after each
+;; operation.  The version for x86 stores away a value to make sure
+;; the rounding happens correctly.
+;;
+;; Finally, the last version if for platforms where none of this
+;; holds and we call ftruncate.
+;;
+;; With CMUCL pre-18e on sparc, this definition of aint reduces the
+;; cost of MPNORM (from MPFUN) from 48.89 sec to 24.88 sec (a factor
+;; of 2!) when computing pi to 29593 digits or os.
+
+#+(and cmu (not x86))
+(defun aint (x)
+  (etypecase x
+    (single-float
+     (let ((const (scale-float 1f0 24)))
+       (if (>= x 0)
+	 (+ (- (- x 0.5f0) const) const)
+	 (- (+ (+ x 0.5f0) const) const))))
+    (double-float
+     (let ((const (scale-float 1d0 53)))
+       (if (>= x 0)
+	 (+ (- (- x 0.5d0) const) const)
+	 (- (+ (+ x 0.5d0) const) const))))))
+
+#+(and cmu x86)
+(let ((junks (make-array 1 :element-type 'single-float))
+      (junkd (make-array 1 :element-type 'double-float)))
+  (defun aint (x)
+    ;; ftruncate is exactly what we want.
+    (etypecase x
+      (single-float
+       (let ((const (scale-float 1f0 24)))
+	 (if (>= x 0)
+	     (progn
+	       (setf (aref junks 0) (- x 0.5f0))
+	       (+ (- (aref junks 0) const) const))
+	     (progn
+	       (setf (aref junks 0) (+ x 0.5f0))
+	       (- (+ (aref junks 0) const) const)))))
+      (double-float
+       (let ((const (scale-float 1d0 53)))
+	 (if (>= x 0)
+	     (progn
+	       (setf (aref junkd 0) (- x 0.5d0))
+	       (+ (- (aref junkd 0) const) const))
+	     (progn
+	       (setf (aref junkd 0) (+ x 0.5d0))
+	       (- (+ (aref junkd 0) const) const))))))))
 
 #-cmu
 (defun aint (x)
+  ;; ftruncate is exactly what we want.
   (etypecase x
     (single-float
-     (ftruncate (the (single-float #.(float most-negative-fixnum)
-				   #.(float most-positive-fixnum))
-		  x)))
+     (locally 
+       (declare (optimize (space 0) (speed 3)))
+       (values (ftruncate (the single-float x)))))
     (double-float
-     (ftruncate (the (double-float #.(float most-negative-fixnum 1d0)
-				   #.(float most-positive-fixnum 1d0))
-		  x)))))
-#+cmu
-(defun aint (x)
-  (etypecase x
-    (single-float
-     (ftruncate (the (single-float #.(float (- (ash 1 31)))
-				   #.(float (1- (ash 1 31))))
-		  x)))
-    (double-float
-     (ftruncate (the (double-float #.(float (- (ash 1 31)) 1d0)
-				   #.(float (1- (ash 1 31)) 1d0))
-		  x)))))
+     (locally 
+       (declare (optimize (space 0) (speed 3)))
+       (values (ftruncate (the double-float x)))))))
 
 (defun dint (x)
   (aint x))
 
 (defun anint (x)
-  (coerce (round x) (type-of x)))
+  (values (fround x)))
 (defun dnint (x)
   (values (fround x)))
 (defun nint (x)
   (values (round x)))
 (defun idnint (x)
   (values (round x)))
+
+;; Type conversion
+;;
+;; FREAL is F2CL's version of the Fortran REAL which takes converts
+;; its arg to a real.  SNGL is the same.  DBLE returns a double.  They
+;; also return the real part of a complex number.  CMPLX takes one or
+;; two args and creates a complex number.
 
 (declaim (inline freal sngl dble cmplx))
 (defun freal (x)
@@ -485,13 +615,18 @@ is not included")
   (mod x y))
 
 
+;; Transfer of sign.  SIGN is the generic and specific function for
+;; real.  ISIGN is for integers; DSIGN for doubles.  Basically
+;; computes sign(a2)*|a1|.
+
 (declaim (inline isign sign dsign))
 
 (defun isign (x y)
   (declare (type integer4 x y))
   (if (>= y 0)
-      (abs x)
-      (- (abs x))))
+      (the integer4 (abs x))
+      (the integer4 (- (the integer4 (abs x))))))
+
 ;; Fortran 77 says SIGN is a generic!
 (defun sign (x y)
   (declare (type (or integer4 single-float double-float) x y))
@@ -507,58 +642,78 @@ is not included")
   (declare (type double-float x y))
   (float-sign y x))
 
+;; Positive difference.  DIM is the generic and specific function for
+;; real.  IDIM is for integers; DDIM, doubles.
+;;
+;; If a1 > a2, returns a1-a2, otherwise 0.  Basically the same as
+;; max(0, a1-a2).
 (declaim (inline idim dim ddim))
 (defun idim (x y)
   (declare (type integer4 x y))
-  (abs (- x y)))
-;; Fortran 77 says DIM is a generic! 
+  (max 0 (- x y)))
+
 (defun dim (x y)
   (declare (type (or integer4 single-float double-float) x y))
   (etypecase x
     (integer4
-     (abs (- x y)))
+     (max 0 (- x y)))
     (single-float
-     (abs (- x y)))
+     (max 0f0 (- x y)))
     (double-float
-     (abs (- x y)))))
+     (max 0d0 (- x y)))))
 
 (defun ddim (x y)
   (declare (type double-float x y))
-  (abs (- x y)))
+  (max 0d0 (- x y)))
 
+;; Double-precision product.  How this is done isn't specified, but I
+;; suspect the real args are converted to doubles and then the product
+;; is computed.
 (defun dprod (x y)
-  (coerce (* x y) `double-float))
+  (declare (single-float x y))
+  (* (float x 1d0) (float y 1d0)))
 
-(defun max0 (&rest x)
-  (apply #'max x))
-(defun amax1 (&rest x)
-  (apply #'max x))
-(defun dmax1 (&rest x)
-  (apply #'max x))
+;; The max and min functions.
+;;
+;; MAX is the generic. MAX0, AMAX1, and DMAX1 returns the max of the
+;; args with the same type as the args.
+;;
+;; AMAX0 takes integer args and returns the max as a real. MAX1 takes
+;; real args and returns the max as a integer.  (How the conversion is
+;; done isn't specified.)
+;;
+;; Should we make these macros that expand directly to the appropriate
+;; max?
+(defun max0 (x y &rest z)
+  (declare (integer x y))
+  (apply #'max x y z))
+(defun amax1 (x y &rest z)
+  (declare (single-float x y))
+  (apply #'max x y z))
+(defun dmax1 (x y &rest z)
+  (declare (double-float x y))
+  (apply #'max x y z))
+(defun max1 (x y &rest z)
+  (declare (single-float x y))
+  (int (apply #'max x y z)))
+(defun amax0 (x y &rest z)
+  (declare (type integer4 x y))
+  (float (apply #'max x y z) 1f0))
 
-(defun min0 (&rest x)
-  (apply #'min x))
-(defun amin1 (&rest x)
-  (apply #'min x))
-(defun dmin1 (&rest x)
-  (let ((result (first x)))
-    (declare (double-float result))
-    (dolist (val (rest x))
-      (declare (double-float val))
-      (setf result (min result val)))
-    result))
+(defun min0 (x y &rest z)
+  (apply #'min x y z))
+(defun amin1 (x y &rest z)
+  (apply #'min x y z))
+(defun dmin1 (x y &rest z)
+  (apply #'min x y z))
 
-(defun amax0 (&rest x)
-  (float (apply #'max x)))
-(defun max1 (&rest x)
-  (nint (apply #'max x)))
-(defun amin0 (&rest x)
-  (float (apply #'min x)))
-(defun min1 (&rest x)
-  (nint (apply #'min x)))
+(defun amin0 (x y &rest z)
+  (float (apply #'min x y z)))
+(defun min1 (x y &rest z)
+  (nint (apply #'min x y z)))
 
 ;; Define some compile macros for these max/min functions.
-#+cmu
+#+(or cmu scl)
 (progn
 (define-compiler-macro max0 (&rest args)
   `(max ,@args))
@@ -616,6 +771,8 @@ is not included")
   (string<= s1 s2))
 
 
+;; AIMAG: imaginary part of a complex number
+;; CONJG: conjugate of a complex number
 (declaim (inline aimag conjg))
 (defun aimag (c)
   (imagpart c))
@@ -670,9 +827,9 @@ is not included")
 (defun log10 (x)
   (typecase x
     (single-float
-     (log (the (single-float 0.0f0) x) 10f0))
+     (log (the (or (single-float (0.0f0)) (member 0f0)) x) 10f0))
     (double-float
-     (log (the (double-float 0.0d0) x) 10d0))
+     (log (the (or (double-float (0.0d0)) (member 0d0)) x) 10d0))
     (t
      (/ (log x)
 	(typecase x
@@ -743,6 +900,7 @@ is not included")
 (defun ffloat (x)
   (coerce x 'single-float))
 
+#+nil
 (defun process-implied-do (ido low-bnds init)
   (let* ((implied-do (remove '|,| ido))
 	 (array (first implied-do))
@@ -756,28 +914,51 @@ is not included")
     (cond ((atom array)
 	   `(do ((,do-var ,start (+ ,do-var ,step)))
 	     ((> ,do-var ,end))
+	     (declare (type integer4 ,do-var))
 	     (fset (fref ,array ,(remove '|,| (second implied-do)) ,low-bnds) (pop ,init))))
 	  (t
 	   `(do ((,do-var ,start (+ ,do-var ,step)))
 	     ((> ,do-var ,end))
+	     (declare (type integer4 ,do-var))
 	     ,(process-implied-do (remove '|,| array) low-bnds init))))))
+
+(defun process-implied-do (ido low-bnds var-types init)
+  (destructuring-bind (data-vars (index-var start end &optional step))
+      ido
+    (labels
+	((convert-type (type)
+	   (if (eq type 'integer4)
+	       `(truncate (pop ,init))
+	       `(coerce (pop ,init) ',type)))
+	 (map-vars (v)
+	   (mapcar #'(lambda (x b vt)
+		       `(fset (fref ,(first x) ,(second x) ((,b)))
+			 ,(convert-type vt)))
+		   v low-bnds var-types)))
+    `(do ((,index-var ,start (+ ,index-var ,(or step 1))))
+         ((> ,index-var ,end))
+       ,@(map-vars data-vars))
+    )))
 
 
 ;; Process implied do loops for data statements
-(defmacro data-implied-do (implied-do low-bnds vals)
+(defmacro data-implied-do (implied-do low-bnds var-types vals)
   (let ((v (gensym)))
     `(let ((,v ',vals))
-      ,(process-implied-do implied-do low-bnds v))))
+      ,(process-implied-do implied-do low-bnds var-types v))))
+
 ;-----------------------------------------------------------------------------  ; end of macros.l
    
 ;; Map Fortran logical unit numbers to Lisp streams
 
-(defvar *lun-hash*
+(defparameter *lun-hash*
   (let ((table (make-hash-table)))
     (setf (gethash 6 table) *standard-output*)
+    (setf (gethash 5 table) *standard-input*)
     (setf (gethash t table) *standard-output*)
     table))
 
+#+nil
 (defun lun->stream (lun)
   (let ((stream (gethash lun *lun-hash*)))
     (if stream
@@ -787,12 +968,46 @@ is not included")
 		    :direction :output
 		    :if-exists :rename)))))
 
+(defun lun->stream (lun &optional readp)
+  (let ((stream (gethash lun *lun-hash*)))
+    (if stream
+	stream
+	(cond ((integerp lun)
+	       (setf (gethash lun *lun-hash*)
+		     (open (format nil "fort~d.dat" lun)
+			   :direction :output
+			   :if-exists :rename)))
+	      ((stringp lun)
+	       (setf (gethash lun *lun-hash*)
+		     (if readp
+			 (make-string-input-stream lun)
+			 (make-string-output-stream))))
+	      ))))
+
+(defun init-fortran-io ()
+  "Initialize the F2CL Fortran I/O subsystem to sensible defaults"
+  (clrhash *lun-hash*)
+  (setf (gethash 6 *lun-hash*) *standard-output*)
+  (setf (gethash 5 *lun-hash*) *standard-input*)
+  (setf (gethash t *lun-hash*) *standard-output*))
+
+(defun close-fortran-io ()
+  "Close all F2CL Fortran units (except for standard output and input)
+causing all pending operations to be flushed"
+  (maphash #'(lambda (key val)
+	       (when (and (streamp val) (not (member key '(5 6 t))))
+		 (format t "Closing unit ~A: ~A~%" key val)
+		 (close val)))
+	       *lun-hash*))
+
 (declaim (ftype (function (t) stream) lun->stream))
 
 (defmacro fformat (dest-lun format-cilist &rest args)
   (let ((stream (gensym)))
     `(let ((,stream (lun->stream ,dest-lun)))
-      (execute-format-main ,stream ',format-cilist ,@args))))
+      (execute-format-main ,stream ',format-cilist ,@args)
+      (when (stringp ,dest-lun)
+	(replace ,dest-lun (get-output-stream-string ,stream))))))
 
 (defun execute-format (top stream format arg-list)
   (do ((formats format (if (and top (null formats))
@@ -903,7 +1118,7 @@ is not included")
 			      :element-type `(simple-array base-char (,',@len))
 			      :initial-element (make-string ,@len))))
        (dotimes (k (array-total-size ,init))
-	 (setf (row-major-aref ,init k)
+	 (setf (aref ,init k)
 	       (make-string ,@len :initial-element #\Space)))
        ,init)))
 
@@ -955,19 +1170,23 @@ is not included")
 ;;
 (defun d1mach (i)
   (ecase i
-    (1 least-positive-normalized-double-float)
+    (1
+     #-gcl least-positive-normalized-double-float
+     #+gcl least-positive-double-float)
     (2 most-positive-double-float)
     (3 double-float-epsilon)
     (4 (scale-float double-float-epsilon 1))
-    (5 (log (float-radix 1d0) 10d0))))
+    (5 (log (float (float-radix 1d0) 1d0) 10d0))))
 
 (defun r1mach (i)
   (ecase i
-    (1 least-positive-normalized-single-float)
+    (1
+     #-gcl least-positive-normalized-single-float
+     #+gcl least-positive-single-float)
     (2 most-positive-single-float)
     (3 single-float-epsilon)
     (4 (scale-float single-float-epsilon 1))
-    (5 (log (float-radix 1d0) 10d0))))
+    (5 (log (float (float-radix 1f0)) 10f0))))
 
 ;;
 ;;     This is the CMLIB version of I1MACH, the integer machine
@@ -1028,17 +1247,13 @@ is not included")
     ;; really want?
     
     ;; The standard input unit
-    #+nil
-    (1 0)
+    (1 5)
     ;; The standard output unit
-    #+nil
-    (2 1)
+    (2 6)
     ;; The standard punch unit
-    #+nil
-    (3 3)
+    (3 6)
     ;; The standard error message unit
-    #+nil
-    (4 2)
+    (4 6)
 
     ;; The number of bits per integer storage unit.  What does this
     ;; mean in Lisp?
@@ -1046,8 +1261,7 @@ is not included")
      (integer-length most-positive-fixnum))
     ;; The number of characters per integer storage unit.  What does
     ;; this mean in Lisp?
-    #+nil
-    (6 1)
+    (6 4)
 
     ;; The base of integers.  Assume 2's complement
     (7 2)
@@ -1086,19 +1300,217 @@ is not included")
 ;;;-------------------------------------------------------------------------
 ;;; end of macros.l
 ;;;
-;;; $Id: macros.l,v 1.4 2003/05/31 03:49:42 rtoy Exp $
+;;; $Id: macros.l,v 1.5 2004/02/20 17:34:32 rtoy Exp $
 ;;; $Log: macros.l,v $
-;;; Revision 1.4  2003/05/31 03:49:42  rtoy
-;;; Plain old ftruncate is the right function to use.
+;;; Revision 1.5  2004/02/20 17:34:32  rtoy
+;;; Update to latest f2cl code, so
+;;; o Fix defpackage stuff for f2cl
+;;; o Update macros.l.
 ;;;
-;;; Revision 1.3  2001/07/10 16:14:31  rtoy
-;;; Add I1MACH routine.
+;;; Revision 1.57  2003/11/23 14:10:11  rtoy
+;;; FDO should not call function that are not in the F2CL-LIB package.
+;;; Macros.l should be self-contained.
 ;;;
-;;; Revision 1.2  2001/04/26 18:07:19  rtoy
-;;; Sync up to f2cl's macros.l rev 1.32 which added D1MACH and R1MACH.
+;;; Revision 1.56  2003/11/13 05:37:11  rtoy
+;;; Add macro WITH-MULTI-ARRAY-DATA.  Basically like WITH-ARRAY-DATA, but
+;;; takes a list of array info so we don't get deeply nested code when
+;;; there are lots of arrays.
 ;;;
-;;; Revision 1.1  2001/02/23 18:03:36  rtoy
-;;; Initial revision, based on the current release of f2cl macros.l.  (Had
-;;; to add a defvar for *check-array-bounds* though.)
+;;; Keep WITH-ARRAY-DATA around for backward compatibility.
+;;;
+;;; Revision 1.55  2003/11/12 05:33:22  rtoy
+;;; Macro to handle assigned gotos was wrong.  Fix it.
+;;;
+;;; Revision 1.54  2003/09/25 03:43:43  rtoy
+;;; Need to check for reserved names in the fdo macro.  (I think.)
+;;;
+;;; Revision 1.53  2003/01/07 18:44:52  rtoy
+;;; Add new implementations of aint.  Speeds up mpnorm by a factor of 5 on
+;;; CMUCL/sparc!
+;;;
+;;; Revision 1.52  2002/09/13 17:50:19  rtoy
+;;; From Douglas Crosher:
+;;;
+;;; o Make this work with lower-case Lisps
+;;; o Fix a few typos
+;;; o Make a safer fortran reader.
+;;;
+;;; Revision 1.51  2002/06/30 13:08:51  rtoy
+;;; Add some declarations to AINT so that CMUCL can completely inline the
+;;; call to ftruncate.
+;;;
+;;; Revision 1.50  2002/05/05 23:41:17  rtoy
+;;; Typo: extra paren.
+;;;
+;;; Revision 1.49  2002/05/05 23:38:47  rtoy
+;;; The int-sub macro didn't handle things like (- 3 m m) correctly.  It
+;;; was returning (- 3 (- m m)) instead of (- (- 3 m) m)!
+;;;
+;;; Revision 1.48  2002/05/03 17:48:06  rtoy
+;;; GCL doesn't have least-positive-normalized-{single/double}-float, so
+;;; use just least-positive-{single/double}-float.
+;;;
+;;; Revision 1.47  2002/05/03 17:44:36  rtoy
+;;; Replace row-major-aref with just aref because we don't need it and
+;;; because gcl doesn't have it.
+;;;
+;;; Revision 1.46  2002/03/19 02:23:09  rtoy
+;;; According to the rules of Fortran, the initializers in a DATA
+;;; statement are supposed to be converted to match the type of the
+;;; variable that is being initialized.  Make it so by passing the
+;;; variable type to the macro DATA-IMPLIED-DO so that the conversion can
+;;; be done.
+;;;
+;;; Revision 1.45  2002/03/18 23:34:16  rtoy
+;;; Was not correctly handling some implied do loops containing multiple
+;;; variables in the loop in data statements.  Fix that and clean up some
+;;; of the processing.  (Should probably do this kind of work in the f2cl
+;;; compiler instead of at runtime, but it's only done once at runtime, so
+;;; it's not a big deal.)
+;;;
+;;; Revision 1.44  2002/03/11 16:44:00  rtoy
+;;; o Remove an extra paren.
+;;; o Indent FIND-ARRAY-DATA better.
+;;; o Declare the iteration count to be of type INTEGER4.
+;;; o Added macros INT-ADD, INT-SUB, INT-MUL to tell the compiler that the
+;;;   integer operation can't overflow.  (First try.)
+;;; o Tell the compiler that the result of truncate is an INTEGER4 in INT.
+;;;
+;;; Revision 1.43  2002/03/06 23:07:19  rtoy
+;;; o Make INT return an integer4 type, not integer.
+;;; o log10 was thinking it could generate complex result, but that's not
+;;;   true.  Declare the arg correctly so the compiler knows it can't.
+;;;
+;;; Revision 1.42  2002/03/06 03:21:16  rtoy
+;;; o Speed up FIND-ARRAY-DATA a little by declaring the offset to be a
+;;;   fixnum, which it has to be since it's an index to an array.
+;;; o Remove the truncate/ftruncate-towards-zero functions.
+;;; o For INT, AINT, and friends, TRUNCATE and FTRUNCATE are the right
+;;;   functions we want to use.  (Stupid me!)
+;;; o Update/correct some random comments.
+;;;
+;;; Revision 1.41  2002/02/17 15:55:29  rtoy
+;;; o For all array accessors, wrap the offset calculations with (the
+;;;   fixnum ...) since they have to be anyway.  Speeds up calculations
+;;;   quite a bit.
+;;; o FREF takes an additional optional OFFSET arg to specify an offset
+;;;   for the new array slicing method.
+;;; o Added WITH-ARRAY-DATA and FIND-ARRAY-DATA to support the new
+;;;   array-slicing method.
+;;; o For FDO, add (the integer4 ...) for loop index calculations.
+;;; o Add some more assertions for ISIGN and LOG10 to help the compiler
+;;;   generate better code.
+;;;
+;;; Revision 1.40  2002/02/10 03:43:51  rtoy
+;;; Partial support for WRITE statements writing to a string instead of
+;;; logical unit.
+;;;
+;;; Revision 1.39  2002/02/09 15:59:26  rtoy
+;;; o Add more and better comments
+;;; o AINT was broken because it should accept any range of floats.
+;;; o DIM and friends computed the wrong thing!
+;;; o Change DPROD to convert to doubles first.
+;;; o Some cleanup of MAX and MIN
+;;;
+;;; Revision 1.38  2002/02/08 23:38:36  rtoy
+;;; Use ARRAY-TOTAL-SIZE to compute how many elements are in the slice
+;;; instead of the f2cl declared/derived bounds so that we can dynamically
+;;; change the size of the array.  Useful for an array in a common block.
+;;;
+;;; Revision 1.37  2002/02/07 03:23:15  rtoy
+;;; Add functions to initialize F2CL's Fortran I/O and to close all of
+;;; F2CL's open units.
+;;;
+;;; Revision 1.36  2002/02/04 03:23:46  rtoy
+;;; o Make *lun-hash* a defparameter instead of a defvar.
+;;; o Fix up i1mach so that the unit numbers match *lun-hash*.
+;;;
+;;; Revision 1.35  2002/01/13 16:29:00  rtoy
+;;; o This file is in the f2cl-lib package now
+;;; o Deleted some unused code.
+;;; o Moved *INTRINSIC-FUNCTION-NAMES* to f2cl1.l
+;;;
+;;; Revision 1.34  2002/01/06 23:11:04  rtoy
+;;; o Rename *intrinsic_function_names* to use dashes.
+;;; o Comment out some unused functions and macros.
+;;;
+;;; Revision 1.33  2001/04/30 15:38:12  rtoy
+;;; Add a version of I1MACH.
+;;;
+;;; Revision 1.32  2001/04/26 17:49:19  rtoy
+;;; o SIGN and DIM are Fortran generic instrinsics.  Make it so.
+;;; o Added D1MACH and R1MACH because they're very common in Fortran
+;;;   libraries.
+;;;
+;;; Revision 1.31  2001/02/26 15:38:23  rtoy
+;;; Move *check-array-bounds* from f2cl1.l to macros.l since the generated
+;;; code refers to it.  Export this variable too.
+;;;
+;;; Revision 1.30  2000/08/30 17:00:42  rtoy
+;;; o In EXECUTE-FORMAT, handle the case where the group is supposed to be
+;;;   repeated "forever" (as indicated by a repetition factor of T).
+;;; o Remove some more unused code.
+;;;
+;;; Revision 1.29  2000/08/27 16:36:07  rtoy
+;;; Clean up handling of format statements.  Should handle many more
+;;; formats correctly now.
+;;;
+;;; Revision 1.28  2000/08/07 19:00:47  rtoy
+;;; Add type ARRAY-STRINGS to denote an array of strings.
+;;;
+;;; Revision 1.27  2000/08/03 13:45:53  rtoy
+;;; Make FFORMAT1 handle lists that we get from implied do loops.
+;;;
+;;; The whole FFORMAT stuff needs to be rethought if we really want to
+;;; support Fortran output.
+;;;
+;;; Revision 1.26  2000/08/01 22:10:41  rtoy
+;;; o Try to make the Fortran functions to convert to integers work the
+;;;   way Fortran says they should.
+;;; o Declaim most of the intrinsics as inline so we don't have an
+;;;   additional function call for simple things.
+;;; o Add some compiler macros for Fortran max/min functions to call the
+;;;   Lisp max/min functions withouth using #'apply.
+;;; o Try to declare the args to functions with branchs appropriately,
+;;;   even in the face of signed zeroes.
+;;;
+;;; Revision 1.25  2000/07/28 22:10:05  rtoy
+;;; Remove unused var from ARRAY-SLICE.
+;;;
+;;; Revision 1.24  2000/07/28 17:09:13  rtoy
+;;; o We are in the f2cl package now.
+;;; o Remove the export expression.
+;;; o // is now called F2CL-//, to prevent problems with the lisp variable
+;;;   //.
+;;; o REAL is now called FREAL, to prevent problems with the lisp type
+;;;   REAL.
+;;;
+;;; Revision 1.23  2000/07/27 16:39:17  rtoy
+;;; We want to be in the CL-USER package, not the USER package.
+;;;
+;;; Revision 1.22  2000/07/20 13:44:38  rtoy
+;;; o Remove old fref macro
+;;; o Add some comments
+;;; o Add macro ARRAY-INITIALIZE to handle creating the appropriate for to
+;;;   give to make-array :initial-contents.
+;;;
+;;; Revision 1.21  2000/07/19 13:54:27  rtoy
+;;; o Add the types ARRAY-DOUBLE-FLOAT, ARRAY-SINGLE-FLOAT, and
+;;;   ARRAY-INTEGER4.
+;;; o All arrays are 1-D now to support slicing of Fortran arrays
+;;;   correctly.
+;;; o All arrays are in column-major order just like Fortran (and the
+;;;   opposite of Lisp).  This is to support slicing of arrays.  Modified
+;;;   FREF to support this by taking an extra arg for the dimensions of
+;;;   the array.
+;;; o Added macro ARRAY-SLICE to slice the array properly.
+;;; o Optimized routine DMIN1 a bit.   (Need to do that for more routines.)
+;;;
+;;; Revision 1.20  2000/07/14 15:50:59  rtoy
+;;; Get rid of *dummy_var*.  It's not used anymore.
+;;;
+;;; Revision 1.19  2000/07/13 16:55:34  rtoy
+;;; To satisfy the Copyright statement, we have placed the RCS logs in
+;;; each source file in f2cl.  (Hope this satisfies the copyright.)
 ;;;
 ;;;-----------------------------------------------------------------------------
