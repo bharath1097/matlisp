@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reshape.lisp,v 1.6 2001/05/07 15:47:09 rtoy Exp $
+;;; $Id: reshape.lisp,v 1.7 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: reshape.lisp,v $
+;;; Revision 1.7  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.6  2001/05/07 15:47:09  rtoy
 ;;; In the Great Renaming of slots n,m to nrows,ncols, I missed a few
 ;;; spots.  Fix them.
@@ -103,7 +107,7 @@
   (declare (type fixnum new-n new-m))
   (let* ((old-size (number-of-elements mat))
 	 (new-size (* new-n new-m))
-	 (new-store (make-array new-size :element-type 'real-matrix-element-type)))
+	 (new-store (allocate-real-store new-size)))
     (declare (fixnum old-size new-size)
 	     (type (real-matrix-store-type (*)) new-store))
 
@@ -121,7 +125,7 @@
       ;; We need to allocate new space to hold the result since
       ;; it's bigger than the old size.  Allocate it and copy the
       ;; elements over.
-      (let ((new-store (make-array new-size :element-type 'real-matrix-element-type)))
+      (let ((new-store (allocate-real-store new-size)))
 	(declare (type (real-matrix-store-type (*)) new-store))
 
 	(dcopy new-size (store mat) 1 new-store 1)
@@ -136,7 +140,7 @@
   (declare (fixnum new-n new-m))
   (let* ((old-size (number-of-elements mat))
 	 (new-size (* new-n new-m))
-	 (new-store (make-array (* 2 new-size) :element-type 'complex-matrix-element-type)))
+	 (new-store (allocate-complex-store new-size)))
     (declare (fixnum old-size new-size)
 	     (type (complex-matrix-store-type (*)) new-store))
 
@@ -153,7 +157,7 @@
       ;; We need to allocate new space to hold the result since
       ;; it's bigger than the old size.  Allocate it and copy the
       ;; elements over.
-      (let ((new-store (make-array (* 2 new-size) :element-type 'complex-matrix-element-type)))
+      (let ((new-store (allocate-complex-store new-size)))
 	(declare (type (complex-matrix-store-type (*)) new-store))
 
 	(zcopy new-size (store mat) 1 new-store 1)

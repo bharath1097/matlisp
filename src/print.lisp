@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.6 2001/04/28 13:06:46 rtoy Exp $
+;;; $Id: print.lisp,v 1.7 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.7  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.6  2001/04/28 13:06:46  rtoy
 ;;; This is not Fortran.  Instead of printing *'s when the number won't
 ;;; fit in the given field, print them out!
@@ -127,9 +131,8 @@ but got *PRINT-MATRIX* of type ~a"
 	(imagpart (imagpart element)))
 
     (if (zerop imagpart)
-	(format stream "      ~11,5,,,,,'Eg      " realpart)
-      (format stream "#~a(~9,3,,,,,'Ee ~9,3,,,,,'Ee)" 
-	      'c 
+	(format stream "      ~11,4,,,,,'Eg      " realpart)
+      (format stream "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)" 
 	      realpart
 	      imagpart))))
 

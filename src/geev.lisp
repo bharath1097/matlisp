@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.8 2001/03/07 00:14:56 rtoy Exp $
+;;; $Id: geev.lisp,v 1.9 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.9  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.8  2001/03/07 00:14:56  rtoy
 ;;; Asking dgeev for the desired workspace size now works.  (Didn't have
 ;;; the return values matched up correctly!)  (Needs a fix to dgeev.f for
@@ -229,8 +233,8 @@
     (values-list (nreverse res))))
  
 
-(let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
-      (work (make-array 1 :element-type 'real-matrix-element-type)))
+(let ((xxx (allocate-complex-store 1))
+      (work (allocate-real-store 1)))
   (defun dgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -264,11 +268,11 @@
 (defmethod geev ((a real-matrix) &optional (job :NN))
   (let* ((n (nrows a))
 	 (a (copy a))
-	 (xxx (make-array 1 :element-type 'real-matrix-element-type))
-	 (wr (make-array n :element-type 'real-matrix-element-type))
-	 (wi (make-array n :element-type 'real-matrix-element-type))
+	 (xxx (allocate-real-store 1))
+	 (wr (allocate-real-store n))
+	 (wi (allocate-real-store n))
 	 (lwork (dgeev-workspace-inquiry n job))
-	 (work (make-array lwork :element-type 'real-matrix-element-type)))
+	 (work (allocate-real-store lwork)))
 
     (declare (type fixnum n)
 	     (type (simple-array real-matrix-element-type (*)) xxx wr wi))
@@ -296,7 +300,7 @@
 	     (values nil nil))))
 
       ((:vn t)
-          (let* ((vr (make-array (* n n) :element-type 'real-matrix-element-type)))
+          (let* ((vr (allocate-real-store (* n n))))
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "N"       ;; JOBVL
 		       "V"       ;; JOBVR
@@ -318,7 +322,7 @@
 		(values nil nil)))))
 
       (:nv
-          (let* ((vl (make-array (* n n) :element-type 'real-matrix-element-type)))
+          (let* ((vl (allocate-real-store (* n n))))
 
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "V"       ;; JOBVL
@@ -341,8 +345,8 @@
 		(values nil nil)))))
 
       (:vv
-          (let* ((vl (make-array (* n n) :element-type 'real-matrix-element-type))
-		 (vr (make-array (* n n) :element-type 'real-matrix-element-type)))
+          (let* ((vl (allocate-real-store (* n n)))
+		 (vr (allocate-real-store (* n n))))
 
 	    (multiple-value-bind (a wr wi vl vr work info)
 		(dgeev "V"       ;; JOBVL
@@ -368,8 +372,8 @@
       )))
 
 
-(let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
-      (work (make-array 2 :element-type 'complex-matrix-element-type)))
+(let ((xxx (allocate-complex-store 1))
+      (work (allocate-complex-store 1)))
   (defun zgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -407,10 +411,10 @@
   (let* ((n (nrows a))
 	 (a (copy a))
 	 (w (make-complex-matrix-dim n 1))
-	 (xxx   (make-array 2 :element-type 'complex-matrix-element-type))
+	 (xxx   (allocate-complex-store 1))
 	 (lwork (zgeev-workspace-inquiry n job))
-	 (work  (make-array (* 2 lwork) :element-type 'complex-matrix-element-type))
-	 (rwork (make-array (* 2 n) :element-type 'real-matrix-element-type)))
+	 (work  (allocate-complex-store lwork))
+	 (rwork (allocate-complex-store n)))
 
     (declare (type fixnum lwork n)
 	     (type (simple-array complex-matrix-element-type (*)) xxx work)

@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: svd.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: svd.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: svd.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -133,9 +137,9 @@
 	 (p (min n m))
 	 (lwork (max (+ (* 3 (min n m)) (max n m))
 		     (* 5 (min n m))))
-	 (work (make-array lwork :element-type 'real-matrix-element-type))
+	 (work (allocate-real-store lwork))
 	 (a (copy a))
-	 (xxx (make-array 1 :element-type 'real-matrix-element-type)))
+	 (xxx (allocate-real-store 1)))
 
 
     (case job
@@ -226,10 +230,10 @@
 	 (m (ncols a))
 	 (p (min n m))
 	 (lwork (+ (* 2 (min n m)) (max n m)))
-	 (work  (make-array (* 2 lwork) :element-type 'complex-matrix-element-type))
-	 (rwork (make-array (* 5 (min n m)) :element-type 'real-matrix-element-type))
+	 (work  (allocate-complex-store lwork))
+	 (rwork (allocate-real-store (* 5 (min n m))))
 	 (a (copy a))
-	 (xxx (make-array 2 :element-type 'real-matrix-element-type)))
+	 (xxx (allocate-real-store 2)))
 
 
     (case job

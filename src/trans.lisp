@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: trans.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: trans.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: trans.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -127,7 +131,7 @@
 	 (m (ncols mat))
 	 (nxm (number-of-elements mat))
 	 (store (store mat))
-	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
+	 (new-store (allocate-real-store nxm)))
 
     (declare (type fixnum n m nxm)
 	     (type (real-matrix-store-type (*)) store new-store))
@@ -146,7 +150,7 @@
 	 (m (ncols mat))
 	 (nxm (number-of-elements mat))
 	 (store (store mat))
-	 (new-store (make-array (* 2 nxm) :element-type 'complex-matrix-element-type)))
+	 (new-store (allocate-complex-store nxm)))
 
     (declare (type fixnum n m nxm)
 	     (type (complex-matrix-store-type (*)) store new-store))
@@ -187,7 +191,7 @@ a STANDARD-MATRIX, element types are not known"))
 	 (m (ncols mat))
 	 (nxm (number-of-elements mat))
 	 (store (store mat))
-	 (new-store (make-array (* 2 nxm) :element-type 'complex-matrix-element-type)))
+	 (new-store (allocate-complex-store nxm)))
 
     (declare (type fixnum n m nxm)
 	     (type (complex-matrix-store-type (*)) store new-store))

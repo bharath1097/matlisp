@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mtimes.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: mtimes.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: mtimes.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -345,7 +349,7 @@ don't know how to coerce COMPLEX to REAL"))
   (if (<= nxm 0)
       (error "argument NxM given to SET-M*!-SWAP-SIZE should be bigger than 0"))
 
-  (let ((swap (make-array (* 2 nxm) :element-type 'complex-matrix-element-type)))
+  (let ((swap (allocate-complex-store nxm)))
 
     (setf *m*!-swap-size* nxm)
     (setf *m*!-swap* swap)

@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: ref.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -93,7 +97,7 @@
 	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat))
-	 (store (make-array k :element-type 'real-matrix-element-type)))
+	 (store (allocate-real-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
 	     (type (real-matrix-store-type (*)) idx-store mat-store store))
@@ -124,7 +128,7 @@
 	 (m (ncols mat))
 	 (k (length idx))
 	 (mat-store (store mat))
-	 (store (make-array k :element-type 'real-matrix-element-type)))
+	 (store (allocate-real-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
 	     (type (real-matrix-store-type (*)) mat-store store))
@@ -694,7 +698,7 @@
 	 (k (number-of-elements idx))
 	 (idx-store (store idx))
 	 (mat-store (store mat))
-	 (store (make-array (* 2 k) :element-type 'complex-matrix-element-type)))
+	 (store (allocate-complex-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
 	     (type (real-matrix-store-type (*)) idx-store)
@@ -731,7 +735,7 @@
 	 (m (ncols mat))
 	 (k (length idx))
 	 (mat-store (store mat))
-	 (store (make-array (* 2 k) :element-type 'complex-matrix-element-type)))
+	 (store (allocate-complex-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
 	     (type (complex-matrix-store-type (*)) mat-store store))

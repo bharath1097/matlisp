@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.5 2001/02/26 17:44:54 rtoy Exp $
+;;; $Id: gemm.lisp,v 1.6 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.6  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.5  2001/02/26 17:44:54  rtoy
 ;;; Remove the complex-alpha,beta special variables.  (Make a closure out
 ;;; of them.)
@@ -217,8 +221,8 @@
 	 c
 	 job))
 
-(let ((complex-alpha (make-array 2 :element-type 'complex-matrix-element-type))
-      (complex-beta (make-array 2 :element-type 'complex-matrix-element-type)))
+(let ((complex-alpha (allocate-complex-store 1))
+      (complex-beta (allocate-complex-store 1)))
 
 (defmethod gemm! ((alpha #+:cmu kernel::complex-double-float
 			 #+:allegro number) 

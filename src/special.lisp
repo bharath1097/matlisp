@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: special.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: special.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: special.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -145,7 +149,7 @@
 
   (locally (declare (type fixnum n m))
     (let* ((size (* n m))
-	   (store (make-array size :element-type 'real-matrix-element-type))
+	   (store (allocate-real-store size))
 	   (unity #.(coerce 1 'real-matrix-element-type)))
 	     
       (declare (fixnum size)

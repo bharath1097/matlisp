@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: norm.lisp,v 1.5 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: norm.lisp,v 1.6 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: norm.lisp,v $
+;;; Revision 1.6  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.5  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -318,7 +322,7 @@
 	      nrm))
 	((:f :fro :frob :frobenius)
 	         (let ((nrm 0.0d0)
-		       (xxx (make-array 2 :element-type 'complex-matrix-element-type)))
+		       (xxx (allocate-complex-store 1)))
 		   (dotimes (j m)
 		     (declare (type fixnum j))
 		     (incf nrm (progn

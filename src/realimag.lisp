@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: realimag.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: realimag.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
 ;;;
 ;;; $Log: realimag.lisp,v $
+;;; Revision 1.5  2001/06/22 12:52:41  rtoy
+;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
+;;; instead of using the error-prone make-array.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -102,7 +106,7 @@
 	 (m (ncols mat))
 	 (nxm (number-of-elements mat))
 	 (store (store mat))
-	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
+	 (new-store (allocate-real-store nxm)))
     (declare (type fixnum n m nxm)
 	     (type (complex-matrix-store-type (*)) store)
 	     (type (real-matrix-store-type (*)) new-store))
@@ -130,7 +134,7 @@ its element types are unknown"))
 	 (m (ncols mat))
 	 (nxm (number-of-elements mat))
 	 (store (store mat))
-	 (new-store (make-array nxm :element-type 'real-matrix-element-type)))
+	 (new-store (allocate-real-store nxm)))
     (declare (type fixnum n m nxm)
 	     (type (complex-matrix-store-type (*)) store)
 	     (type (real-matrix-store-type (*)) new-store))
