@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.1 2000/06/19 22:19:33 rtoy Exp $
+;;; $Id: packages.lisp,v 1.2 2000/07/11 02:03:51 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.2  2000/07/11 02:03:51  simsek
+;;; o Added support for Allegro CL
+;;;
 ;;; Revision 1.1  2000/06/19 22:19:33  rtoy
 ;;; Initial revision.
 ;;;
@@ -36,6 +39,7 @@
 
 ;;; Define the packages and symbols for Matlisp.
 
+#+:cmu
 (defpackage "FORTRAN-FFI-ACCESSORS"
   (:use "COMMON-LISP" "ALIEN" "C-CALL")
   (:export
@@ -45,8 +49,15 @@
    "INCF-SAP"
    "WITH-VECTOR-DATA-ADDRESSES"))
 
+#+:allegro
+(defpackage "FORTRAN-FFI-ACCESSORS"
+  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS")
+  (:export 
+   "DEF-FORTRAN-ROUTINE"))
+
 (defpackage "BLAS"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "IDAMAX" "DASUM" "DDOT" "DNRM2"
    "DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"
@@ -58,13 +69,15 @@
    "ZGEMM" "ZTRMM" "ZTRSM" "ZHERK" "ZHER2K" ))
 
 (defpackage "LAPACK"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "DGESV" "DGEEV" "DGETRF" "DGESVD"
    "ZGESV" "ZGEEV" "ZGETRF" "ZGESVD" ))
 
 (defpackage "DFFTPACK"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB"))
 
 (defpackage "MATLISP"
