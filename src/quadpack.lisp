@@ -5,9 +5,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: quadpack.lisp,v 1.2 2001/02/23 18:46:09 rtoy Exp $
+;;; $Id: quadpack.lisp,v 1.3 2001/02/26 17:43:06 rtoy Exp $
 ;;;
 ;;; $Log: quadpack.lisp,v $
+;;; Revision 1.3  2001/02/26 17:43:06  rtoy
+;;; o Fix typo:  integrate-gnq -> integrate-qng
+;;; o Add some examples.
+;;;
 ;;; Revision 1.2  2001/02/23 18:46:09  rtoy
 ;;; Make sure the integral limits and other parameters that should be
 ;;; double-float's are double-float's before calling the routines.
@@ -23,7 +27,7 @@
 
 (in-package "MATLISP")
 
-(defun integrate-gnq (f a b &key (epsabs 0d0) (epsrel 1d-5))
+(defun integrate-qng (f a b &key (epsabs 0d0) (epsrel 1d-5))
   "Compute the integral of f(x) from a to b.
 
 	  b
@@ -658,3 +662,174 @@ where w(x) is the weight function below.
 		       z-limit z-lenw z-iwork z-work))
       (values result ier abserr neval last))))
 
+#||
+;; Here are some examples of usage.  The sample integrals were taken
+;; from the QUADPACK book and some test code from F2CL.
+;;
+
+;; Test 1
+;; Compute integral e^(alpha*x)*log(1/x) from 0 to 1.  The analytical
+;; solution is (1+alpha)^(-2).
+;;
+;; alpha = -0.9(0.1)0(0.2)2.6
+;; QAG with key 1, 3, 6
+;;
+;; For key = 1, 3, 6: fails for alpha = -0.9 (ier = 3)
+(defun tst1 (&key (limit 200) (relerr 1d-8))
+  (labels ((abs-error (est true)
+	     (abs (- est true)))
+	   (soln (alpha)
+	     (declare (double-float alpha))
+	     (expt (+ 1d0 alpha) -2))
+	   (quad (alpha key)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qag #'(lambda (x)
+				    (declare (type (double-float 0d0) x))
+				    (* (expt x alpha)
+				       (log (/ x))))
+				0d0 1d0 :key key :limit limit :epsrel relerr)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha)))
+	       )))
+    (format t "Test integral 1:~%")
+    (format t "
+           1
+          /                        
+          [    alpha x                        -2
+        - I  %E        LOG(x) dx = (alpha + 1) 
+          ]
+          /
+           0
+
+for alpha = -0.9(0.1)0(0.2)2.6
+
+Characteristics: end-point singularity of integrand or derivative
+
+Best integrator: QAG with key = 1 more efficient for pronounced
+singularity.
+
+Expect non-zero error codes for
+
+alpha = -0.9 (ier = 3)
+~3%")
+
+    (dolist (key '(1 3 6))
+      (format t "QAG, Key = ~d~%" key)
+      (format t
+	      "alpha   est result              est abserr             neval    ier   true answer            true abs err~%")
+      (do ((alpha -0.9d0 (+ alpha 0.1d0)))
+	  ((> alpha 0d0))
+	(quad alpha key))
+
+      (do ((alpha 0.2d0 (+ alpha 0.2d0)))
+	  ((> alpha 2.6d0))
+	(quad alpha key)))))
+
+;; Test 4 (same integral as 1)
+;; Compute integral e^(alpha*x)*log(1/x) from 0 to 1.  The analytical
+;; solution is e^((1+alpha)^(-2)).
+;;
+;; DQNG, DQAGS, DQAG (key = 1)
+;;
+;; Failures:
+;; DQNG: alpha <= 1.0 (ier = 1)
+;; DQAG: alpha = -0.9 (ier = 3)
+(defun tst4 (&key (limit 200) (relerr 1d-8))
+  (labels ((abs-error (est true)
+	     (abs (- est true)))
+	   (soln (alpha)
+	     (declare (double-float alpha))
+	     (expt (+ 1d0 alpha) -2))
+	   (quad-qng (alpha)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qng #'(lambda (x)
+				    (declare (type (double-float 0d0) x))
+				    (* (expt x alpha)
+				       (log (/ x))))
+				0d0 1d0 :epsrel relerr)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha)))
+	       ))
+	   (quad-qags (alpha)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qags #'(lambda (x)
+				     (declare (type (double-float 0d0) x))
+				     (* (expt x alpha)
+					(log (/ x))))
+				 0d0 1d0 :epsrel relerr :limit limit)
+	       (declare (ignorable junk a b epsabs epsrel result abserr neval ier z-limit z-lenw last))
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha)))
+	       ))
+	   (quad-qag (alpha key)
+	     (declare (double-float alpha))
+	     (multiple-value-bind (result ier abserr neval)
+		 (integrate-qag #'(lambda (x)
+				    (declare (type (double-float 0d0) x))
+				    (* (expt x alpha)
+				       (log (/ x))))
+				0d0 1d0 :epsrel relerr :key key :limit limit)
+	       (format t "~5f  ~22,15,2e  ~22,15,2e  ~5d  ~5d  ~22,15,2e ~10,3,2e~%"
+		       alpha result abserr neval ier
+		       (soln alpha) (abs-error result (soln alpha)))
+	       )))
+    (format t "Test integral 4:~%")
+    (format t "
+           1
+          /                        
+          [    alpha x                        -2
+        - I  %E        LOG(x) dx = (alpha + 1) 
+          ]
+          /
+           0
+
+for alpha = -0.9(0.1)0(0.2)2.6
+
+Best integrator:  QAGS without failures, more efficient and accurate than QAG
+
+Expect non-zero error codes for
+
+QNG: alpha <= 1.0 (ier = 1)
+QAG: alpha = -0.9 (ier = 3)
+~3%")
+    (let ((header
+	   "alpha   est result              est abserr             neval    ier   true answer            true abs err"))
+
+      (format t "~2&QNG~%")
+      (format t "~A~%" header)
+
+      (do ((alpha -0.9d0 (+ alpha 0.1d0)))
+	  ((> alpha 0d0))
+	(quad-qng alpha))
+
+      (do ((alpha 0.2d0 (+ alpha 0.2d0)))
+	  ((> alpha 2.6d0))
+	(quad-qng alpha))
+
+      (format t "~2&DQAGS~%")
+      (format t "~A~%" header)
+      (do ((alpha -0.9d0 (+ alpha 0.1d0)))
+	  ((> alpha 0d0))
+	(quad-qags alpha))
+
+      (do ((alpha 0.2d0 (+ alpha 0.2d0)))
+	  ((> alpha 2.6d0))
+	(quad-qags alpha))
+
+      (format t "~2&DQAG~%")
+      (format t "~A~%" header)
+      (do ((alpha -0.9d0 (+ alpha 0.1d0)))
+	  ((> alpha 0d0))
+	(quad-qag alpha 1))
+
+      (do ((alpha 0.2d0 (+ alpha 0.2d0)))
+	  ((> alpha 2.6d0))
+	(quad-qag alpha 1)))))
+
+||#
