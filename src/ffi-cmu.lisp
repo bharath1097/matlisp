@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.3 2000/10/04 01:11:19 simsek Exp $
+;;; $Id: ffi-cmu.lisp,v 1.4 2001/02/21 19:40:52 simsek Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.4  2001/02/21 19:40:52  simsek
+;;; o Added the :long keyword (equivalent to :long)
+;;;
 ;;; Revision 1.3  2000/10/04 01:11:19  simsek
 ;;; o Removed inlines (see comments in code)
 ;;;
@@ -182,6 +185,7 @@
 	   ;; imaginary parts.
 	   (ecase type
 	     (:integer 'c-call::int)
+	     (:long 'c-call::int)
 	     ((:single-float :complex-single-float) 'c-call::single-float)
 	     ((:double-float :complex-double-float) 'c-call::double-float))))
     
@@ -196,6 +200,7 @@
   (ecase type
     (:void 'void)
     (:integer 'c-call::int)
+    (:long 'c-call::int)
     (:single-float 'c-call::single-float)
     (:double-float 'c-call::double-float)))
 
@@ -621,6 +626,7 @@ for :OUTPUT.
 	 (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
 	   ,@(parse-fortran-parameters hack-body))
 	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
+
 
 ;; Increment an SAP by N, assuming SAP has type TYPE.  Thus, if TYPE
 ;; is double-float, and N is 2, we really want to increment the sap by
