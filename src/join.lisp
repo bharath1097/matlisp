@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: join.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: join.lisp,v 1.5 2001/10/25 21:53:31 rtoy Exp $
 ;;;
 ;;; $Log: join.lisp,v $
+;;; Revision 1.5  2001/10/25 21:53:31  rtoy
+;;; Two new join methods.  From M. Koerber to support his QR routines.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -192,4 +195,19 @@
 		   (ncols a)
 		   (nrows b)
 		   (ncols b)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; A couple of new join methods
+(defmethod join ((a real-matrix) (b complex-matrix matrix) &optional orientation)
+  (join
+   ;; Hmm...reshape! seems to be broke, though I'd rather use it here
+   (apply #'reshape (make-complex-matrix (store a)) (size a))
+   b orientation))
+
+(defmethod join ((a complex-matrix) (b real-matrix matrix) &optional orientation)
+  (join
+   a
+   ;; Hmm...reshape! seems to be broke, though I'd rather use it here
+   (apply #'reshape (make-complex-matrix (store b)) (size b))
+   orientation))
 
