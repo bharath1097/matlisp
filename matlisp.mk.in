@@ -26,9 +26,12 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.4 2001/03/08 14:46:18 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.5 2001/03/19 17:07:47 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.5  2001/03/19 17:07:47  rtoy
+# Allow the user to specify using ATLAS libraries.
+#
 # Revision 1.4  2001/03/08 14:46:18  rtoy
 # Rename libmatlispshared.so to libmatlisp.so
 #
@@ -64,13 +67,9 @@ ARFLAGS = rv
 LISPEXEC = @LISPEXEC@
 LISPEVAL = @LISPEVAL@
 
-BLAS_OBJS =  dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o \
-	dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o \
-	dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o \
-	daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o \
-	dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o \
-	dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o \
-	ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o
+BLAS_OBJS =  @BLAS_OBJS@
+
+NO_ATLAS_LAPACK_OBJS = @NO_ATLAS_LAPACK_OBJS@
 
 LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dlarf.o   dorglq.o  zhetd2.o  zlatrs.o \
@@ -89,15 +88,15 @@ LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dgeqpf.o  dlasr.o   dsytd2.o  zgelq2.o   zlarf.o   zungl2.o \
 	dgeqr2.o  dlasrt.o  dsytrd.o  zgelqf.o   zlarfb.o  zunglq.o \
 	dgeqrf.o  dlassq.o  dtrevc.o  zgelss.o   zlarfg.o  zungql.o \
-	dgesv.o	  dlasv2.o  dtrexc.o  zgeqpf.o   zlarft.o  zungqr.o \
-	dgesvd.o  dlamch.o  dlaswp.o  dtrsen.o	 zgeqr2.o  zlarfx.o  zungtr.o \
+	dlasv2.o  dtrexc.o  zgeqpf.o   zlarft.o  zungqr.o \
+	dgesvd.o  dlamch.o  dtrsen.o	 zgeqr2.o  zlarfx.o  zungtr.o \
 	dgetf2.o  dlange.o  dlasy2.o  dtrsyl.o	 zgeqrf.o  zlartg.o  zunm2r.o \
-	dgetrf.o  dlanhs.o  dlatrd.o  dzsum1.o	 zgesv.o   zlascl.o  zunmbr.o \
-	dgetrs.o  dlanst.o  dorg2l.o  ilaenv.o	 zgesvd.o  zlaset.o  zunml2.o \
+	dlanhs.o  dlatrd.o  dzsum1.o  zlascl.o  zunmbr.o \
+	dlanst.o  dorg2l.o  ilaenv.o	 zgesvd.o  zlaset.o  zunml2.o \
 	dggbal.o  dlansy.o  dorg2r.o  izmax1.o	 zgetf2.o  zlasr.o   zunmlq.o \
-	dgghrd.o  dlanv2.o  dorgbr.o  zgetrf.o   zlassq.o  zunmqr.o \
-	dhgeqz.o  dlapy2.o  dorghr.o  zgetrs.o   zlaswp.o \
-	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o 
+	dgghrd.o  dlanv2.o  dorgbr.o  zlassq.o  zunmqr.o \
+	dhgeqz.o  dlapy2.o  dorghr.o  \
+	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o $(NO_ATLAS_LAPACK_OBJS)
 
 DFFTPACK_OBJS = zfftb.o \
 	cfftb1.o \

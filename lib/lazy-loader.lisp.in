@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.8 2001/03/08 14:46:18 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.9 2001/03/19 17:07:47 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.9  2001/03/19 17:07:47  rtoy
+;;; Allow the user to specify using ATLAS libraries.
+;;;
 ;;; Revision 1.8  2001/03/08 14:46:18  rtoy
 ;;; Rename libmatlispshared.so to libmatlisp.so
 ;;;
@@ -122,6 +125,10 @@
   (ext::load-foreign "matlisp:lib;lazy-loader.o"
 		:libraries (tokenize-ld-args
 			     (concatenate 'string
+			         "-L@ATLAS_DIR@"
+				 " "
+				 @ATLAS_LIBS@
+				 " "
 				 "-L"
 				 (namestring
 				   (translate-logical-pathname "matlisp:lib"))
