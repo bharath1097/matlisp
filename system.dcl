@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.9 2001/02/26 19:54:55 rtoy Exp $
+;;; $Id: system.dcl,v 1.10 2001/02/26 22:44:26 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.10  2001/02/26 22:44:26  rtoy
+;;; The source-pathname's for quadpack were messed up.
+;;;
 ;;; Revision 1.9  2001/02/26 19:54:55  rtoy
 ;;; Forgot to add quadpack.lisp to the matlisp system definition;
 ;;; rearrange module structure so quadpack is a complete module unto
@@ -187,11 +190,15 @@
        ;; This is Quadpack, converted from the Fortran implementation
        ;; to Lisp via f2cl.
        (:module "quadpack-functions"
-		:source-pathname "src;"
+		:source-pathname ""
 		:binary-pathname ""
 		:depends-on ("f2cl-macros")
 		:components
-		((:file "quadpack")
+		((:module "quadpack-interface"
+			:source-pathname "src"
+			:binary-pathname ""
+			:components
+			((:file "quadpack")))
 		 (:module "quadpack-lib"
 			  :source-pathname "lib-src;quadpack;"
 			  :binary-pathname ""
