@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.15 2002/09/30 18:28:52 simsek Exp $
+;;; $Id: packages.lisp,v 1.16 2003/05/31 03:41:43 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.16  2003/05/31 03:41:43  rtoy
+;;; Our REAL function was colliding with CL's REAL.  Shadow this
+;;; appropriately.
+;;;
 ;;; Revision 1.15  2002/09/30 18:28:52  simsek
 ;;; o Added changes by N.Neuss for getrs functions
 ;;;
@@ -189,6 +193,7 @@
 (defpackage "MATLISP"
     (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
     (:nicknames "MATRIX" "M")
+    (:shadow "REAL")
     (:export
      "*PRINT-MATRIX*"
      "AXPY!"
@@ -336,13 +341,20 @@
      "M-BESSEL-SERIES-I"
      "M-BESSEL-SERIES-J"
      "M-BESSEL-SERIES-K"
-     "M-BESSEL-SERIES-Y"
-     ))
+     "M-BESSEL-SERIES-Y"))
 
 (defpackage "MATLISP-USER"
-  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL" #+:cmu "EXT"))
+  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL" #+:cmu "EXT")
+  (:shadowing-import-from "MATLISP" "REAL"))
 
 (in-package "MATLISP")
+
+;; We've shadowed CL's REAL.  Re-establish the real type.
+(deftype real (&optional low high)
+  `(cl::real ,low ,high))
+
+(setf (find-class 'real) (find-class 'cl:real))
+
 
 (eval-when (load eval compile)
 (defparameter *matlisp-version* "Pre 2.0")
