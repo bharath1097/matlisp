@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: lapack.lisp,v 1.5 2001/10/25 21:51:00 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.5  2001/10/25 21:51:00  rtoy
+;;; Add interface to QR routines.  Mostly done by M. Koerber.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -826,3 +829,323 @@
   (rwork (* :double-float) :workspace)
   (info :integer :output)
 )
+
+(def-fortran-routine zgeqrf :void
+  "
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+   Purpose
+   =======
+ 
+   ZGEQRF computes a QR factorization of a complex M-by-N matrix A:
+   A = Q * R.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+           The number of rows of the matrix A.  M >= 0.
+ 
+   N       (input) INTEGER
+           The number of columns of the matrix A.  N >= 0.
+ 
+   A       (input/output) COMPLEX*16 array, dimension (LDA,N)
+           On entry, the M-by-N matrix A.
+           On exit, the elements on and above the diagonal of the array
+           contain the min(M,N)-by-N upper trapezoidal matrix R (R is
+           upper triangular if m >= n); the elements below the diagonal,
+           with the array TAU, represent the unitary matrix Q as a
+           product of min(m,n) elementary reflectors (see Further
+           Details).
+ 
+   LDA     (input) INTEGER
+           The leading dimension of the array A.  LDA >= max(1,M).
+ 
+   TAU     (output) COMPLEX*16 array, dimension (min(M,N))
+           The scalar factors of the elementary reflectors (see Further
+           Details).
+ 
+   WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+           On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+           The dimension of the array WORK.  LWORK >= max(1,N).
+           For optimum performance LWORK >= N*NB, where NB is
+           the optimal blocksize.
+ 
+           If LWORK = -1, then a workspace query is assumed; the routine
+           only calculates the optimal size of the WORK array, returns
+           this value as the first entry of the WORK array, and no error
+           message related to LWORK is issued by XERBLA.
+ 
+   INFO    (output) INTEGER
+           = 0:  successful exit
+           < 0:  if INFO = -i, the i-th argument had an illegal value
+ 
+   Further Details
+   ===============
+ 
+   The matrix Q is represented as a product of elementary reflectors
+ 
+      Q = H(1) H(2) . . . H(k), where k = min(m,n).
+ 
+   Each H(i) has the form
+ 
+      H(i) = I - tau * v * v'
+ 
+   where tau is a complex scalar, and v is a complex vector with
+   v(1:i-1) = 0 and v(i) = 1; v(i+1:m) is stored on exit in A(i+1:m,i),
+   and tau in TAU(i).
+"
+  (m :integer :input)
+  (n :integer :input)
+  (a (* :complex-double-float) :input-output)
+  (lda :integer :input)
+  (tau (* :complex-double-float) :workspace-output)
+  (work (* :complex-double-float) :workspace-output)
+  (lwork :integer :input)
+  (info :integer :output))
+
+(def-fortran-routine zungqr :void
+  "
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+   Purpose
+   =======
+ 
+   ZUNGQR generates an M-by-N complex matrix Q with orthonormal columns,
+   which is defined as the first N columns of a product of K elementary
+   reflectors of order M
+ 
+         Q  =  H(1) H(2) . . . H(k)
+ 
+   as returned by ZGEQRF.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+           The number of rows of the matrix Q. M >= 0.
+ 
+   N       (input) INTEGER
+           The number of columns of the matrix Q. M >= N >= 0.
+ 
+   K       (input) INTEGER
+           The number of elementary reflectors whose product defines the
+           matrix Q. N >= K >= 0.
+ 
+   A       (input/output) COMPLEX*16 array, dimension (LDA,N)
+           On entry, the i-th column must contain the vector which
+           defines the elementary reflector H(i), for i = 1,2,...,k, as
+           returned by ZGEQRF in the first k columns of its array
+           argument A.
+           On exit, the M-by-N matrix Q.
+ 
+   LDA     (input) INTEGER
+           The first dimension of the array A. LDA >= max(1,M).
+ 
+   TAU     (input) COMPLEX*16 array, dimension (K)
+           TAU(i) must contain the scalar factor of the elementary
+           reflector H(i), as returned by ZGEQRF.
+ 
+   WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+           On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+           The dimension of the array WORK. LWORK >= max(1,N).
+           For optimum performance LWORK >= N*NB, where NB is the
+           optimal blocksize.
+ 
+           If LWORK = -1, then a workspace query is assumed; the routine
+           only calculates the optimal size of the WORK array, returns
+           this value as the first entry of the WORK array, and no error
+           message related to LWORK is issued by XERBLA.
+ 
+   INFO    (output) INTEGER
+           = 0:  successful exit
+           < 0:  if INFO = -i, the i-th argument has an illegal value
+ 
+"
+  (m :integer :input)
+  (n :integer :input)
+  (k :integer :input)
+  (a (* :complex-double-float) :input-output)
+  (lda :integer :input)
+  (tau (* :complex-double-float) :workspace-output)
+  (work (* :complex-double-float) :workspace-output)
+  (lwork :integer :input)
+  (info :integer :output))
+  
+(def-fortran-routine dgeqrf :void
+  "
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+      .. Scalar Arguments ..
+      INTEGER            INFO, LDA, LWORK, M, N
+      ..
+      .. Array Arguments ..
+      DOUBLE PRECISION   A( LDA, * ), TAU( * ), WORK( * )
+      ..
+ 
+   Purpose
+   =======
+ 
+   DGEQRF computes a QR factorization of a real M-by-N matrix A:
+   A = Q * R.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+           The number of rows of the matrix A.  M >= 0.
+ 
+   N       (input) INTEGER
+           The number of columns of the matrix A.  N >= 0.
+ 
+   A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+           On entry, the M-by-N matrix A.
+           On exit, the elements on and above the diagonal of the array
+           contain the min(M,N)-by-N upper trapezoidal matrix R (R is
+           upper triangular if m >= n); the elements below the diagonal,
+           with the array TAU, represent the orthogonal matrix Q as a
+           product of min(m,n) elementary reflectors (see Further
+           Details).
+ 
+   LDA     (input) INTEGER
+           The leading dimension of the array A.  LDA >= max(1,M).
+ 
+   TAU     (output) DOUBLE PRECISION array, dimension (min(M,N))
+           The scalar factors of the elementary reflectors (see Further
+           Details).
+ 
+   WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+           On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+           The dimension of the array WORK.  LWORK >= max(1,N).
+           For optimum performance LWORK >= N*NB, where NB is
+           the optimal blocksize.
+ 
+           If LWORK = -1, then a workspace query is assumed; the routine
+           only calculates the optimal size of the WORK array, returns
+           this value as the first entry of the WORK array, and no error
+           message related to LWORK is issued by XERBLA.
+ 
+   INFO    (output) INTEGER
+           = 0:  successful exit
+           < 0:  if INFO = -i, the i-th argument had an illegal value
+ 
+   Further Details
+   ===============
+ 
+   The matrix Q is represented as a product of elementary reflectors
+ 
+      Q = H(1) H(2) . . . H(k), where k = min(m,n).
+ 
+   Each H(i) has the form
+ 
+      H(i) = I - tau * v * v'
+ 
+   where tau is a real scalar, and v is a real vector with
+   v(1:i-1) = 0 and v(i) = 1; v(i+1:m) is stored on exit in A(i+1:m,i),
+   and tau in TAU(i).
+ 
+"
+  (m :integer :input)
+  (n :integer :input)
+  (a (* :double-float) :input-output)
+  (lda :integer :input)
+  (tau (* :double-float) :workspace-output)
+  (work (* :double-float) :workspace-output)
+  (lwork :integer :input)
+  (info :integer :output))
+
+(def-fortran-routine dorgqr :void
+  "
+      SUBROUTINE DORGQR( M, N, K, A, LDA, TAU, WORK, LWORK, INFO )
+
+   -- LAPACK routine (version 3.0) --
+      Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
+      Courant Institute, Argonne National Lab, and Rice University
+      June 30, 1999
+ 
+      .. Scalar Arguments ..
+      INTEGER            INFO, K, LDA, LWORK, M, N
+      ..
+      .. Array Arguments ..
+      DOUBLE PRECISION   A( LDA, * ), TAU( * ), WORK( * )
+      ..
+ 
+   Purpose
+   =======
+ 
+   DORGQR generates an M-by-N real matrix Q with orthonormal columns,
+   which is defined as the first N columns of a product of K elementary
+   reflectors of order M
+ 
+ 	 Q  =  H(1) H(2) . . . H(k)
+ 
+   as returned by DGEQRF.
+ 
+   Arguments
+   =========
+ 
+   M       (input) INTEGER
+ 	   The number of rows of the matrix Q. M >= 0.
+ 
+   N       (input) INTEGER
+ 	   The number of columns of the matrix Q. M >= N >= 0.
+ 
+   K       (input) INTEGER
+ 	   The number of elementary reflectors whose product defines the
+ 	   matrix Q. N >= K >= 0.
+ 
+   A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+ 	   On entry, the i-th column must contain the vector which
+ 	   defines the elementary reflector H(i), for i = 1,2,...,k, as
+ 	   returned by DGEQRF in the first k columns of its array
+ 	   argument A.
+ 	   On exit, the M-by-N matrix Q.
+ 
+   LDA     (input) INTEGER
+ 	   The first dimension of the array A. LDA >= max(1,M).
+ 
+   TAU     (input) DOUBLE PRECISION array, dimension (K)
+ 	   TAU(i) must contain the scalar factor of the elementary
+ 	   reflector H(i), as returned by DGEQRF.
+ 
+   WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+ 	   On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+ 
+   LWORK   (input) INTEGER
+ 	   The dimension of the array WORK. LWORK >= max(1,N).
+ 	   For optimum performance LWORK >= N*NB, where NB is the
+ 	   optimal blocksize.
+ 
+ 	   If LWORK = -1, then a workspace query is assumed; the routine
+ 	   only calculates the optimal size of the WORK array, returns
+ 	   this value as the first entry of the WORK array, and no error
+ 	   message related to LWORK is issued by XERBLA.
+ 
+   INFO    (output) INTEGER
+ 	   = 0:  successful exit
+ 	   < 0:  if INFO = -i, the i-th argument has an illegal value
+"
+  (m :integer :input)
+  (n :integer :input)
+  (k :integer :input)
+  (a (* :double-float) :input-output)
+  (lda :integer :input)
+  (tau (* :double-float) :workspace-output)
+  (work (* :double-float) :workspace-output)
+  (lwork :integer :input)
+  (info :integer :output))
