@@ -27,31 +27,18 @@
 #
 ##########################################################################
 #
-# $Id: Makefile,v 1.1 2000/07/11 02:00:37 simsek Exp $
+# $Id: Makefile,v 1.2 2000/07/11 02:18:47 simsek Exp $
 #
 # $Log: Makefile,v $
+# Revision 1.2  2000/07/11 02:18:47  simsek
+# *** empty log message ***
+#
 # Revision 1.1  2000/07/11 02:00:37  simsek
 # o Modified so that typing make
-# ? ? calls configure and then make on matlisp.mk.
-# ? ? o Changed built library names, otherwise CMU won't load
-# ? ? libxxx.a if libxxx.so is around.
-#
-# Revision 1.3  2000/05/05 21:29:01  simsek
-# o Added DFFTPACK_OBJS used to build lib/libdfftpack.a
-#
-# Revision 1.2  2000/04/14 00:18:58  simsek
-# o Added a few \\ to the ends of lines.
-#
-# Revision 1.1  2000/04/13 20:28:01  simsek
-# o Created this file to capture the Fortran parameters, e.g. libraries
-#    compiler flags, etc ... detected by 'configure'.
-# o This file, together with, 'configure.in', needs some treatment to capture more Fortran
-#   parameters.  In particular,  whether a Fortran DOUBLE PRECISION is a C double, etc ...
-#   and this file should use this information to ensure that the Lisp file 'src/fortran.lisp'
-#   works correctly with at least the distributed BLAS/LAPACK fortran routines.
-# o Since any .in file is closely connected to 'configure.in', see 'configure.in' before
-#   making modifications to this file.
-#
+# calls configure and then make on matlisp.mk.
+# Changed built library names, otherwise CMU won't load
+# libxxx.a if libxxx.so is around.
+# o Derived from obsolete Makefile.in
 #
 ##########################################################################
 allegro-lisp=/usr/sww/pkg/acl-5.01/lisp
