@@ -43,9 +43,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.8 2001/02/26 22:45:37 rtoy Exp $
+;;; $Id: start.lisp,v 1.9 2003/06/27 03:42:49 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.9  2003/06/27 03:42:49  rtoy
+;;; Clean up logical pathname translations for CMUCL.  Don't include the
+;;; version part for the translation.  (Why doesn't this work anymore?)
+;;;
 ;;; Revision 1.8  2001/02/26 22:45:37  rtoy
 ;;; There has to be a colon in the pathname to be a valid CMUCL
 ;;; search-list namestring.  Check for it.
@@ -135,9 +139,9 @@
       (setf (logical-pathname-translations name)
 	(list 
 	 (list "**;*.*.*"  
-	       (namestring (merge-pathnames "**/*.*.*" (load-pathname))))
+	       (namestring (merge-pathnames "**/*.*" (load-pathname))))
 	 (list "*.*.*"
-	       (namestring (merge-pathnames "*.*.*" (load-pathname))))))
+	       (namestring (merge-pathnames "*.*" (load-pathname))))))
       
       #+:allegro
       (prog1
