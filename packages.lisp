@@ -26,9 +26,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.2 2000/07/11 02:03:51 simsek Exp $
+;;; $Id: packages.lisp,v 1.3 2000/10/04 01:20:44 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.3  2000/10/04 01:20:44  simsek
+;;; o Moved version related code from system.dcl
+;;;   to here.  This code should be the first bit of code loaded
+;;;   but only after the system is defined (furthermore, in this
+;;;   way we avoid interning symbols in packages other than the
+;;;   matlisp package
+;;;
 ;;; Revision 1.2  2000/07/11 02:03:51  simsek
 ;;; o Added support for Allegro CL
 ;;;
@@ -202,3 +209,15 @@
      "VEC"
      "ZEROS"
      ))
+
+(in-package "MATLISP")
+
+(eval-when (load eval compile)
+(defparameter *matlisp-version* "1.0b")
+#-(or :cmu :allegro) (error 
+		      "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
+		      *matlisp-version*)
+(defun matlisp-version () *matlisp-version*)
+(defun matlisp-herald () (format nil "    MATLISP/~a" (matlisp-version)))
+#+:cmu (setf (getf ext:*herald-items* :matlisp)
+	     (list (matlisp-herald))))
