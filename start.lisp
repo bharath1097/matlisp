@@ -38,9 +38,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.2 2000/07/11 02:05:48 simsek Exp $
+;;; $Id: start.lisp,v 1.3 2000/07/11 06:19:28 simsek Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.3  2000/07/11 06:19:28  simsek
+;;; o Fixed up some badly placed paranthesis
+;;; in DEFLOGICALPATH
+;;;
 ;;; Revision 1.2  2000/07/11 02:05:48  simsek
 ;;; o Added support for Allegro CL
 ;;; o Fixed up DEFLOGICALPATH
@@ -89,8 +93,8 @@
 		    (make-pathname
 		     #+(and :allegro :mswindows) :device
 		     #+(and :allegro :mswindows) (pathname-device *load-pathname*)		       
-		     :directory (pathname-directory *load-pathname*))))
-	      "") (default-dir)))
+		     :directory (pathname-directory *load-pathname*)))
+	      "") (default-dir))))
 
       #+:cmu
       (setf (logical-pathname-translations name)
