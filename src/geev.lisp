@@ -30,9 +30,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: geev.lisp,v 1.5 2001/02/23 13:13:56 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.5  2001/02/23 13:13:56  rtoy
+;;; The length of the work array was half-sized!  (Despite the name,
+;;; complex-matrix-element-type is not a complex number.  It's just a real
+;;; number)
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -330,7 +335,7 @@
 	 (w (make-complex-matrix-dim n 1))
 	 (xxx   (make-array 2 :element-type 'complex-matrix-element-type))
 	 (lwork (* 2 n))
-	 (work  (make-array (* 2 n) :element-type 'complex-matrix-element-type))
+	 (work  (make-array (* 2 lwork) :element-type 'complex-matrix-element-type))
 	 (rwork (make-array (* 2 n) :element-type 'real-matrix-element-type)))
 
     (declare (type fixnum lwork n)
