@@ -29,8 +29,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.1 2000/10/04 22:47:11 simsek Exp $
+;;; $Id: save.lisp,v 1.2 2000/10/05 17:34:12 simsek Exp $
 ;;; $Log: save.lisp,v $
+;;; Revision 1.2  2000/10/05 17:34:12  simsek
+;;; o Changed USER::... to EXCL::...
+;;;   for some misplaced Allegro package specifiers
+;;;
 ;;; Revision 1.1  2000/10/04 22:47:11  simsek
 ;;; o Initial revision
 ;;;
@@ -104,7 +108,7 @@ execute the shell script")
   Purpose
   =======
   Dumps a Lisp core image to the file \"matlisp.dxl\" in 
-  the (USER:CURRENT-DIRECTORY), ie. the directory where 
+  the (EXCL:CURRENT-DIRECTORY), ie. the directory where 
   you loaded Matlisp, and also dumps the script file 
   \"matlisp-acl\" which loads Matlisp with that core.
 
@@ -117,13 +121,13 @@ execute the shell script")
      (in-package "MATLISP-USER")
      (let ((core-name (namestring 
 		       (merge-pathnames "matlisp.dxl" 
-					(user::current-directory))))
+					(excl::current-directory))))
 	   (matlisp-name (namestring 
 			(merge-pathnames "matlisp-acl" 
-					 (user::current-directory))))
+					 (excl::current-directory))))
 	   (script-name (namestring 
 			 (merge-pathnames "startup.acl" 
-					  (user::current-directory))))
+					  (excl::current-directory))))
 	   
 	   )
 
@@ -153,7 +157,7 @@ execute the executable file")
 	 (write-string " $@ " f)
 	 )
 
-       (tpl:setq-default *package* (Find-package "MATLISP-USER"))
+       (tpl:setq-default *package* (find-package "MATLISP-USER"))
        (push (namestring
 	      (translate-logical-pathname "matlisp:logical"))
 	     (excl::logical-pathname-translations-database-pathnames))
