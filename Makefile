@@ -27,21 +27,10 @@
 #
 ##########################################################################
 #
-# $Id: Makefile,v 1.2 2000/07/11 02:18:47 simsek Exp $
-#
-# $Log: Makefile,v $
-# Revision 1.2  2000/07/11 02:18:47  simsek
-# *** empty log message ***
-#
-# Revision 1.1  2000/07/11 02:00:37  simsek
-# o Modified so that typing make
-# calls configure and then make on matlisp.mk.
-# Changed built library names, otherwise CMU won't load
-# libxxx.a if libxxx.so is around.
-# o Derived from obsolete Makefile.in
+# $Id: Makefile,v 1.3 2001/02/21 22:05:10 simsek Exp $
 #
 ##########################################################################
-allegro-lisp=/usr/sww/pkg/acl-5.01/lisp
+allegro-lisp=/usr/sww/pkg/acl-6.0/alisp
 cmu-lisp=/home/eclair1/shift-uav/bin/cl
 
 all:
