@@ -457,6 +457,7 @@ Compute the function exp(-x)*Ei(x), x real.
        `(progn
 	 (defmethod ,name ((x double-float) (alpha double-float) (n fixnum)
 			   &key (scale-p t))
+	   (declare (ignore scale-p))
 	   (assert (>= x 0))
 	   (assert (<= 0 alpha 1))
 	   (assert (plusp n)))
@@ -466,6 +467,7 @@ Compute the function exp(-x)*Ei(x), x real.
 	   (let ((result (make-real-matrix n 1)))
 	     (multiple-value-bind (t-result ncalc)
 		 (ribesl x alpha n (if scale-p 2 1) (store result) 0)
+		 (declare (ignore t-result))
 	       (assert (= ncalc n) nil
 		       "Could not compute all values to desired precision"))
 	     result)))))
