@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.5 2001/10/29 16:21:02 rtoy Exp $
+;;; $Id: diag.lisp,v 1.6 2002/07/29 00:29:36 rtoy Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.6  2002/07/29 00:29:36  rtoy
+;;; Don't use *1x1-real-array*
+;;;
 ;;; Revision 1.5  2001/10/29 16:21:02  rtoy
 ;;; (setf diag) was broken on CMUCL.  Use the Allegro version.
 ;;; From M. Koerber.
@@ -61,12 +64,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package "MATLISP")
-
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-#+nil (export 'diag)
 
 (defgeneric diag (matrix)
   (:documentation
@@ -115,15 +112,16 @@
       (dcopy p (store mat) (1+ n) (store result) 1)
       result)))
 
-(defmethod (setf diag) ((new-diag double-float) (mat real-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (p (min m n)))
-    (declare (type fixnum n m p))
+(let ((diag-element (make-array 1 :element-type 'real-matrix-element-type)))
+  (defmethod (setf diag) ((new-diag double-float) (mat real-matrix))
+    (let* ((n (nrows mat))
+	   (m (ncols mat))
+	   (p (min m n)))
+      (declare (type fixnum n m p))
 
-    (setf (aref *1x1-real-array* 0) new-diag)
-    (dcopy p *1x1-real-array* 0 (store mat) (1+ n))
-    mat))
+      (setf (aref diag-element 0) new-diag)
+      (dcopy p diag-element 0 (store mat) (1+ n))
+      mat)))
 
 (defmethod (setf diag) ((new-diag real) (mat real-matrix))
   (setf (diag mat) (coerce new-diag 'real-matrix-element-type)))
@@ -213,16 +211,11 @@ don't know how to coerce COMPLEX to REAL"
 
     #+:allegro (setf new-diag (complex-coerce new-diag))
 
-    (setf (aref *1x1-complex-array* 0) (realpart new-diag))
-    (setf (aref *1x1-complex-array* 1) (imagpart new-diag))
-    (zcopy p *1x1-complex-array* 0 (store mat) (1+ n))
+    (zcopy p new-diag 0 (store mat) (1+ n))
     mat))
 
 (defmethod (setf diag) ((new-diag number) (mat complex-matrix))
   (setf (diag mat) (complex-coerce new-diag)))
-
-
-
 
 
 
