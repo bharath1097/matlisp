@@ -45,9 +45,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.2 2000/05/05 21:34:03 simsek Exp $
+;;; $Id: system.dcl,v 1.3 2000/05/05 21:57:33 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.3  2000/05/05 21:57:33  simsek
+;;; o Removed ysmm from matlisp-lapack-wrappers
+;;;    we're not doing symmetric matrices yet
+;;;
 ;;; Revision 1.2  2000/05/05 21:34:03  simsek
 ;;; o Updated defsystem form to include dfftpack stuff
 ;;;
@@ -235,7 +239,6 @@
 	:components ("axpy"
 		     "scal"
 		     "swap"
-		     "symm"
 		     "gemm"))
 
        (:module "matlisp-lapack-wrappers"
