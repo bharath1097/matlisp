@@ -30,9 +30,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.6 2001/02/23 14:04:20 rtoy Exp $
+;;; $Id: geev.lisp,v 1.7 2001/03/06 21:58:06 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.7  2001/03/06 21:58:06  rtoy
+;;; o The workspace inquiry function doesn't seem to work for DGEEV.
+;;;   Don't use it in geev.
+;;; o The workspace was too small when inquiring the workspace for ZGEEV.
+;;;   Make it larger.
+;;;
 ;;; Revision 1.6  2001/02/23 14:04:20  rtoy
 ;;; The Fortran geev routines allow the user to inquire about the optimum
 ;;; size of the work array.  Use that to allocate the appropriate amount
@@ -219,7 +225,7 @@
  
 
 (let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
-      (work (make-array 1 :element-type 'real-matrix-element-type)))
+      (work (make-array 2 :element-type 'real-matrix-element-type)))
   (defun dgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -235,17 +241,19 @@
 		 n			; N
 		 xxx			; A
 		 n			; LDA
-		 xxx			; W
+		 xxx			; WR
+		 xxx			; WI
 		 xxx			; VL
 		 1			; LDVL
 		 xxx			; VR
 		 1			; LDVR
 		 work			; WORK
 		 -1			; LWORK
-		 xxx			; RWORK
 		 0 )			; INFO
-	(declare (ignore store-a store-w store-vl store-vr info))
-	(ceiling (aref work 0)))))
+	(declare (ignore store-a store-w store-vl store-vr))
+	(format t "info = ~A~%" info)
+	(format t "work = ~A~%" (realpart (aref work 0)))
+	(ceiling (realpart (aref work 0))))))
   )
 
 (defmethod geev ((a real-matrix) &optional (job :NN))
@@ -254,12 +262,14 @@
 	 (xxx (make-array 1 :element-type 'real-matrix-element-type))
 	 (wr (make-array n :element-type 'real-matrix-element-type))
 	 (wi (make-array n :element-type 'real-matrix-element-type))
-	 (lwork (dgeev-workspace-inquire n job))
+	 ;;(lwork (dgeev-workspace-inquiry n job))
+	 (lwork (* n 8))
 	 (work (make-array lwork :element-type 'real-matrix-element-type)))
 
     (declare (type fixnum n)
 	     (type (simple-array real-matrix-element-type (*)) xxx wr wi))
 
+    (format t "Lisp lwork = ~A~%" lwork)
     (case job
       (:nn
        (multiple-value-bind (a wr wi vl vr work info)
@@ -356,7 +366,7 @@
 
 
 (let ((xxx (make-array 2 :element-type 'complex-matrix-element-type))
-      (work (make-array 1 :element-type 'real-matrix-element-type)))
+      (work (make-array 2 :element-type 'complex-matrix-element-type)))
   (defun zgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
