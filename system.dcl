@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.13 2001/04/28 13:32:52 rtoy Exp $
+;;; $Id: system.dcl,v 1.14 2001/05/01 13:12:12 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.14  2001/05/01 13:12:12  rtoy
+;;; macros.l now contains I1MACH, R1MACH, D1MACH so don't need these
+;;; versions anymore.
+;;;
 ;;; Revision 1.13  2001/04/28 13:32:52  rtoy
 ;;; Added interface to TOMS 715 (SPECFUN).
 ;;;
@@ -224,7 +228,9 @@
 			  :binary-pathname ""
 			  :package "QUADPACK"
 			  :components
-			  ((:module mach-par
+			  (
+			   #+nil
+			   (:module mach-par
 				    :source-pathname ""
 				    :source-extension "lisp"
 				    :binary-pathname ""
@@ -233,7 +239,7 @@
 				     (:file "i1mach")))
 			   (:module src
 				    :source-pathname ""
-				    :depends-on ("mach-par")
+				    ;; :depends-on ("mach-par")
 				    :binary-pathname ""
 				    :components
 				    (
@@ -331,7 +337,8 @@
        (:module "lib-src"
 		:binary-pathname ""
 		:components
-		((:file "d1mach"
+		(#+nil
+		 (:file "d1mach"
 			:package "MATLISP-LIB")
 		 (:module "cpoly"
 			  :source-extension "lisp"
