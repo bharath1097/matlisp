@@ -27,60 +27,59 @@
 #
 ##########################################################################
 #
-# $Id: Makefile,v 1.4 2001/02/21 23:05:40 simsek Exp $
+# $Id: Makefile,v 1.5 2001/03/06 18:00:10 rtoy Exp $
 #
 ##########################################################################
-allegro-lisp=/usr/sww/pkg/acl-6.0/alisp
-cmu-lisp=/home/eclair1/shift-uav/bin/cl
+# allegro-lisp=/usr/sww/pkg/acl-6.0/alisp
+# cmu-lisp=/home/eclair1/shift-uav/bin/cl
 
 all:
-	@echo ================================
-	@echo Type one of the following:
-	@echo 
-	@echo $(MAKE) allegro
-	@echo
-	@echo to build MATLISP for Allegro CL
-	@echo 
-	@echo $(MAKE) cmu
-	@echo
-	@echo to build MATLISP for CMU CL.
-	@echo
-	@echo In either case please check that
-	@echo the allegro-lisp and cmu-lisp
-	@echo variables in the Makefile are
-	@echo set correctly.
-	@echo ================================
+	$(MAKE) -f matlisp.mk
+
+#	@echo ================================
+#	@echo Type one of the following:
+#	@echo 
+#	@echo $(MAKE) allegro
+#	@echo
+#	@echo to build MATLISP for Allegro CL
+#	@echo 
+#	@echo $(MAKE) cmu
+#	@echo
+#	@echo to build MATLISP for CMU CL.
+#	@echo
+#	@echo In either case please check that
+#	@echo the allegro-lisp and cmu-lisp
+#	@echo variables in the Makefile are
+#	@echo set correctly.
+#	@echo ================================
 
 
-allegro: config.cache lib/libmatlispshared.so
-	$(allegro-lisp) -e '(progn (load "start.lisp"))'
+#allegro: config.cache lib/libmatlispshared.so
+#	$(allegro-lisp) -e '(progn (load "start.lisp"))'
 
-cmu: config.cache lib/libmatlispstatic.a
-	$(cmu-lisp) -eval '(progn (load "start.lisp"))'
+#cmu: config.cache lib/libmatlispstatic.a
+#	$(cmu-lisp) -eval '(progn (load "start.lisp"))'
 
-config.cache: matlisp.mk.in lib/lazy-loader.lisp.in configure
-	\rm -f config.cache
-	./configure --prefix=`pwd`
+#config.cache: matlisp.mk.in lib/lazy-loader.lisp.in configure
+#	\rm -f config.cache
+#	./configure --prefix=`pwd`
 
-lib/libmatlispshared.so: config.cache
-	$(MAKE) -f matlisp.mk shared
+#lib/libmatlispshared.so: config.cache
+#	$(MAKE) -f matlisp.mk shared
 
-lib/libmatlispstatic.a: config.cache
-	$(MAKE) -f matlisp.mk static
+#lib/libmatlispstatic.a: config.cache
+#	$(MAKE) -f matlisp.mk static
 
 clean:
 	$(MAKE) -f matlisp.mk clean
 	\rm -f config.cache
 	\rm -f config.status
 	\rm -f config.log
-	\rm -f *~
 	\rm -f bin/*.sparcf
 	\rm -f bin/*.x86f
 	\rm -f bin/*.fsl
 	\rm -f bin/*.fasl
 	\rm -f bin/*.err
-	\rm -f src/*~
-	\rm -f lib/*~
 
 
 distclean: clean
