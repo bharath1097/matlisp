@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.20 2004/02/20 17:34:31 rtoy Exp $
+;;; $Id: packages.lisp,v 1.21 2004/05/20 21:43:00 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.21  2004/05/20 21:43:00  rtoy
+;;; Add some docstrings to the packages, remove some unused stuff.
+;;;
 ;;; Revision 1.20  2004/02/20 17:34:31  rtoy
 ;;; Update to latest f2cl code, so
 ;;; o Fix defpackage stuff for f2cl
@@ -115,7 +118,8 @@
    "DEF-FORTRAN-ROUTINE"
    "VECTOR-DATA-ADDRESS"
    "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES"))
+   "WITH-VECTOR-DATA-ADDRESSES")
+  (:documentation "Fortran foreign function interface"))
 
 #+:sbcl
 (defpackage "FORTRAN-FFI-ACCESSORS"
@@ -125,7 +129,8 @@
    "DEF-FORTRAN-ROUTINE"
    "VECTOR-DATA-ADDRESS"
    "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES"))
+   "WITH-VECTOR-DATA-ADDRESSES")
+  (:documentation "Fortran foreign function interface"))
 
 #+:allegro
 (defpackage "FORTRAN-FFI-ACCESSORS"
@@ -134,9 +139,9 @@
    "DEF-FORTRAN-ROUTINE"))
 
 (defpackage "BLAS"
-#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
+  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
+  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "IDAMAX" "DASUM" "DDOT" "DNRM2"
    "DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"
@@ -145,23 +150,26 @@
    "DGEMV" "DSYMV" "DTRMV" "DTRSV" "DGER" "DSYR" "DSYR2"
    "ZGEMV" "ZHEMV" "ZTRMV" "ZTRSV" "ZGERC" "ZGERU" "ZHER2"
    "DGEMM" "DSYRK" "DSYR2K" "DTRMM" "DTRSM"
-   "ZGEMM" "ZTRMM" "ZTRSM" "ZHERK" "ZHER2K" ))
+   "ZGEMM" "ZTRMM" "ZTRSM" "ZHERK" "ZHER2K" )
+  (:documentation "BLAS routines"))
 
 (defpackage "LAPACK"
-#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
+  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
+  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
    "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
    "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
-   "DORGQR" "ZUNGQR"))
+   "DORGQR" "ZUNGQR")
+  (:documentation "LAPACK routines"))
 
 (defpackage "DFFTPACK"
-#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  (:export "ZFFTI" "ZFFTF" "ZFFTB"))
+  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
+  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
+  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
+  (:export "ZFFTI" "ZFFTF" "ZFFTB")
+  (:documentation "FFT routines"))
 
 ;; Stolen from f2cl.  
 (defpackage :f2cl-lib
@@ -215,44 +223,6 @@
    #:f2cl-compile
    ))
 
-#+nil
-(defpackage "FORTRAN-TO-LISP"
-  (:use "CL")
-  (:documentation "The package holding all symbols need by the Fortran to Lisp converter")
-  (:nicknames "F2CL")
-  (:export
-   ;; Constants
-   "%FALSE%" "%TRUE%"
-   ;; Types
-   "INTEGER4" "INTEGER2" "INTEGER1" "REAL8" "REAL4" "COMPLEX8" "COMPLEX16"
-   "ARRAY-DOUBLE-FLOAT" "ARRAY-SINGLE-FLOAT" "ARRAY-INTEGER4" "LOGICAL"
-   ;; Macros
-   "FREF" "FSET"
-   "F2CL-INIT-STRING" "FREF-STRING" "FSET-STRING" "F2CL-SET-STRING"
-   "F2CL-//" "FSTRING-/=" "FSTRING-=" "FSTRING->" "FSTRING->=" "FSTRING-<" "FSTRING-<="
-   "FORTRAN_COMMENT" "FDO" "F2CL/" "ARITHMETIC-IF" "COMPUTED-GOTO"
-   "ASSIGNED-GOTO"
-   "FFORMAT"
-   "DATA-IMPLIED-DO"
-   ;; Utilities
-   "ARRAY-SLICE" "ARRAY-INITIALIZE"
-   ;; Intrinsic functions
-   "ABS" "ACOS" "AIMAG" "AINT" "ALOG" "ALOG10" "AMAX0" "AMAX1"
-   "AMIN1" "AMOD" "ANINT" "ASIN" "ATAN" "ATAN2"
-   "CABS" "CEXP" "FCHAR" "CLOG" "CMPLX" "CONJG" "CCOS"
-   "CSIN" "CSQRT" "DABS" "DACOS" "DASIN"
-   "DATAN" "DATAN2" "DBLE" "DCOS" "DCOSH" "DEXP" "DIM"
-   "DINT" "DLOG" "DLOG10" "DMAX1" "DMIN1" "DMOD"
-   "DNINT" "DPROD" "DSIGN" "DSIN" "DSINH" "DSQRT" "DTAN"
-   "DTANH" "FFLOAT" "IABS" "ICHAR" "IDIM" "IDINT"
-   "IDNINT" "IFIX" "INDEX" "INT" "ISIGN" "LE" "LEN"
-   "LGE" "LGT" "FLOG" "LOG10" "LT" "MAX" "MAX0"
-   "MAX1" "MIN0" "MIN1" "NINT" "FREAL"
-   "SIGN" "SNGL" "FSQRT"
-   ;; Utilities
-   "R1MACH" "D1MACH" "I1MACH"
-   ))
-    
 (defpackage "QUADPACK"
   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
   (:export
@@ -261,169 +231,173 @@
    ;; The basic integrators
    "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
    ;; Simplified interface routines
-   "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC"))
+   "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC")
+  (:documentation "QUADPACK routines for numerical integration"))
 
 (defpackage "MINPACK"
   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
   (:export
-   "LMDIF1"))
+   "LMDIF1")
+  (:documentation "MINPACK routines for minimization"))
 
 (defpackage "MATLISP-LIB"
   (:use "COMMON-LISP" "F2CL")
   (:export
-   "ZEROIN"))
+   "ZEROIN")
+  (:documentation "Other useful routines"))
 
 (defpackage "MATLISP"
-    (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
-    (:shadow "REAL")
-    (:export
-     "*PRINT-MATRIX*"
-     "AXPY!"
-     "AXPY"
-     "COL-VECTOR-P"
-     "COMPLEX-COERCE"
-     "COMPLEX-MATRIX"
-     "COMPLEX-MATRIX-ARRAY-TYPE"
-     "COMPLEX-MATRIX-ELEMENT-TYPE"
-     "COMPLEX-MATRIX-STORE-TYPE"
-     "COPY!"
-     "COPY"
-     "CTRANSPOSE"
-     "DIAG"
-     "DOT"
-     "EIG"
-     "EYE"
-     "FFT"
-     "FFT"
-     "FILL-MATRIX"
-     "FLOAT-MATRIX"
-     "FLOAT-MATRIX-ARRAY-TYPE"
-     "FLOAT-MATRIX-ELEMENT-TYPE"
-     "FORTRAN-COMPLEX-MATRIX-INDEXING"
-     "FORTRAN-MATRIX-INDEXING"
-     "GEEV"
-     "GEMM!"
-     "GEMM"
-     "GESV!"
-     "GESV"
-     "GETRF!"
-     "GETRS"
-     "GETRS!"
-     "HELP"
-     "IFFT"
-     "IMAG"
-     "JOIN"
-     "LOAD-BLAS-&-LAPACK-BINARIES"
-     "LOAD-BLAS-&-LAPACK-LIBRARIES"
-     "LOAD-MATLISP"
-     "LU"
-     "M*!"
-     "M*"
-     "M+!"
-     "M+"
-     "M-"
-     "M.*!"
-     "M.*"
-     "M.+!"
-     "M.+"
-     "M.-"
-     "M./!"
-     "M./"
-     "M/!"
-     "M/"
-     "MACOS"
-     "MACOSH"
-     "MAKE-COMPLEX-MATRIX"
-     "MAKE-COMPLEX-MATRIX-DIM"
-     "MAKE-FLOAT-MATRIX"
-     "MAKE-FLOAT-MATRIX-ARRAY"
-     "MAKE-FLOAT-MATRIX-DIM"
-     "MAKE-FLOAT-MATRIX-SEQ"
-     "MAKE-FLOAT-MATRIX-SEQ-OF-SEQ"
-     "MAKE-FLOAT-MATRIX-SEQUENCE"
-     "MAKE-REAL-MATRIX"
-     "MAKE-REAL-MATRIX-DIM"
-     "MAP-MATRIX!"
-     "MAP-MATRIX"
-     "MASIN"
-     "MASINH"
-     "MATAN"
-     "MATANH"
-     "MATLISP-HERALD"
-     "MATLISP-VERSION"
-     "MATRIX-REF"
-     "MCOS"
-     "MCOSH"
-     "MEXP"
-     "MLOG"
-     "MLOG10"
-     "MREF"
-     "MSIN"
-     "MSINH"
-     "MSQRT"
-     "MTAN"
-     "MTANH"
-     "NCOLS"
-     "NORM"
-     "NROWS"
-     "NUMBER-OF-COLS"
-     "NUMBER-OF-ELEMENTS"
-     "NUMBER-OF-ELEMS"
-     "NUMBER-OF-ROWS"
-     "ONES"
-     "PRINT-ELEMENT"
-     "QR"
-     "QR!"
-     "GEQR!"
-     "RAND"
-     "REAL"
-     "REAL-MATRIX"
-     "REAL-MATRIX-ELEMENT-TYPE"
-     "REAL-MATRIX-STORE-TYPE"
-     "RESHAPE!"
-     "RESHAPE"
-     "ROW-OR-COL-VECTOR-P"
-     "ROW-VECTOR-P"
-     "SAVE-MATLISP"
-     "SCAL!"
-     "SCAL"
-     "SEQ"
-     "SET-M*!-SWAP-SIZE"
-     "SIZE"
-     "SQUARE-MATRIX-P"
-     "STANDARD-MATRIX"
-     "SUM"
-     "SVD"
-     "SWAP!"
-     "TR"
-     "TRANSPOSE"
-     "VEC"
-     "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
-     "ZEROS"
-     ;; From Quadpack
-     "INTEGRATE-QNG"
-     "INTEGRATE-QAG"
-     "INTEGRATE-QAGS"
-     "INTEGRATE-QAGI"
-     "INTEGRATE-QAWS"
-     "INTEGRATE-QAWC"
-     ;; From CPOLY
-     "POLYROOTS"
-     ;; From TOMS-715
-     "M-NORMAL-CDF"
-     "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
-     "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
-     "M-BESSEL-I0" "M-BESSEL-I1"
-     "M-BESSEL-J0" "M-BESSEL-J1"
-     "M-BESSEL-K0" "M-BESSEL-K1"
-     "M-BESSEL-Y0" "M-BESSEL-Y1"
-     "M-DAWSON-INTEGRAL"
-     "M-ERF" "M-ERFC" "M-ERFCX"
-     "M-GAMMA" "M-LOG-GAMMA"
-     "M-BESSEL-SERIES-I"
-     "M-BESSEL-SERIES-J"
-     "M-BESSEL-SERIES-K"
-     "M-BESSEL-SERIES-Y"))
+  (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
+  (:shadow "REAL")
+  (:export
+   "*PRINT-MATRIX*"
+   "AXPY!"
+   "AXPY"
+   "COL-VECTOR-P"
+   "COMPLEX-COERCE"
+   "COMPLEX-MATRIX"
+   "COMPLEX-MATRIX-ARRAY-TYPE"
+   "COMPLEX-MATRIX-ELEMENT-TYPE"
+   "COMPLEX-MATRIX-STORE-TYPE"
+   "COPY!"
+   "COPY"
+   "CTRANSPOSE"
+   "DIAG"
+   "DOT"
+   "EIG"
+   "EYE"
+   "FFT"
+   "FFT"
+   "FILL-MATRIX"
+   "FLOAT-MATRIX"
+   "FLOAT-MATRIX-ARRAY-TYPE"
+   "FLOAT-MATRIX-ELEMENT-TYPE"
+   "FORTRAN-COMPLEX-MATRIX-INDEXING"
+   "FORTRAN-MATRIX-INDEXING"
+   "GEEV"
+   "GEMM!"
+   "GEMM"
+   "GESV!"
+   "GESV"
+   "GETRF!"
+   "GETRS"
+   "GETRS!"
+   "HELP"
+   "IFFT"
+   "IMAG"
+   "JOIN"
+   "LOAD-BLAS-&-LAPACK-BINARIES"
+   "LOAD-BLAS-&-LAPACK-LIBRARIES"
+   "LOAD-MATLISP"
+   "LU"
+   "M*!"
+   "M*"
+   "M+!"
+   "M+"
+   "M-"
+   "M.*!"
+   "M.*"
+   "M.+!"
+   "M.+"
+   "M.-"
+   "M./!"
+   "M./"
+   "M/!"
+   "M/"
+   "MACOS"
+   "MACOSH"
+   "MAKE-COMPLEX-MATRIX"
+   "MAKE-COMPLEX-MATRIX-DIM"
+   "MAKE-FLOAT-MATRIX"
+   "MAKE-FLOAT-MATRIX-ARRAY"
+   "MAKE-FLOAT-MATRIX-DIM"
+   "MAKE-FLOAT-MATRIX-SEQ"
+   "MAKE-FLOAT-MATRIX-SEQ-OF-SEQ"
+   "MAKE-FLOAT-MATRIX-SEQUENCE"
+   "MAKE-REAL-MATRIX"
+   "MAKE-REAL-MATRIX-DIM"
+   "MAP-MATRIX!"
+   "MAP-MATRIX"
+   "MASIN"
+   "MASINH"
+   "MATAN"
+   "MATANH"
+   "MATLISP-HERALD"
+   "MATLISP-VERSION"
+   "MATRIX-REF"
+   "MCOS"
+   "MCOSH"
+   "MEXP"
+   "MLOG"
+   "MLOG10"
+   "MREF"
+   "MSIN"
+   "MSINH"
+   "MSQRT"
+   "MTAN"
+   "MTANH"
+   "NCOLS"
+   "NORM"
+   "NROWS"
+   "NUMBER-OF-COLS"
+   "NUMBER-OF-ELEMENTS"
+   "NUMBER-OF-ELEMS"
+   "NUMBER-OF-ROWS"
+   "ONES"
+   "PRINT-ELEMENT"
+   "QR"
+   "QR!"
+   "GEQR!"
+   "RAND"
+   "REAL"
+   "REAL-MATRIX"
+   "REAL-MATRIX-ELEMENT-TYPE"
+   "REAL-MATRIX-STORE-TYPE"
+   "RESHAPE!"
+   "RESHAPE"
+   "ROW-OR-COL-VECTOR-P"
+   "ROW-VECTOR-P"
+   "SAVE-MATLISP"
+   "SCAL!"
+   "SCAL"
+   "SEQ"
+   "SET-M*!-SWAP-SIZE"
+   "SIZE"
+   "SQUARE-MATRIX-P"
+   "STANDARD-MATRIX"
+   "SUM"
+   "SVD"
+   "SWAP!"
+   "TR"
+   "TRANSPOSE"
+   "VEC"
+   "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
+   "ZEROS"
+   ;; From Quadpack
+   "INTEGRATE-QNG"
+   "INTEGRATE-QAG"
+   "INTEGRATE-QAGS"
+   "INTEGRATE-QAGI"
+   "INTEGRATE-QAWS"
+   "INTEGRATE-QAWC"
+   ;; From CPOLY
+   "POLYROOTS"
+   ;; From TOMS-715
+   "M-NORMAL-CDF"
+   "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
+   "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
+   "M-BESSEL-I0" "M-BESSEL-I1"
+   "M-BESSEL-J0" "M-BESSEL-J1"
+   "M-BESSEL-K0" "M-BESSEL-K1"
+   "M-BESSEL-Y0" "M-BESSEL-Y1"
+   "M-DAWSON-INTEGRAL"
+   "M-ERF" "M-ERFC" "M-ERFCX"
+   "M-GAMMA" "M-LOG-GAMMA"
+   "M-BESSEL-SERIES-I"
+   "M-BESSEL-SERIES-J"
+   "M-BESSEL-SERIES-K"
+   "M-BESSEL-SERIES-Y")
+  (:documentation "MATLISP routines"))
 
 (defpackage "MATLISP-USER"
   (:use "COMMON-LISP"
@@ -431,7 +405,8 @@
         #+:allegro "EXCL"
         #+:cmu "EXT"
         #+:sbcl "SB-EXT")
-  (:shadowing-import-from "MATLISP" "REAL"))
+  (:shadowing-import-from "MATLISP" "REAL")
+  (:documentation "Matlisp user package meant for interacting with matlisp"))
 
 (in-package "MATLISP")
 
