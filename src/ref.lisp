@@ -30,9 +30,21 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: ref.lisp,v 1.6 2003/06/01 15:01:08 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.6  2003/06/01 15:01:08  rtoy
+;;; Cleanup of code.  Maybe be some instability for a bit.  Some checks
+;;; may have been accidentally removed.
+;;;
+;;; o Split matrix-ref into matrix-ref-1d and matrix-ref-2d.
+;;; o Instead of doing dispatching manually within the matrix-ref
+;;;   routines, use CLOS to do the dispatching on the arg types.
+;;; o Partial update to use Gerd's PCL for CMUCL.  Supposed to speed up
+;;;   slot access and adds inlined methods.
+;;; o Simple tests on join indicates 10-20% increase in basic matrix-ref
+;;;   speed.
+;;;
 ;;; Revision 1.5  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -68,7 +80,7 @@
 (export '(matrix-ref))
 
 
-(defgeneric matrix-ref (matrix row &optional cols)
+(defgeneric matrix-ref-1d (matrix row)
   (:documentation "
   Syntax
   ======
@@ -82,7 +94,22 @@
 
   The indices are 0-based."))
 
-(defgeneric (setf matrix-ref) (value matrix rows &optional cols))
+(defgeneric matrix-ref-2d (matrix row cols)
+  (:documentation "
+  Syntax
+  ======
+  (MATRIX-REF matrix rows cols)
+
+  Purpose
+  =======
+  Return the element(s) of the matrix MAT, specified by the ROWS and COLS.
+  If ROWS and/or COLS are matrices or sequences then the submatrix indexed
+  by them will be returned.
+
+  The indices are 0-based."))
+
+(defgeneric (setf matrix-ref-1d) (value matrix rows))
+(defgeneric (setf matrix-ref-2d) (value matrix rows cols))
 
 (defgeneric matrix-ref-1 (matrix rows &optional cols)
   (:documentation "Same as matrix-ref, except that the indices are 1-based."))
@@ -231,6 +258,21 @@
 	    (return-from %matrix-every nil)))))
      t))
 
+
+;;(declaim (inline matrix-ref))
+;; Dispatch to the right method
+#+nil
+(defun matrix-ref (matrix row &optional col)
+  (if col
+      (matrix-ref-2d matrix row col)
+      (matrix-ref-1d matrix row)))
+
+(defmacro matrix-ref (matrix row &optional col)
+  (if col
+      `(matrix-ref-2d ,matrix ,row ,col)
+      `(matrix-ref-1d ,matrix ,row)))
+
+#+nil
 (defmethod matrix-ref ((matrix real-matrix) i &optional (j 0 j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -304,6 +346,96 @@
 			   (get-real-matrix-slice-1d matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
+
+#+(and cmu gerds-pcl)
+(declaim (inline (method matrix-ref-1d :before (real-matrix fixnum))
+		 (method matrix-ref-1d (real-matrix fixnum))))
+
+(defmethod matrix-ref-1d :before ((matrix real-matrix) (i fixnum))
+  (declare (optimize (speed 3)))
+  (unless (and (>= i 0)
+	       (< i (number-of-elements matrix)))
+    (error "out of bounds indexing")))
+
+(defmethod matrix-ref-1d ((matrix real-matrix) (i fixnum))
+  (declare (optimize (speed 3)))
+  (aref (store matrix) (fortran-matrix-indexing i 0 (nrows matrix))))
+
+(defmethod matrix-ref-1d :before ((matrix real-matrix) (i list))
+  (unless (every #'(lambda (index)
+		     (and (>= index 0)
+			  (< index (number-of-elements matrix))))
+		 i)
+    (error "out of bounds indexing")))
+
+(defmethod matrix-ref-1d ((matrix real-matrix) (i list))
+  (get-real-matrix-slice-1d-seq matrix i))
+
+(defmethod matrix-ref-1d :before ((matrix real-matrix) (i real-matrix))
+  (let ((n (number-of-elements matrix)))
+    (unless (%matrix-every #'(lambda (i)
+			       (<= 0 i n))
+			   i)
+      (error "out of bounds indexing"))))
+
+(defmethod matrix-ref-1d ((matrix real-matrix) (i real-matrix))
+  (get-real-matrix-slice-1d matrix i))
+  
+#+(and cmu gerds-pcl)
+(declaim (inline (method matrix-ref-2d :before (real-matrix fixnum fixnum))
+		 (method matrix-ref-2d (real-matrix fixnum fixnum))))
+
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j fixnum))
+  (unless (and (<= 0 i) (< i (nrows matrix))
+	       (<= 0 j) (< j (ncols matrix)))
+    (error 'matrix-index-error :row-index i :col-index j :matrix matrix)))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j fixnum))
+  (aref (store matrix) (fortran-matrix-indexing i j (nrows matrix))))
+
+#+(and cmu gerds-pcl)
+(declaim (inline (method matrix-ref-2d :before (real-matrix fixnum list))))
+
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j list))
+  (let ((m (ncols matrix)))
+    (dolist (index j)
+      (unless (and (<= 0 index) (< index m))
+	(error 'matrix-index-error :row-index i :col-index index :matrix matrix)))))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j list))
+  (get-real-matrix-slice-2d-seq matrix (list i) j))
+
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j real-matrix))
+  (let ((m (ncols matrix)))
+    (flet ((consistent-col (c)
+	     (<= 0 c m))))
+    (unless (every #'(lambda (k)
+		       (<= 0 k m))
+		   j)
+      (error "out of bounds indexing"))))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j real-matrix))
+  (get-real-matrix-slice-2d-seq matrix (make-real-matrix (list i)) j))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j fixnum))
+  (get-real-matrix-slice-2d-seq matrix i (list j)))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j list))
+  (get-real-matrix-slice-2d-seq matrix i j))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j real-matrix))
+  (get-real-matrix-slice-2d matrix (make-real-matrix i) j))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j fixnum))
+  (get-real-matrix-slice-2d matrix i (make-real-matrix (list j))))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j list))
+  (get-real-matrix-slice-2d matrix i (make-real-matrix j)))
+
+(defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j real-matrix))
+  (get-real-matrix-slice-2d matrix i j))
+
+
 
 ;;; Extract a 1-D slice from the matrix.  
 ;;; We treat the matrix as if it were a 1-D array.
@@ -505,7 +637,13 @@
      
     mat))
   
+(declaim (inline (setf matrix-ref)))
+(defun (setf matrix-ref) (new matrix i &optional j)
+  (if j
+      (setf (matrix-ref-2d matrix i j) new)
+      (setf (matrix-ref-1d matrix i) new)))
 
+#+nil
 (defmethod (setf matrix-ref) ((new real-matrix) (matrix real-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -604,13 +742,299 @@
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
+#+nil
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+		 (if (listp i)
+		     (length i)
+		     (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
 
+    (let ((q (if (or j-p (integerp j))
+		 1
+		 (if (listp j)
+		     (length j)
+		     (number-of-elements j)))))
+      (if (> q new-m)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (setf (aref store (fortran-matrix-indexing i 0 n))
+		       (aref new-store 0))
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (set-real-matrix-slice-1d-seq new matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (set-real-matrix-slice-1d new matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+
+#+(and cmu gerds-pcl)
+(declaim (inline (method (setf matrix-ref-1d) :before (real-matrix real-matrix fixnum fixnum))
+		 (method (setf matrix-ref-1d) (real-matrix real-matrix fixnum fixnum))))
+
+
+(defmethod (setf matrix-ref-1d) :before ((new real-matrix) (matrix real-matrix) (i fixnum))
+  (unless (and (>= i 0) (< i (number-of-elements matrix)))
+    (error "out of bounds indexing")))
+
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i fixnum))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) store new-store))
+    
+    (setf (aref store (fortran-matrix-indexing i 0 n))
+	  (aref new-store 0))))
+
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i list))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+		 (if (listp i)
+		     (length i)
+		     (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+
+      (if (every #'(lambda (i)
+			       
+		     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+	  (set-real-matrix-slice-1d-seq new matrix i)
+	  (error "out of bounds indexing")))))
+
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i real-matrix))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+		 (if (listp i)
+		     (length i)
+		     (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+
+      (if (%matrix-every #'(lambda (i)
+					      
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+	  (set-real-matrix-slice-1d new matrix i)
+	  (error "out of bounds indexing")))))
+
+#+nil
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+		 (if (listp i)
+		     (length i)
+		     (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    (let ((q (if (or (integerp j))
+		 1
+		 (if (listp j)
+		     (length j)
+		     (number-of-elements j)))))
+      (if (> q new-m)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (setf (aref store (fortran-matrix-indexing i j n))
+					(aref new-store 0))
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(set-real-matrix-slice-2d-seq new matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (set-real-matrix-slice-2d new matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(set-real-matrix-slice-2d-seq new matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (set-real-matrix-slice-2d-seq new matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (set-real-matrix-slice-2d new matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (set-real-matrix-slice-2d new matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (set-real-matrix-slice-2d new matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (set-real-matrix-slice-2d new matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+#+gerds-pcl
+(declaim (inline (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum fixnum))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum list))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum real-matrix))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix list fixnum))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix list list))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix list real-matrix))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix fixnum))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix list))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix real-matrix))))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j fixnum))
+  (let ((n (nrows matrix))
+	(store (store matrix))
+	(new-store (store new)))
+    (setf (aref store (fortran-matrix-indexing i j n))
+	  (aref new-store 0))))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j list))
+  (set-real-matrix-slice-2d-seq new matrix (list i) j))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j real-matrix))
+  (set-real-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j fixnum))
+  (set-real-matrix-slice-2d-seq new matrix i (list j)))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j list))
+  (set-real-matrix-slice-2d-seq new matrix i j))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j real-matrix))
+  (set-real-matrix-slice-2d new matrix (make-real-matrix i) j))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j fixnum))
+  (set-real-matrix-slice-2d new matrix i (make-real-matrix (list j))))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j list))
+  (set-real-matrix-slice-2d new matrix i (make-real-matrix j)))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j real-matrix))
+  (set-real-matrix-slice-2d new matrix i j))
+
+
+
+
+#+nil
 (defmethod (setf matrix-ref) ((new real) (matrix real-matrix) i &optional (j nil j-p))
   (if j-p
       (setf (matrix-ref matrix i j) (coerce new 'real-matrix-element-type))
     (setf (matrix-ref matrix i) (coerce new 'real-matrix-element-type))))
 
+(defmethod (setf matrix-ref-1d) ((new real) (matrix real-matrix) i)
+    (setf (matrix-ref-1d matrix i) (coerce new 'real-matrix-element-type)))
+
+(defmethod (setf matrix-ref-2d) ((new real) (matrix real-matrix) i j)
+  (setf (matrix-ref-2d matrix i j) (coerce new 'real-matrix-element-type)))
+
+
 ;; Tunc: how do I write real-matrix-element-type here instead of double-float
+#+nil
 (defmethod (setf matrix-ref) ((new double-float) (matrix real-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -685,6 +1109,130 @@
 			   (set-real-from-scalar-matrix-slice-1d new matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
+
+(defmethod (setf matrix-ref-1d) ((new double-float) (matrix real-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
+    
+    (declare (type fixnum n m)
+	     (type (real-matrix-store-type (*)) store))
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (setf (aref store (fortran-matrix-indexing i 0 n)) new)
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (set-real-from-scalar-matrix-slice-1d-seq new matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (set-real-from-scalar-matrix-slice-1d new matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+#+nil
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
+    
+    (declare (type fixnum n m)
+	     (type (real-matrix-store-type (*)) store))
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (setf (aref store (fortran-matrix-indexing i j n)) new)
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(set-real-from-scalar-matrix-slice-2d-seq new matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(set-real-from-scalar-matrix-slice-2d-seq new matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (set-real-from-scalar-matrix-slice-2d-seq new matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (set-real-from-scalar-matrix-slice-2d new matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+(defmethod (setf matrix-ref-2d) :before ((new double-float) (matrix real-matrix) (i fixnum) (j fixnum))
+  (unless (and (>= i 0) (< i (nrows matrix))
+	       (>= j 0) (< j (ncols matrix)))
+    (error 'matrix-index-error :row-index i :col-index j :matrix matrix)))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j fixnum))
+  (setf (aref store (fortran-matrix-indexing i j n)) new))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j list))
+  (set-real-from-scalar-matrix-slice-2d-seq new matrix (list i) j))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j real-matrix))
+  (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j fixnum))
+  (set-real-from-scalar-matrix-slice-2d-seq new matrix i (list j)))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j list))
+  (set-real-from-scalar-matrix-slice-2d-seq new matrix i j))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j real-matrix))
+  (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix i) j))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j fixnum))
+  (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix (list j))))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j list))
+  (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix j)))
+
+(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j real-matrix))
+  (set-real-from-scalar-matrix-slice-2d new matrix i j))
 
 
 ;;;
@@ -835,6 +1383,7 @@
         
     slice))
 
+#+nil
 (defmethod matrix-ref ((matrix complex-matrix) i &optional (j 0 j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -910,6 +1459,139 @@
 			   (get-complex-matrix-slice-1d matrix i)
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
+
+#+nil
+(defmethod matrix-ref-1d ((matrix complex-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
+    (declare (type fixnum n m)
+	     (type (complex-matrix-store-type (*)) store))
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (complex (aref store (fortran-complex-matrix-indexing i 0 n))
+			  (aref store (1+ (fortran-complex-matrix-indexing i 0 n))))
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (get-complex-matrix-slice-1d-seq matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (get-complex-matrix-slice-1d matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+(defmethod matrix-ref-1d ((matrix complex-matrix) (i fixnum))
+  (let ((n (nrows matrix)))
+    (complex (aref store (fortran-complex-matrix-indexing i 0 n))
+	     (aref store (1+ (fortran-complex-matrix-indexing i 0 n))))))
+
+(defmethod matrix-ref-1d ((matrix complex-matrix) (i list))
+  (get-complex-matrix-slice-1d-seq matrix i))
+
+(defmethod matrix-ref-1d ((matrix complex-matrix) (i real-matrix))
+  (get-complex-matrix-slice-1d matrix i))
+  
+#+nil
+(defmethod matrix-ref-2d ((matrix complex-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
+    (declare (type fixnum n m)
+	     (type (complex-matrix-store-type (*)) store))
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (complex (aref store (fortran-complex-matrix-indexing i j n))
+					   (aref store (1+ (fortran-complex-matrix-indexing i j n))))
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(get-complex-matrix-slice-2d-seq matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (get-complex-matrix-slice-2d matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(get-complex-matrix-slice-2d-seq matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (get-complex-matrix-slice-2d-seq matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (get-complex-matrix-slice-2d matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (get-complex-matrix-slice-2d matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (get-complex-matrix-slice-2d matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (get-complex-matrix-slice-2d matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j fixnum))
+  (let ((n (nrows matrix)))
+    (complex (aref store (fortran-complex-matrix-indexing i j n))
+	     (aref store (1+ (fortran-complex-matrix-indexing i j n))))))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j list))
+  (get-complex-matrix-slice-2d-seq matrix (list i) j))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j real-matrix))
+  (get-complex-matrix-slice-2d matrix (make-real-matrix (list i)) j))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j fixnum))
+  (get-complex-matrix-slice-2d-seq matrix i (list j)))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j list))
+  (get-complex-matrix-slice-2d-seq matrix i j))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j real-matrix))
+  (get-complex-matrix-slice-2d matrix (make-real-matrix i) j))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j fixnum))
+  (get-complex-matrix-slice-2d matrix i (make-real-matrix (list j))))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j list))
+  (get-complex-matrix-slice-2d matrix i (make-real-matrix j)))
+
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j real-matrix))
+  (get-complex-matrix-slice-2d matrix i j))
 
 
 ;;; Extract a 1-D slice from the matrix.  
@@ -1273,6 +1955,7 @@
 
     mat))
 
+#+nil
 (defmethod (setf matrix-ref) ((new complex-matrix) (matrix complex-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -1377,6 +2060,187 @@
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
+#+nil
+(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (complex-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+	       (if (listp i)
+		   (length i)
+		 (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (let ((realpart (aref new-store 0))
+		       (imagpart (aref new-store 1)))
+		   (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
+		   (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
+		   (complex realpart imagpart))
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (set-complex-from-complex-matrix-slice-1d-seq new matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (set-complex-from-complex-matrix-slice-1d new matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i fixnum))
+  (let ((realpart (aref new-store 0))
+	(imagpart (aref new-store 1)))
+    (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
+    (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
+    (complex realpart imagpart)))
+
+(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i list))
+  (set-complex-from-complex-matrix-slice-1d-seq new matrix i))
+
+(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix))
+  (set-complex-from-complex-matrix-slice-1d new matrix i))
+
+#+nil
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (complex-matrix-store-type (*)) store new-store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+		 (if (listp i)
+		     (length i)
+		     (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    (let ((q (if (or (integerp j))
+		 1
+		 (if (listp j)
+		     (length j)
+		     (number-of-elements j)))))
+      (if (> q new-m)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (let ((realpart (aref new-store 0))
+					(imagpart (aref new-store 1)))
+				    (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
+				    (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
+				    (complex realpart imagpart))
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(set-complex-from-complex-matrix-slice-2d-seq new matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(set-complex-from-complex-matrix-slice-2d-seq new matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (set-complex-from-complex-matrix-slice-2d-seq new matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (set-complex-from-complex-matrix-slice-2d new matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j fixnum))
+  (let ((realpart (aref new-store 0))
+	(imagpart (aref new-store 1)))
+    (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
+    (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
+    (complex realpart imagpart)))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j list))
+  (set-complex-from-complex-matrix-slice-2d-seq new matrix (list i) j))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j real-matrix))
+  (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d-seq new matrix i (list j)))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d-seq new matrix i j))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix i) j))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix (list j))))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix j)))
+
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+  (set-complex-from-complex-matrix-slice-2d new matrix i j))
+
+
+#+nil
 (defmethod (setf matrix-ref) ((new real-matrix) (matrix complex-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -1482,12 +2346,155 @@
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix complex-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) new-store)
+	     (type (complex-matrix-store-type (*)) store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+	       (if (listp i)
+		   (length i)
+		 (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
 
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (let ((realpart (aref new-store 0))
+		       (imagpart 0.0d0))
+		   (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
+		   (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
+		   (complex realpart imagpart))
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (set-complex-from-real-matrix-slice-1d-seq new matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (set-complex-from-real-matrix-slice-1d new matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix complex-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix))
+	 (new-n (nrows new))
+	 (new-m (ncols new))
+	 (new-store (store new)))
+    
+    (declare (type fixnum n m new-n new-m)
+	     (type (real-matrix-store-type (*)) new-store)
+	     (type (complex-matrix-store-type (*)) store))
+    
+  
+    (let ((p (if (integerp i)
+		 1
+	       (if (listp i)
+		   (length i)
+		 (number-of-elements i)))))
+      (if (> p new-n)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    (let ((q (if (or (integerp j))
+		 1
+	       (if (listp j)
+		   (length j)
+		 (number-of-elements j)))))
+      (if (> q new-m)
+	  (error "cannot do matrix assignment, too many indices")))
+
+    
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (let ((realpart (aref new-store 0))
+					(imagpart 0.0d0))
+				    (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
+				    (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
+				    (complex realpart imagpart))
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(set-complex-from-real-matrix-slice-2d-seq new matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (set-complex-from-real-matrix-slice-2d new matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(set-complex-from-real-matrix-slice-2d-seq new matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (set-complex-from-real-matrix-slice-2d-seq new matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (set-complex-from-real-matrix-slice-2d new matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (set-complex-from-real-matrix-slice-2d new matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (set-complex-from-real-matrix-slice-2d new matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (set-complex-from-real-matrix-slice-2d new matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+
+#+nil
 (defmethod (setf matrix-ref) ((new number) (matrix complex-matrix) i &optional (j nil j-p))
   (if j-p
       (setf (matrix-ref matrix i j) (complex-coerce new))
     (setf (matrix-ref matrix i) (complex-coerce new))))
+
+(defmethod (setf matrix-ref-1d) ((new number) (matrix complex-matrix) i)
+  (setf (matrix-ref matrix i) (complex-coerce new)))
+
+(defmethod (setf matrix-ref-2d) ((new number) (matrix complex-matrix) i j)
+  (setf (matrix-ref matrix i j) (complex-coerce new)))
   
+#+nil
 (defmethod (setf matrix-ref) ((new #+:cmu kernel::complex-double-float
 				   #+:allegro complex) 
 			      (matrix complex-matrix) i &optional (j nil j-p))
@@ -1576,23 +2583,169 @@
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
+(defmethod (setf matrix-ref-1d) ((new #+:cmu kernel::complex-double-float
+				      #+:allegro complex) 
+				 (matrix complex-matrix) i)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
 
+    
+    (declare (type fixnum n m)
+	     (type (complex-matrix-store-type (*)) store))
+    
+    #+:allegro (setq new (complex-coerce new))    
+
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if 
+		 (and (>= i 0) (< i (number-of-elements matrix)))
+		 (let ((realpart (realpart new))
+		       (imagpart (imagpart new)))
+		   (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
+		   (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
+		   new)
+		 (error "out of bounds indexing")))
+	(list (if (every #'(lambda (i)
+			       
+			     (and (>= i 0) (< i (number-of-elements matrix)))) i)
+		  (set-complex-from-scalar-matrix-slice-1d-seq new matrix i)
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'(lambda (i)
+					      
+					    (and (>= i 0) (< i (number-of-elements matrix)))) i)
+			 (set-complex-from-scalar-matrix-slice-1d new matrix i)
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access element ~a of matrix" i))))))
+
+(defmethod (setf matrix-ref-2d) ((new #+:cmu kernel::complex-double-float
+				      #+:allegro complex) 
+				 (matrix complex-matrix) i j)
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (store (store matrix)))
+
+    
+    (declare (type fixnum n m)
+	     (type (complex-matrix-store-type (*)) store))
+    
+    #+:allegro (setq new (complex-coerce new))    
+
+    (labels ((consistent-i (i)
+	       (and (integerp i)
+		    (>= i 0)
+		    (< i n)))
+	     (consistent-j (j)
+	       (and (integerp j)
+		    (>= j 0)
+		    (< j m))))
+      (typecase i
+	(fixnum (if (consistent-i i)
+		    (typecase j
+		      (fixnum (if (consistent-j j)
+				  (let ((realpart (realpart new))
+					(imagpart (imagpart new)))
+				    (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
+				    (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
+				    new)
+				  (error "out of bounds indexing")))
+		      (list (if (every #'consistent-j j)
+				(set-complex-from-scalar-matrix-slice-2d-seq new matrix (list i) j)
+				(error "out of bounds indexing")))
+		      (real-matrix (if (%matrix-every #'consistent-j j)
+				       (set-complex-from-scalar-matrix-slice-2d new matrix (make-real-matrix (list i)) j)
+				       (error "out of bounds indexing")))
+		      (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		    (error "out of bounds indexing")))
+	(list (if (every #'consistent-i i)
+		  (typecase j
+		    (fixnum (if (consistent-j j)
+				(set-complex-from-scalar-matrix-slice-2d-seq new matrix i (list j))
+				(error "out of bounds indexing")))
+		    (list (if (every #'consistent-j j)
+			      (set-complex-from-scalar-matrix-slice-2d-seq new matrix i j)
+			      (error "out of bounds indexing")))
+		    (real-matrix (if (%matrix-every #'consistent-j j)
+				     (set-complex-from-scalar-matrix-slice-2d new matrix (make-real-matrix i) j)
+				     (error "out of bounds indexing")))
+		    (t (error "don't know how to access elements ~a of matrix" (list i j))))
+		  (error "out of bounds indexing")))
+	(real-matrix (if (%matrix-every #'consistent-i i)
+			 (typecase j
+			   (fixnum (if (consistent-j j)
+				       (set-complex-from-scalar-matrix-slice-2d new matrix i (make-real-matrix (list j)))
+				       (error "out of bounds indexing")))
+			   (list (if (every #'consistent-j j)
+				     (set-complex-from-scalar-matrix-slice-2d new matrix i (make-real-matrix j))
+				     (error "out of bounds indexing")))
+			   (real-matrix (if (%matrix-every #'consistent-j j)
+					    (set-complex-from-scalar-matrix-slice-2d new matrix i j)
+					    (error "out of bounds indexing")))
+			   (t (error "don't know how to access elements ~a of matrix" (list i j))))
+			 (error "out of bounds indexing")))
+	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
+
+
+#+nil
 (defmethod matrix-ref ((matrix t) row &optional col)
   (declare (ignore row col))
   (error "argument must be a matrix"))
 
-(defmethod (setf matrix-ref) (new (matrix t) row &optional col)
+(defmethod matrix-ref-1d ((matrix t) row)
+  (declare (ignore row ))
+  (error "argument must be a matrix"))
+
+(defmethod matrix-ref-2d ((matrix t) row col)
+  (declare (ignore row col))
+  (error "argument must be a matrix"))
+
+#+nil
+(defmethod (setf matrix-ref) (new (matrix t) row col)
   (declare (ignore row col new))
   (error "argument must be a matrix"))
 
+(defmethod (setf matrix-ref-1d) (new (matrix t) row)
+  (declare (ignore row new))
+  (error "argument must be a matrix"))
+
+(defmethod (setf matrix-ref-2d) (new (matrix t) row col)
+  (declare (ignore row col new))
+  (error "argument must be a matrix"))
+
+#+nil
 (defmethod (setf matrix-ref) ((new t) (matrix real-matrix) row &optional col)
   (declare (ignore row col))
   (error "argument must be a matrix or a number"))
 
+(defmethod (setf matrix-ref-1d) ((new t) (matrix real-matrix) row)
+  (declare (ignore row))
+  (error "argument must be a matrix or a number"))
+
+(defmethod (setf matrix-ref-2d) ((new t) (matrix real-matrix) row col)
+  (declare (ignore row col))
+  (error "argument must be a matrix or a number"))
+
+#+nil
 (defmethod (setf matrix-ref) ((new t) (matrix complex-matrix) row &optional col)
   (declare (ignore row col))
   (error "argument must be a matrix or a number"))
 
+(defmethod (setf matrix-ref-1d) ((new t) (matrix complex-matrix) row)
+  (declare (ignore row))
+  (error "argument must be a matrix or a number"))
+
+(defmethod (setf matrix-ref-2d) ((new t) (matrix complex-matrix) row col)
+  (declare (ignore row col))
+  (error "argument must be a matrix or a number"))
+
+#+nil
 (defmethod matrix-ref ((matrix standard-matrix) row &optional (col 0 col-p))
   (with-slots (store number-of-rows number-of-cols) matrix
       (if col-p
@@ -1610,6 +2763,27 @@
 	    (aref store row)
 	  (error "don't know how to access on index ~a" row)))))
 
+(defmethod matrix-ref-1d ((matrix standard-matrix) row)
+  (with-slots (store number-of-rows number-of-cols)
+      matrix
+    (if (and (integerp row)
+	     (>= row 0)
+	     (< row (max number-of-rows number-of-cols)))
+	(aref store row)
+	(error "don't know how to access on index ~a" row))))
+
+(defmethod matrix-ref-2d ((matrix standard-matrix) row col)
+  (with-slots (store number-of-rows number-of-cols) matrix
+    (if (and (integerp row)
+	     (integerp col)
+	     (>= row 0)
+	     (>= col 0)
+	     (< row number-of-rows)
+	     (< col number-of-cols))
+	(aref store (fortran-matrix-indexing row col number-of-rows))
+	(error "don't know how to access on indices ~a" (list row col)))))
+
+#+nil
 (defmethod (setf matrix-ref) (new (matrix standard-matrix) row &optional (col 0 col-p))
   (with-slots (store number-of-rows number-of-cols) matrix
       (if col-p
@@ -1626,6 +2800,15 @@
 		 (< row (max number-of-rows number-of-cols)))
 	    (setf (aref store row) new)
 	  (error "don't know how to access on index ~a" row)))))
+
+(defmethod (setf matrix-ref-1d) (new (matrix standard-matrix) row)
+  (with-slots (store number-of-rows number-of-cols)
+      matrix
+    (if (and (integerp row)
+	     (>= row 0)
+	     (< row (max number-of-rows number-of-cols)))
+	(setf (aref store row) new)
+	(error "don't know how to access on index ~a" row))))
 	 
 (defun %fixup-to-1-indexing (item)
   (typecase item
