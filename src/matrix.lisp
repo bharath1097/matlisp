@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.10 2001/10/29 18:00:28 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.11 2003/02/19 21:59:52 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.11  2003/02/19 21:59:52  rtoy
+;;; Correct the slot type declarations.
+;;;
 ;;; Revision 1.10  2001/10/29 18:00:28  rtoy
 ;;; Updates from M. Koerber to support QR routines with column pivoting:
 ;;;
@@ -235,19 +238,19 @@ that way.
     :initarg :nrows
     :initform 0
     :accessor nrows
-    :type 'fixnum
+    :type fixnum
     :documentation "Number of rows in the matrix")
    (number-of-cols
     :initarg :ncols
     :initform 0
     :accessor ncols
-    :type 'fixnum
+    :type fixnum
     :documentation "Number of columns in the matrix")
    (number-of-elements
     :initarg :nels
     :initform 0
     :accessor number-of-elements
-    :type 'fixnum
+    :type fixnum
     :documentation "Total number of elements in the matrix (nrows * ncols)")
    (store-size
     :initarg :store-size
