@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.4 2000/07/11 02:04:50 simsek Exp $
+;;; $Id: system.dcl,v 1.5 2000/07/11 02:45:15 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.5  2000/07/11 02:45:15  simsek
+;;; o Changed version from 1.0a to 1.0b
+;;;
 ;;; Revision 1.4  2000/07/11 02:04:50  simsek
 ;;; o Added support for Allegro CL
 ;;; o Moved configuration code to config.lisp
@@ -50,7 +53,7 @@
 (deflogicalpath "matlisp")
 
 (eval-when (load eval compile)
-(defparameter *matlisp-version* "1.0a")
+(defparameter *matlisp-version* "1.0b")
 #-(or :cmu :allegro) (error 
 		      "MATLISP version ~a requires CMUCL or ALLEGRO CL" 
 		      *matlisp-version*)
