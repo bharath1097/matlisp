@@ -30,9 +30,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.9 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: geev.lisp,v 1.10 2001/10/26 15:24:16 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.10  2001/10/26 15:24:16  rtoy
+;;; From M. Koerber:
+;;;
+;;; When determining LWORK, if JOBVR is V, the LDVR must be >= N.
+;;;
 ;;; Revision 1.9  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -233,8 +238,7 @@
     (values-list (nreverse res))))
  
 
-(let ((xxx (allocate-complex-store 1))
-      (work (allocate-real-store 1)))
+(let ((work (allocate-real-store 1)))
   (defun dgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -244,26 +248,29 @@
 	  (:nv (values "V" "N"))
 	  (:vv (values "V" "V")))
 
-      (multiple-value-bind (store-a store-wr store-wi store-vl store-vr
-				    work info)
-	  (dgeev jobvl
-		 jobvr
-		 n			; N
-		 xxx			; A
-		 n			; LDA
-		 xxx			; WR
-		 xxx			; WI
-		 xxx			; VL
-		 1			; LDVL
-		 xxx			; VR
-		 1			; LDVR
-		 work			; WORK
-		 -1			; LWORK
-		 0 )			; INFO
-	(declare (ignore store-a store-wr store-wi store-vl store-vr))
-	(assert (zerop info))
-	(ceiling (realpart (aref work 0))))))
-  )
+      (let* ((ldvr (if (equal jobvr "V") n 1))
+	     (xxx (allocate-complex-store ldvr)))
+
+	(multiple-value-bind (store-a store-wr store-wi store-vl store-vr
+				      work info)
+	    (dgeev jobvl
+		   jobvr
+		   n			; N
+		   xxx			; A
+		   n			; LDA
+		   xxx			; WR
+		   xxx			; WI
+		   xxx			; VL
+		   1			; LDVL
+		   xxx			; VR
+		   ldvr			; LDVR
+		   work			; WORK
+		   -1			; LWORK
+		   0 )			; INFO
+	  (declare (ignore store-a store-wr store-wi store-vl store-vr))
+	  (assert (zerop info))
+	  (ceiling (realpart (aref work 0))))))))
+
 
 (defmethod geev ((a real-matrix) &optional (job :NN))
   (let* ((n (nrows a))
@@ -372,8 +379,7 @@
       )))
 
 
-(let ((xxx (allocate-complex-store 1))
-      (work (allocate-complex-store 1)))
+(let ((work (allocate-complex-store 1)))
   (defun zgeev-workspace-inquiry (n job)
     ;; Ask geev how much space it wants for the work array
     (multiple-value-bind (jobvl jobvr)
@@ -383,26 +389,28 @@
 	  (:nv (values "V" "N"))
 	  (:vv (values "V" "V")))
       
-      (multiple-value-bind (store-a store-w store-vl store-vr work info)
-	  (zgeev jobvl
-		 jobvr
-		 n			; N
-		 xxx			; A
-		 n			; LDA
-		 xxx			; W
-		 xxx			; VL
-		 1			; LDVL
-		 xxx			; VR
-		 1			; LDVR
-		 work			; WORK
-		 -1			; LWORK
-		 xxx			; RWORK
-		 0 )			; INFO
-	(declare (ignore store-a store-w store-vl store-vr info))
-	;; The desired size in in work[0], which we convert to an
-	;; integer.
-	(ceiling (aref work 0)))))
-  )
+      (let* ((ldvr (if (equal jobvr "V") n 1))
+	     (xxx (allocate-complex-store ldvr)))
+
+	(multiple-value-bind (store-a store-w store-vl store-vr work info)
+	    (zgeev jobvl
+		   jobvr
+		   n			; N
+		   xxx			; A
+		   n			; LDA
+		   xxx			; W
+		   xxx			; VL
+		   1			; LDVL
+		   xxx			; VR
+		   ldvr			; LDVR
+		   work			; WORK
+		   -1			; LWORK
+		   xxx			; RWORK
+		   0 )			; INFO
+	  (declare (ignore store-a store-w store-vl store-vr info))
+	  ;; The desired size in in work[0], which we convert to an
+	  ;; integer.
+	  (ceiling (aref work 0)))))))
 
 ;; Hmm, should this really be 4 (5) different methods, one for each
 ;; possible value of job?
