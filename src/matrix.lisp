@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.7 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: matrix.lisp,v 1.8 2000/10/04 15:56:50 simsek Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.8  2000/10/04 15:56:50  simsek
+;;; o Fixed bug in (MAKE-COMPLEX-MATRIX n)
+;;;
 ;;; Revision 1.7  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -813,7 +816,7 @@ matrix and a number"))
 	   (integer
 	    (assert (plusp arg) nil
 		    "matrix dimension must be positive, not ~A" arg)
-	    (error "matrix dimension ~a must be > 0" arg))
+	    (make-complex-matrix-dim arg arg))
 	   (sequence
 	    (make-complex-matrix-sequence arg))
 	   ((array * (* *))
