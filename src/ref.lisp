@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.7 2003/07/12 02:23:07 rtoy Exp $
+;;; $Id: ref.lisp,v 1.8 2003/10/11 01:49:24 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.8  2003/10/11 01:49:24  rtoy
+;;; MATRIX-REF-1D and MATRIX-REF-2D methods for COMPLEX-MATRIX were both
+;;; missing the STORE local variable.  Stupid typo.
+;;;
 ;;; Revision 1.7  2003/07/12 02:23:07  rtoy
 ;;; Correct some typos produced when splitting up the matrix-ref methods.
 ;;;
@@ -1500,7 +1504,8 @@
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
 (defmethod matrix-ref-1d ((matrix complex-matrix) (i fixnum))
-  (let ((n (nrows matrix)))
+  (let ((n (nrows matrix))
+	(store (store matrix)))
     (complex (aref store (fortran-complex-matrix-indexing i 0 n))
 	     (aref store (1+ (fortran-complex-matrix-indexing i 0 n))))))
 
@@ -1570,7 +1575,8 @@
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
 (defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j fixnum))
-  (let ((n (nrows matrix)))
+  (let ((n (nrows matrix))
+	(store (store matrix)))
     (complex (aref store (fortran-complex-matrix-indexing i j n))
 	     (aref store (1+ (fortran-complex-matrix-indexing i j n))))))
 
