@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: blas.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: blas.lisp,v 1.5 2001/02/21 19:31:13 simsek Exp $
 ;;;
 ;;; $Log: blas.lisp,v $
+;;; Revision 1.5  2001/02/21 19:31:13  simsek
+;;; o Fixed minor typos and doc strings
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -455,7 +458,7 @@
 
   ZDOTU <- X^T Y
 
-  Inner product of X,Y.
+  Complex precision inner product of X,Y.
  
   Arguments
   =========
@@ -463,7 +466,6 @@
   N     (input) FIXNUM
         Number of elements of X,Y to be operated on.
  
-  A     (input) (COMPLEX DOUBLE-FLOAT)
   X     (input) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
   INCX  (input) FIXNUM 
         Determines the position of the elements in X.  Usually
@@ -472,7 +474,7 @@
 
             X(0),X(2*INCX), ... , X(2*(N-1)*INCX)
 
-  Y     (input/output) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
+  Y     (input) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
   INCY  (input) FIXNUM
         Determines the position of the elements in Y.  Usually
         INCY is 1.  If INCY is bigger than 1 then the elements
@@ -500,7 +502,7 @@
 
   ZDOTC <- X^H Y
 
-  Inner product of X conjugate and Y.
+  Complex precision inner product of X conjugate and Y.
  
   Arguments
   =========
@@ -508,7 +510,6 @@
   N     (input) FIXNUM
         Number of elements of X,Y to be operated on.
  
-  A     (input) (COMPLEX DOUBLE-FLOAT)
   X     (input) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
   INCX  (input) FIXNUM 
         Determines the position of the elements in X.  Usually
@@ -517,7 +518,7 @@
 
             X(0),X(2*INCX), ... , X(2*(N-1)*INCX)
 
-  Y     (input/output) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
+  Y     (input) (SIMPLE-ARRAY (COMPLEX DOUBLE-FLOAT) (*)) represented as (SIMPLE-ARRAY DOUBLE-FLOAT (*)) 
   INCY  (input) FIXNUM
         Determines the position of the elements in Y.  Usually
         INCY is 1.  If INCY is bigger than 1 then the elements
@@ -1047,8 +1048,41 @@
 )
 
 (def-fortran-routine ddot :double-float
-"
-"
+  "
+  Syntax
+  ======
+ 
+  (DDOT n x incx y incy)
+
+  Purpose
+  =======
+
+  DDOT <- X^T Y
+
+  Double precision inner product of X,Y.
+ 
+  Arguments
+  =========
+
+  N     (input) FIXNUM
+        Number of elements of X,Y to be operated on.
+ 
+  X     (input) (SIMPLE-ARRAY DOUBLE-FLOAT (*))
+  INCX  (input) FIXNUM 
+        Determines the position of the elements in X.  Usually
+        INCX is 1.  If INCX is bigger than 1 then the elements
+        considered in the operations are:
+
+            X(0),X(2*INCX), ... , X(2*(N-1)*INCX)
+
+  Y     (input) (SIMPLE-ARRAY DOUBLE-FLOAT (*))
+  INCY  (input) FIXNUM
+        Determines the position of the elements in Y.  Usually
+        INCY is 1.  If INCY is bigger than 1 then the elements
+        considered in the operations are:
+
+            Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
+ "        
   (n :integer :input)
   (dx (* :double-float) :input)
   (incx :integer :input)
@@ -1167,7 +1201,7 @@
   (x (* :double-float) )
   (incx :integer )
   (beta :double-float )
-  (y (* :double-float) output)
+  (y (* :double-float) :output)
   (incy :integer )
 )
 
@@ -1271,7 +1305,7 @@
   (x (* :double-float) )
   (incx :integer )
   (beta :double-float )
-  (y (* :double-float) output)
+  (y (* :double-float) :output)
   (incy :integer )
 )
 
@@ -1375,7 +1409,7 @@
   (n :integer )
   (a (* :double-float) )
   (lda :integer )
-  (x (* :double-float) output)
+  (x (* :double-float) :output)
   (incx :integer )
 )
 
@@ -1482,7 +1516,7 @@
   (n :integer )
   (a (* :double-float) )
   (lda :integer )
-  (x (* :double-float) output)
+  (x (* :double-float) :output)
   (incx :integer )
 )
 
@@ -1566,7 +1600,7 @@
   (incx :integer )
   (y (* :double-float) )
   (incy :integer )
-  (a (* :double-float) output)
+  (a (* :double-float) :output)
   (lda :integer )
 )
 
@@ -1654,7 +1688,7 @@
   (alpha :double-float )
   (x (* :double-float) )
   (incx :integer )
-  (a (* :double-float) output)
+  (a (* :double-float) :output)
   (lda :integer )
 )
 
@@ -1755,7 +1789,7 @@
   (incx :integer )
   (y (* :double-float) )
   (incy :integer )
-  (a (* :double-float) output)
+  (a (* :double-float) :output)
   (lda :integer )
 )
 
@@ -1893,7 +1927,7 @@
   (b (* :double-float) )
   (ldb :integer )
   (beta :double-float )
-  (c (* :double-float) output)
+  (c (* :double-float) :output)
   (ldc :integer )
 )
 
@@ -2016,7 +2050,7 @@
   (a (* :double-float) )
   (lda :integer )
   (beta :double-float )
-  (c (* :double-float) output)
+  (c (* :double-float) :output)
   (ldc :integer )
 )
 
@@ -2160,7 +2194,7 @@
   (b (* :double-float) )
   (ldb :integer )
   (beta :double-float )
-  (c (* :double-float) output)
+  (c (* :double-float) :output)
   (ldc :integer )
 )
 
@@ -2292,7 +2326,7 @@
   (alpha :double-float )
   (a (* :double-float) )
   (lda :integer )
-  (b (* :double-float) output)
+  (b (* :double-float) :output)
   (ldb :integer )
 )
 
@@ -2427,7 +2461,7 @@
   (alpha :double-float )
   (a (* :double-float) )
   (lda :integer )
-  (b (* :double-float) output)
+  (b (* :double-float) :output)
   (ldb :integer )
 )
 
@@ -2566,7 +2600,7 @@
   (x (* :complex-double-float) )
   (incx :integer )
   (beta :complex-double-float )
-  (y (* :complex-double-float) output)
+  (y (* :complex-double-float) :output)
   (incy :integer )
 )
 
@@ -2672,7 +2706,7 @@
   (x (* :complex-double-float) )
   (incx :integer )
   (beta :complex-double-float )
-  (y (* :complex-double-float) output)
+  (y (* :complex-double-float) :output)
   (incy :integer )
 )
 
@@ -2776,7 +2810,7 @@
   (n :integer )
   (a (* :complex-double-float) )
   (lda :integer )
-  (x (* :complex-double-float) output)
+  (x (* :complex-double-float) :output)
   (incx :integer )
 )
 
@@ -2883,7 +2917,7 @@
   (n :integer )
   (a (* :complex-double-float) )
   (lda :integer )
-  (x (* :complex-double-float) output)
+  (x (* :complex-double-float) :output)
   (incx :integer )
 )
 
@@ -2967,7 +3001,7 @@
   (incx :integer )
   (y (* :complex-double-float) )
   (incy :integer )
-  (a (* :complex-double-float) output)
+  (a (* :complex-double-float) :output)
   (lda :integer )
 )
 
@@ -3051,7 +3085,7 @@
   (incx :integer )
   (y (* :complex-double-float) )
   (incy :integer )
-  (a (* :complex-double-float) output)
+  (a (* :complex-double-float) :output)
   (lda :integer )
 )
 
@@ -3155,7 +3189,7 @@
   (incx :integer )
   (y (* :complex-double-float) )
   (incy :integer )
-  (a (* :complex-double-float) output)
+  (a (* :complex-double-float) :output)
   (lda :integer )
 )
 
@@ -3293,7 +3327,7 @@
   (b (* :complex-double-float) )
   (ldb :integer )
   (beta :complex-double-float )
-  (c (* :complex-double-float) output)
+  (c (* :complex-double-float) :output)
   (ldc :integer )
 )
 
@@ -3425,7 +3459,7 @@
   (alpha :complex-double-float )
   (a (* :complex-double-float) )
   (lda :integer )
-  (b (* :complex-double-float) output)
+  (b (* :complex-double-float) :output)
   (ldb :integer )
 )
 
@@ -3559,7 +3593,7 @@
   (alpha :complex-double-float )
   (a (* :complex-double-float) )
   (lda :integer )
-  (b (* :complex-double-float) output)
+  (b (* :complex-double-float) :output)
   (ldb :integer )
 )
 
@@ -3686,7 +3720,7 @@
   (a (* :complex-double-float) )
   (lda :integer )
   (beta :double-float )
-  (c (* :complex-double-float) output)
+  (c (* :complex-double-float) :output)
   (ldc :integer )
 )
 
@@ -3834,6 +3868,6 @@
   (b (* :complex-double-float) )
   (ldb :integer )
   (beta :double-float )
-  (c (* :complex-double-float) output)
+  (c (* :complex-double-float) :output)
   (ldc :integer )
 )
