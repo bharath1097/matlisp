@@ -31,24 +31,11 @@
 ;;; configuration. Eventually, this file should disappear.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: config.lisp,v 1.2 2000/10/04 22:47:46 simsek Exp $
-;;; $Log: config.lisp,v $
-;;; Revision 1.2  2000/10/04 22:47:46  simsek
-;;; o Cleared out most environment settings
-;;;
-;;; Revision 1.1  2000/07/10 22:38:43  simsek
-;;; o Initial revision
+;;; $Id: config.lisp,v 1.3 2001/02/22 08:10:35 simsek Exp $
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "MATLISP")
+(in-package "USER")
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Make sure that PCL compiles and evaluates DEFCLASS
-;;; and DEFGENERIC forms, otherwise you encounter too
-;;; many misleading warnings.
-;;;
-;;; And similarly for Allegro ...
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #+:allegro (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
 #+:allegro (setq excl:*enable-package-locked-errors* nil)
 

@@ -43,25 +43,11 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.5 2000/10/04 22:48:26 simsek Exp $
+;;; $Id: start.lisp,v 1.6 2001/02/22 08:10:35 simsek Exp $
 ;;;
 ;;; $Log: start.lisp,v $
-;;; Revision 1.5  2000/10/04 22:48:26  simsek
-;;; o Modified DEFLOGICALPATH to support image saving
-;;;
-;;; Revision 1.4  2000/07/11 18:02:34  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 06:19:28  simsek
-;;; o Fixed up some badly placed paranthesis
-;;; in DEFLOGICALPATH
-;;;
-;;; Revision 1.2  2000/07/11 02:05:48  simsek
-;;; o Added support for Allegro CL
-;;; o Fixed up DEFLOGICALPATH
-;;;
-;;; Revision 1.1  2000/04/13 20:47:28  simsek
-;;; o Initial revision.
+;;; Revision 1.6  2001/02/22 08:10:35  simsek
+;;; o Added support for CMUCL 18c and Allegro 6.0
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,7 +156,6 @@
 
 (load "matlisp:system.dcl")
 (load "matlisp:config.lisp")
-(load "matlisp:save.lisp")
 
 (mk::operate-on-system 'matlisp
 		       'load
@@ -179,6 +164,8 @@
 		       :compile-during-load 
 		       #+:allegro-cl-lite nil
 		       #-:allegro-cl-lite t)
+
+(load "matlisp:save.lisp")
 
 (format t "
 
@@ -200,3 +187,5 @@
 "
 	(namestring
 	 (translate-logical-pathname "matlisp:")))
+
+

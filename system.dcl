@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.6 2000/10/04 01:19:18 simsek Exp $
+;;; $Id: system.dcl,v 1.7 2001/02/22 08:10:35 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.7  2001/02/22 08:10:35  simsek
+;;; o Added support for CMUCL 18c and Allegro 6.0
+;;;
 ;;; Revision 1.6  2000/10/04 01:19:18  simsek
 ;;; o Moved version related code to package.lisp
 ;;;
@@ -55,17 +58,21 @@
 
 (deflogicalpath "matlisp")
 
-(require "FORTRAN-FFI-ACCESSORS" "matlisp:packages")
-(require "BLAS" "matlisp:packages")
-(require "LAPACK" "matlisp:packages")
-(require "DFFTPACK" "matlisp:packages")
-(require "MATLISP" "matlisp:packages")
-(require "MAKE" "matlisp:defsystem")
+(require "MAKE" (namestring 
+		 (translate-logical-pathname 
+		  "matlisp:defsystem.lisp")))
+
+(mk::defsystem matlisp-packages
+      :source-pathname "matlisp:"
+      :source-extension "lisp"
+      :components
+      ((:file "packages" :load-only t)))
 
 (mk::defsystem lazy-loader
       :source-pathname "matlisp:lib;"
       :source-extension "lisp"
       :binary-pathname "matlisp:bin;"
+      :depends-on ("matlisp-packages")
       :components
       ((:file "lazy-loader"
 	      ;; you need the load-only here,
@@ -78,7 +85,8 @@
       :source-pathname "matlisp:src;"
       :source-extension "lisp"
       :binary-pathname "matlisp:bin;"
-      :depends-on ("lazy-loader")
+      :depends-on ("lazy-loader"
+                   "matlisp-packages")
       :components
       ((:module "foreign-interface"
 	:source-pathname ""
@@ -93,7 +101,8 @@
 	:depends-on ("foreign-interface")
 	:components ("blas"
 		     "lapack"
-		     #-:mswindows "dfftpack"))
+		     #-:mswindows "dfftpack"
+		     #+nil "ranlib"))
        (:module "matlisp-essentials"
 	:source-pathname ""
 	:source-extension "lisp"
