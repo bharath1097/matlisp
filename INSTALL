@@ -1,11 +1,24 @@
-The current implementation of Matlisp relies on the foreign function 
-interface of the free Common Lisp implementation CMUCL.  This means 
-that Matlisp is available whenever CMUCL is.  In particular, Matlisp 
-is tested with CMUCL on Sun/Solaris and Linux operating systems. 
+Requirements:
+=============
+Either CMUCL (version 18b) or Allegro CL (version 5.0 or later)
+is required.
+
+* Allegro CL: Matlisp should compile on Linux, Solaris, Windows.
+              In particular, Matlisp relies on the foreign
+	      function interface of Allegro CL.
+
+* CMU CL: Matlisp should compile on Linux, Solaris.
+          In particular, Matlisp relies on the foreign function
+          interface of CMU CL and the built-in type 
+          kernel::complex-double-float.
 
 An immediate goal is to make Matlisp available for CLISP -- another 
 free Common Lisp implementation that is supported on a wider range of 
-platforms than CMUCL. 
+platforms than CMUCL and AllegroCL. 
+
+
+Linux/Unix Installation:
+========================
 
 One of the design goals of Matlisp was to ensure the consistency of 
 installation.  Matlisp is currently distributed as source code and the 
@@ -25,25 +38,32 @@ The installation follows in a few easy steps:
 
 	cd matlisp
 
-4. Configure your system
+4a. Build the system for Allegro CL:
 
-	./configure
+	make allegro
 
-5. Build the Fortran libraries BLAS/LAPACK
+4b. Build the system for CMU CL:
 
-	make
-
-6. Fire up CMU Common Lisp
-
-	cmucl
-
-7. Load Matlisp
-
-	(load "start.lisp")
+	make cmu
                        
 That's all there is to it.  In order for this to work, configure must 
 be able to detect a Fortran compiler and a C compiler in your path.  
 This is usually the case.  If configure fails  you should contact your 
 system administrator.
+
+MS Windows installation:
+========================
+
+1. Download the Matlisp sources from http://matlisp.sourceforge.net
+2. Unpack the source file
+3. From within Allegro CL:
+
+	(load "start.lisp")
+
+That should be all.  The precompiled BLAS/LAPACK libraries were obtained
+from http://www.che.chalmers.se/~agris/Programming/clapack/clapack.html
+
+Unfortunately, we currently do not support the functions FFT, IFFT
+which rely of DFFTPACK for MSWindows.
 
 Enjoy!

@@ -53,28 +53,7 @@ the other languages.
 
 How to Install
 --------------
-
-Here are the preliminary steps to installing matlisp:
-
-	1.  You must have defsystem available.  I've used defsystem
-	    from Mark Kantrowitz, which can be found in the CMU Lisp
-	    archives. 
-
-	2.  Get and compile LAPACK.  You need at least the double
-	    precision and double precision complex versions.
-
-	3.  Modify the LOAD-FOREIGN line in LAZY-LOADER.LISP to have the
-	    correct flags for linking with the LAPACK libraries.
-
-	4.  Compile lazy-loader.c using any C compiler.  There's nothing
-	    in it right now so it shouldn't matter.
-
-At this point, you are ready to install matlisp.
-Start up CMU Lisp.  Execute the following:
-
-	* (load "start")
-
-This will compile and load the package. 
+See the file INSTALL.
 
 How to Use
 ----------
