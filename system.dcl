@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.23 2004/03/17 03:22:13 simsek Exp $
+;;; $Id: system.dcl,v 1.24 2004/05/20 21:41:54 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.24  2004/05/20 21:41:54  rtoy
+;;; DEFLOGICALPATH is in the MATLISP-START package now.
+;;;
 ;;; Revision 1.23  2004/03/17 03:22:13  simsek
 ;;; Adding support for DFFTPACK and TOMS on windows.
 ;;;
@@ -114,7 +117,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package "COMMON-LISP-USER")
 
-(deflogicalpath "matlisp")
+(matlisp-start::deflogicalpath "matlisp")
 
 (require "MAKE" (namestring 
 		 (translate-logical-pathname 
