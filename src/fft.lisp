@@ -31,9 +31,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.8 2001/10/25 21:48:45 rtoy Exp $
+;;; $Id: fft.lisp,v 1.9 2003/02/11 13:52:04 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.9  2003/02/11 13:52:04  rtoy
+;;; Fixes for FFT from Mike Koerber:
+;;;
+;;; o FFT corrected to work on matrices, not just vectors.
+;;; o Added FFT!/IFFT! to do in-place computation of FFTs
+;;; o FFT/IFFT call FFT! and IFFT!.
+;;;
 ;;; Revision 1.8  2001/10/25 21:48:45  rtoy
 ;;; IFFT wasn't scaling the result by 1/N for the case of row or column
 ;;; vectors.  Fixed.  Bug noted by Michael Koerber.
@@ -217,22 +224,26 @@
 		       ((col-vector-p x)
 			(make-complex-matrix-dim n 1))
 		       (t (make-complex-matrix-dim n (ncols x))))))
+
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
-	  (zfftf n (store result) wsave))
+	  (zfftf n (store result) wsave)
+	  result)
 
-      (dotimes (j (ncols x))
-	(declare (type fixnum j))
-	 (dotimes (i (nrows x))
-	   (declare (type fixnum i))
-	   (setf (matrix-ref result i j) (matrix-ref x i j)))
-	 (with-vector-data-addresses ((addr-result (store result))
-				      (addr-wsave wsave))
-	    (incf-sap :complex-double-float addr-result (* j n))
-	    (dfftpack::fortran-zfftf n addr-result addr-wsave))))
+      ;; Do FFT by column...first we copy the array
+      (progn
+	;; copy X to a working array, RESULT
+	(dotimes (j-copy (ncols x))
+	  (declare (type fixnum j-copy))
+	  
+	  ;; Note: we may be asked to truncate if N < (NROWS X)
+	  (dotimes (i-copy (min n (nrows x))) 
+	    (declare (type fixnum i-copy))
+	    (setf (matrix-ref result i-copy j-copy) (matrix-ref x i-copy j-copy))))
 
-      result))
+	;; Then do FFT by column
+	(fft! result)))))
 
 
 #+:allegro
@@ -286,28 +297,21 @@
 	(progn
 	  (copy! x result)
 	  (zfftb n (store result) wsave)
-	  (let ((scale-factor (/ (float n 1d0))))
-	    (dotimes (k n)
-	      (setf (matrix-ref result k)
-		    (* scale-factor (matrix-ref result k))))))
+	  (scal! (/ (float n 1d0)) result))
 
-	(let ((scale-factor (/ (float n 1d0))))
-	  (dotimes (j (ncols x))
-	    (declare (type fixnum j))
-	    (dotimes (i (nrows x))
-	      (declare (type fixnum i))
-	      (setf (matrix-ref result i j) (matrix-ref x i j)))
-	    (with-vector-data-addresses ((addr-result (store result))
-					 (addr-wsave wsave))
-	      (incf-sap :complex-double-float addr-result (* j n))
-	      (dfftpack::fortran-zfftb n addr-result addr-wsave))
-	    ;; Scale the result
-	    (dotimes (i (nrows x))
-	      (declare (type fixnum i))
-	      (setf (matrix-ref result i j) (* scale-factor (matrix-ref x i j)))))))
+      ;; Perform the IFFT by columns...first we copy the array
+      (progn
+	;; Copy X to the working Array RESULT
+	(dotimes (j-copy (ncols x))
+	  (declare (type fixnum j-copy))
 
-    result))
+	  ;; Note: we may be asked to truncate if N < (NROWS X)
+	  (dotimes (i-copy (min n (nrows x)))
+	    (declare (type fixnum i-copy))
+	    (setf (matrix-ref result i-copy j-copy) (matrix-ref x i-copy j-copy))))
 
+	;; The we do the IFFT
+	(ifft! result)))))
 
 #+:allegro
 (defmethod ifft ((x standard-matrix) &optional n)
@@ -347,4 +351,58 @@
 	 ))
 
       result))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Modification for destructive FFT's.  The purpose is to eliminate
+;; cons'ing for certain application requiring numerous calls to these
+;; routines.
+
+(defgeneric fft! (x)
+  (:documentation "See FFT but note that the optional N is NOT permitted.
+  Performs in place FFT modifying X.  This will only work for a complex matrix."))
+
+(defgeneric ifft! (x)
+  (:documentation "See IFFT but note that the optional N is NOT permitted.
+  Performs in place IFFT modifying X.  This will only work for a complex matrix."))
+
+#+:cmu  
+(defmethod fft! ((x complex-matrix))
+  (let* ((n (if (row-or-col-vector-p x)
+		(max (nrows x) (ncols x))
+	      (nrows x)))
+	 (wsave (lookup-wsave-entry n)))
+
+    (if (row-or-col-vector-p x)
+	(progn
+	  (zfftf n (store x) wsave)
+	  x)
+
+      (dotimes (j (ncols x) x)
+	(declare (type fixnum j))
+	(with-vector-data-addresses ((addr-x (store x))
+				     (addr-wsave wsave))
+	    (incf-sap :complex-double-float addr-x (* j n))
+	    (dfftpack::fortran-zfftf n addr-x addr-wsave))))))
+
+
+#+:cmu
+(defmethod ifft! ((x complex-matrix))
+  (let* ((n (if (row-or-col-vector-p x)
+		      (max (nrows x) (ncols x))
+		      (nrows x)))
+	 (wsave (lookup-wsave-entry n)))
+
+    (if (row-or-col-vector-p x)
+	(progn
+	  (zfftb n (store x) wsave)
+	  x)
+
+      ;; IFFT by column
+      (scal! (/ (float n 1d0))
+	     (dotimes (j (ncols x) x)
+	       (declare (type fixnum j))
+	       (with-vector-data-addresses ((addr-x (store x))
+					    (addr-wsave wsave))
+		       (incf-sap :complex-double-float addr-x (* j n))
+		       (dfftpack::fortran-zfftb n addr-x addr-wsave)))))))
 
