@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.12 2003/03/09 14:26:30 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.13 2003/05/31 22:20:26 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.13  2003/05/31 22:20:26  rtoy
+;;; o Add some support for CMUCL with Gerd's PCL so we can inline
+;;;   accessors and such for the matrix classes.
+;;; o Only use one, system-independent, standard-matrix class.
+;;; o Try to declare the types of the slots of the matrix classes
+;;; o FORTRAN-MATRIX-INDEXING changed to use fixnum arithmetic.
+;;;
 ;;; Revision 1.12  2003/03/09 14:26:30  rtoy
 ;;; Forgot one more :type 'fixnum bug.  From Gerd Moellmann.
 ;;;
@@ -235,7 +242,10 @@ parts in successive elements of the matrix because Fortran stores them
 that way.
 "))
 
-#+:cmu
+#+(and cmu gerds-pcl)
+(declaim (ext:slots (slot-boundp real-matrix complex-matrix)
+		    (inline standard-matrix real-matrix complex-matrix)))
+
 (defclass standard-matrix ()
   ((number-of-rows
     :initarg :nrows
@@ -273,7 +283,7 @@ that way."))
   (:documentation "Basic matrix class."))
 
 
-#+:allegro
+#+(and nil :allegro)
 (defclass standard-matrix ()
   ((number-of-rows
     :initarg :nrows
@@ -307,12 +317,14 @@ that way."))
   (:documentation "Basic matrix class."))
 
 (defclass real-matrix (standard-matrix)
-  ()
-  (:documentation "A class of matrices with REAL-MATRIX-ELEMENT-TYPE elements."))
+  ((store
+    :type (simple-array real-matrix-element-type (*))))
+  (:documentation "A class of matrices with real elements."))
 
 (defclass complex-matrix (standard-matrix)
-  ()
-  (:documentation "A class of matrices with COMPLEX-MATRIX-ELEMENT-TYPE elements."))
+  ((store
+    :type (simple-array complex-matrix-element-type (*))))
+  (:documentation "A class of matrices with complex elements."))
 
 (defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
   (declare (ignore initargs))
@@ -421,7 +433,7 @@ that way."))
 (declaim (inline fortran-matrix-indexing))
 (defun fortran-matrix-indexing (row col nrows)
   (declare (type (and fixnum (integer 0)) row col nrows))
-  (+ row (* col nrows)))
+  (the fixnum (+ row (the fixnum (* col nrows)))))
 
 ;; For matrices with complex-valued elements, we store the array as a
 ;; double-length double-precision floating-point vector, as Fortran
@@ -444,7 +456,7 @@ that way."))
 (declaim (inline fortran-complex-matrix-indexing))
 (defun fortran-complex-matrix-indexing (row col nrows)
   (declare (type (and fixnum (integer 0)) row col nrows))
-  (* 2 (+ row (* col nrows))))
+  (the fixnum (* 2 (the fixnum (+ row (the fixnum (* col nrows)))))))
 
 
 
