@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reshape.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: reshape.lisp,v 1.5 2001/04/18 15:56:26 rtoy Exp $
 ;;;
 ;;; $Log: reshape.lisp,v $
+;;; Revision 1.5  2001/04/18 15:56:26  rtoy
+;;; Fix stupid typo:  :mcols -> :ncols.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -134,7 +137,7 @@
 	     (type (complex-matrix-store-type (*)) new-store))
 
     (zcopy (min old-size new-size) (store mat) 1 new-store 1)
-    (make-instance 'complex-matrix :nrows new-n :mcols new-m :store new-store)))
+    (make-instance 'complex-matrix :nrows new-n :ncols new-m :store new-store)))
 
 
 (defmethod reshape! ((mat complex-matrix) new-n new-m)
