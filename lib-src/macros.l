@@ -368,25 +368,6 @@ is not included")
     cos dcos ccos tan dtan asin dasin acos dacos atan datan atan2 datan2
     sinh dsinh cosh dcosh tanh dtanh))
 
-(declaim (inline truncate-towards-zero ftruncate-towards-zero))
-
-(defun truncate-towards-zero (x)
-  ;; Fortran 77 standard says INT functions round towards zero:
-  ;;
-  ;; int(a) is the integer whose magnitude is the largest integer that
-  ;; does not exceed the magnitude of a and whose sign is the same as
-  ;; the sign of a.
-  ;;
-  (if (minusp x)
-      (ceiling x)
-      (floor x)))
-
-(defun ftruncate-towards-zero (x)
-  ;; Floating-point version of the above.
-  (if (minusp x)
-      (fceiling x)
-      (ffloor x)))
-
 (declaim (inline int ifix idfix))
 
 ;; Define the intrinsic functions.
@@ -399,13 +380,13 @@ is not included")
     (integer
      x)
     (single-float
-     (truncate-towards-zero (the (single-float #.(float most-negative-fixnum)
-					       #.(float most-positive-fixnum))
-			      x)))
+     (truncate (the (single-float #.(float most-negative-fixnum)
+				  #.(float most-positive-fixnum))
+		 x)))
     (double-float
-     (truncate-towards-zero (the (double-float #.(float most-negative-fixnum 1d0)
-					       #.(float most-positive-fixnum 1d0))
-			      x)))))
+     (truncate (the (double-float #.(float most-negative-fixnum 1d0)
+				  #.(float most-positive-fixnum 1d0))
+		 x)))))
 
 #+cmu
 (defun int (x)
@@ -416,13 +397,13 @@ is not included")
     (integer
      x)
     (single-float
-     (truncate-towards-zero (the (single-float #.(float (- (ash 1 31)))
-					       #.(float (1- (ash 1 31))))
-			      x)))
+     (truncate (the (single-float #.(float (- (ash 1 31)))
+				  #.(float (1- (ash 1 31))))
+		 x)))
     (double-float
-     (truncate-towards-zero (the (double-float #.(float (- (ash 1 31)) 1d0)
-					       #.(float (1- (ash 1 31)) 1d0))
-			      x)))))
+     (truncate (the (double-float #.(float (- (ash 1 31)) 1d0)
+				  #.(float (1- (ash 1 31)) 1d0))
+		 x)))))
   
 (defun ifix (x)
   (int x))
@@ -435,24 +416,24 @@ is not included")
 (defun aint (x)
   (etypecase x
     (single-float
-     (ftruncate-towards-zero (the (single-float #.(float most-negative-fixnum)
-						#.(float most-positive-fixnum))
-			       x)))
+     (ftruncate (the (single-float #.(float most-negative-fixnum)
+				   #.(float most-positive-fixnum))
+		  x)))
     (double-float
-     (ftruncate-towards-zero (the (double-float #.(float most-negative-fixnum 1d0)
-						#.(float most-positive-fixnum 1d0))
-			       x)))))
+     (ftruncate (the (double-float #.(float most-negative-fixnum 1d0)
+				   #.(float most-positive-fixnum 1d0))
+		  x)))))
 #+cmu
 (defun aint (x)
   (etypecase x
     (single-float
-     (ftruncate-towards-zero (the (single-float #.(float (- (ash 1 31)))
-					     #.(float (1- (ash 1 31))))
-			    x)))
+     (ftruncate (the (single-float #.(float (- (ash 1 31)))
+				   #.(float (1- (ash 1 31))))
+		  x)))
     (double-float
-     (ftruncate-towards-zero (the (double-float #.(float (- (ash 1 31)) 1d0)
-					     #.(float (1- (ash 1 31)) 1d0))
-			    x)))))
+     (ftruncate (the (double-float #.(float (- (ash 1 31)) 1d0)
+				   #.(float (1- (ash 1 31)) 1d0))
+		  x)))))
 
 (defun dint (x)
   (aint x))
@@ -1105,8 +1086,11 @@ is not included")
 ;;;-------------------------------------------------------------------------
 ;;; end of macros.l
 ;;;
-;;; $Id: macros.l,v 1.3 2001/07/10 16:14:31 rtoy Exp $
+;;; $Id: macros.l,v 1.4 2003/05/31 03:49:42 rtoy Exp $
 ;;; $Log: macros.l,v $
+;;; Revision 1.4  2003/05/31 03:49:42  rtoy
+;;; Plain old ftruncate is the right function to use.
+;;;
 ;;; Revision 1.3  2001/07/10 16:14:31  rtoy
 ;;; Add I1MACH routine.
 ;;;
