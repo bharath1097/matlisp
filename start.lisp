@@ -43,9 +43,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.6 2001/02/22 08:10:35 simsek Exp $
+;;; $Id: start.lisp,v 1.7 2001/02/26 19:57:13 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.7  2001/02/26 19:57:13  rtoy
+;;; o Make deflogicalpath handle CMUCL search lists.
+;;; o Use keywords for mk:oos :matlisp so we put drop random symbols in
+;;;   the CL-USER package. (Should we use strings?)
+;;;
 ;;; Revision 1.6  2001/02/22 08:10:35  simsek
 ;;; o Added support for CMUCL 18c and Allegro 6.0
 ;;;
@@ -95,22 +100,30 @@
     (flet ((load-pathname ()
 	     (merge-pathnames 
 	      (if *load-pathname* 
-		  (if (subtypep (type-of *load-pathname*) 'logical-pathname)
-		      (let ((pathname 
-			     (namestring
-			      (translate-logical-pathname *load-pathname*))))
-			(make-pathname 
-			 ;; Perhaps we don't need the conditional here,
-			 ;; that is, the :device arg is needed on Allegro/Win
-			 ;; but it may do no harm on Unix/Linux etc ...
-			 #+(and :allegro :mswindows) :device
-			 #+(and :allegro :mswindows) (pathname-device pathname)
-			 :directory (pathname-directory pathname)))
-		    (make-pathname
-		     #+(and :allegro :mswindows) :device
-		     #+(and :allegro :mswindows) (pathname-device *load-pathname*)		       
-		     :directory (pathname-directory *load-pathname*)))
-	      "") (default-dir))))
+		  (cond ((subtypep (type-of *load-pathname*) 'logical-pathname)
+			 (let ((pathname 
+				(namestring
+				 (translate-logical-pathname *load-pathname*))))
+			   (make-pathname 
+			    ;; Perhaps we don't need the conditional here,
+			    ;; that is, the :device arg is needed on Allegro/Win
+			    ;; but it may do no harm on Unix/Linux etc ...
+			    #+(and :allegro :mswindows) :device
+			    #+(and :allegro :mswindows) (pathname-device pathname)
+			    :directory (pathname-directory pathname))))
+			#+cmu
+			((ext:search-list-defined-p *load-pathname*)
+			 (ext:enumerate-search-list (path *load-pathname*)
+			   (let ((pathname (namestring path)))
+			     (return (make-pathname
+				      :directory (pathname-directory pathname))))))
+			(t
+			 (make-pathname
+			  #+(and :allegro :mswindows) :device
+			  #+(and :allegro :mswindows) (pathname-device *load-pathname*)		       
+			  :directory (pathname-directory *load-pathname*))))
+	      "")
+	      (default-dir))))
 
       #+:cmu
       (setf (logical-pathname-translations name)
@@ -157,8 +170,8 @@
 (load "matlisp:system.dcl")
 (load "matlisp:config.lisp")
 
-(mk::operate-on-system 'matlisp
-		       'load
+(mk::operate-on-system :matlisp
+		       :load
 		       :minimal-load t
 		       :verbose nil
 		       :compile-during-load 
