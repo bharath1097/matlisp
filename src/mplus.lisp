@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mplus.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: mplus.lisp,v 1.5 2002/07/29 01:06:59 rtoy Exp $
 ;;;
 ;;; $Log: mplus.lisp,v $
+;;; Revision 1.5  2002/07/29 01:06:59  rtoy
+;;; Don't use *1x1-real-array*.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -142,14 +145,15 @@
 (defmethod m+ ((a standard-matrix) (b standard-matrix))
   (axpy 1.0d0 a b))
 
-(defmethod m+ ((a real-matrix) (b double-float))
-  (let ((nxm (number-of-elements a))
-	(result (copy a)))
-    (declare (type fixnum nxm))
+(let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
+  (defmethod m+ ((a real-matrix) (b double-float))
+    (let ((nxm (number-of-elements a))
+	  (result (copy a)))
+      (declare (type fixnum nxm))
 
-    (setf (aref *1x1-real-array* 0) b)
-    (daxpy nxm 1.0d0 *1x1-real-array* 0 (store result) 1)
-    result))
+      (setf (aref b-array 0) b)
+      (daxpy nxm 1.0d0 b-array 0 (store result) 1)
+      result)))
 
 (defmethod m+ ((a real-matrix) (b real))
   (m+ a (coerce b 'real-matrix-element-type)))
@@ -183,14 +187,15 @@
   (m+ b (complex-coerce a)))
 
 ;;;
-(defmethod m+ ((a complex-matrix) (b double-float))
-  (let ((nxm (number-of-elements a))
-	(result (copy a)))
-    (declare (type fixnum nxm))
+(let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
+  (defmethod m+ ((a complex-matrix) (b double-float))
+    (let ((nxm (number-of-elements a))
+	  (result (copy a)))
+      (declare (type fixnum nxm))
 
-    (setf (aref *1x1-real-array* 0) b)
-    (daxpy nxm 1.0d0 *1x1-real-array* 0 (store result) 2)
-    result))
+      (setf (aref b-array 0) b)
+      (daxpy nxm 1.0d0 b-array 0 (store result) 2)
+      result)))
 
 (defmethod m+ ((a complex-matrix) (b real))
   (m+ a (coerce b 'complex-matrix-element-type)))
@@ -244,14 +249,14 @@
 don't know how to coerce COMPLEX to REAL."))
 
 ;;;
+(let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
+  (defmethod m+! ((a real-matrix) (b double-float))
+    (let ((nxm (number-of-elements a)))
+      (declare (type fixnum nxm))
 
-(defmethod m+! ((a real-matrix) (b double-float))
-  (let ((nxm (number-of-elements a)))
-    (declare (type fixnum nxm))
-
-    (setf (aref *1x1-real-array* 0) b)
-    (daxpy nxm 1.0d0 *1x1-real-array* 0 (store a) 1)
-    a))
+      (setf (aref b-array 0) b)
+      (daxpy nxm 1.0d0 b-array 0 (store a) 1)
+      a)))
 
 (defmethod m+! ((a real-matrix) (b real))
   (m+! a (coerce b 'real-matrix-element-type)))
@@ -270,13 +275,14 @@ don't know how to coerce COMPLEX to REAL"))
   (error "cannon M+! a REAL-MATRIX and a COMPLEX,
 don't know how to coerce COMPLEX to REAL"))
 
-(defmethod m+! ((a complex-matrix) (b double-float))
-  (let ((nxm (number-of-elements a)))
-    (declare (type fixnum nxm))
+(let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
+  (defmethod m+! ((a complex-matrix) (b double-float))
+    (let ((nxm (number-of-elements a)))
+      (declare (type fixnum nxm))
 
-    (setf (aref *1x1-real-array* 0) b)
-    (daxpy nxm 1.0d0 *1x1-real-array* 0 (store a) 2)
-    a))
+      (setf (aref b-array 0) b)
+      (daxpy nxm 1.0d0 b-array 0 (store a) 2)
+      a)))
 
 (defmethod m+! ((a complex-matrix) (b real))
   (m+! a (coerce b 'complex-matrix-element-type)))
@@ -300,7 +306,7 @@ don't know how to coerce COMPLEX to REAL"))
 
     (setf (aref *1x1-complex-array* 0) (realpart b))
     (setf (aref *1x1-complex-array* 1) (imagpart b))
-    (zaxpy nxm *complex-unity-as-array* *1x1-complex-array* 0 (store a) 1)
+    (zaxpy nxm #c(1d0 0) b 0 (store a) 1)
     a))
 
 #+:cmu
