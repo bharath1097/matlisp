@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.10 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: ref.lisp,v 1.11 2004/12/03 17:56:50 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.11  2004/12/03 17:56:50  rtoy
+;;; Oops. Several (setf matrix-ref-2d) methods were duplicated and wrong.
+;;; Fixes bug noted by Michael Koerber, matlisp-users 2004-12-01.
+;;;
 ;;; Revision 1.10  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -2216,12 +2220,6 @@
 
 (defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
   (set-complex-from-complex-matrix-slice-2d-seq new matrix i (list j)))
-
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
-  (set-complex-from-complex-matrix-slice-2d-seq new matrix i j))
-
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
-  (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix i) j))
 
 (defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
   (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix (list j))))
