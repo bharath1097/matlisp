@@ -26,9 +26,22 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fortran.lisp,v 1.10 2000/05/02 14:32:13 rtoy Exp $
+;;; $Id: fortran.lisp,v 1.11 2000/05/05 18:56:51 rtoy Exp $
 ;;;
 ;;; $Log: fortran.lisp,v $
+;;; Revision 1.11  2000/05/05 18:56:51  rtoy
+;;; o Try to add comments to routines and stuff.
+;;; o Some minor simplification of the code
+;;; o Clean up def-fortran-interface.  (Use only one form for the basic
+;;;   function.)  Remove one source of macro variable capture.  Still have
+;;;   one with hidden-complex-return-variable, though.
+;;; o Cleaned up the comments and doc-string for def-fortran-routine.
+;;; o incf-sap: don't need to special case n = 1 because CMUCL is smart
+;;;   enough to fold the multiplication.
+;;; o Add matlisp-specialized-array type.
+;;; o Use vector-sap if possible.
+;;; o Remove obsolete with-vector-data-addresses
+;;;
 ;;; Revision 1.10  2000/05/02 14:32:13  rtoy
 ;;; Convert CR/LF to standard Unix LF.
 ;;;
@@ -103,10 +116,8 @@
 
 (defun %cat% (prefix-string s &optional suffix-string)
   (concatenate 'string 
-	       prefix-string 
-	       (if (stringp s)
-		   s
-		 (symbol-name s)) 
+	       prefix-string
+	       (string s)
 	       suffix-string))
 
 (defun scat (prefix-string s &optional suffix-string)
@@ -121,6 +132,8 @@
   ;; case.
   (%cat% "" (string-downcase (symbol-name name)) "_"))
 
+;; If the Fortran function name is NAME, the Lisp FFI name prepends
+;; "FORTRAN-"
 (defun make-fortran-ffi-name (name)
   (scat "FORTRAN-" name))
 
@@ -131,23 +144,25 @@
 		(%cat% header "" footer)
 	      nil)
 	    body)))
-  
+
+;; If TYPE is some kind of array, return non-NIL to indicate that we
+;; need to cast this as an array type for the alien function
+;; interface.
 (defun cast-as-array-p (type)
   (or (listp type)
       (eq type :complex-single-float)
       (eq type :complex-double-float)))
 
+;; Convert the Fortran TYPE to the underlying alien type.
 (defun get-read-in-type (type)
   (flet ((convert (type)
-	   (case type
+	   ;; Fortran wants, essentially, the complex number to look
+	   ;; like a 2-element array consisting of the real and
+	   ;; imaginary parts.
+	   (ecase type
 	     (:integer 'c-call::int)
 	     ((:single-float :complex-single-float) 'c-call::single-float)
-	     ((:double-float :complex-double-float) 'c-call::double-float)
-	     ;; Fortran wants, essentially, the
-	     ;; complex number to look like a
-	     ;; 2-element array consisting of
-	     ;; the real and imaginary parts.
-	     (t (error "Unknown Fortran parameter type")))))
+	     ((:double-float :complex-double-float) 'c-call::double-float))))
     
     (if (cast-as-array-p type)
 	`(* ,(convert (if (listp type)
@@ -155,37 +170,39 @@
 			type)))
       (convert type))))
 
+;; Convert the Fortran return value to the corresponding alien type.
 (defun get-read-out-type (type)
-  (case type
+  (ecase type
     (:void 'void)
     (:integer 'c-call::int)
     (:single-float 'c-call::single-float)
-    (:double-float 'c-call::double-float)
-    (t (error "Unknown Fortran function return type"))))
-	
+    (:double-float 'c-call::double-float)))
+
+
+;; Convert the Fortran style parameter into the corresponding alien
+;; style parameter.
 (defun get-read-in-style (style type)
   (if (or (cast-as-array-p type)
 	  (eq type :string))
       :in
-    (case style
-      ((nil :input :workspace) :copy)
-      ((:output :input-output :input-or-output
-	:workspace-output :workspace-or-output) :in-out)
-      ((:out :in :copy :in-out) style)
-      (t (error "Unknown Fortran Style")))))
+      (ecase style
+	((nil :input :workspace) :copy)
+	((:output :input-output :input-or-output
+		  :workspace-output :workspace-or-output) :in-out)
+	((:out :in :copy :in-out) style))))
 
-(defun get-read-out-style (style &optional type)
-  (declare (ignore type))
-  (case style
-    ((:in-out :out :output :input-output :input-or-output
-      :workspace-output :workspace-or-output) t)
-    (t nil)))
+;; Return non-NIL if STYLE is designates some type of output variable.
+(defun get-read-out-style (style)
+  (member style '(:in-out :out :output :input-output :input-or-output
+		  :workspace-output :workspace-or-output)))
 
+;; Parse the parameter list of the Fortran routine and return a new
+;; list appropriate for use in defining the alien function.
 (defun parse-fortran-parameters (body)
 
   (multiple-value-bind (doc pars)
       (parse-doc-&-parameters body)
-      (declare (ignore doc))
+    (declare (ignore doc))
 
     (let* ((aux-pars nil)
 	   (new-pars
@@ -203,275 +220,348 @@
 	;; ,@doc 
 	,@new-pars ,@aux-pars))))
 
+;; Create a form specifying a simple Lisp function that calls the
+;; underlying Fortran routine of the same name.
 (defun def-fortran-interface (name
 			      return-type 
 			      body)
   (multiple-value-bind (doc pars)
       (parse-doc-&-parameters body)
 
-    (let* ((args (remove 'hidden-complex-return-variable (mapcar #'first pars)))
-	   (crvdcl (if (find 'hidden-complex-return-variable (mapcar #'first pars))
-		       t
-		     nil))
+    ;; Hmm, this passes over pars many, many times.  Should we
+    ;; rearrange it so that we pass over pars just once and collect
+    ;; the various pieces at the same time?
+    (let* (
+	   (return-value `(,(gensym "RETURN-VAL-")))
+	   ;; Names of all the args
+	   (args (remove 'hidden-complex-return-variable (mapcar #'first pars)))
+	   ;; A list of pairs suitable for use with
+	   ;; with-vector-data-addresses
 	   (saps (mapcar #'(lambda (p)
-			    `(,(scat "ADDR-" (first p)) ,(first p)))
-		       (remove-if-not #'(lambda (p)
-					  (cast-as-array-p (second p)))
-				      pars)))
+			     `(,(scat "ADDR-" (first p)) ,(first p)))
+			 (remove-if-not #'(lambda (p)
+					    (cast-as-array-p (second p)))
+					pars)))
+	   ;; The actual name of the underlying Fortran routine
 	   (ffi-fn (make-fortran-ffi-name name))
+	   ;; The FFI return variables
 	   (ffi-rvs (mapcar #'(lambda (p)
-			    (scat "NEW-" (first p)))
-			(remove-if-not #'(lambda (p)
-					   (and (not (cast-as-array-p (second p)))
-						(not (eq (second p) :string))
-						(get-read-out-style (third p))))
-				       pars)))
+				(scat "NEW-" (first p)))
+			    (remove-if-not #'(lambda (p)
+					       (and (not (cast-as-array-p (second p)))
+						    (not (eq (second p) :string))
+						    (get-read-out-style (third p))))
+					   pars)))
+	   ;; The FFI arguments
 	   (ffi-args (mapcar #'(lambda (p)
-			      (if (cast-as-array-p (second p))
-				  (scat "ADDR-" (first p))
-				(first p)))
-			  pars))
+				 (if (cast-as-array-p (second p))
+				     (scat "ADDR-" (first p))
+				     (first p)))
+			     pars))
+	   ;; Extra arguments for string handling (the length
+	   ;; of the string), if needed.
 	   (aux-ffi-args (mapcar #'(lambda (p)
 				     `(length (the string ,(first p))))
 				 (remove-if-not #'(lambda (p)
 						    (eq (second p) :string))
 						pars)))
+	   ;; The return variable(s)
 	   (rvs (mapcar #'(lambda (p)
 			    (if (or (cast-as-array-p (second p))
 				    (eq (second p) :string))
 				(first p)
-			      (scat "NEW-" (first p))))
+				(scat "NEW-" (first p))))
 			(remove-if-not #'(lambda (p)
 					   (get-read-out-style (third p)))
-				       pars))))
+				       pars)))
+	   ;; The definition of the Lisp interface function we want.
+	   (defun-body
+	       `(
+		 ;; Too hard to debug if inlined.
+		 ;;(declaim (inline ,name))
+		 (with-vector-data-addresses (,@saps)
+		   (multiple-value-bind (,@return-value
+					 ,@ffi-rvs)
+		       (,ffi-fn ,@ffi-args ,@aux-ffi-args)
+		   
+		     (declare (ignore ,@(and (eq return-type :void) return-value)))
+		     (values ,@(and (not (eq return-type :void))  return-value)
+			     ,@(mapcar #'(lambda (s)
+					   (if (eq s 'hidden-complex-return-variable)
+					       'hidden-complex-return-variable
+					       s)) rvs)))))))
 				      
-      
-      (if crvdcl
-	  
+
+      (if (find 'hidden-complex-return-variable (mapcar #'first pars))
 	  `(
 	    ;; Too hard to debug if inlined.
 	    ;;(declaim (inline ,name))
 	    (defun ,name ,args
 	      ,@doc
-	      (let ((hidden-complex-return-variable (make-array 2 :element-type 'double-float)))
-		(with-vector-data-addresses (,@saps)
-		      (multiple-value-bind (return-value
-					    ,@ffi-rvs)
-			  (,ffi-fn ,@ffi-args ,@aux-ffi-args)
-			
-			(declare (ignore ,@(and (eq return-type :void) '(return-value))))
-			(values ,@(and (not (eq return-type :void))  '(return-value))
-				,@(mapcar #'(lambda (s)
-					      (if (eq s 'hidden-complex-return-variable)
-						  `(complex (aref hidden-complex-return-variable 0)
-							    (aref hidden-complex-return-variable 1))
-						s)) rvs)))))))
-	`(
-	  ;; Too hard to debug if inlined.
-	  ;;(declaim (inline ,name))
-	  (defun ,name ,args
-	    ,@doc
-	    (with-vector-data-addresses (,@saps)
-	         (multiple-value-bind (return-value
-				       ,@ffi-rvs)
-		     (,ffi-fn ,@ffi-args ,@aux-ffi-args)
-		   
-		   (declare (ignore ,@(and (eq return-type :void) '(return-value))))
-		   (values ,@(and (not (eq return-type :void))  '(return-value))
-			   ,@(mapcar #'(lambda (s)
-					 (if (eq s 'hidden-complex-return-variable)
-					     `(complex (aref hidden-complex-return-variable 0)
-						       (aref hidden-complex-return-variable 1))
-					   s)) rvs))))))
-	
-	
-      ))))
+	      (let ((hidden-complex-return-variable #c(0d0 0d0)))
+		(declare (type (complex double-float) hidden-complex-return-variable))
+		,@defun-body)))
+	  `(
+	    ;; Too hard to debug if inlined.
+	    ;;(declaim (inline ,name))
+	    (defun ,name ,args
+	      ,@doc
+	      ,@defun-body))))))
 
 
+;;
+;; DEF-FORTRAN-ROUTINE
+;;
+;; A macro similar to DEF-ALIEN-ROUTINE but specialized to the Fortran
+;; BLAS/LAPACK libraries.
+;;
+;; An external Fortran routine definition form (DEF-FORTRAN-ROUTINE
+;; MY-FUN ...) creates two functions:
+;;
+;;   1. a raw FFI (foreign function interface),
+;;   2. an easier to use lisp interface to the raw interface.
+;;
+;; The documentation  given here relates in the most part to the
+;; simplified lisp interface.
+;;
+;; Example:
+;; ========
+;; libblas.a contains the fortran subroutine DCOPY(N,X,INCX,Y,INCY)
+;; which copies the vector Y of N double-float's to the vector X.
+;; The function name in libblas.a is \"dcopy_\" (by Fortran convention).
+;;
+;; (DEF-FORTRAN-ROUTINE DCOPY :void 
+;;   (N :integer :input)
+;;   (X (* :double-float) :output)
+;;   (INCX :integer :input)
+;;   (Y (* :double-float) :input)
+;;   (INCY :integer :input))
+;;
+;; will expand into:
+;;
+;; (DEF-ALIEN-ROUTINE ("dcopy_" FORTRAN-DCOPY) void
+;;    (N :int :copy)
+;;    (X (* double-float))
+;;    ...
+;;
+;; and
+;; 
+;; (DEFUN DCOPY (N,X,INCX,Y,INCY)
+;;    ...
+;;
+;; In turn, the lisp function DCOPY calls FORTRAN-DCOPY which calls
+;; the Fortran function "dcopy_" in libblas.a.
+;;
+;; There is a nasty hack for complex return values.  This is how
+;; Solaris f77 handles functions that return complex numbers.  In
+;; essence, an extra parameter is inserted before all others and this
+;; extra parameter is used to store the complex result.
+;;
+;; Here is an example
+;;
+;; (DEF-FORTRAN-ROUTINE ZDOTC :complex-double-float
+;;   (N :integer :input)
+;;   (X (* :complex-double-float) :input)
+;;   (INCX :integer :input)
+;;   (Y (* :complex-double-float) :input)
+;;   (INCY :integer :input))
+;;
+;;  will expand into:
+;;
+;; (DEF-ALIEN-ROUTINE ("zdotc_" FORTRAN-ZDOTC) void
+;;    (hidden-complex-return-variable (* double-float) :in)
+;;    (n :int :copy)
+;;    (zx (* double-float) :in)
+;;    (incx :int :copy)
+;;    (zy (* double-float) :in)
+;;    (incy :int :copy))
+;;
+;;  and:
+;;
+;;  (DEFUN ZDOTC (N ZX INCX ZY INCY)
+;;    (let ((hidden-complex-return-variable
+;;           (make-array 2 :element-type 'double-float)))
+;;      (with-vector-data-addresses
+;;       ((addr-hidden-complex-return-variable hidden-complex-return-variable)
+;;        (addr-zx zx) 
+;;        (addr-zy zy))
+;;       (multiple-value-bind
+;;           (return-value)
+;;           (fortran-zdotc addr-hidden-complex-return-variable n addr-zx incx
+;;            addr-zy incy)
+;;         (declare (ignore return-value))
+;;         (values (complex (aref hidden-complex-return-variable 0)
+;;                          (aref hidden-complex-return-variable 1)))))))))
+;;
+;;
+;; Arguments:
+;; ==========
+;;
+;;
+;; NAME    Name of the lisp interface function that will be created.
+;;         The name of the raw FFI will be derived from NAME via
+;;         the function MAKE-FFI-NAME.  The name of foreign function
+;;         (presumable a Fortran Function in an external library) 
+;;         will be derived from NAME via MAKE-FORTRAN-NAME.
+;;
+;;         See MAKE-FFI-NAME, MAKE-FORTRAN-NAME.
+;;
+;; RETURN-TYPE
+;;         The type of data that will be returned by the external
+;;         (presumably Fortran) function.
+;;       
+;;             (MEMBER RETURN-TYPE '(:VOID :INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
+;;                                   :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT))
+;;
+;;
+;;         See GET-READ-OUT-TYPE.
+;;
+;; BODY    A list of parameter forms.  A parameter form is:
+;;
+;;                  (VARIABLE TYPE &optional (STYLE :INPUT))
+;;
+;;         The VARIABLE is the name of a parameter accepted by the
+;;         external (presumably Fortran) routine.  TYPE is the type of
+;;         VARIABLE.  The recognized TYPE's are:
+;;
+;;                TYPE                    Corresponds to Fortran Declaration
+;;                ----                    ----------------------------------
+;;                :STRING                  CHARACTER*(*)
+;;                :INTEGER                 INTEGER
+;;                :SINGLE-FLOAT            REAL
+;;                :DOUBLE-FLOAT            DOUBLE PRECISION
+;;                :COMPLEX-SINGLE-FLOAT    COMPLEX
+;;                :COMPLEX-DOUBLE-FLOAT    COMPLEX*16
+;;                 (* X)                   An array of type X.
+;;
+;;               (MEMBER X '(:INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
+;;                           :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT)
+;;
+;;
+;;         The STYLE (default :INPUT) defines how VARIABLE is treated.
+;;         This is by far the most difficult quantity to learn.  To
+;;         begin with:
+;;
+;;
+;;                (OR (MEMBER STYLE '(:INPUT :OUTPUT :INPUT-OUTPUT))
+;;                    (MEMBER STYLE '(:IN :COPY :IN-OUT :OUT)))
+;;
+;;            TYPE        STYLE             Description
+;;            ----        -----             -----------
+;;              X          :INPUT            Value will be used but not modified.
+;;                                           Similar to the :COPY style of DEF-ALIEN-ROUTINE.
+;;                         :OUTPUT           Input value not used (but some value must be given),
+;;                                           a value is returned via the Lisp
+;;                                           command VALUES from the lisp function NAME.
+;;                                           Similar to the :IN-OUT style of DEF-ALIEN-ROUTINE.
+;;                         :INPUT-OUTPUT     Input value may be used, a  value
+;;                                           is returned via the lisp command VALUES from the
+;;                                           lisp function NAME.
+;;                                           Similar to the :IN-OUT style of DEF-ALIEN-ROUTINE.
+;;
+;;           ** Note:  In all 3 cases above the input VARIABLE will not be destroyed
+;;                     or modified directly, a copy is taken and a pointer of that
+;;                     copy is passed to the (presumably Fortran) external routine.
+;;
+;;
+;;           (OR (* X)     :INPUT           Array entries are used but not modified.
+;;               :STRING)  :OUTPUT          Array entries need not be initialized on input,
+;;                                          but will be *modified*.  In addition, the array
+;;                                          will be returned via the Lisp command VALUES
+;;                                          from the lisp function NAME.
+;;
+;;                         :INPUT-OUTPUT    Like :OUTPUT but initial values on entry may be used.
+;;              
+;;         The keyword :WORKSPACE is a nickname for :INPUT.  The
+;;         keywords :INPUT-OR-OUTPUT, :WORKSPACE-OUTPUT,
+;;         :WORKSPACE-OR-OUTPUT are nicknames for :OUTPUT.
+;;
+;;         This is complicated.  Suggestions are encouraged to
+;;         interface a *functional language* to a *pass-by-reference
+;;         language*.
+;;
+;; Further Notes:
+;; ===============
+;;
+;; Fortran calling sequence says everything is pass-by-reference.
+;; Essentially, every parameter is actually a pointer to the
+;; parameter.  In CMUCL, we take this to mean :in-out or :copy
+;; parameter type, but we could have actually used a pointer.  I'm not
+;; sure what is the right way to do this.
+;;
+;; Some Fortran routines use Fortran character strings in the
+;; parameter list.  The definition here is suitable for Solaris
+;; where the Fortran character string is converted to a C-style null
+;; terminated string, AND an extra hidden parameter that is appended
+;; to the parameter list to hold the length of the string.
+;;
+;; If your Fortran does this differently, you'll have to change this
+;; definition accordingly!
+;;
+;;
 (defmacro def-fortran-routine (name return-type &rest body)
+  "def-fortran-routine name return-type {(arg-name arg-type {style})}*
+
+This macro performs two related actions.  First, it defines an alien
+interface to the Fortran routine.  Then it also defines a Lisp
+function with the same name that calls the Fortran function
+appropriately.
+
+The name of the Fortran routine is NAME, which is a symbol.  This is
+also the name of Lisp function corresponding to the Fortran function.
+
+The remaining forms specify the individual arguments that are passed
+to the routine. ARG-NAME is a symbol that names the argument,
+primarily for documentation.  ARG-TYPE is the Fortran type of the
+argument (see below). STYLE specifies whether the argument is an input
+or an output of the routine (see below).  The default for STYLE is
+:INPUT.
+
+RETURN-TYPE
+  :VOID                    A Fortran subroutine (no values returned)
+  :INTEGER                 Returns an INTEGER*4 value
+  :SINGLE-FLOAT            Returns a REAL*4 value
+  :DOUBLE-FLOAT            Returns a REAL*8 value
+  :COMPLEX-SINGLE-FLOAT    Returns a COMPLEX*8 value
+  :COMPLEX-DOUBLE-FLOAT    Returns a COMPLEX*16 value
+
+ARG-TYPE
+  :INTEGER                 INTEGER*4
+  :SINGLE-FLOAT            REAL*4
+  :DOUBLE-FLOAT            DOUBLE PRECISION (REAL*8)
+  :COMPLEX-SINGLE-FLOAT    COMPLEX*8
+  :COMPLEX-DOUBLE-FLOAT    COMPLEX*16 
+  (* X)                    An array of type X, where X is one of the above
+                           types.
+  :STRING                  CHARACTER*(*)
+
+STYLE
+  When ARG-TYPE is a simple scalar (including complex) STYLE means:
+    :INPUT            Value will be used but not modified.
+		      Similar to the :COPY style of DEF-ALIEN-ROUTINE.
+    :OUTPUT           Input value not used (but some value must be given),
+		      a value is returned via the Lisp command VALUES from
+		      the lisp function NAME. Similar to the :IN-OUT style of
+		      DEF-ALIEN-ROUTINE.
+    :INPUT-OUTPUT     Input value may be used, a value
+		      is returned via the lisp command VALUES from the
+		      lisp function NAME.
+		      Similar to the :IN-OUT style of DEF-ALIEN-ROUTINE.
+
+  When ARG-TYPE is an array or string STYLE means:
+    :INPUT            Array entries are used but not modified.
+    :OUTPUT           Array entries need not be initialized on input,
+		      but will be *modified*.  In addition, the array
+		      will be returned via the Lisp command VALUES
+		      from the lisp function NAME.
+
+    :INPUT-OUTPUT     Like :OUTPUT but initial values on entry may be used.
+
+The keyword :WORKSPACE is a nickname for :INPUT.  The keywords
+:INPUT-OR-OUTPUT,:WORKSPACE-OUTPUT, :WORKSPACE-OR-OUTPUT are nicknames
+for :OUTPUT.
+
 "
- -- DEF-FORTRAN-ROUTINE --
-
- Purpose
- =======
-
- A macro similar to DEF-ALIEN-ROUTINE but specialized to
- the Fortran BLAS/LAPACK libraries.
-
- An external Fortran routine definition form (DEF-FORTRAN-ROUTINE MY-FUN ...)
- creates two functions:
-
-   1. a raw FFI (foreign function interface),
-   2. an easier to use lisp interface to the raw interface.
-
- The documentation  given here relates in the most part to the
- simplified lisp interface.
-
- Example:
- ========
- libblas.a contains the fortran subroutine DCOPY(N,X,INCX,Y,INCY)
- which copies the vector Y of N double-float's to the vector X.
- The function name in libblas.a is \"dcopy_\" (by Fortran convention).
-
- (DEF-FORTRAN-ROUTINE DCOPY :void 
-   (N :integer :input)
-   (X (* :double-float) :output)
-   (INCX :integer :input)
-   (Y (* :double-float) :input)
-   (INCY :integer :input))
-
- will expand into:
-
- (DEF-ALIEN-ROUTINE (\"dcopy_\" FORTRAN-DCOPY) void
-    (N :int :copy)
-    (X (* double-float))
-    ...
-
- and
- 
- (DEFUN DCOPY (N,X,INCX,Y,INCY)
-    ...
-
- In turn, the lisp function DCOPY calls FORTRAN-DCOPY which calls
- the Fortran function \"dcopy_\" in libblas.a.
-
- There is a nasty hack for complex return values.  Here is an example
-
- (DEF-FORTRAN-ROUTINE ZDOTC :complex-double-float
-   (N :integer :input)
-   (X (* :complex-double-float) :input)
-   (INCX :integer :input)
-   (Y (* :complex-double-float) :input)
-   (INCY :integer :input))
-
-  will expand into:
-
- (DEF-ALIEN-ROUTINE (\"zdotc_\" FORTRAN-ZDOTC) void
-    (hidden-complex-return-variable (* double-float) :in)
-    (n :int :copy)
-    (zx (* double-float) :in)
-    (incx :int :copy)
-    (zy (* double-float) :in)
-    (incy :int :copy))
-
-  and:
-
-  (DEFUN ZDOTC (N ZX INCX ZY INCY)
-    (let ((hidden-complex-return-variable
-           (make-array 2 :element-type 'double-float)))
-      (with-vector-data-addresses
-       ((addr-hidden-complex-return-variable hidden-complex-return-variable)
-        (addr-zx zx) 
-        (addr-zy zy))
-       (multiple-value-bind
-           (return-value)
-           (fortran-zdotc addr-hidden-complex-return-variable n addr-zx incx
-            addr-zy incy)
-         (declare (ignore return-value))
-         (values (complex (aref hidden-complex-return-variable 0)
-                          (aref hidden-complex-return-variable 1)))))))))
-
- Arguments:
- ==========
-
-
- NAME        Name of the lisp interface function that will be created.
-             The name of the raw FFI will be derived from NAME via
-             the function MAKE-FFI-NAME.  The name of foreign function
-             (presumable a Fortran Function in an external library) 
-             will be derived from NAME via MAKE-FORTRAN-NAME.
-
-             See MAKE-FFI-NAME, MAKE-FORTRAN-NAME.
-
- RETURN-TYPE The type of data that will be returned by the external
-             (presumably Fortran) function.  
-       
-                 (MEMBER RETURN-TYPE '(:VOID :INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
-                                       :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT))
-
-
-             See GET-READ-OUT-TYPE.
-
- BODY        A list of parameter forms.  A parameter form is:
-
-                      (VARIABLE TYPE &optional (STYLE :INPUT))
-
-             The VARIABLE is the name of a parameter accepted by 
-             the external (presumably Fortran) routine.  TYPE is
-             the type of VARIABLE.  The recognized TYPE's are:
-
-                    TYPE                    Corresponds to Fortran Declaration
-                    ----                    ----------------------------------
-                    :STRING                  CHARACTER*(*)
-                    :INTEGER                 INTEGER
-                    :SINGLE-FLOAT            REAL
-                    :DOUBLE-FLOAT            DOUBLE PRECISION
-                    :COMPLEX-SINGLE-FLOAT    COMPLEX
-                    :COMPLEX-DOUBLE-FLOAT    COMPLEX*16
-                     (* X)                   An array of type X.
-
-                   (MEMBER X '(:INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
-                               :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT)
-
-
-            The STYLE (default :INPUT) defines how VARIABLE is treated.  This is
-            by far the most difficult quantity to learn.  To begin with:
-
-
-                   (OR (MEMBER STYLE '(:INPUT :OUTPUT :INPUT-OUTPUT))
-                       (MEMBER STYLE '(:IN :COPY :IN-OUT :OUT)))
-
-               TYPE               STYLE             Description
-               ----               -----             -----------
-                 X                 :INPUT            Value will be used but not modified.
-                                                     Similar to the :COPY style of DEF-ALIEN-ROUTINE.
-                                   :OUTPUT           Input value not used (but some value must be given),
-                                                     a value is returned via the Lisp
-                                                     command VALUES from the lisp function NAME.
-                                                     Similar to the :IN-OUT style of DEF-ALIEN-ROUTINE.
-                                   :INPUT-OUTPUT     Input value may be used, a  value
-                                                     is returned via the lisp command VALUES from the
-                                                     lisp function NAME.
-                                                     Similar to the :IN-OUT style of DEF-ALIEN-ROUTINE.
-
-              ** Note:  In all 3 cases above the input VARIABLE will not be destroyed
-                        or modified directly, a copy is taken and a pointer of that
-                        copy is passed to the (presumably Fortran) external routine.
-
-
-              (OR (* X)             :INPUT           Array entries are used but not modified.
-                  :STRING)          :OUTPUT          Array entries need not be initialized on input,
-                                                     but will be *modified*.  In addition, the array
-                                                     will be returned via the Lisp command VALUES
-                                                     from the lisp function NAME.
-
-                                    :INPUT-OUTPUT    Like :OUTPUT but initial values on entry may be used.
-              
-          The keyword :WORKSPACE is a nickname for :INPUT.  The keywords :INPUT-OR-OUTPUT, 
-          :WORKSPACE-OUTPUT, :WORKSPACE-OR-OUTPUT are nicknames for :OUTPUT.
-
-          This is complicated.  Suggestions are encouraged to interface a *functional language*
-          to a *pass-by-reference language*.
-
- Further Notes:
- ===============
-
- Fortran calling sequence says everything is
- pass-by-reference. Essentially, every parameter is actually a
- pointer to the parameter.  In CMUCL, we take this to mean :in-out or :copy
- parameter type, but we could have actually used a pointer.  I'm
- not sure what is the right way to do this.
-
- Some Fortran routines use Fortran character strings in the
- parameter list.  The definition here is suitable for Solaris
- where the Fortran character string is converted to a C-style null
- terminated string, AND an extra hidden parameter that is appended
- to the parameter list to hold the length of the string.
-
- If your Fortran does this differently, you'll have to change this
- definition accordingly!
-"
-
   (let ((fortran-name (make-fortran-name `,name))
 	(lisp-name  (make-fortran-ffi-name `,name))
 	(hack-return-type `,return-type)
@@ -480,36 +570,71 @@
     (multiple-value-bind (doc pars)
 	(parse-doc-&-parameters `(,@body))
 
-      (if (or (eq hack-return-type :complex-single-float)
-	      (eq hack-return-type :complex-double-float))
-	  ;; 
-	  (progn
-	    (setq hack-body `(,@doc
-			     (hidden-complex-return-variable ,hack-return-type :out)
-			     ,@pars))
-	    (setq hack-return-type :void))))
+      (when (or (eq hack-return-type :complex-single-float)
+		(eq hack-return-type :complex-double-float))
+	;; The return type is complex.  Since this is a "structure",
+	;; Fortran inserts a "hidden" first parameter before all
+	;; others.  This is used to store the resulting complex
+	;; number.  Then there is no "return" value, so set the return
+	;; type to :void.
+	;;
+	;; Warning: There is inadvertent variable capture here.  The
+	;; user better not call this routine with a variable namded
+	;; HIDDEN-COMPLEX-RETURN-VARIABLE!  We should probably gensym
+	;; this.
+	(setq hack-body `(,@doc
+			  (hidden-complex-return-variable ,hack-return-type :out)
+			  ,@pars))
+	(setq hack-return-type :void)))
 			  
     `(eval-when (load eval compile)
        (progn
        
-       ;;(declaim (inline ,lisp-name))
-       (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
-	 ,@(parse-fortran-parameters hack-body))
-       ,@(def-fortran-interface name hack-return-type hack-body)))))
+	 (declaim (inline ,lisp-name))
+	 (def-alien-routine (,fortran-name ,lisp-name) ,(get-read-out-type hack-return-type)
+	   ,@(parse-fortran-parameters hack-body))
+	 ,@(def-fortran-interface name hack-return-type hack-body)))))
 
-
+;; Increment an SAP by N, assuming SAP has type TYPE.  Thus, if TYPE
+;; is double-float, and N is 2, we really want to increment the sap by
+;; 16 since a double-float has length 8.
 (defmacro incf-sap (type sap &optional (n 1 n-p))
-  (if n-p
-      (case type
-       (:double-float `(setf ,sap (system:sap+ ,sap (* ,n 8))))
-       (:single-float `(setf ,sap (system:sap+ ,sap (* ,n 8))))
-       (:complex-double-float  `(setf ,sap (system:sap+ ,sap (* ,n 16))))
-       (:complex-single-float  `(setf ,sap (system:sap+ ,sap (* ,n 8)))))      
-    (case type
-      (:double-float `(setf ,sap (system:sap+ ,sap 8)))
-      (:single-float `(setf ,sap (system:sap+ ,sap 8)))
-      (:complex-double-float  `(setf ,sap (system:sap+ ,sap 16)))
-      (:complex-single-float  `(setf ,sap (system:sap+ ,sap 8))))))
+  (ecase type
+    (:double-float `(setf ,sap (system:sap+ ,sap (* ,n 8))))
+    (:single-float `(setf ,sap (system:sap+ ,sap (* ,n 8))))
+    (:complex-double-float  `(setf ,sap (system:sap+ ,sap (* ,n 16))))
+    (:complex-single-float  `(setf ,sap (system:sap+ ,sap (* ,n 8))))))
+
+;; These are the specialized arrays that matlisp understands how to
+;; deal with. (complex double-float) and (complex single-float) aren't
+;; really arrays, but CMUCL basically stores the real and imaginary
+;; parts in consecutive memory locations, just like (simple-array
+;; double-float (*)), so we can handle them too.
+;;
+;; Although CMUCL may support other specialized vectors, it's not
+;; likely that any foreign function would actually understand the
+;; data.  In particular, there are unsigned-bytes of length 4, 2, and
+;; 1, which are packed all into words.  There is also fixnum
+;; (signed-byte 30), but foreign functions probably wouldn't know the
+;; format of fixnums.
+;;
+;; We also don't currently support arrays with elements that are 8 or
+;; 16 bits long.  (But we could.  Just need more code.  Might be
+;; useful to support Fortran INTEGER*1 and INTEGER*2 types.)
+
+(deftype matlisp-specialized-array ()
+  `(or (complex double-float)
+       (complex single-float)
+       (simple-array (complex double-float) *)
+       (simple-array (complex single-float) *)
+       (simple-array double-float *)
+       (simple-array single-float *)
+       (simple-array (signed-byte 32) *)
+       (simple-array (signed-byte 16) *)
+       (simple-array (signed-byte  8) *)
+       (simple-array (unsigned-byte 32) *)
+       (simple-array (unsigned-byte 16) *)
+       (simple-array (unsigned-byte  8) *)))
 
 (declaim (inline vector-data-address))
 (defun vector-data-address (vec)
@@ -540,53 +665,11 @@ Returns
     ;; and then foreign function could be scribbling over who knows
     ;; where!
     ;;
-    ;; Although CMUCL may support other specialized vectors, it's not
-    ;; likely that any foreign function would actually understand the
-    ;; data.  In particular, there are unsigned-bytes of length 4, 2,
-    ;; and 1, which are packed all into words.  There is also fixnum
-    ;; (signed-byte 30), but foreign functions probably wouldn't know
-    ;; the format of fixnums.
-    (check-type vec (or (complex double-float)
-			(complex single-float)
-			(simple-array (complex double-float) *)
-			(simple-array (complex single-float) *)
-			(simple-array double-float *)
-			(simple-array single-float *)
-			(simple-array (signed-byte 32) *)
-			(simple-array (signed-byte 16) *)
-			(simple-array (signed-byte  8) *)
-			(simple-array (unsigned-byte 32) *)
-			(simple-array (unsigned-byte 16) *)
-			(simple-array (unsigned-byte  8) *))))
+    (check-type vec matlisp-specialized-array))
   (locally
-      (declare (type (or (complex double-float)
-			 (complex single-float)
-			 (simple-array (complex double-float) *)
-			 (simple-array (complex single-float) *)
-			 (simple-array double-float *)
-			 (simple-array single-float *)
-			 (simple-array (signed-byte 32) *)
-			 (simple-array (signed-byte 16) *)
-			 (simple-array (signed-byte  8) *)
-			 (simple-array (unsigned-byte 32) *)
-			 (simple-array (unsigned-byte 16) *)
-			 (simple-array (unsigned-byte  8) *))
-		     vec)
+      (declare (type matlisp-specialized-array vec)
 	       (optimize (speed 3) (safety 0) (space 0)))
 
-    ;; We have the right type, get the address
-    (let ((base-address  (the (unsigned-byte 32) 
-			  (logandc1 7 (kernel:get-lisp-obj-address vec))))) 
-      (declare (type (unsigned-byte 32) base-address))
-      ;; For simple vectors, memory is laid out like this:
-      ;;
-      ;;   byte offset    Value
-      ;;        0         type code (should be 70 for double-float vector)
-      ;;        4         4 * number of elements in vector
-      ;;        8         1st element of vector
-      ;;       12         2nd element of vector
-      ;;      ...         ...
-      ;;
       ;; For complex double-floats, memory is laid out like
       ;;   
       ;;   byte offset    Value
@@ -620,24 +703,25 @@ Returns
       ;; the data vector object.  This should be a pointer to some
       ;; type of specialized simple-array.  Thus, the first case above
       ;; can be used to get the actual data.
-
-
-      (system:int-sap
-       (the (unsigned-byte 32)
-	 (cond ((typep vec '(complex double-float))
+      (if (typep vec '(simple-array * (*)))
+	  (system:vector-sap vec)
+	  (let ((base-address
+		 (the (unsigned-byte 32) 
+		   (logandc1 7 (kernel:get-lisp-obj-address vec))))) 
+	    (declare (type (unsigned-byte 32) base-address))
+	    (system:int-sap
+	     (etypecase vec
+	       ((complex double-float)
 		(the (unsigned-byte 32) (+ 8 base-address)))
-	       ((typep vec '(complex single-float))
+	       ((complex single-float)
 		(the (unsigned-byte 32) (+ 4 base-address)))
-	       ((typep vec '(simple-array * (*)))
-		;; A 1-D simple-array
-		(the (unsigned-byte 32) (+ 8 base-address)))
-	       ((typep vec '(simple-array * *))
+	       ((simple-array * *)
 		;; A multidimensional simple-array
-		(let ((data-vector (logandc1 7 (sys:sap-ref-32 (sys:int-sap (+ base-address 16)) 0))))
-		  (the (unsigned-byte 32) (+ data-vector 8))))
-	       
-	        #| (t
-		(error "Unhandled data type!")) |# ))))))
+		(let ((data-vector
+		       (logandc1 7 (sys:sap-ref-32
+				    (sys:int-sap (+ base-address 16))
+				    0))))
+		  (the (unsigned-byte 32) (+ data-vector 8))))))))))
 
 ;;; Hmm, according to the Solaris f77 manpage, Fortran assumes certain
 ;;; floating point modes.  It says arithmetic is non-stop and
@@ -656,13 +740,22 @@ Returns
 
 
 (defmacro with-vector-data-addresses (vlist &body body)
+  "WITH-VECTOR-DATA-ADDRESSES (var-list &body body)
+
+ Execute the body with the variables in VAR-LIST appropriately bound.
+ VAR-LIST should be a list of pairs.  The first element is the address
+ of the desired object; the second element is the variable whose address
+ we want.
+
+ Garbage collection is also disabled while executing the body."
   ;; We wrap everything inside a WITHOUT-GCING form to inhibit garbage
-  ;; collection to avoid complications that may arise during a 
+  ;; collection to avoid complications that may arise during a
   ;; collection while in a fortran call.
-  ;; This might not really be necessary, but it's not clear if the alien object
-  ;; will have the right value if GC occurs after getting the alien
-  ;; object but before the alien function is called.  Let's be safe
-  ;; rather than sorry.
+  ;;
+  ;; This might not really be necessary, but it's not clear if the
+  ;; alien object will have the right value if GC occurs after getting
+  ;; the alien object but before the alien function is called.  Let's
+  ;; be safe rather than sorry.
   `(with-fortran-float-modes
     (system::without-gcing
 	   (let (,@(mapcar #'(lambda (pair)
@@ -676,28 +769,6 @@ Returns
 		      `(,sym (gensym ,(symbol-name sym))))
 		  symlist)
     ,@body))
-
-#| Obsolete code as of Revision 1.7. simsek
-
-(defmacro with-vector-data-addresses (vlist &body body)
-  ;; We wrap everything inside an unwind-protect so that we can turn
-  ;; off GC and turn it back on after the body has run.  This might
-  ;; not really be necessary, but it's not clear if the alien object
-  ;; will have the right value if GC occurs after getting the alien
-  ;; object but before the alien function is called.  Let's be safe
-  ;; rather than sorry.
-  `(with-fortran-float-modes
-    (unwind-protect
-	 (progn
-	   (ext:gc-off)
-	   (let (,@(mapcar #'(lambda (pair)
-			       `(,(first pair)
-				 (vector-data-address ,(second pair))))
-			   vlist))
-	     ,@body))
-      (ext:gc-on))))
-
-|#
 
 #| Obsolete code as of Revision 1.6. simsek
 
