@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.13 2002/01/08 00:32:52 rtoy Exp $
+;;; $Id: packages.lisp,v 1.14 2002/01/20 00:41:52 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.14  2002/01/20 00:41:52  simsek
+;;; o exporting some forgotton symbols from LAPACK
+;;;
 ;;; Revision 1.13  2002/01/08 00:32:52  rtoy
 ;;; Add defpackage for the new MINPACK package.
 ;;;
@@ -113,7 +116,9 @@
 #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
   (:export
    "DGESV" "DGEEV" "DGETRF" "DGESVD"
-   "ZGESV" "ZGEEV" "ZGETRF" "ZGESVD" ))
+   "ZGESV" "ZGEEV" "ZGETRF" "ZGESVD" 
+   "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
+   "DORGQR" "ZUNGQR"))
 
 (defpackage "DFFTPACK"
 #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
