@@ -31,10 +31,10 @@
 ;;; configuration. Eventually, this file should disappear.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: config.lisp,v 1.3 2001/02/22 08:10:35 simsek Exp $
+;;; $Id: config.lisp,v 1.4 2003/06/27 03:41:39 rtoy Exp $
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "USER")
+(in-package "COMMON-LISP-USER")
 
 #+:allegro (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
 #+:allegro (setq excl:*enable-package-locked-errors* nil)
