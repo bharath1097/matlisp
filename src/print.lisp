@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.7 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: print.lisp,v 1.8 2003/05/31 23:05:39 rtoy Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.8  2003/05/31 23:05:39  rtoy
+;;; Indent more typically.
+;;;
 ;;; Revision 1.7  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -141,48 +144,52 @@ but got *PRINT-MATRIX* of type ~a"
    of a matrix (default 0)")
 
 (defun print-matrix (matrix stream)
-  (with-slots (number-of-rows number-of-cols) matrix
-      (multiple-value-bind (max-n max-m)
-	     (set-print-limits-for-matrix number-of-rows number-of-cols)
-	 (declare (type fixnum max-n max-m))
-	 (format stream " ~d x ~d" number-of-rows number-of-cols)
+  (with-slots (number-of-rows number-of-cols)
+      matrix
+    (multiple-value-bind (max-n max-m)
+	(set-print-limits-for-matrix number-of-rows number-of-cols)
+      (declare (type fixnum max-n max-m))
+      (format stream " ~d x ~d" number-of-rows number-of-cols)
 
-	 (decf max-n)
-	 (decf max-m)  
-	 (flet ((print-row (i)
-		  (format stream "~%   ")
-		  (dotimes (i *matrix-indent*)
-		    (format stream " "))
-		  (dotimes (j max-m)
-		    (declare (type fixnum j))
-		    (print-element matrix 
-				   (matrix-ref matrix i j)
-				   stream)
-		    (format stream " "))
-		  (if (< max-m (1- number-of-cols))
-		      (progn
-			(format stream "... ")
-			(print-element matrix 
-				       (matrix-ref matrix i (1- number-of-cols))
-				       stream)
-			(format stream " "))
-		    (if (< max-m number-of-cols)
-			(progn
-			  (print-element matrix 
-					 (matrix-ref matrix i (1- number-of-cols))
-					 stream)
-			  (format stream " "))))))
+      (decf max-n)
+      (decf max-m)  
+      (flet ((print-row (i)
+	       (when (minusp i)
+		 (return-from print-row))
+	       (format stream "~%   ")
+		  
+	       (dotimes (k *matrix-indent*)
+		 (format stream " "))
+	       (dotimes (j max-m)
+		 (declare (type fixnum j))
+		 (print-element matrix 
+				(matrix-ref matrix i j)
+				stream)
+		 (format stream " "))
+	       (if (< max-m (1- number-of-cols))
+		   (progn
+		     (format stream "... ")
+		     (print-element matrix 
+				    (matrix-ref matrix i (1- number-of-cols))
+				    stream)
+		     (format stream " "))
+		   (if (< max-m number-of-cols)
+		       (progn
+			 (print-element matrix 
+					(matrix-ref matrix i (1- number-of-cols))
+					stream)
+			 (format stream " "))))))
 	   
-	   (dotimes (i max-n)
-	     (declare (type fixnum i))
-	     (print-row i))
+	(dotimes (i max-n)
+	  (declare (type fixnum i))
+	  (print-row i))
 	   
-	   (if (< max-n (1- number-of-rows))
-	       (progn
-		 (format stream "~%     :")
-		 (print-row (1- number-of-rows)))
-	     (if (< max-n number-of-rows)
-		 (print-row (1- number-of-rows))))))))
+	(if (< max-n (1- number-of-rows))
+	    (progn
+	      (format stream "~%     :")
+	      (print-row (1- number-of-rows)))
+	    (if (< max-n number-of-rows)
+		(print-row (1- number-of-rows))))))))
 
 
 (defmethod print-object ((matrix standard-matrix) stream)
