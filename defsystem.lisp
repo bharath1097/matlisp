@@ -1,7 +1,7 @@
 ;;; -*- Mode: Lisp; Package: make -*-
 ;;; -*- Mode: CLtL; Syntax: Common-Lisp -*-
 
-;;; DEFSYSTEM 3.4b Interim.
+;;; DEFSYSTEM 3.4 Interim 3.
 
 ;;; defsystem.lisp --
 
@@ -28,7 +28,7 @@
 ;;; Originally written by Mark Kantrowitz, School of Computer Science,
 ;;; Carnegie Mellon University, October 1989.
 
-;;; MK:DEFSYSTEM 3.4b Interim
+;;; MK:DEFSYSTEM 3.4 Interim 3
 ;;;
 ;;; Copyright (c) 1989 - 1999 Mark Kantrowitz. All rights reserved.
 ;;;               1999 - 2004 Mark Kantrowitz and Marco Antoniotti. All
@@ -1186,14 +1186,17 @@
 ;;; ********************************
 ;;; Defsystem Version **************
 ;;; ********************************
-(defparameter *defsystem-version* "3.4b Interim, 2004-02-26"
+(defparameter *defsystem-version* "3.4 Interim 3, 2004-06-10"
   "Current version number/date for MK:DEFSYSTEM.")
 
 ;;; ********************************
 ;;; Customizable System Parameters *
 ;;; ********************************
 
-(defvar *dont-redefine-require* nil
+(defvar *dont-redefine-require*
+  #+cmu (if (find-symbol "*MODULE-PROVIDER-FUNCTIONS*" "EXT") t nil)
+  #+(or clisp sbcl) t
+  #-(or cmu sbcl clisp) nil
   "If T, prevents the redefinition of REQUIRE. This is useful for
    lisps that treat REQUIRE specially in the compiler.")
 
@@ -1361,7 +1364,7 @@
          #+(and dec common vax (not ultrix))  ("LSP"  . "FAS")
          #+(and dec common vax ultrix)        ("lsp"  . "fas")
  	 #+ACLPC                              ("lsp"  . "fsl")
- 	 #+CLISP                              ("lsp"  . "fas")
+ 	 #+CLISP                              ("lisp" . "fas")
          #+KCL                                ("lsp"  . "o")
          #+ECL                                ("lsp"  . "so")
          #+IBCL                               ("lsp"  . "o")
@@ -2112,6 +2115,9 @@ ABS: NIL          REL: NIL               Result: ""
   (pathname-logical-p namestring))
 ||#
 
+
+#|| This is incorrect, as it strives to keep strings around, when it
+    shouldn't.  MERGE-PATHNAMES already DTRT.
 (defun append-logical-pnames (absolute relative)
   (declare (type (or null string pathname) absolute relative))
   (let ((abs (if absolute
@@ -2128,6 +2134,42 @@ ABS: NIL          REL: NIL               Result: ""
       (setq abs (concatenate 'string abs ";")))
     ;; Return the concatenate pathnames
     (concatenate 'string abs rel)))
+||#
+
+
+(defun append-logical-pnames (absolute relative)
+  (declare (type (or null string pathname) absolute relative))
+  (let ((abs (if absolute
+                 (pathname absolute)
+                 (make-pathname :directory (list :absolute)
+                                :name nil
+                                :type nil)
+                 ))
+	(rel (if relative
+                 (pathname relative)
+                 (make-pathname :directory (list :relative)
+                                :name nil
+                                :type nil)
+                 ))
+	)
+    ;; The following is messed up because CMUCL and LW use different
+    ;; defaults for host (in particular LW uses NIL).  Thus
+    ;; MERGE-PATHNAMES has legitimate different behaviors on both
+    ;; implementations. Of course this is disgusting, but that is the
+    ;; way it is and the rest tries to circumvent this crap.
+    (etypecase abs
+      (logical-pathname
+       (etypecase rel
+	 (logical-pathname
+	  (namestring (merge-pathnames rel abs)))
+	 (pathname
+	  ;; The following potentially translates the logical pathname
+	  ;; very early, but we cannot avoid it.
+	  (namestring (merge-pathnames rel (translate-logical-pathname abs))))
+	 ))
+      (pathname
+       (namestring (merge-pathnames rel abs)))
+      )))
 
 #||
 ;;; This was a try at appending a subdirectory onto a directory.
@@ -2453,7 +2495,7 @@ D
          (file-pathname
 	  (make-pathname :name module-string-name
 			 :type *system-extension*))
-         
+
          (lib-file-pathname
 	  (make-pathname :directory (list :relative module-string-name)
                          :name module-string-name
@@ -2503,8 +2545,8 @@ D
           (values system-def-pathname
                   (probe-file system-def-pathname)))
         (values nil nil))))
-         
-         
+
+
 
 
 #|
@@ -2616,7 +2658,7 @@ the system definition, if provided."
                     ~@[~&   Package: ~A~]~
                     ~&   Source: ~@[~A~] ~@[~A~] ~@[~A~]~
                     ~&   Binary: ~@[~A~] ~@[~A~] ~@[~A~]~
-                    ~@[~&   Depends On: ~A ~]~&   Components: ~{~15T~A~&~}"
+                    ~@[~&   Depends On: ~A ~]~&   Components:~{~15T~A~&~}"
 	    (component-type system)
 	    (component-name system)
 	    (component-host system)
@@ -2716,6 +2758,7 @@ the system definition, if provided."
       (multiple-value-setq (version-dir version-replace)
 	(translate-version version))
       (setq version-dir *version-dir* version-replace *version-replace*))
+  ;; (format *trace-output* "~&>>>> VERSION COMPUTED ~S ~S~%" version-dir version-replace)
   (let ((pathname
 	 (append-directories
 	  (if version-replace
@@ -2741,6 +2784,7 @@ the system definition, if provided."
     ;; :name argument to the MAKE-PATHNAME in the MERGE-PATHNAMES
     ;; beacuse of possible null names (e.g. :defsystem components)
     ;; causing problems with the subsequenct call to NAMESTRING.
+    ;; (format *trace-output* "~&>>>> PATHNAME is ~S~%" pathname)
     (cond ((pathname-logical-p pathname) ; See definition of test above.
 	   (setf pathname
 		 (merge-pathnames pathname
@@ -2785,6 +2829,7 @@ the system definition, if provided."
 
 ;;; What about CMU17 :device :unspecific in the above?
 
+#-lispworks
 (defun translate-version (version)
   ;; Value returns the version directory and whether it replaces
   ;; the entire root (t) or is a subdirectory.
@@ -2803,6 +2848,38 @@ the system definition, if provided."
 	((stringp version)
 	 (values version t))
 	(t (error "~&; Illegal version ~S" version))))
+
+
+;;; Looks like LW has a bug in MERGE-PATHNAMES.
+;;;
+;;;  (merge-pathnames "" "LP:foo;bar;") ==> "LP:"
+;;;
+;;; Which is incorrect.
+;;; The change here ensures that the result of TRANSLATE-VERSION is
+;;; appropriate.
+
+#+lispworks
+(defun translate-version (version)
+  ;; Value returns the version directory and whether it replaces
+  ;; the entire root (t) or is a subdirectory.
+  ;; Version may be nil to signify no subdirectory,
+  ;; a symbol, such as alpha, beta, omega, :alpha, mark, which
+  ;; specifies a subdirectory of the root, or
+  ;; a string, which replaces the root.
+  (cond ((null version)
+	 (values (pathname "") nil))
+	((symbolp version)
+	 (values (let ((sversion (string version)))
+		   (if (find-if #'lower-case-p sversion)
+		       (pathname sversion)
+		       (pathname (string-downcase sversion))))
+		 nil))
+	((stringp version)
+	 (values (pathname version) t))
+	(t (error "~&; Illegal version ~S" version))))
+
+
+
 
 (defun component-extension (component type &key local)
   (ecase type
@@ -2954,7 +3031,8 @@ the system definition, if provided."
   ;; Pass along the host and devices
   (setf (component-host component)
 	(or (component-host component)
-	    (when parent (component-host parent))))
+	    (when parent (component-host parent))
+	    (pathname-host *default-pathname-defaults*)))
   (setf (component-device component)
 	(or (component-device component)
 	    (when parent (component-device parent))))
@@ -3529,7 +3607,8 @@ the system definition, if provided."
 		(*load-source-instead-of-binary* load-source-instead-of-binary)
 		(*minimal-load* minimal-load)
 		(system (if (and (component-p name)
-                                 (member (component-type name) '(:system :defsystem :subsystem)))
+                                 (member (component-type name)
+					 '(:system :defsystem :subsystem)))
                             name
                             (find-system name :load))))
 	    #-(or CMU CLISP :sbcl :lispworks :cormanlisp scl)
@@ -3637,6 +3716,58 @@ the system definition, if provided."
    :verbose verbose
    :dribble dribble))
 
+
+;;; ensure-external-system-def-loaded component --
+;;; Let's treat definition clauses of the form
+;;;
+;;; 	(:system "name")
+;;; i.e.
+;;;
+;;;	(:system "name" :components nil)
+;;;
+;;; in a special way.
+;;; When encountered, MK:DEFSYSTEM tries to FIND-SYSTEM
+;;; the system named "name" (by forcing a reload from disk).
+;;; This may be more "natural".
+
+(defun ensure-external-system-def-loaded (component)
+  (assert (member (component-type component)
+		  '(:subsystem :system)))
+  (when (null (component-components component))
+    (let ((cname (component-name component)))
+      ;; First we ensure that we reload the system definition.
+      (undefsystem cname)
+      (let* ((*reload-systems-from-disk* t)
+	     (system-component
+	      (find-system (component-name component)
+			   :load
+
+			   ;; Let's not supply the def-pname
+			   ;; yet.
+			   #+not-yet
+			   (merge-pathname
+			    (make-pathname :name cname
+					   :type "system"
+					   :directory ())
+			    (component-full-pathname component
+						     :source))
+
+
+			   ))
+	     )
+	;; Now we have a problem.
+	;; We have just ensured that a system definition is
+	;; loaded, however, the COMPONENT at hand is different
+	;; from SYSTEM-COMPONENT.
+	;; To fix this problem we just use the following
+	;; kludge.  This should prevent re-entering in this
+	;; code branch, while actually preparing the COMPONENT
+	;; for operation.
+	(setf (component-components component)
+	      (list system-component))
+	))))
+
+
 (defun operate-on-component (component operation force &aux changed)
   ;; Returns T if something changed and had to be compiled.
   (let ((type (component-type component))
@@ -3669,9 +3800,16 @@ the system definition, if provided."
 	      (let ((package (find-package (component-package component))))
 		(when package
 		  (setf *package* package)))))
-	  #+mk-original
-	  (when (eq type :defsystem)	; maybe :system too?
-	    (operate-on-system-dependencies component operation force))
+
+	  ;; Marco Antoniotti 20040609
+	  ;; New feature.  Try to FIND-SYSTEM :system components if
+	  ;; they have no local :components definition.
+	  ;; OPERATE-ON-SYSTEM-DEPENDENCIES should still work as
+	  ;; advertised, given the small change made there.
+
+	  (when (or (eq type :system) (eq type :subsystem))
+	    (ensure-external-system-def-loaded component))
+
 	  (when (or (eq type :defsystem) (eq type :system))
 	    (operate-on-system-dependencies component operation force))
 
@@ -3760,46 +3898,59 @@ the system definition, if provided."
 	;; to load it (needed since we may be depending on a lisp
 	;; dependent package).
 	;; Explores the system tree in a DFS manner.
-	(cond ((and *operations-propagate-to-subsystems*
-		    (not (listp system))
-		    ;; The subsystem is a defined system.
-		    (find-system system :load-or-nil))
-	       ;; Call OOS on it. Since *system-dependencies-delayed* is
-	       ;; T, the :depends-on slot is filled with the names of
-	       ;; systems, not defstructs.
-	       ;; Aside from system, operation, force, for everything else
-	       ;; we rely on the globals.
-	       (unless (and *providing-blocks-load-propagation*
-			    ;; If *providing-blocks-load-propagation* is T,
-			    ;; the system dependency must not exist in the
-			    ;; *modules* for it to be loaded. Note that
-			    ;; the dependencies are implicitly systems.
-			    (find operation '(load :load))
-			    ;; (or (eq force :all) (eq force t))
-			    (find (canonicalize-system-name system)
-				  *modules* :test #'string-equal))
-                 
-		 (operate-on-system system operation :force force)))
 
-	      ((listp system)
+	;; Do not try to do anything with non system components.
+        (cond ((and *operations-propagate-to-subsystems*
+                    (not (listp system))
+		    (or (stringp system) (symbolp system))
+                    ;; The subsystem is a defined system.
+                    (find-system system :load-or-nil))
+               ;; Call OOS on it. Since *system-dependencies-delayed* is
+               ;; T, the :depends-on slot is filled with the names of
+               ;; systems, not defstructs.
+               ;; Aside from system, operation, force, for everything else
+               ;; we rely on the globals.
+               (unless (and *providing-blocks-load-propagation*
+                            ;; If *providing-blocks-load-propagation* is T,
+                            ;; the system dependency must not exist in the
+                            ;; *modules* for it to be loaded. Note that
+                            ;; the dependencies are implicitly systems.
+                            (find operation '(load :load))
+                            ;; (or (eq force :all) (eq force t))
+                            (find (canonicalize-system-name system)
+                                  *modules* :test #'string-equal))
+
+                 (operate-on-system system operation :force force)))
+
+              ((listp system)
                ;; If the SYSTEM is a list then its contents are as follows.
                ;;
-               ;;    (<name> <definition-pathname> <action> <version>)
+               ;;    (<name> <definition-pathname> <action> &optional <version>)
                ;;
-	       (tell-user-require-system
-		(cond ((and (null (first system)) (null (second system)))
-		       (third system))
-		      (t system))
-		component)
-	       (or *oos-test* (new-require (first system)
-                                           nil
-					   (eval (second system))
-					   (third system)
-					   (or (fourth system)
-					       *version*))))
-	      (t
-	       (tell-user-require-system system component)
-	       (or *oos-test* (new-require system))))))))
+
+               (destructuring-bind (system-name definition-pathname action
+                                                &optional version)
+                   system
+                 (tell-user-require-system
+                  (if (and (null system-name)
+                           (null definition-pathname))
+                      action
+                      system)
+                  component)
+                 (or *oos-test* (new-require system-name
+                                             nil
+                                             (eval definition-pathname)
+                                             action
+                                             (or version *version*)))))
+              ((and (component-p system)
+                    (not (member (component-type system)
+                                 '(:defsystem :subsystem :system))))
+               ;; Do nothing for non system components.
+               )
+              (t
+               (tell-user-require-system system component)
+               (or *oos-test* (new-require system))))
+        ))))
 
 ;;; Modules can depend only on siblings. If a module should depend
 ;;; on an uncle, then the parent module should depend on that uncle
@@ -3998,6 +4149,39 @@ the system definition, if provided."
        (setf (symbol-function 'lisp:require)
 	 (symbol-function 'new-require))))))
 )
+
+
+;;; Well, let's add some more REQUIRE hacking; specifically for SBCL,
+;;; and, eventually, for CMUCL.
+
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
+(defun sbcl-mk-defsystem-module-provider (name)
+  ;; Let's hope things go smoothly.
+    (let ((module-name (string-downcase (string name))))
+      (when (mk:find-system module-name :load-or-nil)
+	(mk:load-system module-name
+			:compile-during-load t
+			:verbose nil))))
+
+(pushnew 'sbcl-mk-defsystem-module-provider sb-ext:*module-provider-functions*)
+)
+
+#+#.(cl:if (cl:and (cl:find-package "EXT") (cl:find-symbol "*MODULE-PROVIDER-FUNCTIONS*" "EXT")) '(and) '(or))
+(progn
+  (defun cmucl-mk-defsystem-module-provider (name)
+    (let ((module-name (string-downcase (string name))))
+      (when (mk:find-system module-name :load-or-nil)
+	(mk:load-system module-name
+			:compile-during-load t
+			:verbose nil))))
+
+  (pushnew 'cmucl-mk-defsystem-module-provider ext:*module-provider-functions*)
+  )
+
+
+
 
 ;;; ********************************
 ;;; Language-Dependent Characteristics
@@ -4242,6 +4426,8 @@ the system definition, if provided."
 		fatal-error)))))
 
 
+;;; C Language definitions.
+
 (defun c-compile-file (filename &rest args
 				&key
 				(output-file t)
@@ -4320,18 +4506,46 @@ the system definition, if provided."
   :source-extension "c"
   :binary-extension "o")
 
-#||
-;;; FDMM's changes, which we've replaced.
-(defvar *compile-file-function* #'cl-compile-file)
 
-#+(or :clos :pcl)
-(defmethod set-language ((lang (eql :common-lisp)))
-  (setq *compile-file-function* #'cl-compile-file))
+;;; Fortran Language definitions.
+;;; From Matlisp.
 
-#+(or :clos :pcl)
-(defmethod set-language ((lang (eql :scheme)))
-  (setq *compile-file-function #'scheme-compile-file))
-||#
+(export '(*fortran-compiler* *fortran-options*))
+
+(defparameter *fortran-compiler* "g77")
+(defparameter *fortran-options* '("-O"))
+
+(defun fortran-compile-file (filename &rest args
+				      &key output-file error-file
+				      &allow-other-keys)
+  (declare (ignore error-file args))
+  (let ((arg-list
+	 (append *fortran-options*
+		 `("-c" ,filename ,@(if output-file `("-o" ,output-file))))))
+    (run-unix-program *fortran-compiler* arg-list)))
+
+
+(mk:define-language :fortran
+    :compiler #'fortran-compile-file
+    :loader #'identity
+    :source-extension "f"
+    :binary-extension "o")
+
+
+;;; AR support.
+;; How to create a library (archive) of object files
+
+(export '(*ar-program* build-lib))
+
+(defparameter *ar-program* "ar")
+
+(defun build-lib (libname directory)
+  (let ((args (list "rv" (truename libname))))
+    (format t ";;; Building archive ~A~%" libname)
+    (run-unix-program *ar-program*
+		      (append args
+			      (mapcar #'truename (directory directory))))))
+
 
 ;;; ********************************
 ;;; Component Operations ***********
@@ -4429,6 +4643,24 @@ the system definition, if provided."
 	   nil)
 	  (t nil))))
 
+;; see CLOCC/PORT/sys.lisp:compiled-file-p
+(eval-when (load eval compile)
+  (when (find-package "PORT")
+    (import (find-symbol "COMPILED-FILE-P" "PORT"))))
+(unless (fboundp 'compiled-file-p)
+ (defun compiled-file-p (file-name)
+  "Return T if the FILE-NAME is a filename designator for a valid compiled.
+Signal an error when it is not a filename designator.
+Return NIL when the file does not exist, or is not readable,
+or does not contain valid compiled code."
+  #+clisp
+  (with-open-file (in file-name :direction :input :if-does-not-exist nil)
+    (and in (char= #\( (peek-char nil in))
+         (let ((form (ignore-errors (read in nil nil))))
+           (and (consp form)
+                (eq (car form) 'SYSTEM::VERSION)
+                (null (nth-value 1 (ignore-errors (eval form))))))))
+  #-clisp t))
 
 (defun needs-compilation (component force)
   ;; If there is no binary, or it is older than the source
@@ -4436,7 +4668,7 @@ the system definition, if provided."
   ;; Otherwise we only need to recompile if it depends on a file that changed.
   (declare (ignore force))
   (let ((source-pname (component-full-pathname component :source))
-	(binary-pname (component-full-pathname component :binary)))
+        (binary-pname (component-full-pathname component :binary)))
     (and
      ;; source must exist
      (probe-file source-pname)
@@ -4447,7 +4679,9 @@ the system definition, if provided."
       (null (probe-file binary-pname))
       ;; old binary
       (< (file-write-date binary-pname)
-	 (file-write-date source-pname))))))
+         (file-write-date source-pname))
+      ;; invalid binary
+      #+clisp (not (compiled-file-p binary-pname))))))
 
 
 (defun needs-loading (component &optional (check-source t) (check-binary t))
@@ -4829,36 +5063,36 @@ the system definition, if provided."
 
 ;;; Should this conditionalization be (or :mcl (and :CCL (not :lispworks)))?
 #|
-#+:ccl
-(defun edit-operation (component force)
-  "Always returns nil, i.e. component not changed."
-  (declare (ignore force))
-  ;;
-  (let* ((full-pathname (make::component-full-pathname component :source))
-         (already-editing\? #+:mcl (dolist (w (CCL:windows :class
-							   'fred-window))
-                                    (when (equal (CCL:window-filename w)
-                                                 full-pathname)
-                                      (return w)))
-                           #-:mcl nil))
-    (if already-editing\?
-      #+:mcl (CCL:window-select already-editing\?) #-:mcl nil
-      (ed full-pathname)))
-  nil)
+				     #+:ccl
+				     (defun edit-operation (component force)
+"Always returns nil, i.e. component not changed."
+(declare (ignore force))
+;;
+(let* ((full-pathname (make::component-full-pathname component :source))
+(already-editing\? #+:mcl (dolist (w (CCL:windows :class
+'fred-window))
+(when (equal (CCL:window-filename w)
+full-pathname)
+(return w)))
+#-:mcl nil))
+(if already-editing\?
+#+:mcl (CCL:window-select already-editing\?) #-:mcl nil
+(ed full-pathname)))
+nil)
 
-#+:allegro
-(defun edit-operation (component force)
-  "Edit a component - always returns nil, i.e. component not changed."
-  (declare (ignore force))
-  (let ((full-pathname (component-full-pathname component :source)))
-    (ed full-pathname))
-  nil)
+				     #+:allegro
+				     (defun edit-operation (component force)
+"Edit a component - always returns nil, i.e. component not changed."
+(declare (ignore force))
+(let ((full-pathname (component-full-pathname component :source)))
+(ed full-pathname))
+nil)
 
-#+(or :ccl :allegro)
-(make::component-operation :edit 'edit-operation)
-#+(or :ccl :allegro)
-(make::component-operation 'edit 'edit-operation)
-|#
+				     #+(or :ccl :allegro)
+				     (make::component-operation :edit 'edit-operation)
+				     #+(or :ccl :allegro)
+				     (make::component-operation 'edit 'edit-operation)
+				     |#
 
 ;;; *** Hardcopy System ***
 (defparameter *print-command* "enscript -2Gr" ; "lpr"
