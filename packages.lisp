@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.11 2001/07/26 15:47:15 rtoy Exp $
+;;; $Id: packages.lisp,v 1.12 2001/10/25 21:52:57 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.12  2001/10/25 21:52:57  rtoy
+;;; Export QR, QR!, and GEQR!.
+;;;
 ;;; Revision 1.11  2001/07/26 15:47:15  rtoy
 ;;; Updated version number to "Pre 2.0" since this isn't 1.0b anymore!
 ;;;
@@ -264,6 +267,9 @@
      "NUMBER-OF-ROWS"
      "ONES"
      "PRINT-ELEMENT"
+     "QR"
+     "QR!"
+     "GEQR!"
      "RAND"
      "REAL"
      "REAL-MATRIX"
