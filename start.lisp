@@ -43,9 +43,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.7 2001/02/26 19:57:13 rtoy Exp $
+;;; $Id: start.lisp,v 1.8 2001/02/26 22:45:37 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.8  2001/02/26 22:45:37  rtoy
+;;; There has to be a colon in the pathname to be a valid CMUCL
+;;; search-list namestring.  Check for it.
+;;;
 ;;; Revision 1.7  2001/02/26 19:57:13  rtoy
 ;;; o Make deflogicalpath handle CMUCL search lists.
 ;;; o Use keywords for mk:oos :matlisp so we put drop random symbols in
@@ -112,7 +116,9 @@
 			    #+(and :allegro :mswindows) (pathname-device pathname)
 			    :directory (pathname-directory pathname))))
 			#+cmu
-			((ext:search-list-defined-p *load-pathname*)
+			((and (find #\: (namestring *load-pathname*))
+			      (ext:search-list-defined-p *load-pathname*))
+			 ;; CMUCL search lists must have a colon in the namestring.
 			 (ext:enumerate-search-list (path *load-pathname*)
 			   (let ((pathname (namestring path)))
 			     (return (make-pathname
