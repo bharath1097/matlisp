@@ -33,9 +33,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp,v 1.2 2000/07/11 02:51:15 simsek Exp $
+;;; $Id: lazy-loader.lisp,v 1.3 2000/10/04 01:22:21 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp,v $
+;;; Revision 1.3  2000/10/04 01:22:21  simsek
+;;; o Changed package to MATLISP
+;;;   This avoids interning symbols in packages other
+;;;   than MATLISP
+;;;
 ;;; Revision 1.2  2000/07/11 02:51:15  simsek
 ;;; *** empty log message ***
 ;;;
@@ -51,7 +56,7 @@
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "COMMON-LISP-USER")
+(in-package "MATLISP")
 
 #|
 ;; example of an optimized BLAS/LAPACK load on a Solaris platform
