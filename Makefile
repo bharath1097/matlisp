@@ -27,7 +27,7 @@
 #
 ##########################################################################
 #
-# $Id: Makefile,v 1.3 2001/02/21 22:05:10 simsek Exp $
+# $Id: Makefile,v 1.4 2001/02/21 23:05:40 simsek Exp $
 #
 ##########################################################################
 allegro-lisp=/usr/sww/pkg/acl-6.0/alisp
@@ -85,5 +85,10 @@ clean:
 
 distclean: clean
 	$(MAKE) -f matlisp.mk distclean
+	\rm -f logical
+	\rm -f matlisp.core
+	\rm -f matlisp.dxl
+	\rm -f matlisp-acl
+	\rm -f matlisp-cmu
 	\rm -f lib/libmatlispstatic.a
 	\rm -f lib/libmatlispshared.so
