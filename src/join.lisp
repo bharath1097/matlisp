@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: join.lisp,v 1.6 2001/10/26 15:20:33 rtoy Exp $
+;;; $Id: join.lisp,v 1.7 2003/05/31 05:18:33 rtoy Exp $
 ;;;
 ;;; $Log: join.lisp,v $
+;;; Revision 1.7  2003/05/31 05:18:33  rtoy
+;;; Fix typo.
+;;;
 ;;; Revision 1.6  2001/10/26 15:20:33  rtoy
 ;;; RESHAPE! is working now, so use it.
 ;;;
@@ -201,11 +204,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; A couple of new join methods
-(defmethod join ((a real-matrix) (b complex-matrix matrix) &optional orientation)
+(defmethod join ((a real-matrix) (b complex-matrix) &optional orientation)
   (join (apply #'reshape! (make-complex-matrix (store a)) (size a))
 	b orientation))
 
-(defmethod join ((a complex-matrix) (b real-matrix matrix) &optional orientation)
+(defmethod join ((a complex-matrix) (b real-matrix) &optional orientation)
   (join a
 	(apply #'reshape! (make-complex-matrix (store b)) (size b))
 	orientation))
