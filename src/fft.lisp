@@ -31,9 +31,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.9 2003/02/11 13:52:04 rtoy Exp $
+;;; $Id: fft.lisp,v 1.10 2004/04/07 18:01:55 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.10  2004/04/07 18:01:55  rtoy
+;;; IFFT! was not scaling the result by 1/n.
+;;;
+;;; Found and fixed by Mike Koerber.
+;;;
 ;;; Revision 1.9  2003/02/11 13:52:04  rtoy
 ;;; Fixes for FFT from Mike Koerber:
 ;;;
@@ -395,7 +400,7 @@
     (if (row-or-col-vector-p x)
 	(progn
 	  (zfftb n (store x) wsave)
-	  x)
+	  (scal! (/ (float n 1d0)) x))
 
       ;; IFFT by column
       (scal! (/ (float n 1d0))
