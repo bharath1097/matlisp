@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.15 2001/07/10 16:16:58 rtoy Exp $
+;;; $Id: system.dcl,v 1.16 2001/07/21 17:56:04 simsek Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.16  2001/07/21 17:56:04  simsek
+;;; Gnuplot not currently suported for Allegro
+;;;
 ;;; Revision 1.15  2001/07/10 16:16:58  rtoy
 ;;; Add gnuplot
 ;;;
@@ -350,6 +353,7 @@
 			  ((:file "cpoly")
 			   (:file "zeroin"
 				  :package "MATLISP-LIB")))
+		 #+:cmu
 		 (:module "gnuplot"
 			  :source-extension "lisp"
 			  :binary-pathname ""
