@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.7 2001/03/06 17:49:56 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.8 2001/03/08 14:46:18 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.8  2001/03/08 14:46:18  rtoy
+;;; Rename libmatlispshared.so to libmatlisp.so
+;;;
 ;;; Revision 1.7  2001/03/06 17:49:56  rtoy
 ;;; CMUCL can use the shared library, so make it so.  Also, it seems we
 ;;; don't need FLIBS so take that out as well.
@@ -127,11 +130,11 @@
 				 (namestring
 				   (translate-logical-pathname "matlisp:lib"))
 				 " "
-			         "-lmatlispshared"))))
+			         "-lmatlisp"))))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
-  #+(or :unix :linux) (load "matlisp:lib;libmatlispshared.so")
+  #+(or :unix :linux) (load "matlisp:lib;libmatlisp.so")
   #+:mswindows (load "matlisp:lib;blas.dll")
   #+:mswindows (load "matlisp:lib;lapack.dll"))
 
@@ -150,7 +153,7 @@
 
 #+(and :allegro (not :mswindows))
 (defun unload-blas-&-lapack-libraries ()
-  (ff:unload-foreign-library "matlisp:lib;libmatlispshared.so"))
+  (ff:unload-foreign-library "matlisp:lib;libmatlisp.so"))
 
 #+(and :allegro :mswindows)
 (defun unload-blas-&-lapack-libraries ()
