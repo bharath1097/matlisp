@@ -43,9 +43,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.4 2000/07/11 18:02:34 simsek Exp $
+;;; $Id: start.lisp,v 1.5 2000/10/04 22:48:26 simsek Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.5  2000/10/04 22:48:26  simsek
+;;; o Modified DEFLOGICALPATH to support image saving
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:34  simsek
 ;;; o Added credits
 ;;;
@@ -67,7 +70,18 @@
 
 (pushnew :matlisp *features*)
 
-(unintern 'deflogicalpath)
+(let ((root "root"))
+
+(defun setlogicalroot (r)
+  (unless (stringp r)
+    (error "argument ~a given to ~a should be a string"
+	   r
+	   'setlogicalroot))
+  (setq root r))
+
+(defun getlogicalroot ()
+  root)
+
 (defun deflogicalpath (name)
   "
   Syntax
@@ -80,6 +94,14 @@
   must be a string.
   The translations are defined for the directory and subdirectories
   in which the file that contained the form was loaded.
+
+  Implementation Notes
+  ====================
+  DEFLOGICALPATH must be called on argument \"root\" first.  This
+  determines the root directory that will be used to dump the
+  file \"logical\" containing all the logical pathname translations.
+  In particular, a call to DEFLOGICALPATH on \"root\" clears
+  all entries in the file \"logical\".
 "
   (flet ((default-dir ()
 	     #+:cmu (ext:default-directory)
@@ -106,23 +128,49 @@
 
       #+:cmu
       (setf (logical-pathname-translations name)
-	    (list (list "**;*.*.*"  
-			(namestring (merge-pathnames "**/*.*.*" (load-pathname))))
-		  (list "*.*.*" "*.*.*")))
+	(list 
+	 (list "**;*.*.*"  
+	       (namestring (merge-pathnames "**/*.*.*" (load-pathname))))
+	 (list "*.*.*"
+	       (namestring (merge-pathnames "*.*.*" (load-pathname))))))
       
       #+:allegro
-      (setf (logical-pathname-translations name)
-	    (list (list "**;*.*"  
-			(namestring (merge-pathnames "**/*.*" (load-pathname))))
-		  (list "*.*" "*.*")))
-
+      (prog1
+	  (setf (logical-pathname-translations name)
+	    (list 
+	     (list "**;*.*"  
+		   (namestring (merge-pathnames "**/*.*" (load-pathname))))
+	     (list "*.*" 
+		   (namestring (merge-pathnames "*.*" (load-pathname))))))
+	(with-open-file (file
+			 (concatenate 'string
+			   (getlogicalroot) ":logical")
+			 :direction :output
+			 :if-exists (if (string= name root) 
+					:supersede 
+				      :append)
+			 :if-does-not-exist :create)
+	  (format file "~&~s '~s~%" 
+		  name
+		  (list "**;*.*"  
+			(namestring 
+			 (merge-pathnames "**/*.*" (load-pathname)))))
+	  (format file "~&~s '~s~%" 
+		  name
+		  (list "*.*"
+			(namestring 
+			 (merge-pathnames "*.*" (load-pathname)))))
+	  )
+	)
       )))
+)
 
-
+(setlogicalroot "matlisp")
 (deflogicalpath "matlisp")
 
-(load "matlisp:config")
 (load "matlisp:system.dcl")
+(load "matlisp:config.lisp")
+(load "matlisp:save.lisp")
 
 (mk::operate-on-system 'matlisp
 		       'load
@@ -142,7 +190,7 @@
 
     or
 
-          (in-package \"MATLISP\")
+          (in-package \"MATLISP-USER\")
 
  ** The logical pathname matlisp has been
     set to:
