@@ -26,9 +26,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.10 2001/02/26 22:44:26 rtoy Exp $
+;;; $Id: system.dcl,v 1.11 2001/04/25 17:49:37 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.11  2001/04/25 17:49:37  rtoy
+;;; o Add the cpoly package.
+;;; o Arrance the module structure to match the directory structure more
+;;;   closely.
+;;;
 ;;; Revision 1.10  2001/02/26 22:44:26  rtoy
 ;;; The source-pathname's for quadpack were messed up.
 ;;;
@@ -180,132 +185,142 @@
 		     "mdivide"
 		     "msqrt"
 		     #-:mswindows "fft"))
-       ;; This is just the f2cl macros we need, not all of f2cl.
-       (:module "f2cl-macros"
-		:source-pathname "lib-src;"
-		:source-extension "l"
+       ;; Various add-on packages for matlisp
+       (:module "lib-src"
 		:binary-pathname ""
 		:components
-		((:file "macros")))
-       ;; This is Quadpack, converted from the Fortran implementation
-       ;; to Lisp via f2cl.
-       (:module "quadpack-functions"
-		:source-pathname ""
-		:binary-pathname ""
-		:depends-on ("f2cl-macros")
-		:components
-		((:module "quadpack-interface"
-			:source-pathname "src"
-			:binary-pathname ""
-			:components
-			((:file "quadpack")))
-		 (:module "quadpack-lib"
-			  :source-pathname "lib-src;quadpack;"
+		(
+		 ;; This is just the f2cl macros we need, not all of f2cl.
+		 (:module "f2cl-macros"
+			  :source-pathname ""
+			  :source-extension "l"
 			  :binary-pathname ""
-			  :package "QUADPACK"
 			  :components
-			  ((:module mach-par
-				    :source-pathname ""
-				    :source-extension "lisp"
+			  ((:file "macros")))
+		 ;; This is Quadpack, converted from the Fortran
+		 ;; implementation to Lisp via f2cl.
+		 (:module "quadpack-functions"
+			  :source-pathname "quadpack;"
+			  :binary-pathname ""
+			  :depends-on ("f2cl-macros")
+			  :components
+			  ((:module "quadpack-interface"
+				    :source-pathname "src"
 				    :binary-pathname ""
 				    :components
-				    ((:file "d1mach")
-				     (:file "i1mach")))
-			   (:module src
-				    :source-pathname ""
-				    :depends-on ("mach-par")
+				    ((:file "quadpack")))
+			   (:module "quadpack-lib"
+				    :source-pathname "lib-src;quadpack;"
 				    :binary-pathname ""
+				    :package "QUADPACK"
 				    :components
-				    (
-				     ;; Support
-				     (:file "dqwgtf")
-				     (:file "dqcheb")
-				     (:file "dqk15w")
-				     (:file "dqwgts")
-				     (:file "dqwgtc")
-				     (:file "dgtsl")
-				     (:file "xerror")
+				    ((:module mach-par
+					      :source-pathname ""
+					      :source-extension "lisp"
+					      :binary-pathname ""
+					      :components
+					      ((:file "d1mach")
+					       (:file "i1mach")))
+				     (:module src
+					      :source-pathname ""
+					      :depends-on ("mach-par")
+					      :binary-pathname ""
+					      :components
+					      (
+					       ;; Support
+					       (:file "dqwgtf")
+					       (:file "dqcheb")
+					       (:file "dqk15w")
+					       (:file "dqwgts")
+					       (:file "dqwgtc")
+					       (:file "dgtsl")
+					       (:file "xerror")
 	       
-				     ;; Core integration routines
-				     (:file "dqk15")
-				     (:file "dqk31")
-				     (:file "dqk41")
-				     (:file "dqk51")
-				     (:file "dqk61")
-				     (:file "dqk21")
-				     (:file "dqk15i")
-				     (:file "dqelg")
-				     (:file "dqpsrt")
-				     (:file "dqc25s"
-					    :depends-on ("dqcheb" "dqk15w"))
-				     (:file "dqmomo")
-				     (:file "dqc25c"
-					    :depends-on ("dqcheb"
-							 "dqk15w"))
-				     (:file "dqc25f"
-					    :depends-on ("dgtsl"
-							 "dqcheb"
-							 "dqk15w"
-							 "dqwgtf"))
-				     ;; Basic integrators
-				     (:file "dqage"
-					    :depends-on ("dqk15"
-							 "dqk31"
-							 "dqk41"
-							 "dqk51"
-							 "dqk61"
-							 "dqk21"
-							 "dqpsrt"))
-				     (:file "dqagie"
-					    :depends-on ("dqelg"
-							 "dqk15i"
-							 "dqpsrt"))
-				     (:file "dqagpe"
-					    :depends-on ("dqelg"
-							 "dqpsrt"
-							 "dqk21"
-							 ))
-				     (:file "dqagse"
-					    :depends-on ("dqk21"
-							 "dqelg"
-							 "dqpsrt"))
-				     (:file "dqawfe"
-					    :depends-on ("dqagie"
-							 "dqawoe"
-							 "dqelg"))
-				     (:file "dqawoe"
-					    :depends-on ("dqc25f"
-							 "dqpsrt"
-							 "dqelg"))
-				     (:file "dqawse"
-					    :depends-on ("dqc25s"
-							 "dqmomo"
-							 "dqpsrt"))
-				     (:file "dqawce"
-					    :depends-on ("dqc25c"
-							 "dqpsrt"))
-				     ;; Simplified interface routines
-				     (:file "dqng"
-					    :depends-on ("xerror"))
-				     (:file "dqag"
-					    :depends-on ("dqage"
-							 "xerror"))
-				     (:file "dqags"
-					    :depends-on ("dqagse"
-							 "xerror"))
-				     (:file "dqagi"
-					    :depends-on ("dqagie"
-							 "xerror"))
-				     (:file "dqawf"
-					    :depends-on ("dqawfe"
-							 "xerror"))
-				     (:file "dqawo"
-					    :depends-on ("dqawoe"
-							 "xerror"))
-				     (:file "dqaws"
-					    :depends-on ("dqawse"
-							 "xerror"))
-				     (:file "dqawc"
-					    :depends-on ("dqawce"
-							 "xerror"))))))))))
+					       ;; Core integration routines
+					       (:file "dqk15")
+					       (:file "dqk31")
+					       (:file "dqk41")
+					       (:file "dqk51")
+					       (:file "dqk61")
+					       (:file "dqk21")
+					       (:file "dqk15i")
+					       (:file "dqelg")
+					       (:file "dqpsrt")
+					       (:file "dqc25s"
+						      :depends-on ("dqcheb" "dqk15w"))
+					       (:file "dqmomo")
+					       (:file "dqc25c"
+						      :depends-on ("dqcheb"
+								   "dqk15w"))
+					       (:file "dqc25f"
+						      :depends-on ("dgtsl"
+								   "dqcheb"
+								   "dqk15w"
+								   "dqwgtf"))
+					       ;; Basic integrators
+					       (:file "dqage"
+						      :depends-on ("dqk15"
+								   "dqk31"
+								   "dqk41"
+								   "dqk51"
+								   "dqk61"
+								   "dqk21"
+								   "dqpsrt"))
+					       (:file "dqagie"
+						      :depends-on ("dqelg"
+								   "dqk15i"
+								   "dqpsrt"))
+					       (:file "dqagpe"
+						      :depends-on ("dqelg"
+								   "dqpsrt"
+								   "dqk21"
+								   ))
+					       (:file "dqagse"
+						      :depends-on ("dqk21"
+								   "dqelg"
+								   "dqpsrt"))
+					       (:file "dqawfe"
+						      :depends-on ("dqagie"
+								   "dqawoe"
+								   "dqelg"))
+					       (:file "dqawoe"
+						      :depends-on ("dqc25f"
+								   "dqpsrt"
+								   "dqelg"))
+					       (:file "dqawse"
+						      :depends-on ("dqc25s"
+								   "dqmomo"
+								   "dqpsrt"))
+					       (:file "dqawce"
+						      :depends-on ("dqc25c"
+								   "dqpsrt"))
+					       ;; Simplified interface routines
+					       (:file "dqng"
+						      :depends-on ("xerror"))
+					       (:file "dqag"
+						      :depends-on ("dqage"
+								   "xerror"))
+					       (:file "dqags"
+						      :depends-on ("dqagse"
+								   "xerror"))
+					       (:file "dqagi"
+						      :depends-on ("dqagie"
+								   "xerror"))
+					       (:file "dqawf"
+						      :depends-on ("dqawfe"
+								   "xerror"))
+					       (:file "dqawo"
+						      :depends-on ("dqawoe"
+								   "xerror"))
+					       (:file "dqaws"
+						      :depends-on ("dqawse"
+								   "xerror"))
+					       (:file "dqawc"
+						      :depends-on ("dqawce"
+								   "xerror"))))))))
+		 (:module "cpoly"
+			  :source-extension "lisp"
+			  :binary-pathname ""
+			  :components
+			  ((:file "cpoly")))))))
 
