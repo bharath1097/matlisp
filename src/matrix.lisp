@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.1 2000/04/14 00:11:12 simsek Exp $
+;;; $Id: matrix.lisp,v 1.2 2000/05/05 21:35:16 simsek Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.2  2000/05/05 21:35:16  simsek
+;;; o Fixed row-vector-p and col-vector-p
+;;;
 ;;; Revision 1.1  2000/04/14 00:11:12  simsek
 ;;; o This file is adapted from obsolete files 'matrix-float.lisp'
 ;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
@@ -278,11 +281,11 @@ that way."))
 
 (declaim (inline row-vector-p))
 (defmethod row-vector-p ((matrix standard-matrix))
-  (= (m matrix) 1))
+  (= (n matrix) 1))
 
 (declaim (inline col-vector-p))
 (defmethod col-vector-p ((matrix standard-matrix))
-  (= (n matrix) 1))
+  (= (m matrix) 1))
 
 (declaim (inline row-or-col-vector-p))
 (defmethod row-or-col-vector-p ((matrix standard-matrix))
