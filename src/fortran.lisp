@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fortran.lisp,v 1.8 2000/04/14 00:04:55 simsek Exp $
+;;; $Id: fortran.lisp,v 1.9 2000/05/02 13:48:34 rtoy Exp $
 ;;;
 ;;; $Log: fortran.lisp,v $
+;;; Revision 1.9  2000/05/02 13:48:34  rtoy
+;;; Turn off invalid trap when calling out to Fortran routines.  Needed
+;;; to fix a problem with SVD stopping with an invalid exception.
+;;;
 ;;; Revision 1.8  2000/04/14 00:04:55  simsek
 ;;; o Added INCF-SAP so that the size of a
 ;;;   double, single, etc .. need not be known in any
@@ -632,16 +636,19 @@ Returns
 	        #| (t
 		(error "Unhandled data type!")) |# ))))))
 
-;;; Hmm, according to the f77 manpage, Fortran assumes certain
+;;; Hmm, according to the Solaris f77 manpage, Fortran assumes certain
 ;;; floating point modes.  It says arithmetic is non-stop and
 ;;; underflows are gradual.  We assume that means all traps are off,
-;;; except for Invalid.  Perhaps we should also catch overflows?
+;;; including Invalid.  This is important: SVD can cause an Invalid
+;;; exception.  However, with Invalid disabled, SVD will complete and
+;;; return the expected results.
 ;;;
 ;;; So we save the current mode, set the mode for Fortran, run the
 ;;; body, and finally reset the mode back to the original.
 
 (defmacro with-fortran-float-modes (&body body)
-  `(ext:with-float-traps-masked (:underflow :overflow :inexact :divide-by-zero)
+  "Execute the body with the IEEE FP modes appropriately set for Fortran"
+  `(ext:with-float-traps-masked (:underflow :overflow :inexact :divide-by-zero :invalid)
     ,@body))
 
 
