@@ -29,8 +29,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.4 2000/10/06 18:59:00 simsek Exp $
+;;; $Id: save.lisp,v 1.5 2002/01/08 00:36:42 rtoy Exp $
 ;;; $Log: save.lisp,v $
+;;; Revision 1.5  2002/01/08 00:36:42  rtoy
+;;; Add SAVE-MATLISP-LIBRARY to concatenate all the fasl files into one
+;;; giant fasl file for CMULISP.  This gives an intermediate form that is
+;;; faster than loading up the individual fasl files but not as fast as
+;;; using a dumped image.
+;;;
 ;;; Revision 1.4  2000/10/06 18:59:00  simsek
 ;;; o Added CMUCLLIB to generated CMU startup script
 ;;;
@@ -182,3 +188,21 @@ execute the executable file")
 	   :name core-name)
        )))
 
+;; This concatenates all of the compiled lisp files into a giant fasl
+;; file that can be used to load all of matlisp.  This is
+;; significantly faster than loading the individual fasl files via
+;; mk:oos.
+;;
+;; This works, but probably needs more work to get everything we need
+;; done.
+#+cmu
+(defun save-matlisp-library ()
+  (let ((output
+	 (merge-pathnames "matlisp:matlisp-library"
+			  (make-pathname :type (c::backend-fasl-file-type c::*target-backend*)))))
+    (ext:run-program "cat"
+		     (append (mk:files-in-system "matlisp-packages" t :binary)
+			     (mk:files-in-system "lazy-loader" t :binary)
+			     (mk:files-in-system "matlisp" t :binary))
+		     :output output
+		     :if-output-exists :supersede)))
