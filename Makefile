@@ -27,7 +27,7 @@
 #
 ##########################################################################
 #
-# $Id: Makefile,v 1.5 2001/03/06 18:00:10 rtoy Exp $
+# $Id: Makefile,v 1.6 2001/04/25 17:41:58 rtoy Exp $
 #
 ##########################################################################
 # allegro-lisp=/usr/sww/pkg/acl-6.0/alisp
@@ -73,8 +73,6 @@ all:
 clean:
 	$(MAKE) -f matlisp.mk clean
 	\rm -f config.cache
-	\rm -f config.status
-	\rm -f config.log
 	\rm -f bin/*.sparcf
 	\rm -f bin/*.x86f
 	\rm -f bin/*.fsl
