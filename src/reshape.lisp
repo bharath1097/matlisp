@@ -30,9 +30,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reshape.lisp,v 1.7 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: reshape.lisp,v 1.8 2001/10/26 13:35:00 rtoy Exp $
 ;;;
 ;;; $Log: reshape.lisp,v $
+;;; Revision 1.8  2001/10/26 13:35:00  rtoy
+;;; o Fix typo in reshape! for complex matrices that caused totally bogus
+;;;   results.  (Noted by M. Koerber.)
+;;; o Rename the n/m variables to something longer so we don't get
+;;;   confused on what n/m is and so it's easier to distinguish n from m.
+;;;
 ;;; Revision 1.7  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -102,24 +108,24 @@
   if needed.  The original matrix is modified in place and returned.
 "))
 
-(defmethod reshape ((mat real-matrix) new-n new-m)
+(defmethod reshape ((mat real-matrix) new-nrows new-ncols)
 
-  (declare (type fixnum new-n new-m))
+  (declare (type fixnum new-nrows new-ncols))
   (let* ((old-size (number-of-elements mat))
-	 (new-size (* new-n new-m))
+	 (new-size (* new-nrows new-ncols))
 	 (new-store (allocate-real-store new-size)))
     (declare (fixnum old-size new-size)
 	     (type (real-matrix-store-type (*)) new-store))
 
     (dcopy (min old-size new-size) (store mat) 1 new-store 1)
 
-    (make-instance 'real-matrix :nrows new-n :ncols new-m :store new-store)))
+    (make-instance 'real-matrix :nrows new-nrows :ncols new-ncols :store new-store)))
 
 
-(defmethod reshape! ((mat real-matrix) new-n new-m)
-  (declare (fixnum new-n new-m))
+(defmethod reshape! ((mat real-matrix) new-nrows new-ncols)
+  (declare (fixnum new-nrows new-ncols))
   (let ((old-size (number-of-elements mat))
-	(new-size (* new-n new-m)))
+	(new-size (* new-nrows new-ncols)))
     (declare (fixnum old-size new-size))
     (when (< old-size new-size)
       ;; We need to allocate new space to hold the result since
@@ -130,28 +136,28 @@
 
 	(dcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))
-    (setf (nrows mat) new-n)
-    (setf (ncols mat) new-m)
+    (setf (nrows mat) new-nrows)
+    (setf (ncols mat) new-ncols)
     (setf (number-of-elements mat) new-size)
     (setf (store-size mat) new-size)
     mat))
 
-(defmethod reshape ((mat complex-matrix) new-n new-m)
-  (declare (fixnum new-n new-m))
+(defmethod reshape ((mat complex-matrix) new-nrows new-ncols)
+  (declare (fixnum new-nrows new-ncols))
   (let* ((old-size (number-of-elements mat))
-	 (new-size (* new-n new-m))
+	 (new-size (* new-nrows new-ncols))
 	 (new-store (allocate-complex-store new-size)))
     (declare (fixnum old-size new-size)
 	     (type (complex-matrix-store-type (*)) new-store))
 
     (zcopy (min old-size new-size) (store mat) 1 new-store 1)
-    (make-instance 'complex-matrix :nrows new-n :ncols new-m :store new-store)))
+    (make-instance 'complex-matrix :nrows new-nrows :ncols new-ncols :store new-store)))
 
 
-(defmethod reshape! ((mat complex-matrix) new-n new-m)
-  (declare (fixnum new-n new-m))
+(defmethod reshape! ((mat complex-matrix) new-nrows new-ncols)
+  (declare (fixnum new-nrows new-ncols))
   (let ((old-size (number-of-elements mat))
-	(new-size (* new-n new-m)))
+	(new-size (* new-nrows new-ncols)))
     (declare (fixnum old-size new-size))
     (when (< old-size new-size)
       ;; We need to allocate new space to hold the result since
@@ -163,8 +169,8 @@
 	(zcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))
 
-    (setf (nrows mat) new-m)
-    (setf (ncols mat) new-m)
+    (setf (nrows mat) new-nrows)
+    (setf (ncols mat) new-ncols)
     (setf (number-of-elements mat) new-size)
     (setf (store-size mat) (* 2 new-size))
     mat))
