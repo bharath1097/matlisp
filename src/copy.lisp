@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: copy.lisp,v 1.5 2001/10/29 16:23:10 rtoy Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.5  2001/10/29 16:23:10  rtoy
+;;; COPY! was broken on CMUCL because FORTRAN-DSCAL is no longer
+;;; exported.  Use the Allegro version.  From M. Koerber.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -151,13 +155,10 @@
 	 (nxm (min nxm-x nxm-y)))
     (declare (type fixnum nxm-x nxm-y nxm))
 
-    #+:cmu
-    (with-vector-data-addresses ((addr-y (store y)))
-      (incf-sap :double-float addr-y)
-      (blas::fortran-dscal nxm 0.0d0 addr-y 2))
-    #+:allegro
+    ;; Set the imaginary parts of Y to zero.
     (zdscal nxm 0.0d0 (store y) 1)    
 
+    ;; Copy the elements of X to the real parts of Y.
     (dcopy nxm (store x) 1 (store y) 2)
     y))
   
