@@ -29,8 +29,11 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: save.lisp,v 1.6 2003/12/07 15:03:44 rtoy Exp $
+;;; $Id: save.lisp,v 1.7 2005/01/27 19:32:46 rtoy Exp $
 ;;; $Log: save.lisp,v $
+;;; Revision 1.7  2005/01/27 19:32:46  rtoy
+;;; %TOP-LEVEL is in the LISP package, not CL.
+;;;
 ;;; Revision 1.6  2003/12/07 15:03:44  rtoy
 ;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 ;;; works.
@@ -113,7 +116,7 @@ execute the shell script")
 	       (ext::print-herald)
 	       (format t "~%")
 	       (defparameter sys::*command-index* 0)
-	       (cl::%top-level))))))
+	       (lisp::%top-level))))))
 
 #+:sbcl
 (defmacro save-matlisp ()
