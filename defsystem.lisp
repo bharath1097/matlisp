@@ -1,7 +1,7 @@
 ;;; -*- Mode: Lisp; Package: make -*-
 ;;; -*- Mode: CLtL; Syntax: Common-Lisp -*-
 
-;;; DEFSYSTEM 3.3 Interim.
+;;; DEFSYSTEM 3.4b Interim.
 
 ;;; defsystem.lisp --
 
@@ -28,10 +28,10 @@
 ;;; Originally written by Mark Kantrowitz, School of Computer Science,
 ;;; Carnegie Mellon University, October 1989.
 
-;;; MK:DEFSYSTEM 3.3 Interim
+;;; MK:DEFSYSTEM 3.4b Interim
 ;;;
 ;;; Copyright (c) 1989 - 1999 Mark Kantrowitz. All rights reserved.
-;;;               1999 - 2002 Mark Kantrowitz and Marco Antoniotti. All
+;;;               1999 - 2004 Mark Kantrowitz and Marco Antoniotti. All
 ;;;                           rights reserved.
 
 ;;; Use, copying, modification, merging, publishing, distribution
@@ -1126,6 +1126,15 @@
 		   find-system
 		   defsystem compile-system load-system hardcopy-system
 
+                   system-definition-pathname
+
+                   missing-component
+                   missing-component-name
+                   missing-component-component
+                   missing-module
+                   missing-system
+
+                   register-foreign-system
 
 		   machine-type-translation
 		   software-type-translation
@@ -1177,8 +1186,8 @@
 ;;; ********************************
 ;;; Defsystem Version **************
 ;;; ********************************
-(defparameter *defsystem-version* "3.3 Interim, 2002-06-13"
-  "Current version number/date for Defsystem.")
+(defparameter *defsystem-version* "3.4b Interim, 2004-02-26"
+  "Current version number/date for MK:DEFSYSTEM.")
 
 ;;; ********************************
 ;;; Customizable System Parameters *
@@ -2223,7 +2232,8 @@ D
 		      :subsystem
 		      :module
 		      :file
-		      :private-file))
+		      :private-file
+		      ))
   (name nil :type (or symbol string))
   (indent 0 :type (mod 1024))		; Number of characters of indent in
 					; verbose output to the user.
@@ -2304,6 +2314,56 @@ D
   (documentation nil :type (or null string)) ; Optional documentation slot
   )
 
+
+;;; To allow dependencies from "foreign systems" like ASDF or one of
+;;; the proprietary ones like ACL or LW.
+
+(defstruct (foreign-system (:include component (type :system)))
+  kind ; This is a keyword: (member :asdf :pcl :lispworks-common-defsystem ...)
+  object ; The actual foreign system object.
+  )
+
+
+(defun register-foreign-system (name &key representation kind)
+  (declare (type (or symbol string) name))
+  (let ((fs (make-foreign-system :name name
+                                 :kind kind
+                                 :object representation)))
+    (setf (get-system name) fs)))
+
+
+
+(define-condition missing-component (simple-condition)
+  ((name :reader missing-component-name
+         :initarg :name)
+   (component :reader missing-component-component
+              :initarg :component)
+   )
+  (:default-initargs :component nil)
+  (:report (lambda (mmc stream)
+	     (format stream "MK:DEFSYSTEM: missing component ~S for ~S."
+                     (missing-component-name mmc)
+                     (missing-component-component mmc))))
+  )
+
+(define-condition missing-module (missing-component)
+  ()
+  (:report (lambda (mmc stream)
+	     (format stream "MK:DEFSYSTEM: missing module ~S for ~S."
+                     (missing-component-name mmc)
+                     (missing-component-component mmc))))
+  )
+
+(define-condition missing-system (missing-module)
+  ()
+  (:report (lambda (msc stream)
+	     (format stream "MK:DEFSYSTEM: missing system ~S~@[ for S~]."
+                     (missing-component-name msc)
+                     (missing-component-component msc))))
+  )
+
+
+
 (defvar *file-load-time-table* (make-hash-table :test #'equal)
   "Hash table of file-write-dates for the system definitions and
    files in the system definitions.")
@@ -2383,14 +2443,22 @@ D
 
 ;;; compute-system-path --
 
-
 (defun compute-system-path (module-name definition-pname)
-  (let* ((file-pathname
-	  (make-pathname :name (etypecase module-name
-				 (symbol (string-downcase
-					  (string module-name)))
-				 (string module-name))
-			 :type *system-extension*)))
+  (let* ((module-string-name
+          (etypecase module-name
+            (symbol (string-downcase
+                     (string module-name)))
+            (string module-name)))
+
+         (file-pathname
+	  (make-pathname :name module-string-name
+			 :type *system-extension*))
+         
+         (lib-file-pathname
+	  (make-pathname :directory (list :relative module-string-name)
+                         :name module-string-name
+			 :type *system-extension*))
+         )
     (or (when definition-pname		; given pathname for system def
 	  (probe-file definition-pname))
 	;; Then the central registry. Note that we also check the current
@@ -2398,18 +2466,47 @@ D
 	(cond (*central-registry*
 	       (if (listp *central-registry*)
 		   (dolist (registry *central-registry*)
-		     (let ((file (probe-file
-				  (append-directories (if (consp registry)
-							  (eval registry)
-							  registry)
-						      file-pathname))))
+		     (let ((file (or (probe-file
+				      (append-directories (if (consp registry)
+							      (eval registry)
+							      registry)
+						          file-pathname))
+                                     (probe-file
+				      (append-directories (if (consp registry)
+							      (eval registry)
+							      registry)
+						          lib-file-pathname))
+                                     ))
+                           )
 		       (when file (return file))))
-		   (probe-file (append-directories *central-registry*
-						   file-pathname))))
+		   (or (probe-file (append-directories *central-registry*
+						       file-pathname))
+                       (probe-file (append-directories *central-registry*
+						       lib-file-pathname))
+                       ))
+               )
 	      (t
 	       ;; No central registry. Assume current working directory.
 	       ;; Maybe this should be an error?
-	       (probe-file file-pathname))))))
+	       (or (probe-file file-pathname)
+                   (probe-file lib-file-pathname)))))
+    ))
+
+
+(defun system-definition-pathname (system-name)
+  (let ((system (ignore-errors (find-system system-name :error))))
+    (if system
+        (let ((system-def-pathname
+               (make-pathname :type "system"
+                              :defaults (pathname (component-full-pathname system :source))))
+              )
+          (values system-def-pathname
+                  (probe-file system-def-pathname)))
+        (values nil nil))))
+         
+         
+
+
 #|
 
 (defun compute-system-path (module-name definition-pname)
@@ -2446,10 +2543,13 @@ D
    environment.")
 
 (defun find-system (system-name &optional (mode :ask) definition-pname)
-  "Returns the system named SYSTEM-NAME. If not already loaded, loads it.
-   This allows operate-on-system to work on non-loaded as well as
-   loaded system definitions. DEFINITION-PNAME is the pathname for
-   the system definition, if provided."
+  "Returns the system named SYSTEM-NAME.
+If not already loaded, loads it, depending on the value of
+*RELOAD-SYSTEMS-FROM-DISK* and of the value of MODE. MODE can be :ASK,
+:ERROR, :LOAD-OR-NIL, or :LOAD. :ASK is the default.
+This allows OPERATE-ON-SYSTEM to work on non-loaded as well as
+loaded system definitions. DEFINITION-PNAME is the pathname for
+the system definition, if provided."
   (ecase mode
     (:ask
      (or (get-system system-name)
@@ -2460,7 +2560,7 @@ D
 	   (find-system system-name :load definition-pname))))
     (:error
      (or (get-system system-name)
-	 (error "Can't find system named ~s." system-name)))
+	 (error 'missing-system :name system-name)))
     (:load-or-nil
      (let ((system (get-system system-name)))
        (or (unless *reload-systems-from-disk* system)
@@ -2469,6 +2569,9 @@ D
 	   ;; If SYSTEM-NAME is a string, it doesn't change the case of the
 	   ;; string. So if case matters in the filename, use strings, not
 	   ;; symbols, wherever the system is named.
+           (when (foreign-system-p system)
+             (warn "Foreing system ~S cannot be reloaded by MK:DEFSYSTEM.")
+             (return-from find-system nil))
 	   (let ((path (compute-system-path system-name definition-pname)))
 	     (when (and path
 			(or (null system)
@@ -2488,14 +2591,19 @@ D
 	   system)))
     (:load
      (or (unless *reload-systems-from-disk* (get-system system-name))
+         (when (foreign-system-p (get-system system-name))
+           (warn "Foreign system ~S cannot be reloaded by MK:DEFSYSTEM.")
+           (return-from find-system nil))
 	 (or (find-system system-name :load-or-nil definition-pname)
 	     (error "Can't find system named ~s." system-name))))))
+
 
 (defun print-component (component stream depth)
   (declare (ignore depth))
   (format stream "#<~:@(~A~): ~A>"
           (component-type component)
           (component-name component)))
+
 
 (defun describe-system (name &optional (stream *standard-output*))
   "Prints a description of the system to the stream. If NAME is the
@@ -2597,7 +2705,8 @@ D
       (otherwise
        (component-full-pathname-i component type version)))))
 
-(defun component-full-pathname-i (component type &optional (version *version*)
+(defun component-full-pathname-i (component type
+                                            &optional (version *version*)
 					    &aux version-dir version-replace)
   ;; If the pathname-type is :binary and the root pathname is null,
   ;; distribute the binaries among the sources (= use :source pathname).
@@ -2699,11 +2808,17 @@ D
   (ecase type
     (:source (or (component-source-extension component)
 		 (unless local
-		   (default-source-extension component)))) ; system default
+		   (default-source-extension component)) ; system default
+                 ;; (and (component-language component))
+                 ))
     (:binary (or (component-binary-extension component)
 		 (unless local
-		   (default-binary-extension component)))) ; system default
+		   (default-binary-extension component)) ; system default
+                 ;; (and (component-language component))
+                 ))
     (:error  *compile-error-file-type*)))
+
+
 (defsetf component-extension (component type) (value)
   `(ecase ,type
      (:source (setf (component-source-extension ,component) ,value))
@@ -2717,7 +2832,8 @@ D
   (let ((component (apply #'make-component
 			  :type type
 			  :name name
-			  :indent indent definition-body)))
+			  :indent indent
+			  definition-body)))
     ;; Set up :load-only attribute
     (unless (find :load-only definition-body)
       ;; If the :load-only attribute wasn't specified,
@@ -2760,7 +2876,9 @@ D
 
     ;; Type specific setup:
     (when (or (eq type :defsystem) (eq type :system) (eq type :subsystem))
-      (setf (get-system name) component))
+      (setf (get-system name) component)
+      #|(unless (component-language component)
+	(setf (component-language component) :lisp))|#)
 
     ;; Set up the component's pathname
     (create-component-pathnames component parent)
@@ -2806,10 +2924,12 @@ D
 
 (defun create-component-pathnames (component parent)
   ;; Set up language-specific defaults
+
   (setf (component-language component)
 	(or (component-language component) ; for local defaulting
 	    (when parent		; parent's default
 	      (component-language parent))))
+
   (setf (component-compiler component)
 	(or (component-compiler component) ; for local defaulting
 	    (when parent		; parent's default
@@ -2841,11 +2961,21 @@ D
 
   ;; Set up extension defaults
   (setf (component-extension component :source)
-	(or (component-extension component :source :local t) ; local default
+	(or (component-extension component :source
+                                 :local #| (component-language component) |#
+                                 t
+                                 ) ; local default
+            (when (component-language component)
+              (default-source-extension component))
 	    (when parent		; parent's default
 	      (component-extension parent :source))))
   (setf (component-extension component :binary)
-	(or (component-extension component :binary  :local t) ; local default
+	(or (component-extension component :binary
+                                 :local #| (component-language component) |#
+                                 t
+                                 ) ; local default
+            (when (component-language component)
+              (default-binary-extension component))
 	    (when parent		; parent's default
 	      (component-extension parent :binary))))
 
@@ -2854,6 +2984,7 @@ D
   ;; to allow distribution of binaries among the sources to work.
   (generate-component-pathname component parent :source)
   (generate-component-pathname component parent :binary))
+
 
 ;; maybe file's inheriting of pathnames should be moved elsewhere?
 (defun generate-component-pathname (component parent pathname-type)
@@ -3397,7 +3528,10 @@ D
 		(*bother-user-if-no-binary* bother-user-if-no-binary)
 		(*load-source-instead-of-binary* load-source-instead-of-binary)
 		(*minimal-load* minimal-load)
-		(system (find-system name :load)))
+		(system (if (and (component-p name)
+                                 (member (component-type name) '(:system :defsystem :subsystem)))
+                            name
+                            (find-system name :load))))
 	    #-(or CMU CLISP :sbcl :lispworks :cormanlisp scl)
 	    (declare (special *compile-verbose* #-MCL *compile-file-verbose*)
 		     #-openmcl (ignore *compile-verbose*
@@ -3407,6 +3541,7 @@ D
 	      (error "Operation ~A undefined." operation))
 	    (operate-on-component system operation force))))
     (when dribble (dribble))))
+
 
 (defun compile-system (name &key force
 			    (version *version*)
@@ -3613,6 +3748,7 @@ D
 (defvar *force* nil)
 (defvar *providing-blocks-load-propagation* t
   "If T, if a system dependency exists on *modules*, it is not loaded.")
+
 (defun operate-on-system-dependencies (component operation &optional force)
   (when *system-dependencies-delayed*
     (let ((*force* force))
@@ -3642,17 +3778,24 @@ D
 			    ;; (or (eq force :all) (eq force t))
 			    (find (canonicalize-system-name system)
 				  *modules* :test #'string-equal))
+                 
 		 (operate-on-system system operation :force force)))
+
 	      ((listp system)
+               ;; If the SYSTEM is a list then its contents are as follows.
+               ;;
+               ;;    (<name> <definition-pathname> <action> <version>)
+               ;;
 	       (tell-user-require-system
-		(cond ((and (null (car system)) (null (cadr system)))
-		       (caddr system))
+		(cond ((and (null (first system)) (null (second system)))
+		       (third system))
 		      (t system))
 		component)
-	       (or *oos-test* (new-require (car system) nil
-					   (eval (cadr system))
-					   (caddr system)
-					   (or (car (cdddr system))
+	       (or *oos-test* (new-require (first system)
+                                           nil
+					   (eval (second system))
+					   (third system)
+					   (or (fourth system)
 					       *version*))))
 	      (t
 	       (tell-user-require-system system component)
@@ -3704,42 +3847,68 @@ D
 ;;; ********************************
 ;;; New Require ********************
 ;;; ********************************
+
+;;; This needs cleaning.  Obviously the code is a left over from the
+;;; time people did not know how to use packages in a proper way or
+;;; CLs were shaky in their implementation.
+
+;;; First of all we need this. (Commented out for the time being)
+;;; (shadow '(cl:require))
+
+
 (defvar *old-require* nil)
 
 ;;; All calls to require in this file have been replaced with calls
 ;;; to new-require to avoid compiler warnings and make this less of
 ;;; a tangled mess.
-(defun new-require (module-name &optional pathname definition-pname
-				default-action (version *version*))
+
+(defun new-require (module-name
+		    &optional
+		    pathname
+		    definition-pname
+		    default-action
+		    (version *version*))
   ;; If the pathname is present, this behaves like the old require.
   (unless (and module-name
 	       (find (string module-name)
 		     *modules* :test #'string=))
-    (cond (pathname
-	   (funcall *old-require* module-name pathname))
-	  ;; If the system is defined, load it.
-	  ((find-system module-name :load-or-nil definition-pname)
-	   (operate-on-system module-name :load
-	     :force *force*
-	     :version version
-	     :test *oos-test*
-	     :verbose *oos-verbose*
-	     :load-source-if-no-binary *load-source-if-no-binary*
-	     :bother-user-if-no-binary *bother-user-if-no-binary*
-	     :compile-during-load *compile-during-load*
-	     :load-source-instead-of-binary *load-source-instead-of-binary*
-	     :minimal-load *minimal-load*))
-	  ;; If there's a default action, do it. This could be a progn which
-	  ;; loads a file that does everything.
-	  ((and default-action
-		(eval default-action)))
-	  ;; If no system definition file, try regular require.
-	  ;; had last arg  PATHNAME, but this wasn't really necessary.
-	  ((funcall *old-require* module-name))
-	  ;; If no default action, print a warning or error message.
-	  (t
-	   (format t "~&Warning: System ~A doesn't seem to be defined..."
-		   module-name)))))
+    (handler-case
+        (cond (pathname
+	       (funcall *old-require* module-name pathname))
+	      ;; If the system is defined, load it.
+	      ((find-system module-name :load-or-nil definition-pname)
+	       (operate-on-system
+	        module-name :load
+	        :force *force*
+	        :version version
+	        :test *oos-test*
+	        :verbose *oos-verbose*
+	        :load-source-if-no-binary *load-source-if-no-binary*
+	        :bother-user-if-no-binary *bother-user-if-no-binary*
+	        :compile-during-load *compile-during-load*
+	        :load-source-instead-of-binary *load-source-instead-of-binary*
+	        :minimal-load *minimal-load*))
+	      ;; If there's a default action, do it. This could be a progn which
+	      ;; loads a file that does everything.
+	      ((and default-action
+		    (eval default-action)))
+	      ;; If no system definition file, try regular require.
+	      ;; had last arg  PATHNAME, but this wasn't really necessary.
+	      ((funcall *old-require* module-name))
+	      ;; If no default action, print a warning or error message.
+	      (t
+	       #||
+	       (format t "~&Warning: System ~A doesn't seem to be defined..."
+	               module-name)
+	       ||#
+	       (error 'missing-system :name module-name)))
+      (missing-module (mmc) (signal mmc)) ; Resignal.
+      (error (e)
+             (declare (ignore e))
+	     ;; Signal a (maybe wrong) MISSING-SYSTEM.
+	     (error 'missing-system :name module-name)))
+    ))
+
 
 ;;; Note that in some lisps, when the compiler sees a REQUIRE form at
 ;;; top level it immediately executes it. This is as if an
@@ -4216,7 +4385,7 @@ D
 	      (or (find force '(:all :new-source-all t) :test #'eq)
 		  (and (find force '(:new-source :new-source-and-dependents)
 			     :test #'eq)
-		       (needs-compilation component)))))
+		       (needs-compilation component nil)))))
 	(source-pname (component-full-pathname component :source)))
 
     (cond ((and must-compile (probe-file source-pname))
@@ -4260,21 +4429,26 @@ D
 	   nil)
 	  (t nil))))
 
-(defun needs-compilation (component)
+
+(defun needs-compilation (component force)
   ;; If there is no binary, or it is older than the source
   ;; file, then the component needs to be compiled.
   ;; Otherwise we only need to recompile if it depends on a file that changed.
+  (declare (ignore force))
   (let ((source-pname (component-full-pathname component :source))
 	(binary-pname (component-full-pathname component :binary)))
     (and
      ;; source must exist
      (probe-file source-pname)
      (or
+      ;; We force recompilation.
+      #|(find force '(:all :new-source-all) :test #'eq)|#
       ;; no binary
       (null (probe-file binary-pname))
       ;; old binary
       (< (file-write-date binary-pname)
 	 (file-write-date source-pname))))))
+
 
 (defun needs-loading (component &optional (check-source t) (check-binary t))
   ;; Compares the component's load-time against the file-write-date of
@@ -4311,7 +4485,7 @@ D
 	 ;; needs-compilation has an implicit source-exists in it.
 	 (needs-compilation (if (component-load-only component)
 				source-needs-loading
-				(needs-compilation component)))
+				(needs-compilation component force)))
 	 (check-for-new-source
 	  ;; If force is :new-source*, we're checking for files
 	  ;; whose source is newer than the compiled versions.
@@ -4324,13 +4498,17 @@ D
 	      (and load-binary (component-load-only component))
 	      (and check-for-new-source needs-compilation)))
 	 (compile-and-load
-	  (and needs-compilation (or load-binary check-for-new-source)
-	       (compile-and-load-source-if-no-binary component))))
+	  (and needs-compilation
+               (or load-binary check-for-new-source)
+	       (compile-and-load-source-if-no-binary component)))
+         )
     ;; When we're trying to minimize the files loaded to only those
     ;; that need be, restrict the values of load-source and load-binary
     ;; so that we only load the component if the files are newer than
     ;; the load-time.
-    (when *minimal-load*
+    (when (and *minimal-load*
+               (not (find force '(:all :new-source-all)
+		          :test #'eq)))
       (when load-source (setf load-source source-needs-loading))
       (when load-binary (setf load-binary binary-needs-loading)))
 
@@ -4351,7 +4529,8 @@ D
 			   (or *load-source-instead-of-binary*
 			       (component-load-only component)
 			       (not *compile-during-load*)))
-		      (and load-binary (not binary-exists)
+		      (and load-binary
+                           (not binary-exists)
 			   (load-source-if-no-binary component))))
 	     ;; Load the source if the source exists and:
 	     ;;   o  we're loading binary and it doesn't exist
@@ -4397,7 +4576,7 @@ D
 	    (and (find force '(:new-source :new-source-and-dependents
 					   :new-source-all)
 		       :test #'eq)
-		 (needs-compilation component)))
+		 (needs-compilation component nil)))
     (let ((binary-pname (component-full-pathname component :binary)))
       (when (probe-file binary-pname)
 	(with-tell-user ("Deleting binary"   component :binary)
@@ -4447,7 +4626,7 @@ D
 	       (setq *compile-during-load*
 		     (y-or-n-p-wait
 		      #\y 30
-		      "~A- Should I compile and load or not? "
+		      "~A- Should I compile while loading the system? "
 		      prompt)))		; was compile-source, then t
 	     compile-source))
 	  (*compile-during-load*)
@@ -4593,7 +4772,10 @@ D
 
 (defun files-in-system (name &optional (force :all) (type :source) version)
   ;; Returns a list of the pathnames in system in load order.
-  (let ((system (find-system name :load)))
+  (let ((system (if (and (component-p name)
+                         (member (component-type name) '(:defsystem :system :subsystem)))
+                    name
+                    (find-system name :load))))
     (multiple-value-bind (*version-dir* *version-replace*)
 	(translate-version version)
       (let ((*version* version))
@@ -4610,7 +4792,7 @@ D
      (when (setq changed
 		 (or (find force '(:all t) :test #'eq)
 		     (and (not (non-empty-listp force))
-			  (needs-compilation component))))
+			  (needs-compilation component nil))))
        (setq result
 	     (list component))))
     ((:module :system :subsystem :defsystem)
