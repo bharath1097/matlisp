@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-acl.lisp,v 1.3 2001/02/21 19:44:07 simsek Exp $
+;;; $Id: ffi-acl.lisp,v 1.4 2001/07/26 15:44:54 rtoy Exp $
 ;;;
 ;;; $Log: ffi-acl.lisp,v $
+;;; Revision 1.4  2001/07/26 15:44:54  rtoy
+;;; Moved the Fortran name mangling stuff to its own file.  Some common
+;;; things from ffi-acl and ffi-cmu also moved there.
+;;;
 ;;; Revision 1.3  2001/02/21 19:44:07  simsek
 ;;; o Added the :long keyword (equivalent to :integer)
 ;;; o Fixed the way strings are passed to the routines
@@ -52,39 +56,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#+nil
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS")
-  (:export 
-   "DEF-FORTRAN-ROUTINE"))
-
 (in-package "FORTRAN-FFI-ACCESSORS")
-
-(defun %cat% (prefix-string s &optional suffix-string)
-  (concatenate 'string 
-	       prefix-string
-	       (string s)
-	       suffix-string))
-
-(defun scat (prefix-string s &optional suffix-string)
-  (intern (%cat% prefix-string s suffix-string)))
-
-
-(defun make-fortran-name (name)
-  ;; Given the Fortran routine name NAME, this returns the real
-  ;; underlying name.  This depends on the compiler conventions being
-  ;; used.  Some Fortran compilers take the Fortran name NAME and
-  ;; produce "name_" as the real routine name.  Others will prepend
-  ;; the underscore.  Yet others might convert the name to all upper
-  ;; case.
-  (%cat% "" (string-downcase (symbol-name name)) 
-	 #+(or :unix :linux) ""
-	 #+:mswindows "_"))
-
-;; If the Fortran function name is NAME, the Lisp FFI name prepends
-;; "FORTRAN-"
-(defun make-fortran-ffi-name (name)
-  (scat "FORTRAN-" name))
 
 (defun parse-doc-&-parameters (body &optional header footer)
   (if (stringp (first body))

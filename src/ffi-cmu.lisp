@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.5 2001/02/26 22:54:23 rtoy Exp $
+;;; $Id: ffi-cmu.lisp,v 1.6 2001/07/26 15:44:54 rtoy Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.6  2001/07/26 15:44:54  rtoy
+;;; Moved the Fortran name mangling stuff to its own file.  Some common
+;;; things from ffi-acl and ffi-cmu also moved there.
+;;;
 ;;; Revision 1.5  2001/02/26 22:54:23  rtoy
 ;;; It appears to be ok to inline the def-alien-routine and
 ;;; vector-data-addresses.  The copy! bug isn't tickled.
@@ -130,40 +134,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#+nil
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL")
-  (:export
-   ;; Interface functions
-   "DEF-FORTRAN-ROUTINE"
-   "VECTOR-DATA-ADDRESS"
-   "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES"))
-
 (in-package "FORTRAN-FFI-ACCESSORS")
-
-(defun %cat% (prefix-string s &optional suffix-string)
-  (concatenate 'string 
-	       prefix-string
-	       (string s)
-	       suffix-string))
-
-(defun scat (prefix-string s &optional suffix-string)
-  (intern (%cat% prefix-string s suffix-string)))
-
-(defun make-fortran-name (name)
-  ;; Given the Fortran routine name NAME, this returns the real
-  ;; underlying name.  This depends on the compiler conventions being
-  ;; used.  Some Fortran compilers take the Fortran name NAME and
-  ;; produce "name_" as the real routine name.  Others will prepend
-  ;; the underscore.  Yet others might convert the name to all upper
-  ;; case.
-  (%cat% "" (string-downcase (symbol-name name)) "_"))
-
-;; If the Fortran function name is NAME, the Lisp FFI name prepends
-;; "FORTRAN-"
-(defun make-fortran-ffi-name (name)
-  (scat "FORTRAN-" name))
 
 (defun parse-doc-&-parameters (body &optional header footer)
   (if (stringp (first body))
