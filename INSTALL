@@ -38,18 +38,34 @@ The installation follows in a few easy steps:
 
 	cd matlisp
 
-4a. Build the system for Allegro CL:
+4. Configure the system.
+   o If you're using Allegro CL, specify --with-lisp=acl.
+   o If you're using CMU CL, specify --with-lisp=cmucl
+   o Give the name of the Lisp executable via --with-lisp-exec=<name>
+   o Run configure:
 
-	make allegro
+   ./configure --with-lisp=<lisp> --with-lisp-exec=<exec> --prefix=`pwd`
 
-4b. Build the system for CMU CL:
+   If you are not using g77 to compile, you may want to specify the
+   Fortran flags.  For example, to build with Sun's Fortran compiler
+   this can be used (from bash):
 
-	make cmu
-                       
+   F77=f77 FFLAGS='-g -O -KPIC' ./configure ...
+
+5. Build the Lisp files
+
+	make
+                         
 That's all there is to it.  In order for this to work, configure must 
 be able to detect a Fortran compiler and a C compiler in your path.  
 This is usually the case.  If configure fails  you should contact your 
 system administrator.
+
+In addition, if you use some other Fortran compiler besides g77 or
+Sun's f77, you may run into difficulties.  Assumptions are made on the
+calling Fortran conventions and if the compiler doesn't match those
+assumptions, there will be problems.  Please let us know if you have
+such a Fortran compiler.
 
 For higher performance you may consider using optimized BLAS/LAPACK
 libraries that may be available for your system.  For example,
