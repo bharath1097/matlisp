@@ -31,9 +31,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-acl.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: ffi-acl.lisp,v 1.3 2001/02/21 19:44:07 simsek Exp $
 ;;;
 ;;; $Log: ffi-acl.lisp,v $
+;;; Revision 1.3  2001/02/21 19:44:07  simsek
+;;; o Added the :long keyword (equivalent to :integer)
+;;; o Fixed the way strings are passed to the routines
+;;;   Now using STRING-TO-NATIVE.
+;;;
 ;;; Revision 1.2  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -105,6 +110,7 @@
 	   ;; imaginary parts.
 	   (ecase type
 	     (:integer '(:int fixnum))
+	     (:long '(:long fixnum))
 	     ((:single-float :complex-single-float) '(:float single-float))
 	     ((:double-float :complex-double-float) '(:double double-float)))))
     
@@ -132,6 +138,7 @@
   (ecase type
     (:void :void)
     (:integer :int)
+    (:long :long)
     (:single-float :float)
     (:double-float :double)))
 
@@ -166,8 +173,21 @@
 			     ;; That is, they use the first
 			     ;; letter of a string to get
 			     ;; its meaning.  (see note _char_trick_ below)
+
+			     ;; On windows we're using the CLAPACK
+			     ;; verisons of the BLAS/LAPACK libraries
+			     ;; The strings there are declared as char*
+			     ;; since we're using fortran calling
+			     ;; conventions, the following char
+			     ;; will be passed correctly as char*;
+			     ;; I'm assuming that :foreign-address
+			     ;; also works and don't know the reason
+			     ;; why there are 2 cases here.  Will
+			     ;; check when at first opportunity.
+			     
 			     #-:unix `(,name :char character)
-			    #+:unix `(,name :foreign-address (simple-array character (*)))
+			     #+:unix
+			     `(,name :foreign-address)
 			    )
 			     (t
 			     `(,name ,@(get-read-in-type type))))))
@@ -198,7 +218,8 @@
 				 (if (eq (second p) :string)
 				     ;; note _char_tric_ (see above)
 				     #-:unix `(char ,(first p) 0)
-				     #+:unix (first p)
+				     #+:unix
+				     `(excl::string-to-native ,(first p))
 				   (first p)))
 				 pars))
 	   ;; Extra arguments for string handling (the length
@@ -351,17 +372,7 @@ for :OUTPUT.
 	 (def-foreign-call (,lisp-name ,fortran-name) 
 			  (,@(parse-fortran-parameters hack-body))
 			  :returning ,(get-read-out-type hack-return-type)
-			  :convention :fortran)
+			  :convention :fortran
+			  )
 	 ,@(def-fortran-interface name hack-return-type hack-body)))))
-
-
-
-
-
-
-
-
-
-
-
 
