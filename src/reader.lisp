@@ -31,9 +31,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reader.lisp,v 1.4 2001/02/21 19:36:47 simsek Exp $
+;;; $Id: reader.lisp,v 1.5 2005/01/27 19:43:39 rtoy Exp $
 ;;;
 ;;; $Log: reader.lisp,v $
+;;; Revision 1.5  2005/01/27 19:43:39  rtoy
+;;; [ ] wasn't working with a Jan cmucl snapshot.  We don't want to signal
+;;; errors when READ-FROM-STRING is at end-of-file in
+;;; PARSE-MATRIX-EXPRESSION-1.
+;;;
 ;;; Revision 1.4  2001/02/21 19:36:47  simsek
 ;;; o Updated to work with Allegro 6.0
 ;;;
@@ -208,7 +213,7 @@
 	       (%push-on-end% (loop for i upfrom 1
 				  do (multiple-value-bind (entry more)
 					 (read-from-string (subseq row n)
-							   #+:allegro nil)
+							   nil)
 				       (setf n (+ n more))
 				       (if (= more 0)
 					   (loop-finish))
