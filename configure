@@ -1335,10 +1335,8 @@ echo "$ac_t""$FLIBS" 1>&6
 # (We should do a better job here.)
 case "$host" in
   *-*-solaris* | *-*-sunos*)
-	echo FLIBS = $FLIBS
 	# FLIBS=`echo $FLIBS | awk -f purgargs.awk`
 	FLIBS=`echo $FLIBS | sed 's;-Xlinker;;g' | awk -f purgargs.awk`
-	echo FLIBS = $FLIBS
 	SHARED_LIB_LDFLAGS="-G"
   	;;  
   *-*-linux*)
