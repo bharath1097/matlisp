@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.8 2001/04/26 21:49:15 rtoy Exp $
+;;; $Id: packages.lisp,v 1.9 2001/04/29 15:52:19 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.9  2001/04/29 15:52:19  rtoy
+;;; Add the external symbols from TOMS 715.
+;;;
 ;;; Revision 1.8  2001/04/26 21:49:15  rtoy
 ;;; Add MATLISP-LIB package.
 ;;;
@@ -106,7 +109,7 @@
 
 ;; Stolen from f2cl.  
 (defpackage "FORTRAN-TO-LISP"
-    (:use "CL")
+  (:use "CL")
   (:documentation "The package holding all symbols need by the Fortran to Lisp converter")
   (:nicknames "F2CL")
   (:export
@@ -141,7 +144,7 @@
    ))
     
 (defpackage "QUADPACK"
-    (:use "COMMON-LISP" "FORTRAN-TO-LISP")
+  (:use "COMMON-LISP" "FORTRAN-TO-LISP")
   (:export
    ;; Do we want to export the core integration routines too?
 
@@ -284,6 +287,21 @@
      "INTEGRATE-QAGI"
      "INTEGRATE-QAWS"
      "INTEGRATE-QAWC"
+     ;; From TOMS-715
+     "M-NORMAL-CDF"
+     "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
+     "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
+     "M-BESSEL-I0" "M-BESSEL-I1"
+     "M-BESSEL-J0" "M-BESSEL-J1"
+     "M-BESSEL-K0" "M-BESSEL-K1"
+     "M-BESSEL-Y0" "M-BESSEL-Y1"
+     "M-DAWSON-INTEGRAL"
+     "M-ERF" "M-ERFC" "M-ERFCX"
+     "M-GAMMA" "M-LOG-GAMMA"
+     "M-BESSEL-SERIES-I"
+     "M-BESSEL-SERIES-J"
+     "M-BESSEL-SERIES-K"
+     "M-BESSEL-SERIES-Y"
      ))
 
 (defpackage "MATLISP-USER"
