@@ -30,9 +30,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mtimes.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: mtimes.lisp,v 1.6 2002/06/13 16:54:08 rtoy Exp $
 ;;;
 ;;; $Log: mtimes.lisp,v $
+;;; Revision 1.6  2002/06/13 16:54:08  rtoy
+;;; Jefferson Provost reports that m.* runs very, very slowly.  Fix this.
+;;; The slowness was mostly likely caused by calling matrix-ref for each
+;;; array element.  Tunc supplied a version for the real x real function.
+;;; I supplied versions for the other cases and for the m.*! cases.
+;;;
 ;;; Revision 1.5  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -155,44 +161,60 @@
   (let* ((n (nrows b))
 	 (m (ncols b))
 	 (nxm (number-of-elements b))
-	 (result (make-real-matrix-dim n m)))
+	 (result (make-real-matrix-dim n m))
+	 (a-store (store a))
+	 (b-store (store b))
+	 (r-store (store result)))
     (declare (type fixnum n m nxm))
 
     (dotimes (k nxm result)
       (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type real-matrix-element-type a-val b-val))
-	(setf (matrix-ref result k) (* a-val b-val))))))
+      (setf (aref r-store k)
+	    (* (aref a-store k) (aref b-store k))))))
 
 (defmethod m.* ((a complex-matrix) (b complex-matrix))
   (let* ((n (nrows b))
 	 (m (ncols b))
 	 (nxm (number-of-elements b))
-	 (result (make-complex-matrix-dim n m)))
+	 (result (make-complex-matrix-dim n m))
+	 (a-store (store a))
+	 (b-store (store b))
+	 (r-store (store result)))
     (declare (type fixnum n m nxm))
 
-    (dotimes (k nxm result)
-      (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type (complex complex-matrix-element-type) a-val b-val))
-	(setf (matrix-ref result k) (* a-val b-val))))))
+    (do ((k 0 (+ k 1))
+	 (k-r 0 (+ k-r 2))
+	 (k-i 1 (+ k-i 2)))
+	((>= k nxm))
+      (declare (type fixnum k-r k-i))
+      (let* ((a-val (complex (aref a-store k-r) (aref a-store k-i)))
+	     (b-val (complex (aref b-store k-r) (aref b-store k-i)))
+	     (r-val (* a-val b-val)))
+	(setf (aref r-store k-r) (realpart r-val))
+	(setf (aref r-store k-i) (imagpart r-val))))
+    result))
 
 (defmethod m.* ((a real-matrix) (b complex-matrix))
   (let* ((n (nrows b))
 	 (m (ncols b))
 	 (nxm (number-of-elements b))
-	 (result (make-complex-matrix-dim n m)))
+	 (result (make-complex-matrix-dim n m))
+	 (a-store (store a))
+	 (b-store (store b))
+	 (r-store (store result)))
     (declare (type fixnum n m nxm))
 
-    (dotimes (k nxm result)
-      (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type (complex complex-matrix-element-type)  b-val)
-		 (type real-matrix-element-type a-val))
-	(setf (matrix-ref result k) (* a-val b-val))))))
+    (do ((k 0 (1+ k))
+	 (b-r 0 (+ b-r 2))
+	 (b-i 0 (+ b-i 2)))
+	((>= k nxm))
+      (declare (type fixnum k b-r b-i))
+      (let ((a-val (aref a-store k))
+	    (b-val (complex (aref b-store b-r) (aref b-store b-i)))
+	    (r-val (* a-val b-val)))
+	(setf (aref r-store b-r) (realpart r-val))
+	(setf (aref r-store b-i) (realpart i-val))))
+    result))
 
 (defmethod m.* ((a complex-matrix) (b real-matrix))
   (m.* b a))
@@ -201,38 +223,50 @@
 
   
 (defmethod m.*! ((a real-matrix) (b real-matrix))
-  (let* ((nxm (number-of-elements b)))
+  (let* ((nxm (number-of-elements b))
+	 (a-store (store a))
+	 (b-store (store b)))
     (declare (type fixnum nxm))
 
     (dotimes (k nxm b)
       (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type real-matrix-element-type a-val b-val))
-	(setf (matrix-ref b k) (* a-val b-val))))))
+      (setf (aref b-store k) (* (aref a-store k) (aref b-store k))))))
 
 (defmethod m.*! ((a complex-matrix) (b complex-matrix))
-  (let* ((nxm (number-of-elements b)))
+  (let ((nxm (number-of-elements b))
+	(a-store (store a))
+	(b-store (store b)))
     (declare (type fixnum nxm))
 
-    (dotimes (k nxm b)
-      (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type (complex complex-matrix-element-type) a-val b-val))
-	(setf (matrix-ref b k) (* a-val b-val))))))
+    (do ((k 0 (+ k 1))
+	 (k-r 0 (+ k-r 2))
+	 (k-i 1 (+ k-i 2)))
+	((>= k nxm))
+      (declare (type fixnum k k-r k-i))
+      (let* ((a-val (complex (aref a-store k-r) (aref a-store k-i)))
+	     (b-val (complex (aref b-store k-r) (aref b-store k-i)))
+	     (r-val (* a-val b-val)))
+	(setf (aref b-store k-r) (realpart r-val))
+	(setf (aref b-store k-i) (imagpart r-val))))
+    b))
 
 (defmethod m.*! ((a real-matrix) (b complex-matrix))
-  (let* ((nxm (number-of-elements b)))
+  (let ((nxm (number-of-elements b))
+	(a-store (store a))
+	(b-store (store b)))
     (declare (type fixnum nxm))
 
-    (dotimes (k nxm b)
-      (declare (type fixnum k))
-      (let ((a-val (matrix-ref a k))
-	    (b-val (matrix-ref b k)))
-	(declare (type (complex complex-matrix-element-type)  b-val)
-		 (type real-matrix-element-type a-val))
-	(setf (matrix-ref b k) (* a-val b-val))))))
+    (do ((k 0 (1+ k))
+	 (b-r 0 (+ b-r 2))
+	 (b-i 0 (+ b-i 2)))
+	((>= k nxm))
+      (declare (type fixnum k b-r b-i))
+      (let ((a-val (aref a-store k))
+	    (b-val (complex (aref b-store b-r) (aref b-store b-i)))
+	    (r-val (* a-val b-val)))
+	(setf (aref b-store b-r) (realpart r-val))
+	(setf (aref b-store b-i) (realpart i-val))))
+    b))
 
 (defmethod m.*! ((a complex-matrix) (b real-matrix))
   (error "cannot M.*! a COMPLEX-MATRIX into a REAL-MATRIX,
