@@ -26,9 +26,15 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.5 2001/03/19 17:07:47 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.6 2001/04/25 18:04:09 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.6  2001/04/25 18:04:09  rtoy
+# o Add some comments
+# o Add cpoly
+# o SHARED_LIB_LDFLAGS contains the flags for building shared libs.
+# o Use srcdir instead of prefix.  (Is this right?)
+#
 # Revision 1.5  2001/03/19 17:07:47  rtoy
 # Allow the user to specify using ATLAS libraries.
 #
@@ -53,6 +59,7 @@
 #
 ##########################################################################
 prefix=@prefix@
+srcdir=@srcdir@
 FC = @F77@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -62,13 +69,16 @@ CLIBS = @CLIBS@
 LIBS = @LIBS@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+SHARED_LIB_LDFLAGS = @SHARED_LIB_LDFLAGS@
 AR = ar
 ARFLAGS = rv
 LISPEXEC = @LISPEXEC@
 LISPEVAL = @LISPEVAL@
 
+# BLAS objects, if using our copy of BLAS
 BLAS_OBJS =  @BLAS_OBJS@
 
+# Additional objects from LAPACK when we're not using ATLAS
 NO_ATLAS_LAPACK_OBJS = @NO_ATLAS_LAPACK_OBJS@
 
 LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
@@ -98,6 +108,7 @@ LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dhgeqz.o  dlapy2.o  dorghr.o  \
 	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o $(NO_ATLAS_LAPACK_OBJS)
 
+# The FFT package
 DFFTPACK_OBJS = zfftb.o \
 	cfftb1.o \
 	zfftf.o \
@@ -148,12 +159,16 @@ DFFTPACK_OBJS = zfftb.o \
 	sint1.o \
 	dsinti.o
 
-OBJS = $(BLAS_OBJS:%=$(prefix)/LAPACK/BLAS/SRC/%) \
-	$(LAPACK_OBJS:%=$(prefix)/LAPACK/SRC/%) \
-	$(DFFTPACK_OBJS:%=$(prefix)/dfftpack/%)
+# The cpoly (polynomial root) package
+CPOLY_OBJS = cpoly.o
 
-MATLIB = $(prefix)/lib/libmatlisp.so
-LAZY_LOADER=$(prefix)/lib/lazy-loader.o
+OBJS = $(BLAS_OBJS:%=$(srcdir)/LAPACK/BLAS/SRC/%) \
+	$(LAPACK_OBJS:%=$(srcdir)/LAPACK/SRC/%) \
+	$(DFFTPACK_OBJS:%=$(srcdir)/dfftpack/%) \
+	$(CPOLY_OBJS:%=$(srcdir)/lib-src/cpoly/%)
+
+MATLIB = $(srcdir)/lib/libmatlisp.so
+LAZY_LOADER=$(srcdir)/lib/lazy-loader.o
 
 .f.o:
 	$(F77) $(FFLAGS) -o $@ -c $<
@@ -165,7 +180,7 @@ all : $(MATLIB) lib/lazy-loader.o
 	$(LISPEXEC) $(LISPEVAL) '(progn (load "start.lisp"))'
 
 $(MATLIB): $(OBJS)
-	$(LD) $(LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS)
+	$(LD) $(SHARED_LIB_LDFLAGS) $(LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS)
 
 static: $(LAZY_LOADER) $(OBJS)
 	$(AR) $(ARFLAGS) $(LIB)static.a $(OBJS)
