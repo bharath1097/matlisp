@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: print.lisp,v 1.5 2001/02/21 19:33:34 simsek Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.5  2001/02/21 19:33:34  simsek
+;;; o Added the formatting hack *matrix-indent*.
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -126,6 +129,10 @@ but got *PRINT-MATRIX* of type ~a"
 	      realpart
 	      imagpart))))
 
+(defvar *matrix-indent* 0
+  "Determines how many spaces will be printed before each row 
+   of a matrix (default 0)")
+
 (defun print-matrix (matrix stream)
   (with-slots (number-of-rows number-of-cols) matrix
       (multiple-value-bind (max-n max-m)
@@ -137,6 +144,8 @@ but got *PRINT-MATRIX* of type ~a"
 	 (decf max-m)  
 	 (flet ((print-row (i)
 		  (format stream "~%   ")
+		  (dotimes (i *matrix-indent*)
+		    (format stream " "))
 		  (dotimes (j max-m)
 		    (declare (type fixnum j))
 		    (print-element matrix 
