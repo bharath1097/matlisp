@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: reader.lisp,v 1.3 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: reader.lisp,v 1.4 2001/02/21 19:36:47 simsek Exp $
 ;;;
 ;;; $Log: reader.lisp,v $
+;;; Revision 1.4  2001/02/21 19:36:47  simsek
+;;; o Updated to work with Allegro 6.0
+;;;
 ;;; Revision 1.3  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -60,10 +63,12 @@
 (defun null-string-p (s)
   (if (= (length s) 0)
       t
-    (if (= (length (remove #\^m 
-			   (remove #\space 
-				   (remove #\tab
-					   (remove #\linefeed s))))) 0)
+    (if (= (length 
+	    (remove #\return
+		    (remove #\^m 
+			    (remove #\space 
+				    (remove #\tab
+					    (remove #\linefeed s)))))) 0)
 	t
       nil)))
 
@@ -81,15 +86,30 @@
 				   eof-value
 				   recursive)))
      until (case c
-	     ((#\^m #\space #\tab #\newline) nil)
+	     ((#\^m #\space #\tab #\return #\newline) nil)
 	     (nil t)
 	     (t t))
      finally (progn
-		 (if c
-		     (unread-char c stream)
-		   (if (eql c1 #\newline)
-		       (unread-char c1 stream)))
-		 c))))
+
+	       #+(and allegro-version>= (version>= 6))
+	       (if c
+		   (unread-char c stream))
+
+	       #-(and allegro-version>= (version>= 6))
+	       (if c
+		   (unread-char c stream)
+		 (if (or
+		      (eql c1 #\newline)
+		      (eql c1 #\^m)
+		      (eql c1 #\linefeed)
+		      (eql c1 #\return))
+		     (unread-char c1 stream)
+		   ) ;; (if (or ...
+		 ) ;; (if c ...
+	       c)
+     ) ;; (loop ...
+    ) ;; (let ((c ...
+  ) ;; (defun ...
 
 (defun peek-char-no-hang (stream &optional
 				 eof-error
