@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: compat.lisp,v 1.2 2000/07/11 02:11:56 simsek Exp $
+;;; $Id: compat.lisp,v 1.3 2001/02/21 07:58:09 simsek Exp $
 ;;;
 ;;; $Log: compat.lisp,v $
+;;; Revision 1.3  2001/02/21 07:58:09  simsek
+;;; o Fixed typo in mref
+;;;
 ;;; Revision 1.2  2000/07/11 02:11:56  simsek
 ;;; o Added support for Allegro CL
 ;;;
@@ -128,5 +131,5 @@
 (defun mref (i &optional j)
   "Same as MATRIX-REF"
   (if j
-    (matrix-ref i j)
-   (matrix-ref i)))
+    (matrix-ref m i j)
+   (matrix-ref m i)))
