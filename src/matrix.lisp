@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.4 2000/05/11 18:02:55 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.5 2000/05/11 18:28:10 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.5  2000/05/11 18:28:10  rtoy
+;;; After the great standard-matrix renaming, row-vector-p and
+;;; col-vector-p were swapped.
+;;;
 ;;; Revision 1.4  2000/05/11 18:02:55  rtoy
 ;;; o After the great standard-matrix renaming, I forgot a few initargs
 ;;;   that needed to be changed
@@ -303,11 +307,11 @@ that way."))
 
 (declaim (inline row-vector-p))
 (defmethod row-vector-p ((matrix standard-matrix))
-  (= (ncols matrix) 1))
+  (= (nrows matrix) 1))
 
 (declaim (inline col-vector-p))
 (defmethod col-vector-p ((matrix standard-matrix))
-  (= (nrows matrix) 1))
+  (= (ncols matrix) 1))
 
 (declaim (inline row-or-col-vector-p))
 (defmethod row-or-col-vector-p ((matrix standard-matrix))
