@@ -12,10 +12,10 @@ and an account on sourceforge (which we will call <login>).
 
 	cd matlisp   
 	cvs -z3 -d<login>@cvs.matlisp.sourceforge.net:/cvsroot/matlisp \
-     		-q tag R_<major>_<minor>[_a | _b]
+     		-q tag R_<major>_<minor>[_alpha | _beta]
 	cd ..
 	cvs -z3 -d<login>@cvs.matlisp.sourceforge.net:/cvsroot/matlisp \
-     		-q export -r R_<major>_<minor>[_a | _b] -d matlisp-<major>.<minor>[a|b] matlisp
+     		-q export -r R_<major>_<minor>[_alpha | _beta] -d matlisp-<major>.<minor>[a|b] matlisp
 	tar cvf matlisp-<major>.<minor>[a|b].tar matlisp-<major>.<minor>[a|b]
 	gzip matlisp-<major>.<minor>[a|b].tar
 	mv matlisp-<major>.<minor>[a|b].tar.gz matlisp-<major>.<minor>[a|b].tgz
@@ -26,9 +26,9 @@ For example, with my login name simsek, to make a release called 1.4b:
 	alias tvs cvs -z3 -dsimsek@cvs.matlisp.sourceforge.net:/cvsroot/matlisp
 	tvs co matlisp
 	cd matlisp
-	tvs -q tag R_1_4_b
+	tvs -q tag R_1_4_beta
 	cd ..
-	tvs -q export -r R_1_4_b -d matlisp-1.4b matlisp
+	tvs -q export -r R_1_4_beta -d matlisp-1.4b matlisp
 	tar cvf matlisp-1.4b.tar matlisp
 	gzip matlisp-1.4b.tar
 	mv matlisp-1.4b.tar.gz matlisp-1.4b.tgz
