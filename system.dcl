@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.14 2001/05/01 13:12:12 rtoy Exp $
+;;; $Id: system.dcl,v 1.15 2001/07/10 16:16:58 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.15  2001/07/10 16:16:58  rtoy
+;;; Add gnuplot
+;;;
 ;;; Revision 1.14  2001/05/01 13:12:12  rtoy
 ;;; macros.l now contains I1MACH, R1MACH, D1MACH so don't need these
 ;;; versions anymore.
@@ -346,5 +349,10 @@
 			  :components
 			  ((:file "cpoly")
 			   (:file "zeroin"
-				  :package "MATLISP-LIB")))))))
+				  :package "MATLISP-LIB")))
+		 (:module "gnuplot"
+			  :source-extension "lisp"
+			  :binary-pathname ""
+			  :components
+			  ((:file "gnuplot")))))))
 
