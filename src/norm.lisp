@@ -26,9 +26,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: norm.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; $Id: norm.lisp,v 1.2 2000/04/14 00:44:11 simsek Exp $
 ;;;
 ;;; $Log: norm.lisp,v $
+;;; Revision 1.2  2000/04/14 00:44:11  simsek
+;;; o With some Fortran compilers you get a floating point
+;;;   exception if you call SVD like this: (SVD a).  But it seems to work like this: (SVD a :a)
+;;;   This is a problem with the Fortran compiler and the LAPACK Fortran routine.
+;;;   Until a better fix is found, I'm changing the calls to SVD in this file with the :A options.
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;
@@ -126,8 +132,9 @@
 				  (incf-sap :double-float addr-store (* j n))
 				  (blas::fortran-dasum n addr-store 1)))))
 	     nrm))
-	((2 :2) (multiple-value-bind (sigma status)
-		  (svd a)
+	((2 :2) (multiple-value-bind (up sigma vp status)
+		    (svd a :a)
+		  (declare (ignore up vp))
 	      (if status
 		  (matrix-ref sigma 0)
 		(error "SVD did not converge, cannot compute 2-norm of matrix"))))
@@ -198,7 +205,7 @@
 				  (blas::fortran-dzasum n addr-store 1)))))
 	     nrm))
 	((2 :2) (multiple-value-bind (up sigma vp status)
-		    (svd a)
+		    (svd a :a)
 		  (declare (ignore up vp))
 		  (if status
 		      (matrix-ref sigma 0 0)
