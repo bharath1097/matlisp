@@ -34,9 +34,15 @@ dnl          autoconf configure.in > configure
 dnl
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.4 2001/03/06 17:57:43 rtoy Exp $
+dnl $Id: configure.in,v 1.5 2001/03/08 16:56:24 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.5  2001/03/08 16:56:24  rtoy
+dnl o --with-lisp selects some default name for the Lisp executable.  (May
+dnl   need some tweaking.)
+dnl o Added --with-ld to specify the ld to use.  If unspecified, use plain
+dnl   ld, except on Solaris, use /usr/ccs/bin/ld.
+dnl
 dnl Revision 1.4  2001/03/06 17:57:43  rtoy
 dnl o Added option --with-lisp to specify which Lisp we're using (acl or
 dnl   cmucl).
@@ -70,15 +76,20 @@ AC_ARG_WITH([lisp],
 [  --with-lisp=name        Which lisp system to use.  Currently supported
                            systems are acl and cmucl.],
 [LISPSYS=$withval
+
 dnl Verify we got a supported system and figure out the command
-dnl line eval option name.
+dnl line eval option name.  Choose some default name for the Lisp 
+dnl executable too.
+
 case $LISPSYS in
   acl)
     LISPEVAL='-e'
+    LISPEXEC=cl
     ;;
   cmucl)
     # Don't run the user's init function!
     LISPEVAL='-noinit -eval'
+    LISPEXEC=lisp
     ;;
   *)
      AC_MSG_ERROR([Unknown Lisp system:  $LISPSYS.  Supported systems are acl and cmucl])
@@ -91,7 +102,7 @@ dnl standardized, and might actually conflict.)
 
 AC_ARG_WITH([lisp-exec],
 [  --with-lisp-exec=name   Name of lisp program],
-LISPEXEC=$withval
+[LISPEXEC=$withval]
 )
 
 dnl     Determine a Fortran 77 compiler to use.  If `F77' is not already
@@ -139,17 +150,31 @@ dnl     Determine a C compiler to use.
 dnl
 AC_PROG_CC
 
-dnl
-dnl     Determine the argument given to ld to make shared libraries.
-dnl
+dnl Allow user to specify which linker to use.  Default is ld, wherever 
+dnl that is on the user's path.
+AC_ARG_WITH([ld],
+[  --with-ld=<ld>          Name of the linker to use],
+[LD=$withval],
+[
+  case "$host" in
+    *-*-solaris*)
+      # Always use this one on Solaris, unless told otherwise.
+      LD=/usr/ccs/bin/ld
+      ;;
+    *)
+      LD=ld
+      ;;  
+  esac
+])
+
+# Determine the argument given to ld to make shared libraries.
+# (We should do a better job here.)
 case "$host" in
   *-*-solaris* | *-*-sunos*)
-	FLIBS=`echo $FLIBS | awk -f purgargs.awk`
-	LD="ld"
+	# FLIBS=`echo $FLIBS | awk -f purgargs.awk`
 	LDFLAGS="-G"
   	;;  
   *-*-linux*)
-	LD="ld"
 	LDFLAGS="-shared"
   	;;
   *)
@@ -174,7 +199,6 @@ AC_SUBST(LISPEXEC)
 AC_SUBST(LISPEVAL)
 
 AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp)
-dnl AC_OUTPUT(Makefile lib/lazy-loader.lisp)
 
 
 
