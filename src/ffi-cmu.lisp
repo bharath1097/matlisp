@@ -30,9 +30,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.6 2001/07/26 15:44:54 rtoy Exp $
+;;; $Id: ffi-cmu.lisp,v 1.7 2002/07/26 21:38:02 rtoy Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.7  2002/07/26 21:38:02  rtoy
+;;; Fix a bug in generating the Fortran inteface when a complex number is
+;;; returned.  Use an array instead of a complex number for the result and
+;;; create a complex from the array elements for the function value.
+;;;
 ;;; Revision 1.6  2001/07/26 15:44:54  rtoy
 ;;; Moved the Fortran name mangling stuff to its own file.  Some common
 ;;; things from ffi-acl and ffi-cmu also moved there.
@@ -295,11 +300,28 @@
 	  `(
 	    ;; Too hard to debug if inlined.
 	    ;;(declaim (inline ,name))
-	    (defun ,name ,args
-	      ,@doc
-	      (let ((,hidden-var-name #c(0d0 0d0)))
-		(declare (type (complex double-float) ,hidden-var-name))
-		,@defun-body)))
+	    ;;
+	    ;; This used to create a complex number for
+	    ;; hidden-var-name, but seemed to be causing some problems
+	    ;; for CMUCL.  Therefore, we now create a 2-element array
+	    ;; to hold the result (which is ok by Fortran rules), can
+	    ;; create the complex result from the contents of the
+	    ;; array.
+	    ;;
+	    ;; The problem seems to be that CMUCL was creating a
+	    ;; "static" storage area for hidden-var-name.  Since CMUCL
+	    ;; doesn't seem to know that it was being modified in the
+	    ;; body, it returns the address of the static storage. So,
+	    ;; for example, (/ (dot a b) (dot c d)) would have the
+	    ;; results of the first dot overwritten by the second,
+	    ;; making the division always return #c(1.0 0.0).  This is
+	    ;; the theory---I'm not 100% sure it's right, but this
+	    ;; change fixes the bug.
+	    (let ((,hidden-var-name (make-array 2 :element-type 'double-float)))
+	      (defun ,name ,args
+		,@doc
+		,@defun-body
+		(complex (aref ,hidden-var-name 0) (aref ,hidden-var-name 1)))))
 	  `(
 	    ;; Too hard to debug if inlined.
 	    ;;(declaim (inline ,name))
