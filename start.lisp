@@ -43,9 +43,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.10 2003/12/07 15:03:44 rtoy Exp $
+;;; $Id: start.lisp,v 1.11 2004/05/20 21:41:15 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.11  2004/05/20 21:41:15  rtoy
+;;; Put the start up stuff in its own MATLISP-START package to prevent
+;;; polluting COMMON-LISP-USER.
+;;;
 ;;; Revision 1.10  2003/12/07 15:03:44  rtoy
 ;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 ;;; works.
@@ -70,7 +74,16 @@
 ;;;
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "COMMON-LISP-USER")
+
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defpackage "MATLISP-START"
+    (:use "COMMON-LISP")
+    (:export "DEFLOGICALPATH")
+    (:documentation "A package to hold Matlisp startup stuff"))
+  )
+
+(in-package "MATLISP-START")
 
 
 (pushnew :matlisp *features*)
