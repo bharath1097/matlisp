@@ -31,9 +31,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.8 2002/10/23 00:47:57 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.9 2003/05/02 01:15:14 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.9  2003/05/02 01:15:14  rtoy
+;;; Fix arg list for zgetrs:  2 args in wrong order, forget the final INFO
+;;; arg.
+;;;
 ;;; Revision 1.8  2002/10/23 00:47:57  rtoy
 ;;; Fix typo:  zgetrs was missing a closing paren.
 ;;;
@@ -449,8 +453,9 @@
   (a (* :complex-double-float) :input)
   (lda :integer :input)
   (ipiv (* :integer) :input)
+  (b (* :complex-double-float) :input-output)
   (ldb :integer :input)
-  (b (* :complex-double-float) :input-output))
+  (info :integer :output)
 
 (def-fortran-routine dgesvd :void
 "
