@@ -33,9 +33,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.9 2001/03/19 17:07:47 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.10 2001/04/25 17:50:39 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.10  2001/04/25 17:50:39  rtoy
+;;; o Fix the atlas lib stuff
+;;; o Reinstate FLIBS because we need that.
+;;;
 ;;; Revision 1.9  2001/03/19 17:07:47  rtoy
 ;;; Allow the user to specify using ATLAS libraries.
 ;;;
@@ -127,7 +131,7 @@
 			     (concatenate 'string
 			         "-L@ATLAS_DIR@"
 				 " "
-				 @ATLAS_LIBS@
+				 "@ATLAS_LIBS@"
 				 " "
 				 "-L"
 				 (namestring
@@ -137,7 +141,9 @@
 				 (namestring
 				   (translate-logical-pathname "matlisp:lib"))
 				 " "
-			         "-lmatlisp"))))
+			         "-lmatlisp"
+				 " "
+				 "@FLIBS@"))))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
