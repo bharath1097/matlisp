@@ -35,9 +35,12 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.9 2001/06/06 14:24:22 rtoy Exp $
+dnl $Id: configure.in,v 1.10 2001/07/26 15:48:59 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.10  2001/07/26 15:48:59  rtoy
+dnl Support Fortran name mangling supported by autoconf.
+dnl
 dnl Revision 1.9  2001/06/06 14:24:22  rtoy
 dnl Update to autoconf 2.50 and add tests
 dnl o Check that -c and -o are supported by the Fortran compiler
@@ -238,12 +241,37 @@ dnl
 dnl	Figure out what the Fortran name mangling is
 dnl
 dnl This is only for autoconf 2.49d or later!
-AC_F77_FUNC(foo_name)
-if test "$ac_cv_f77_mangling" != "lower case, underscore, no extra underscore" ; then
-  AC_MSG_WARN([F77 name mangling doesn't match our expectations.])
-  AC_MSG_WARN([You may need to change some the FFI code.])
-fi 
-dnl Make sure it matches our expectations
+AC_F77_FUNC(f77_name)
+# Setup our environment variables based on the value of f77_name
+F77_LOWER_CASE=t
+F77_UNDERSCORE=t
+F77_EXTRA_UNDERSCORE=nil
+case $f77_name in
+  F77*)	F77_LOWER_CASE=nil
+	case $f77_name in
+	  F77_NAME) F77_UNDERSCORE=nil
+		    ;;
+ 	  F77_NAME_) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=nil
+		;;
+ 	  F77_NAME__) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=t
+		;;
+	esac
+	;;
+  f77*) F77_LOWER_CASE=t
+	case $f77_name in
+	  f77_name) F77_UNDERSCORE=nil
+		    ;;
+ 	  f77_name_) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=nil
+		;;
+ 	  f77_name__) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=t
+		;;
+	esac
+	;;
+esac
   	
 dnl End autoconf 2.49d stuff
 
@@ -283,5 +311,8 @@ AC_SUBST(NO_ATLAS_LAPACK_OBJS)
 AC_SUBST(ATLAS_DIR)
 AC_SUBST(ATLAS_LIBS)
 AC_SUBST(srcdir)
+AC_SUBST(F77_LOWER_CASE)
+AC_SUBST(F77_UNDERSCORE)
+AC_SUBST(F77_EXTRA_UNDERSCORE)
 
-AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp)
+AC_OUTPUT(matlisp.mk lib/lazy-loader.lisp src/f77-mangling.lisp)
