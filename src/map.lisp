@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: map.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: map.lisp,v 1.5 2000/10/04 23:55:29 simsek Exp $
 ;;;
 ;;; $Log: map.lisp,v $
+;;; Revision 1.5  2000/10/04 23:55:29  simsek
+;;; o Hacked methods specializing to functions
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -101,6 +104,12 @@
 
 	     
 ;; can we specialize to a function of 1 arg here?
+#|
+;;; CMUCL 18b has problems with specializing methods
+;;; to functions (this should have been fixed in 
+;;; later releases of CMUCL, but I'll check for
+;;; type manually so that we can support 18b)
+
 (defmethod map-matrix! ((func function) (mat real-matrix))
   (let ((nxm (number-of-elements mat))
 	(store (store mat)))
@@ -113,6 +122,31 @@
 (defmethod map-matrix ((func function) (mat real-matrix))
   (let ((res (copy mat)))
     (map-matrix! func res)))
+|#
+
+(defmethod map-matrix! (func (mat real-matrix))
+  (unless (functionp func)
+    (error "argument ~a given to ~a should have been a ~a"
+	   func
+	   'map-matrix!
+	   'function))
+  (let ((nxm (number-of-elements mat))
+	(store (store mat)))
+    (declare (type fixnum nxm)
+	     (type (real-matrix-store-type (*)) store))
+    (dotimes (k nxm mat)
+      (declare (type fixnum k))
+      (setf (aref store k) (funcall func (aref store k))))))
+
+(defmethod map-matrix (func (mat real-matrix))
+  (unless (functionp func)
+    (error "argument ~a given to ~a should have been a ~a"
+	   func
+	   'map-matrix!
+	   'function))
+  (let ((res (copy mat)))
+    (map-matrix! func res)))
+
 
 ;; For now, we define simple basic transcendental functions for
 ;; matrices.  For simplicity, we use the standard Lisp versions of
@@ -196,7 +230,11 @@
 (make-real-mapper acosh)
 (make-real-mapper atanh)
 
-
+#|
+;;; CMUCL 18b has problems with specializing methods
+;;; to functions (this should have been fixed in 
+;;; later releases of CMUCL, but I'll check for
+;;; type manually so that we can support 18b)
 (defmethod map-matrix! ((func function) (mat complex-matrix))
   (let ((nxm (number-of-elements mat)))
     (declare (type fixnum nxm))
@@ -205,6 +243,28 @@
       (setf (matrix-ref mat k) (funcall func (matrix-ref mat k))))))
 
 (defmethod map-matrix ((func function) (mat complex-matrix))
+  (let ((res (copy mat)))
+    (map-matrix! func res)))
+|#
+
+(defmethod map-matrix! (func (mat complex-matrix))
+  (unless (functionp func)
+    (error "argument ~a given to ~a should have been a ~a"
+	   func
+	   'map-matrix!
+	   'function))
+  (let ((nxm (number-of-elements mat)))
+    (declare (type fixnum nxm))
+    (dotimes (k nxm mat)
+      (declare (type fixnum k))
+      (setf (matrix-ref mat k) (funcall func (matrix-ref mat k))))))
+
+(defmethod map-matrix (function (mat complex-matrix))
+  (unless (functionp func)
+    (error "argument ~a given to ~a should have been a ~a"
+	   func
+	   'map-matrix!
+	   'function))
   (let ((res (copy mat)))
     (map-matrix! func res)))
 
