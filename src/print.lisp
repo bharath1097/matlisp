@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.5 2001/02/21 19:33:34 simsek Exp $
+;;; $Id: print.lisp,v 1.6 2001/04/28 13:06:46 rtoy Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.6  2001/04/28 13:06:46  rtoy
+;;; This is not Fortran.  Instead of printing *'s when the number won't
+;;; fit in the given field, print them out!
+;;;
 ;;; Revision 1.5  2001/02/21 19:33:34  simsek
 ;;; o Added the formatting hack *matrix-indent*.
 ;;;
@@ -113,7 +117,7 @@ but got *PRINT-MATRIX* of type ~a"
 (defmethod print-element ((matrix real-matrix)
 			  element
 			  stream)
-  (format stream "~11,5,,,'*,,'Eg" element))
+  (format stream "~11,5,,,,,'Eg" element))
 
 (defmethod print-element ((matrix complex-matrix)
 			  element
@@ -123,7 +127,7 @@ but got *PRINT-MATRIX* of type ~a"
 	(imagpart (imagpart element)))
 
     (if (zerop imagpart)
-	(format stream "      ~11,5,,,'*,,'Eg      " realpart)
+	(format stream "      ~11,5,,,,,'Eg      " realpart)
       (format stream "#~a(~9,3,,,,,'Ee ~9,3,,,,,'Ee)" 
 	      'c 
 	      realpart
