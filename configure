@@ -2795,21 +2795,45 @@ echo "$as_me:2794: result: $ac_cv_f77_mangling" >&5
 echo "${ECHO_T}$ac_cv_f77_mangling" >&6
 
 case $ac_cv_f77_mangling in
-  upper*) ac_val="FOO_NAME" ;;
-  lower*) ac_val="foo_name" ;;
+  upper*) ac_val="F77_NAME" ;;
+  lower*) ac_val="f77_name" ;;
   *)      ac_val="unknown" ;;
 esac
 case $ac_cv_f77_mangling in *," underscore"*) ac_val="$ac_val"_ ;; esac
 case $ac_cv_f77_mangling in *," extra underscore"*) ac_val="$ac_val"_ ;; esac
 
-foo_name="$ac_val"
+f77_name="$ac_val"
 
-if test "$ac_cv_f77_mangling" != "lower case, underscore, no extra underscore" ; then
-  { echo "$as_me:2808: WARNING: F77 name mangling doesn't match our expectations." >&5
-echo "$as_me: WARNING: F77 name mangling doesn't match our expectations." >&2;}
-  { echo "$as_me:2810: WARNING: You may need to change some the FFI code." >&5
-echo "$as_me: WARNING: You may need to change some the FFI code." >&2;}
-fi
+# Setup our environment variables based on the value of f77_name
+F77_LOWER_CASE=t
+F77_UNDERSCORE=t
+F77_EXTRA_UNDERSCORE=nil
+case $f77_name in
+  F77*)	F77_LOWER_CASE=nil
+	case $f77_name in
+	  F77_NAME) F77_UNDERSCORE=nil
+		    ;;
+ 	  F77_NAME_) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=nil
+		;;
+ 	  F77_NAME__) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=t
+		;;
+	esac
+	;;
+  f77*) F77_LOWER_CASE=t
+	case $f77_name in
+	  f77_name) F77_UNDERSCORE=nil
+		    ;;
+ 	  f77_name_) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=nil
+		;;
+ 	  f77_name__) F77_UNDERSCORE=t
+		     F77_EXTRA_UNDERSCORE=t
+		;;
+	esac
+	;;
+esac
 
 # Determine the argument given to ld to make shared libraries.
 # (We should do a better job here.)
@@ -2823,16 +2847,16 @@ case "$host" in
 	SHARED_LIB_LDFLAGS="-shared"
   	;;
   *)
-	{ echo "$as_me:2826: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&5
+	{ echo "$as_me:2850: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&5
 echo "$as_me: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&2;}
-	{ echo "$as_me:2828: WARNING: Matlisp may not compile on your system $host." >&5
+	{ echo "$as_me:2852: WARNING: Matlisp may not compile on your system $host." >&5
 echo "$as_me: WARNING: Matlisp may not compile on your system $host." >&2;}
 	LD="ld"
 	SHARED_LIB_LDFLAGS="-G"
   	;;
 esac
 
-ac_config_files="$ac_config_files matlisp.mk lib/lazy-loader.lisp"
+ac_config_files="$ac_config_files matlisp.mk lib/lazy-loader.lisp src/f77-mangling.lisp"
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -2942,7 +2966,7 @@ rm -f confdef2opt.sed
 : ${CONFIG_STATUS=./config.status}
 ac_clean_files_save=$ac_clean_files
 ac_clean_files="$ac_clean_files $CONFIG_STATUS"
-{ echo "$as_me:2945: creating $CONFIG_STATUS" >&5
+{ echo "$as_me:2969: creating $CONFIG_STATUS" >&5
 echo "$as_me: creating $CONFIG_STATUS" >&6;}
 cat >$CONFIG_STATUS <<_ACEOF
 #! $SHELL
@@ -3109,7 +3133,7 @@ cat >>$CONFIG_STATUS <<\EOF
     echo "$ac_cs_version"; exit 0 ;;
   --he | --h)
     # Conflict between --help and --header
-    { { echo "$as_me:3112: error: ambiguous option: $1
+    { { echo "$as_me:3136: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -3130,14 +3154,15 @@ Try \`$0 --help' for more information." >&2;}
   # Handling of arguments.
   'matlisp.mk' ) CONFIG_FILES="$CONFIG_FILES matlisp.mk" ;;
   'lib/lazy-loader.lisp' ) CONFIG_FILES="$CONFIG_FILES lib/lazy-loader.lisp" ;;
+  'src/f77-mangling.lisp' ) CONFIG_FILES="$CONFIG_FILES src/f77-mangling.lisp" ;;
 
   # This is an error.
-  -*) { { echo "$as_me:3135: error: unrecognized option: $1
+  -*) { { echo "$as_me:3160: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&2;}
    { (exit 1); exit 1; }; } ;;
-  *) { { echo "$as_me:3140: error: invalid argument: $1" >&5
+  *) { { echo "$as_me:3165: error: invalid argument: $1" >&5
 echo "$as_me: error: invalid argument: $1" >&2;}
    { (exit 1); exit 1; }; };;
   esac
@@ -3265,6 +3290,9 @@ s,@NO_ATLAS_LAPACK_OBJS@,$NO_ATLAS_LAPACK_OBJS,;t t
 s,@ATLAS_DIR@,$ATLAS_DIR,;t t
 s,@ATLAS_LIBS@,$ATLAS_LIBS,;t t
 s,@srcdir@,$srcdir,;t t
+s,@F77_LOWER_CASE@,$F77_LOWER_CASE,;t t
+s,@F77_UNDERSCORE@,$F77_UNDERSCORE,;t t
+s,@F77_EXTRA_UNDERSCORE@,$F77_EXTRA_UNDERSCORE,;t t
 CEOF
 
 EOF
@@ -3374,7 +3402,7 @@ done; }
   esac
 
   if test x"$ac_file" != x-; then
-    { echo "$as_me:3377: creating $ac_file" >&5
+    { echo "$as_me:3405: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
     rm -f "$ac_file"
   fi
@@ -3392,7 +3420,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:3395: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:3423: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -3405,7 +3433,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:3408: error: cannot find input file: $f" >&5
+           { { echo "$as_me:3436: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;
