@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.3 2000/10/04 01:20:44 simsek Exp $
+;;; $Id: packages.lisp,v 1.4 2000/10/04 15:40:46 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.4  2000/10/04 15:40:46  simsek
+;;; o Added unload-blas-&-lapack-binaries
+;;;   to symbols exported from matlisp
+;;;
 ;;; Revision 1.3  2000/10/04 01:20:44  simsek
 ;;; o Moved version related code from system.dcl
 ;;;   to here.  This code should be the first bit of code loaded
@@ -207,6 +211,7 @@
      "TR"
      "TRANSPOSE"
      "VEC"
+     "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
      "ZEROS"
      ))
 
