@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: help.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: help.lisp,v 1.3 2001/02/21 19:38:01 simsek Exp $
 ;;;
 ;;; $Log: help.lisp,v $
+;;; Revision 1.3  2001/02/21 19:38:01  simsek
+;;; o Shortened print width and changed message
+;;;
 ;;; Revision 1.2  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -100,7 +103,7 @@
 
        (format t "~%~%For help on a particular package try (HELP <package-name>),
 For help on a particular symbol try (HELP <symbol-name>). 
-For example, (HELP user) (HELP mapcar)")
+For example, (HELP matlisp) (HELP mapcar)")
        (values))))
 
 (defgeneric man (item &optional stream)
@@ -122,8 +125,8 @@ For example, (HELP user) (HELP mapcar)")
 (defmethod man ((item t) &optional (stream t))
   (format stream "~&~%No help available for ~a" item))
 
-(defvar *man-term-width* 80
-  "Defines the width of the terminal (default value 80)")
+(defvar *man-term-width* 60
+  "Defines the width of the terminal (default value 60)")
 
 (defmethod man ((item package) &optional (stream t))
   (let ((names nil)
@@ -136,7 +139,8 @@ For example, (HELP user) (HELP mapcar)")
 		(structure-doc (documentation s 'structure))
 		(type-doc (documentation s 'type))
 		(setf-doc (documentation s 'setf)))
-	    (if (or (and function-doc
+	    (if (or 
+		    (and function-doc
 			 (not (string= function-doc "")))
 		    (and variable-doc
 			 (not (string= variable-doc "")))
@@ -202,7 +206,7 @@ For example, (HELP user) (HELP mapcar)")
 		    (dolist (doc (list `(,function-doc "function")
 				       `(,variable-doc "variable")
 				       `(,structure-doc "structure")
-				       `(,type-doc "type")
+				       `(,type-doc "class")
 				       `(,setf-doc "setf")))
 			    
 			    (if (and (first doc)
