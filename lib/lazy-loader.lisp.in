@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.13 2004/03/17 03:26:08 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.14 2004/03/17 03:28:09 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.14  2004/03/17 03:28:09  simsek
+;;; Adding DFFTPACK support for windows.
+;;;
 ;;; Revision 1.13  2004/03/17 03:26:08  simsek
 ;;; Windows library is now called libmatlisp.dll.
 ;;;
@@ -174,8 +177,8 @@
   (load-blas-&-lapack-libraries)
   (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
   (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil)
-  #-:mswindows (load (translate-logical-pathname
-		      "matlisp:bin;dfftpack") :verbose nil))
+  (load (translate-logical-pathname
+	 "matlisp:bin;dfftpack") :verbose nil))
 
 #+(or :cmu :sbcl)
 (defun unload-blas-&-lapack-libraries ()
