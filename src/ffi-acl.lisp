@@ -26,9 +26,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-acl.lisp,v 1.1 2000/07/11 02:11:56 simsek Exp $
+;;; Adapted from ffi-cmu.lisp by Tunc Simsek, Univ. of California, Berkeley
+;;; 2000, simsek@eecs.berkeley.edu
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: ffi-acl.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
 ;;;
 ;;; $Log: ffi-acl.lisp,v $
+;;; Revision 1.2  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.1  2000/07/11 02:11:56  simsek
 ;;; o Added support for Allegro CL
 ;;;

@@ -26,9 +26,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: help.lisp,v 1.1 2000/04/14 00:12:48 simsek Exp $
+;;; Originally written by Tunc Simsek, Univ. of California, Berkeley,
+;;; 2000, simsek@eecs.berkeley.edu
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: help.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
 ;;;
 ;;; $Log: help.lisp,v $
+;;; Revision 1.2  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.1  2000/04/14 00:12:48  simsek
 ;;; Initial revision.
 ;;;

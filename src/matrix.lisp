@@ -26,9 +26,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.6 2000/07/11 02:11:56 simsek Exp $
+;;; Originally written by Raymond Toy
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: matrix.lisp,v 1.7 2000/07/11 18:02:03 simsek Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.7  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.6  2000/07/11 02:11:56  simsek
 ;;; o Added support for Allegro CL
 ;;;

@@ -26,9 +26,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.3 2000/07/11 02:11:56 simsek Exp $
+;;; Originally written by Raymond Toy.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: copy.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.4  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.3  2000/07/11 02:11:56  simsek
 ;;; o Added support for Allegro CL
 ;;;

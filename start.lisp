@@ -26,6 +26,11 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Originally written by Tunc Simsek, University of California, Berkeley,
+;;; 2000, simsek@eecs.berkeley.edu
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  To compile and load MATLISP:
 ;;;
 ;;;      from the shell prompt (this needs to be done only once):
@@ -38,9 +43,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.3 2000/07/11 06:19:28 simsek Exp $
+;;; $Id: start.lisp,v 1.4 2000/07/11 18:02:34 simsek Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.4  2000/07/11 18:02:34  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.3  2000/07/11 06:19:28  simsek
 ;;; o Fixed up some badly placed paranthesis
 ;;; in DEFLOGICALPATH

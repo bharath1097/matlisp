@@ -26,9 +26,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ffi-cmu.lisp,v 1.1 2000/07/11 02:11:56 simsek Exp $
+;;; Originally written by Raymond Toy.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: ffi-cmu.lisp,v 1.2 2000/07/11 18:02:03 simsek Exp $
 ;;;
 ;;; $Log: ffi-cmu.lisp,v $
+;;; Revision 1.2  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
 ;;; Revision 1.1  2000/07/11 02:11:56  simsek
 ;;; o Added support for Allegro CL
 ;;;

@@ -22,6 +22,11 @@ dnl ENHANCEMENTS, OR MODIFICATIONS.
 dnl
 dnl ======================================================================
 dnl
+dnl Originally written by Tunc Simsek, Univ. of California, Berkeley,
+dnl 2000, simsek@eecs.berkeley.edu
+dnl
+dnl ======================================================================
+dnl
 dnl Process this file with autoconf to produce a configure script.
 dnl For example:
 dnl
@@ -29,9 +34,12 @@ dnl          autoconf configure.in > configure
 dnl
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.2 2000/07/11 02:16:12 simsek Exp $
+dnl $Id: configure.in,v 1.3 2000/07/11 18:02:34 simsek Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.3  2000/07/11 18:02:34  simsek
+dnl o Added credits
+dnl
 dnl Revision 1.2  2000/07/11 02:16:12  simsek
 dnl o Added support for shared libraries
 dnl
