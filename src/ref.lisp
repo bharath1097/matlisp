@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.6 2003/06/01 15:01:08 rtoy Exp $
+;;; $Id: ref.lisp,v 1.7 2003/07/12 02:23:07 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.7  2003/07/12 02:23:07  rtoy
+;;; Correct some typos produced when splitting up the matrix-ref methods.
+;;;
 ;;; Revision 1.6  2003/06/01 15:01:08  rtoy
 ;;; Cleanup of code.  Maybe be some instability for a bit.  Some checks
 ;;; may have been accidentally removed.
@@ -1208,7 +1211,9 @@
     (error 'matrix-index-error :row-index i :col-index j :matrix matrix)))
 
 (defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j fixnum))
-  (setf (aref store (fortran-matrix-indexing i j n)) new))
+  (let ((n (nrows matrix))
+	(store (store matrix)))
+    (setf (aref store (fortran-matrix-indexing i j n)) new)))
 
 (defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j list))
   (set-real-from-scalar-matrix-slice-2d-seq new matrix (list i) j))
@@ -2112,11 +2117,14 @@
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
 (defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i fixnum))
-  (let ((realpart (aref new-store 0))
-	(imagpart (aref new-store 1)))
-    (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
-    (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
-    (complex realpart imagpart)))
+  (let ((n (nrows matrix))
+	(new-store (store new))
+	(store (store matrix)))
+    (let ((realpart (aref new-store 0))
+	  (imagpart (aref new-store 1)))
+      (setf (aref store (fortran-complex-matrix-indexing i 0 n)) realpart)
+      (setf (aref store (1+ (fortran-complex-matrix-indexing i 0 n))) imagpart)
+      (complex realpart imagpart))))
 
 (defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i list))
   (set-complex-from-complex-matrix-slice-1d-seq new matrix i))
@@ -2209,11 +2217,14 @@
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
 (defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j fixnum))
-  (let ((realpart (aref new-store 0))
-	(imagpart (aref new-store 1)))
-    (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
-    (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
-    (complex realpart imagpart)))
+  (let ((new-store (store new))
+	(n (nrows matrix))
+	(store (store matrix)))
+    (let ((realpart (aref new-store 0))
+	  (imagpart (aref new-store 1)))
+      (setf (aref store (fortran-complex-matrix-indexing i j n)) realpart)
+      (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
+      (complex realpart imagpart))))
 
 (defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j list))
   (set-complex-from-complex-matrix-slice-2d-seq new matrix (list i) j))
