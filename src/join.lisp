@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: join.lisp,v 1.5 2001/10/25 21:53:31 rtoy Exp $
+;;; $Id: join.lisp,v 1.6 2001/10/26 15:20:33 rtoy Exp $
 ;;;
 ;;; $Log: join.lisp,v $
+;;; Revision 1.6  2001/10/26 15:20:33  rtoy
+;;; RESHAPE! is working now, so use it.
+;;;
 ;;; Revision 1.5  2001/10/25 21:53:31  rtoy
 ;;; Two new join methods.  From M. Koerber to support his QR routines.
 ;;;
@@ -199,15 +202,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; A couple of new join methods
 (defmethod join ((a real-matrix) (b complex-matrix matrix) &optional orientation)
-  (join
-   ;; Hmm...reshape! seems to be broke, though I'd rather use it here
-   (apply #'reshape (make-complex-matrix (store a)) (size a))
-   b orientation))
+  (join (apply #'reshape! (make-complex-matrix (store a)) (size a))
+	b orientation))
 
 (defmethod join ((a complex-matrix) (b real-matrix matrix) &optional orientation)
-  (join
-   a
-   ;; Hmm...reshape! seems to be broke, though I'd rather use it here
-   (apply #'reshape (make-complex-matrix (store b)) (size b))
-   orientation))
+  (join a
+	(apply #'reshape! (make-complex-matrix (store b)) (size b))
+	orientation))
 
