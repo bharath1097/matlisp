@@ -33,24 +33,27 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp,v 1.4 2000/10/04 15:38:17 simsek Exp $
+;;; $Id: lazy-loader.lisp,v 1.5 2000/10/04 22:51:32 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp,v $
-;;; Revision 1.4  2000/10/04 15:38:17  simsek
+;;; Revision 1.5  2000/10/04 22:51:32  simsek
+;;; *** empty log message ***
+;;;
+;;; Revision 1.6  2000/10/04 15:38:18  simsek
 ;;; o Added dfftpack to loaded binaries
 ;;;  o Added unload-blas-&-lapack-libraries for Allegro image
 ;;;    saving support
 ;;;
-;;; Revision 1.3  2000/10/04 01:22:21  simsek
+;;; Revision 1.5  2000/10/04 01:22:21  simsek
 ;;; o Changed package to MATLISP
 ;;;   This avoids interning symbols in packages other
 ;;;   than MATLISP
 ;;;
-;;; Revision 1.2  2000/07/11 02:51:15  simsek
+;;; Revision 1.4  2000/07/11 02:49:55  simsek
 ;;; *** empty log message ***
 ;;;
-;;; Revision 1.1  2000/07/11 02:09:52  simsek
-;;; *** empty log message ***
+;;; Revision 1.3  2000/07/11 02:08:19  simsek
+;;; Added support for Allegro CL
 ;;;
 ;;; Revision 1.2  2000/05/05 21:31:00  simsek
 ;;; o Added the library libdfftpack to the load list
@@ -121,7 +124,6 @@
 				 " "
 			         "-lmatlispstatic
                                    -L/usr/ccs/lib -L/usr/lib -L/usr/sww/pkg/gcc-2.95.2/lib/gcc-lib/sparc-sun-solaris2.6/2.95.2 -L/usr/ccs/bin -L/usr/ccs/lib -L/usr/sww/pkg/gcc-2.95.2/lib -lg2c -lm -R /usr/sww/pkg/gcc-2.95.2/lib:/usr/sww/lib -lm"))))
-
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
