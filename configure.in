@@ -34,9 +34,14 @@ dnl          autoconf configure.in > configure
 dnl
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.7 2001/04/25 18:08:13 rtoy Exp $
+dnl $Id: configure.in,v 1.8 2001/04/26 13:43:33 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.8  2001/04/26 13:43:33  rtoy
+dnl o ATLAS_DIR variable needs to contain the -L flag.  Otherwise, we get
+dnl   a dangling -L option if we're not using ATLAS.
+dnl o Remove a debug statement
+dnl
 dnl Revision 1.7  2001/04/25 18:08:13  rtoy
 dnl o Added --with-f77 to specify the f77 compiler (and options) to use.
 dnl o Need to make sure the C and F77 compilers understand -c and -o.
@@ -125,7 +130,7 @@ AC_ARG_WITH([atlas],
 [  --with-atlas=libpath    Location of the ATLAS libraries],
 [
   # Building with ATLAS
-  ATLAS_DIR=$withval
+  ATLAS_DIR="-L$withval"
   ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
 ],
 [
@@ -233,10 +238,8 @@ dnl End autoconf 2.49d stuff
 # (We should do a better job here.)
 case "$host" in
   *-*-solaris* | *-*-sunos*)
-	echo FLIBS = $FLIBS
 	# FLIBS=`echo $FLIBS | awk -f purgargs.awk`
 	FLIBS=`echo $FLIBS | sed 's;-Xlinker;;g' | awk -f purgargs.awk`
-	echo FLIBS = $FLIBS
 	SHARED_LIB_LDFLAGS="-G"
   	;;  
   *-*-linux*)
