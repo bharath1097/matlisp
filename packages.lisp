@@ -26,9 +26,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.4 2000/10/04 15:40:46 simsek Exp $
+;;; $Id: packages.lisp,v 1.5 2000/10/04 22:49:52 simsek Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.5  2000/10/04 22:49:52  simsek
+;;; o Added matlisp-user package
+;;;
 ;;; Revision 1.4  2000/10/04 15:40:46  simsek
 ;;; o Added unload-blas-&-lapack-binaries
 ;;;   to symbols exported from matlisp
@@ -214,6 +217,11 @@
      "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
      "ZEROS"
      ))
+
+(defpackage "MATLISP-USER"
+  (:use "COMMON-LISP" "MATLISP" #+:allegro "EXCL")
+  #+:cmu (:shadowing-import-from "COMMON-LISP"
+				 "QUIT"))
 
 (in-package "MATLISP")
 
