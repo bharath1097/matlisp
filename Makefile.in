@@ -40,9 +40,12 @@
 #
 ##########################################################################
 #
-# $Id: Makefile.in,v 1.1 2000/04/13 20:28:01 simsek Exp $
+# $Id: Makefile.in,v 1.2 2000/04/14 00:18:58 simsek Exp $
 #
 # $Log: Makefile.in,v $
+# Revision 1.2  2000/04/14 00:18:58  simsek
+# o Added a few \\ to the ends of lines.
+#
 # Revision 1.1  2000/04/13 20:28:01  simsek
 # o Created this file to capture the Fortran parameters, e.g. libraries
 #    compiler flags, etc ... detected by 'configure'.
@@ -73,7 +76,7 @@ BLAS_OBJS =  dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o \
 	dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o \
 	ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o
 
-LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o  
+LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dlarf.o   dorglq.o  zhetd2.o  zlatrs.o \
 	dbdsqr.o  dlabrd.o  dlarfb.o  dorgql.o	 zhetrd.o  zpotf2.o \
 	dgebak.o  dlacon.o  dlarfg.o  dorgqr.o	 zhseqr.o  zpotrf.o \
@@ -100,8 +103,8 @@ LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o
 	dhgeqz.o  dlapy2.o  dorghr.o  zgetrs.o   zlaswp.o \
 	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o 
 
-all: lib/libblas.a($(BLAS_OBJS:%=LAPACK/BLAS/SRC/%)) 
-	lib/liblapack.a($(LAPACK_OBJS:%=LAPACK/SRC/%)) 
+all: lib/libblas.a($(BLAS_OBJS:%=LAPACK/BLAS/SRC/%)) \
+	lib/liblapack.a($(LAPACK_OBJS:%=LAPACK/SRC/%)) \
 	lib/lazy-loader.o
 
 lib/lazy-loader.o: lib/lazy-loader.c
