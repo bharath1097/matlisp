@@ -31,9 +31,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.6 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: fft.lisp,v 1.7 2001/02/21 19:35:23 simsek Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.7  2001/02/21 19:35:23  simsek
+;;; o Fixed exporting and docstrings
+;;;
 ;;; Revision 1.6  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -66,12 +69,12 @@
 
 (in-package "MATLISP")
 
-(use-package "DFFTPACK")
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
+#+nil (use-package "DFFTPACK")
+#+nil (use-package "BLAS")
+#+nil (use-package "LAPACK")
+#+nil (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(fft ifft))
+#+nil (export '(fft ifft))
 
 (defgeneric fft (x &optional n)
   (:documentation
@@ -111,7 +114,7 @@
   The optional argument defaults to length of X when X is 
   a vector and to the number of rows of X when it is a matrix.
 
-  See IFFT, FFTI
+  See IFFT
   "))
 
 (defgeneric ifft (x &optional n)
@@ -152,25 +155,29 @@
   The optional argument defaults to length of X when X is 
   a vector and to the number of rows of X when it is a matrix.
 
-  See FFT, FFTI
+  See FFT
   "))
 
 (defun ffti (n)
-  "
-  Syntax
-  ======
-  (FFTI n)
 
-  Purpose
-  =======
-  Initializes the vector WSAVE which is used in FFT and IFFT.
-  The prime factorization of N and a tabulation of the
-  trigonometric functions are computed and returned in WSAVE.
-
-  The optional argument WSAVE, if provided, must be a REAL-MATRIX
-  with length > 4*N+15.  The same WSAVE may be used in FFT and IFFT
-  if the arg N given to FFT and IFFT are the same.
-"
+  ;; Since this function is not in the user
+  ;; interface anymore, I'm commenting out
+  ;; the doc string.
+  ;; "
+  ;;  Syntax
+  ;;  ======
+  ;;  (FFTI n)
+  ;;
+  ;;  Purpose
+  ;;  =======
+  ;;  Initializes the vector WSAVE which is used in FFT and IFFT.
+  ;;  The prime factorization of N and a tabulation of the
+  ;;  trigonometric functions are computed and returned in WSAVE.
+  ;;
+  ;;  The optional argument WSAVE, if provided, must be a REAL-MATRIX
+  ;;  with length > 4*N+15.  The same WSAVE may be used in FFT and IFFT
+  ;;  if the arg N given to FFT and IFFT are the same.
+  ;; "
   (declare (type (and fixnum (integer 1 *)) n))
 
   (let ((result (make-array (+ (* 4 n) 15) :element-type 'double-float)))
