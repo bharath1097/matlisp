@@ -31,9 +31,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: fft.lisp,v 1.3 2000/05/08 17:19:18 rtoy Exp $
+;;; $Id: fft.lisp,v 1.4 2000/05/12 14:13:37 rtoy Exp $
 ;;;
 ;;; $Log: fft.lisp,v $
+;;; Revision 1.4  2000/05/12 14:13:37  rtoy
+;;; o Change the interface to fft and ifft:  We don't need the wsave
+;;;   argument anymore because fft and ifft compute them (and cache them
+;;;   in a hash table) as needed.
+;;; o Don't export ffti; the user doesn't need access to this anymore.
+;;;
 ;;; Revision 1.3  2000/05/08 17:19:18  rtoy
 ;;; Changes to the STANDARD-MATRIX class:
 ;;; o The slots N, M, and NXM have changed names.
@@ -59,21 +65,21 @@
 (use-package "LAPACK")
 (use-package "FORTRAN-FFI-ACCESSORS")
 
-(export '(fft ffti ifft))
+(export '(fft ifft))
 
-(defgeneric fft (x &optional n wsave)
+(defgeneric fft (x &optional n)
   (:documentation
   "
   Syntax
   ======
-  (FFT x [n] [wsave])
+  (FFT x [n])
 
   Purpose
   =======
   Computes the N point discrete Fourier transform (DFT) of X:
    
      For k = 0,...,N-1:            
-                               2 pi n
+                                2 pi n
                \\---       -j k ------
                 \\                N
     DFT(k) =    /    x(i) e
@@ -83,16 +89,13 @@
      where the inverse DFT (see IFFT) is:
 
      For i = 0,...,N-1:            
-                                 2 pi k
+                                  2 pi k
                \\---         -j i ------
                 \\                  N
       X(i) =    /    DFT(k) e
                /---
             k=0,..,N-1
  
-  A call to FFT followed by a call to IFFT will multiply the sequency
-  by N.
-
   If X is a vector, it is truncated at the end if it has more 
   than N elements and it is padded with zeros at the end if
   it has less than N elements.
@@ -102,43 +105,37 @@
   The optional argument defaults to length of X when X is 
   a vector and to the number of rows of X when it is a matrix.
 
-  The optional argument WSAVE, if provided, must be a 
-  REAL-MATRIX of length > 4*N+15 as computed by FFTI.
-
   See IFFT, FFTI
   "))
 
-(defgeneric ifft (x &optional n wsave)
+(defgeneric ifft (x &optional n)
   (:documentation
   "
   Syntax
   ======
-  (IFFT x [n] [wsave])
+  (IFFT x [n])
 
   Purpose
   =======
   Computes the N point inverse discrete Fourier transform (DFT) of X:
    
      For i = 0,...,N-1:            
-                                 2 pi k
-               \\---         -j i ------
-                \\                  N
-      IDFT(i) = /      X(k) e
-               /---
-            k=0,..,N-1
+                                        2 pi k
+                     \\---          j i ------
+                 1    \\                  N
+      IDFT(i) = ---    /      X(k) e
+                 N    /---
+                   k=0,..,N-1
 
      where the DFT (see FFT) is:
 
      For k = 0,...,N-1:            
-                               2 pi n
-               \\---       -j k ------
-                \\                N
+                                 2 pi n
+               \\---         j k ------
+                \\                 N
       X(k) =    /  IDFT(i) e
                /---
             i=0,..,N-1
-
-  A call to FFT followed by a call to IFFT will multiply the sequency
-  by N.
 
   If X is a vector, it is truncated at the end if it has more 
   than N elements and it is padded with zeros at the end if
@@ -149,17 +146,14 @@
   The optional argument defaults to length of X when X is 
   a vector and to the number of rows of X when it is a matrix.
 
-  The optional argument WSAVE, if provided, must be a 
-  REAL-MATRIX of length > 4*N+15 as computed by FFTI.
-
   See FFT, FFTI
   "))
 
-(defun ffti (n &optional wsave)
- "
+(defun ffti (n)
+  "
   Syntax
   ======
-  (FFTI n [WSAVE])
+  (FFTI n)
 
   Purpose
   =======
@@ -171,68 +165,43 @@
   with length > 4*N+15.  The same WSAVE may be used in FFT and IFFT
   if the arg N given to FFT and IFFT are the same.
 "
-  (unless (and (integerp n)
-	       (> n 0))
-    (error "argument N given to FFTI needs to
-be an INTEGER > 0"))
+  (declare (type (and fixnum (integer 1 *)) n))
 
-  (if wsave
-      (progn
-	(unless (and (subtypep (type-of wsave) 'real-matrix)
-		     (> (number-of-elements wsave) (+ (* 4 n) 15)))
-	  (error "argument WSAVE given to FFTI needs
-to be a REAL-MATRIX of size > 4*N+15"))
-	(zffti n (store wsave))
-	wsave)
-    (let ((result (make-real-matrix-dim 1 (+ (* 4 n) 15))))
-      (zffti n (store result))
-      result)))
+  (let ((result (make-array (+ (* 4 n) 15) :element-type 'double-float)))
+    (zffti n result)
+    result))
 
-
-(defmethod fft :before ((x standard-matrix) &optional n wsave)
-  (labels ((wsave-size (i)
-		(+ (* 4 i) 15)))
-    (if (and n wsave)
-	(unless (and (integerp n)
-		     (> n 0)
-		     (subtypep (type-of wsave) 'real-matrix)
-		     (> (number-of-elements wsave) (wsave-size n)))
-	  (error "arguments N,WSAVE to FFT need to be
-INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
-      
-      (if n
-	  (typecase n
-	     ((integer 1 *) t)
-	     (real-matrix (let ((wsave n)
-				(n (nrows x))
-				(m (ncols x)))
-			    (if (row-or-col-vector-p x)
-				(unless (> (number-of-elements wsave) (wsave-size (max n m)))
-				  (error "argument WSAVE given to FFT
-needs to be a REAL-MATRIX of size > 4*n+15 where n is 
-the size of argument X"))
-			      (unless (> (number-of-elements wsave) (wsave-size n))
-				(error "arguement WSAVE given to FFT
-need to be a REAL-MATRIX of size > 4*n+15 where n is the number
-of rows in argument X")))))
-	     (t (error "second argument to FFT must be
-and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
+;; Create the hash table used to keep track of all of the tables we
+;; need for fft and ifft.
+(let ((wsave-hash-table (make-hash-table)))
+  (defun lookup-wsave-entry (n)
+    "Find the wsave entry for an FFT size of N"
+    (let ((entry (gethash n wsave-hash-table)))
+      (or entry
+	  (setf (gethash n wsave-hash-table) (ffti n)))))
+  ;; Just in case we want to start over
+  (defun clear-wsave-entries ()
+    (clrhash wsave-hash-table))
+  ;; Just in case we want to take a peek at what's in the table.
+  (defun dump-wsave-entries ()
+    (maphash #'(lambda (key val)
+		 (format t "Key = ~D, Val = ~A~%" key val))
+	     wsave-hash-table)))
   
-(defmethod fft ((x standard-matrix) &optional n wsave)
+(defmethod fft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
 		    (nrows x))))
-	 (wsave (or wsave (ffti n)))
+	 (wsave (lookup-wsave-entry n))
 	 (result (cond ((row-vector-p x) 
 			(make-complex-matrix-dim 1 n))
 		       ((col-vector-p x)
 			(make-complex-matrix-dim n 1))
 		       (t (make-complex-matrix-dim n (ncols x))))))
-
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
-	  (zfftf n (store result) (store wsave)))
+	  (zfftf n (store result) wsave))
 
       (dotimes (j (ncols x))
 	(declare (type fixnum j))
@@ -240,48 +209,17 @@ and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
 	   (declare (type fixnum i))
 	   (setf (matrix-ref result i j) (matrix-ref x i j)))
 	 (with-vector-data-addresses ((addr-result (store result))
-				      (addr-wsave (store wsave)))
+				      (addr-wsave wsave))
 	    (incf-sap :complex-double-float addr-result (* j n))
 	    (dfftpack::fortran-zfftf n addr-result addr-wsave))))
 
       result))
 
-
-
-(defmethod ifft :before ((x standard-matrix) &optional n wsave)
-  (labels ((wsave-size (i)
-		(+ (* 4 i) 15)))
-    (if (and n wsave)
-	(unless (and (integerp n)
-		     (> n 0)
-		     (subtypep (type-of wsave) 'real-matrix)
-		     (> (number-of-elements wsave) (wsave-size n)))
-	  (error "arguments N,WSAVE to IFFT need to be
-INTEGER > 0 and REAL-MATRIX of size > 4*N+15 respectively"))
-      
-      (if n
-	  (typecase n
-	     ((integer 1 *) t)
-	     (real-matrix (let ((wsave n)
-				(n (nrows x))
-				(m (ncols x)))
-			    (if (row-or-col-vector-p x)
-				(unless (> (number-of-elements wsave) (wsave-size (max n m)))
-				  (error "argument WSAVE given to IFFT
-needs to be a REAL-MATRIX of size > 4*n+15 where n is 
-the size of argument X"))
-			      (unless (> (number-of-elements wsave) (wsave-size n))
-				(error "arguement WSAVE given to IFFT
-need to be a REAL-MATRIX of size > 4*n+15 where n is the number
-of rows in argument X")))))
-	     (t (error "second argument to IFFT must be
-and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
-  
-(defmethod ifft ((x standard-matrix) &optional n wsave)
+(defmethod ifft ((x standard-matrix) &optional n)
   (let* ((n (or n (if (row-or-col-vector-p x)
 		      (max (nrows x) (ncols x))
-		    (nrows x))))
-	 (wsave (or wsave (ffti n)))
+		      (nrows x))))
+	 (wsave (lookup-wsave-entry n))
 	 (result (cond ((row-vector-p x) 
 			(make-complex-matrix-dim 1 n))
 		       ((col-vector-p x)
@@ -291,16 +229,21 @@ and INTEGER > 0 or a REAL-MATRIX of size > 4*n+15")))))))
     (if (row-or-col-vector-p x)
 	(progn
 	  (copy! x result)
-	  (zfftb n (store result) (store wsave)))
+	  (zfftb n (store result) wsave))
 
-      (dotimes (j (ncols x))
-	(declare (type fixnum j))
-	 (dotimes (i (nrows x))
-	   (declare (type fixnum i))
-	   (setf (matrix-ref result i j) (matrix-ref x i j)))
-	 (with-vector-data-addresses ((addr-result (store result))
-				      (addr-wsave (store wsave)))
-	    (incf-sap :complex-double-float addr-result (* j n))
-	    (dfftpack::fortran-zfftb n addr-result addr-wsave))))
+	(let ((scale-factor (/ (float n 1d0))))
+	  (dotimes (j (ncols x))
+	    (declare (type fixnum j))
+	    (dotimes (i (nrows x))
+	      (declare (type fixnum i))
+	      (setf (matrix-ref result i j) (matrix-ref x i j)))
+	    (with-vector-data-addresses ((addr-result (store result))
+					 (addr-wsave wsave))
+	      (incf-sap :complex-double-float addr-result (* j n))
+	      (dfftpack::fortran-zfftb n addr-result addr-wsave))
+	    ;; Scale the result
+	    (dotimes (i (nrows x))
+	      (declare (type fixnum i))
+	      (setf (matrix-ref result i j) (* scale-factor (matrix-ref x i j)))))))
 
-      result))
+    result))
