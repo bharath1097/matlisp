@@ -2835,6 +2835,14 @@ case $f77_name in
 	;;
 esac
 
+# However, ACL doesn't want our name mangler to add a trailing
+# underscore because it does it by itself.
+case $LISPSYS in
+  acl)
+    F77_UNDERSCORE=nil
+    ;;
+esac
+
 # Determine the argument given to ld to make shared libraries.
 # (We should do a better job here.)
 case "$host" in
@@ -2847,9 +2855,9 @@ case "$host" in
 	SHARED_LIB_LDFLAGS="-shared"
   	;;
   *)
-	{ echo "$as_me:2850: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&5
+	{ echo "$as_me:2858: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&5
 echo "$as_me: WARNING: Oops! Matlisp is tested on Solaris, SunOS or Linux" >&2;}
-	{ echo "$as_me:2852: WARNING: Matlisp may not compile on your system $host." >&5
+	{ echo "$as_me:2860: WARNING: Matlisp may not compile on your system $host." >&5
 echo "$as_me: WARNING: Matlisp may not compile on your system $host." >&2;}
 	LD="ld"
 	SHARED_LIB_LDFLAGS="-G"
@@ -2966,7 +2974,7 @@ rm -f confdef2opt.sed
 : ${CONFIG_STATUS=./config.status}
 ac_clean_files_save=$ac_clean_files
 ac_clean_files="$ac_clean_files $CONFIG_STATUS"
-{ echo "$as_me:2969: creating $CONFIG_STATUS" >&5
+{ echo "$as_me:2977: creating $CONFIG_STATUS" >&5
 echo "$as_me: creating $CONFIG_STATUS" >&6;}
 cat >$CONFIG_STATUS <<_ACEOF
 #! $SHELL
@@ -3133,7 +3141,7 @@ cat >>$CONFIG_STATUS <<\EOF
     echo "$ac_cs_version"; exit 0 ;;
   --he | --h)
     # Conflict between --help and --header
-    { { echo "$as_me:3136: error: ambiguous option: $1
+    { { echo "$as_me:3144: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: ambiguous option: $1
 Try \`$0 --help' for more information." >&2;}
@@ -3157,12 +3165,12 @@ Try \`$0 --help' for more information." >&2;}
   'src/f77-mangling.lisp' ) CONFIG_FILES="$CONFIG_FILES src/f77-mangling.lisp" ;;
 
   # This is an error.
-  -*) { { echo "$as_me:3160: error: unrecognized option: $1
+  -*) { { echo "$as_me:3168: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&5
 echo "$as_me: error: unrecognized option: $1
 Try \`$0 --help' for more information." >&2;}
    { (exit 1); exit 1; }; } ;;
-  *) { { echo "$as_me:3165: error: invalid argument: $1" >&5
+  *) { { echo "$as_me:3173: error: invalid argument: $1" >&5
 echo "$as_me: error: invalid argument: $1" >&2;}
    { (exit 1); exit 1; }; };;
   esac
@@ -3402,7 +3410,7 @@ done; }
   esac
 
   if test x"$ac_file" != x-; then
-    { echo "$as_me:3405: creating $ac_file" >&5
+    { echo "$as_me:3413: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
     rm -f "$ac_file"
   fi
@@ -3420,7 +3428,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:3423: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:3431: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -3433,7 +3441,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:3436: error: cannot find input file: $f" >&5
+           { { echo "$as_me:3444: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;
