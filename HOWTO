@@ -57,3 +57,5 @@ Another example, with my login name simsek, to make a release called 1.6:
    with the releases.  So, if the release you are working on is <major>.<minor>
    then you should check in files with <major> as the major revision (no
    constraints on minor).
+
+   More information on CVS may be found at http://cvsbook.red-bean.com/cvsbook.html
