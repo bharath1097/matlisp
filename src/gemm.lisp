@@ -30,9 +30,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;; $Id: gemm.lisp,v 1.5 2001/02/26 17:44:54 rtoy Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.5  2001/02/26 17:44:54  rtoy
+;;; Remove the complex-alpha,beta special variables.  (Make a closure out
+;;; of them.)
+;;;
 ;;; Revision 1.4  2000/07/11 18:02:03  simsek
 ;;; o Added credits
 ;;;
@@ -213,8 +217,8 @@
 	 c
 	 job))
 
-(defvar *complex-alpha* (make-array 2 :element-type 'complex-matrix-element-type))
-(defvar *complex-beta* (make-array 2 :element-type 'complex-matrix-element-type))
+(let ((complex-alpha (make-array 2 :element-type 'complex-matrix-element-type))
+      (complex-beta (make-array 2 :element-type 'complex-matrix-element-type)))
 
 (defmethod gemm! ((alpha #+:cmu kernel::complex-double-float
 			 #+:allegro number) 
@@ -245,26 +249,27 @@
 	 #+:allegro (setq alpha (complex-coerce alpha))
 	 #+:allegro (setq beta (complex-coerce beta))
 
-	 (setf (aref *complex-alpha* 0) (realpart alpha))
-	 (setf (aref *complex-alpha* 1) (imagpart alpha))
-	 (setf (aref *complex-beta* 0) (realpart beta))
-	 (setf (aref *complex-beta* 1) (imagpart beta))
+	 (setf (aref complex-alpha 0) (realpart alpha))
+	 (setf (aref complex-alpha 1) (imagpart alpha))
+	 (setf (aref complex-beta 0) (realpart beta))
+	 (setf (aref complex-beta 1) (imagpart beta))
 
 	 (zgemm job-a     ; TRANSA
 		job-b     ; TRANSB
 		n         ; M
 		m         ; N (LAPACK takes N,M opposite our convention)
 		k         ; K
-		*complex-alpha*  ; ALPHA
+		complex-alpha  ; ALPHA
 		(store a) ; A
 		lda       ; LDA
 		(store b) ; B
 		ldb       ; LDB
-		*complex-beta*      ; BETA
+		complex-beta      ; BETA
 		(store c) ; C
 		n )       ; LDC
  
 	 c)))
+)
 
 #+:cmu
 (defmethod gemm! ((alpha number) 
