@@ -30,9 +30,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.11 2003/02/19 21:59:52 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.12 2003/03/09 14:26:30 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.12  2003/03/09 14:26:30  rtoy
+;;; Forgot one more :type 'fixnum bug.  From Gerd Moellmann.
+;;;
 ;;; Revision 1.11  2003/02/19 21:59:52  rtoy
 ;;; Correct the slot type declarations.
 ;;;
@@ -256,7 +259,7 @@ that way.
     :initarg :store-size
     :initform 0
     :accessor store-size
-    :type 'fixnum
+    :type fixnum
     :documentation "Total number of elements needed to store the matrix.  (Usually
 the same as nels, but not necessarily so!")
    (store
