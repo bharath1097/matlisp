@@ -33,9 +33,12 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.12 2003/12/07 15:03:44 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.13 2004/03/17 03:26:08 simsek Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.13  2004/03/17 03:26:08  simsek
+;;; Windows library is now called libmatlisp.dll.
+;;;
 ;;; Revision 1.12  2003/12/07 15:03:44  rtoy
 ;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
 ;;; works.
@@ -163,8 +166,7 @@
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
   #+(or :unix :linux) (load "matlisp:lib;libmatlisp.so")
-  #+:mswindows (load "matlisp:lib;blas.dll")
-  #+:mswindows (load "matlisp:lib;lapack.dll"))
+  #+:mswindows (load "matlisp:lib;libmatlisp.dll"))
 
 (load-blas-&-lapack-libraries))
 
@@ -185,5 +187,5 @@
 
 #+(and :allegro :mswindows)
 (defun unload-blas-&-lapack-libraries ()
-  (ff:unload-foreign-library "matlisp:lib;lapack.dll")
-  (ff:unload-foreign-library "matlisp:lib;blas.dll"))
+  (ff:unload-foreign-library "matlisp:lib;libmatlisp.dll"))
+
