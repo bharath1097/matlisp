@@ -1,7 +1,7 @@
 ;;; -*- Mode: Lisp; Package: make -*-
 ;;; -*- Mode: CLtL; Syntax: Common-Lisp -*-
 
-;;; DEFSYSTEM 3.4 Interim 3.
+;;; DEFSYSTEM 3.5 Interim.
 
 ;;; defsystem.lisp --
 
@@ -28,10 +28,10 @@
 ;;; Originally written by Mark Kantrowitz, School of Computer Science,
 ;;; Carnegie Mellon University, October 1989.
 
-;;; MK:DEFSYSTEM 3.4 Interim 3
+;;; MK:DEFSYSTEM 3.5 Interim
 ;;;
 ;;; Copyright (c) 1989 - 1999 Mark Kantrowitz. All rights reserved.
-;;;               1999 - 2004 Mark Kantrowitz and Marco Antoniotti. All
+;;;               1999 - 2005 Mark Kantrowitz and Marco Antoniotti. All
 ;;;                           rights reserved.
 
 ;;; Use, copying, modification, merging, publishing, distribution
@@ -1186,7 +1186,7 @@
 ;;; ********************************
 ;;; Defsystem Version **************
 ;;; ********************************
-(defparameter *defsystem-version* "3.4 Interim 3, 2004-06-10"
+(defparameter *defsystem-version* "3.5 Interim, 2005-04-26"
   "Current version number/date for MK:DEFSYSTEM.")
 
 ;;; ********************************
@@ -1196,7 +1196,8 @@
 (defvar *dont-redefine-require*
   #+cmu (if (find-symbol "*MODULE-PROVIDER-FUNCTIONS*" "EXT") t nil)
   #+(or clisp sbcl) t
-  #-(or cmu sbcl clisp) nil
+  #+allegro t
+  #-(or cmu sbcl clisp allegro) nil
   "If T, prevents the redefinition of REQUIRE. This is useful for
    lisps that treat REQUIRE specially in the compiler.")
 
@@ -2354,6 +2355,10 @@ D
   (banner nil :type (or null string))
 
   (documentation nil :type (or null string)) ; Optional documentation slot
+
+  ;; Added AUTHOR and LICENCE slots.
+  (author nil :type (or null string))
+  (licence nil :type (or null string))
   )
 
 
@@ -2785,6 +2790,19 @@ the system definition, if provided."
     ;; beacuse of possible null names (e.g. :defsystem components)
     ;; causing problems with the subsequenct call to NAMESTRING.
     ;; (format *trace-output* "~&>>>> PATHNAME is ~S~%" pathname)
+
+    ;; 20050309 Marco Antoniotti
+    ;; The treatment of PATHNAME-HOST and PATHNAME-DEVICE in the call
+    ;; to MAKE-PATHNAME in the T branch is bogus.   COMPONENT-DEVICE
+    ;; and COMPONENT-HOST must respect the ANSI definition, hence,
+    ;; they cannot be PATHNAMEs.  The simplification of the code is
+    ;; useful.  SCL compatibility may be broken, but I doubt it will.
+
+    ;; 20050310 Marco Antoniotti
+    ;; After a suggestion by David Tolpin, the code is simplified even
+    ;; more, and the logic should be now more clear: use the user
+    ;; supplied pieces of the pathname if non nil.
+
     (cond ((pathname-logical-p pathname) ; See definition of test above.
 	   (setf pathname
 		 (merge-pathnames pathname
@@ -2792,42 +2810,40 @@ the system definition, if provided."
 				   :name (component-name component)
 				   :type (component-extension component
 							      type))))
-	   ;;(format t "new path = ~A~%" pathname)
 	   (namestring (translate-logical-pathname pathname)))
 	  (t
 	   (namestring
-	    (make-pathname :host (when (component-host component)
-				   ;; MCL2.0b1 and ACLPC cause an error on
-				   ;; (pathname-host nil)
-				   (pathname-host (component-host component)
-						  #+scl :case #+scl :common
-						  ))
+	    (make-pathname :host (or (component-host component)
+				     (pathname-host pathname))
+
 			   :directory (pathname-directory pathname
-						  #+scl :case #+scl :common
-						  )
-			   ;; Use :directory instead of :defaults
+							  #+scl :case
+							  #+scl :common
+							  )
+
 			   :name (pathname-name pathname
-						  #+scl :case #+scl :common
-						  )
-			   :type #-scl (component-extension component type)
-			         #+scl (string-upcase
-					(component-extension component type))
+						#+scl :case
+						#+scl :common
+						)
+
+			   :type
+			   #-scl (component-extension component type)
+			   #+scl (string-upcase
+				  (component-extension component type))
+
 			   :device
 			   #+sbcl
 			   :unspecific
 			   #-(or :sbcl)
-			   (let ((dev (component-device component)))
-			     (if dev
-                                 (pathname-device dev
-						  #+scl :case #+scl :common
-						  )
-                                 (pathname-device pathname
-						  #+scl :case #+scl :common
-						  )))
+			   (or (component-device component)
+			       (pathname-device pathname
+						#+scl :case
+						#+scl :common
+						))
 			   ;; :version :newest
 			   ))))))
 
-;;; What about CMU17 :device :unspecific in the above?
+
 
 #-lispworks
 (defun translate-version (version)
@@ -3618,6 +3634,7 @@ the system definition, if provided."
 		     #-openmcl (optimize (inhibit-warnings 3)))
 	    (unless (component-operation operation)
 	      (error "Operation ~A undefined." operation))
+
 	    (operate-on-component system operation force))))
     (when dribble (dribble))))
 
@@ -4487,8 +4504,9 @@ the system definition, if provided."
           #+:allegro #'load
           #+(or :cmu :scl) #'alien:load-foreign
           #+:sbcl #'sb-alien:load-foreign
-	  #+(and :lispworks :unix (not :linux)) #'link-load:read-foreign-modules
-	  #+(and :lispworks (or (not :unix) :linux)) #'fli:register-module
+	  #+(and :lispworks :unix (not :linux) (not :macosx)) #'link-load:read-foreign-modules
+	  #+(and :lispworks :unix (or :linux :macosx)) #'fli:register-module
+	  #+(and :lispworks :win32) #'fli:register-module
           #+(or :ecl :gcl :kcl) #'load ; should be enough.
           #-(or :lucid
 		:allegro
