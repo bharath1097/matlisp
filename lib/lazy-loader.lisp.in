@@ -33,9 +33,15 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.14 2004/03/17 03:28:09 simsek Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.15 2005/06/15 13:13:57 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.15  2005/06/15 13:13:57  rtoy
+;;; SBCL doesn't have load-1-foreign anymore; it's called
+;;; load-shared-object.
+;;;
+;;; From Cyrus Harmon.
+;;;
 ;;; Revision 1.14  2004/03/17 03:28:09  simsek
 ;;; Adding DFFTPACK support for windows.
 ;;;
@@ -162,7 +168,7 @@
 				 "@FLIBS@"))))
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()
-  (sb-alien:load-1-foreign "matlisp:lib;libmatlisp.so"))
+  (sb-alien:load-shared-object "matlisp:lib;libmatlisp.so"))
 
 
 
