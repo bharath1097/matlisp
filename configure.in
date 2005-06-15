@@ -35,9 +35,13 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.14 2004/05/24 16:34:21 rtoy Exp $
+dnl $Id: configure.in,v 1.15 2005/06/15 13:12:43 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.15  2005/06/15 13:12:43  rtoy
+dnl Update from Cyrus Harmon to support Mac OS X 10.4.  This very likely
+dnl breaks earlier versions though.
+dnl
 dnl Revision 1.14  2004/05/24 16:34:21  rtoy
 dnl More SBCL support from Robert Sedgewick.  The previous SBCL support
 dnl was incomplete.
@@ -320,7 +324,13 @@ case "$host" in
   	;;
   *-*-darwin*)
         LD="ld"
-        FLIBS="-L/sw/lib -lf2c -lSystem -lcc_dynamic /usr/lib/bundle1.o"
+
+	# Cyrus Harmon says -lcc_dynamic isn't needed for Mac OS X
+	# 10.4.  But it's needed (apparently) for earlier versions.
+	# We need to be able to figure this out!)
+
+        FLIBS="-L/sw/lib -lf2c -lSystem /usr/lib/bundle1.o"
+#        FLIBS="-L/sw/lib -lf2c -lSystem -lcc_dynamic /usr/lib/bundle1.o"
 #        SHARED_LIB_LDFLAGS="-dynamiclib -flat_namespace -undefined suppress"
         SHARED_LIB_LDFLAGS="-bundle -flat_namespace -undefined suppress"
         ;;
