@@ -33,9 +33,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.15 2005/06/15 13:13:57 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.16 2005/06/24 04:04:08 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.16  2005/06/24 04:04:08  rtoy
+;;; Update for CMUCL with linkage tables.  In this case, we can just load
+;;; up the matlisp shared lib.  But not if we're also using ATLAS, which
+;;; usually doesn't come as a shared lib.
+;;;
 ;;; Revision 1.15  2005/06/15 13:13:57  rtoy
 ;;; SBCL doesn't have load-1-foreign anymore; it's called
 ;;; load-shared-object.
@@ -123,6 +128,7 @@
 			     "-lc"))))
 |#
 
+
 (eval-when (load eval compile)
 #+(or :cmu :sbcl)
 (defun tokenize-ld-args (s)
@@ -146,7 +152,9 @@
 
     (nreverse tokens)))
 
-#+:cmu
+;; For CMUCL, when we use ATLAS we need lazy-loader.o because ATLAS
+;; doesn't (normally) come with shared libs.
+#+(and :cmu (or @ATLAS_P@ (not :linkage-table)))
 (defun load-blas-&-lapack-libraries ()
   (ext::load-foreign "matlisp:lib;lazy-loader.o"
 		:libraries (tokenize-ld-args
@@ -166,6 +174,13 @@
 			         "-lmatlisp"
 				 " "
 				 "@FLIBS@"))))
+
+;; For CMUCL with linkage tables, we can just load up the matlisp
+;; shared lib.
+#+(and cmu :linkage-table (not @ATLAS_P@))
+(defun load-blas-&-lapack-libraries ()
+  (ext:load-foreign (translate-logical-pathname "matlisp:lib;libmatlisp.so")))
+
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()
   (sb-alien:load-shared-object "matlisp:lib;libmatlisp.so"))

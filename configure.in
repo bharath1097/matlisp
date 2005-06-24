@@ -35,9 +35,14 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.15 2005/06/15 13:12:43 rtoy Exp $
+dnl $Id: configure.in,v 1.16 2005/06/24 04:04:04 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.16  2005/06/24 04:04:04  rtoy
+dnl Update for CMUCL with linkage tables.  In this case, we can just load
+dnl up the matlisp shared lib.  But not if we're also using ATLAS, which
+dnl usually doesn't come as a shared lib.
+dnl
 dnl Revision 1.15  2005/06/15 13:12:43  rtoy
 dnl Update from Cyrus Harmon to support Mac OS X 10.4.  This very likely
 dnl breaks earlier versions though.
@@ -170,10 +175,12 @@ AC_ARG_WITH([atlas],
   # Building with ATLAS
   ATLAS_DIR="-L$withval"
   ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
+  ATLAS_P=t
 ],
 [
   # Building without ATLAS.  Need these objects from our own copy of 
   # LAPACK.
+  ATLAS_P=nil
 BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
 NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 ]
@@ -370,6 +377,7 @@ AC_SUBST(BLAS_OBJS)
 AC_SUBST(NO_ATLAS_LAPACK_OBJS)
 AC_SUBST(ATLAS_DIR)
 AC_SUBST(ATLAS_LIBS)
+AC_SUBST(ATLAS_P)
 AC_SUBST(srcdir)
 AC_SUBST(F77_LOWER_CASE)
 AC_SUBST(F77_UNDERSCORE)
