@@ -35,9 +35,27 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.16 2005/06/24 04:04:04 rtoy Exp $
+dnl $Id: configure.in,v 1.17 2005/08/19 15:03:35 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.17  2005/08/19 15:03:35  rtoy
+dnl Compile dlamch without optimization because the causes issues with
+dnl geev and perhaps others.  The LAPACK FAQ recommends this as well.
+dnl
+dnl INSTALL:
+dnl   o Document how to specify the Fortran compiler and flags, espeically
+dnl     for Solaris
+dnl   o Add note to make sure dlmach is compiled without optimization.
+dnl
+dnl configure.in:
+dnl   o Add --with-fflags option to allow user to specify flags for the
+dnl     Fortran compiler.  This is needed so that we can compile dlamch
+dnl     without optimization.  This also means you shouldn't do things
+dnl     like --with-f77='f77 -O'.
+dnl
+dnl matlisp.mk.in:
+dnl   o Add speical rule to compile dlamch without optimization.
+dnl
 dnl Revision 1.16  2005/06/24 04:04:04  rtoy
 dnl Update for CMUCL with linkage tables.  In this case, we can just load
 dnl up the matlisp shared lib.  But not if we're also using ATLAS, which
@@ -192,6 +210,14 @@ AC_ARG_WITH([f77],
 [
   # Set the compiler
   F77="$withval"
+])
+
+dnl Specify the Fortran compiler flags
+AC_ARG_WITH([fflags],
+[  --with-fflags=flags     Compiler flags to use with Fortran compiler],
+[
+  # Set flags
+  FFLAGS="$withval"
 ])
 
 dnl     Set output variable `RANLIB' to `ranlib' if `ranlib' is found,

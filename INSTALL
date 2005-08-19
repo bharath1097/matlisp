@@ -58,12 +58,16 @@ The installation follows in a few easy steps:
    Fortran flags.  For example, to build with Sun's Fortran compiler
    this can be used (from bash):
 
-   F77=f77 FFLAGS='-g -O -KPIC' ./configure ...
+   ./configure --with-f77=f77 -with-fflags='-g -O -KPIC' ...
 
 5. Build the Fortran and Lisp files
 
 	make
                          
+Due to some possible bugs, be sure to check that the LAPACK file
+dlamch is compiled without optimization.  When it is compiled with
+optimization, geev may fail in strange ways.
+
 That's all there is to it.  In order for this to work, configure must 
 be able to detect a Fortran compiler and a C compiler in your path.  
 This is usually the case.  If configure fails you should contact your 

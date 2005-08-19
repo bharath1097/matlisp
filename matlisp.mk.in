@@ -26,9 +26,27 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.9 2004/03/17 03:38:55 simsek Exp $
+# $Id: matlisp.mk.in,v 1.10 2005/08/19 15:03:35 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.10  2005/08/19 15:03:35  rtoy
+# Compile dlamch without optimization because the causes issues with
+# geev and perhaps others.  The LAPACK FAQ recommends this as well.
+#
+# INSTALL:
+#   o Document how to specify the Fortran compiler and flags, espeically
+#     for Solaris
+#   o Add note to make sure dlmach is compiled without optimization.
+#
+# configure.in:
+#   o Add --with-fflags option to allow user to specify flags for the
+#     Fortran compiler.  This is needed so that we can compile dlamch
+#     without optimization.  This also means you shouldn't do things
+#     like --with-f77='f77 -O'.
+#
+# matlisp.mk.in:
+#   o Add speical rule to compile dlamch without optimization.
+#
 # Revision 1.9  2004/03/17 03:38:55  simsek
 # Adding support for MinGW on windows
 #
@@ -241,6 +259,10 @@ all : $(MATLIB) lib/lazy-loader.o
 	@echo
 	@echo ==============================================
 	$(LISPEXEC) $(LISPEVAL) '(progn (load "start.lisp"))'
+
+# The LAPACK FAQ says dlamch needs to be compiled without optimizations.
+$(srcdir)/LAPACK/SRC/dlamch.o : $(srcdir)/LAPACK/SRC/dlamch.f
+	$(F77) -g -c -o $*.o $^ 
 
 $(srcdir)/lib/libmatlisp.so: $(OBJS)
 	$(LD) $(SHARED_LIB_LDFLAGS) $(LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS)
