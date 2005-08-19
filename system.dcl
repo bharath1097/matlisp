@@ -26,9 +26,13 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.25 2004/05/24 16:38:40 rtoy Exp $
+;;; $Id: system.dcl,v 1.26 2005/08/19 16:55:35 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.26  2005/08/19 16:55:35  rtoy
+;;; Make sure (most of) the source-pathnames have a trailing semicolon.
+;;; Fixes an issue with Allegro 7.
+;;;
 ;;; Revision 1.25  2004/05/24 16:38:40  rtoy
 ;;; Remove unused code.
 ;;;
@@ -153,7 +157,7 @@
                    "matlisp-packages")
       :components
       ((:module "foreign-interface"
-	:source-pathname "matlisp:src"
+	:source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:components ("f77-mangling"
@@ -162,7 +166,7 @@
 		     #+:allegro "ffi-acl"
 		     ))
        (:module "foreign-functions"
-	:source-pathname "matlisp:src"
+	:source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:depends-on ("foreign-interface")
@@ -171,7 +175,7 @@
 		     "dfftpack"
 		     #+nil "ranlib"))
        (:module "matlisp-essentials"
-	:source-pathname "matlisp:src"
+	:source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:depends-on ("foreign-interface" 
@@ -183,7 +187,7 @@
 		     "copy"))
 
        (:module "matlisp-blas-wrappers"
-	:source-pathname "matlisp:src"
+	:source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:depends-on ("foreign-interface" 
@@ -195,7 +199,7 @@
 		     "gemm"))
 
        (:module "matlisp-lapack-wrappers"
-	:source-pathname "matlisp:src"
+	:source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:depends-on ("foreign-interface" 
@@ -207,7 +211,7 @@
 		     "getrs"))
 
        (:module "matlisp-functions"
-        :source-pathname "matlisp:src"
+        :source-pathname "matlisp:src;"
 	:source-extension "lisp"
 	:binary-pathname ""
 	:depends-on ("foreign-interface"
@@ -240,7 +244,7 @@
 		     "fft"
 		     "geqr"))
        (:module "special-functions"
-		:source-pathname "matlisp:src"
+		:source-pathname "matlisp:src;"
 		:binary-pathname ""
 		:depends-on ("matlisp-functions")
 		:components
@@ -248,7 +252,7 @@
        ;; Various add-on packages for matlisp
        ;; This is just the f2cl macros we need, not all of f2cl.
        (:module "f2cl-macros"
-		:source-pathname "matlisp:lib-src"
+		:source-pathname "matlisp:lib-src;"
 		:source-extension "l"
 		:binary-pathname ""
 		:components
@@ -261,12 +265,12 @@
 		:depends-on ("f2cl-macros")
 		:components
 		((:module "quadpack-interface"
-			  :source-pathname "matlisp:src"
+			  :source-pathname "matlisp:src;"
 			  :binary-pathname ""
 			  :components
 			  ((:file "quadpack")))
 		 (:module "quadpack-lib"
-			  :source-pathname "matlisp:lib-src;quadpack"
+			  :source-pathname "matlisp:lib-src;quadpack;"
 			  :binary-pathname ""
 			  :package "QUADPACK"
 			  :components
@@ -382,7 +386,7 @@
 		:depends-on ("f2cl-macros")
 		:components
 		((:module "minpack-lib"
-			  :source-pathname "matlisp:lib-src;minpack"
+			  :source-pathname "matlisp:lib-src;minpack;"
 			  :binary-pathname ""
 			  :package "MINPACK"
 			  :components
