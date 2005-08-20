@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: geev.lisp,v 1.10 2001/10/26 15:24:16 rtoy Exp $
+;;; $Id: geev.lisp,v 1.11 2005/08/20 13:50:27 rtoy Exp $
 ;;;
 ;;; $Log: geev.lisp,v $
+;;; Revision 1.11  2005/08/20 13:50:27  rtoy
+;;; Fix problem with geev-workspace-inquiry functions when given a job
+;;; of :vv.  This is a slightly modified version of the patch by Paul
+;;; Ledbetter III, on matlisp-user, 2005-08-16.
+;;;
+;;; We also removed the extra xxx array and used work instead.
+;;;
 ;;; Revision 1.10  2001/10/26 15:24:16  rtoy
 ;;; From M. Koerber:
 ;;;
@@ -249,20 +256,20 @@
 	  (:vv (values "V" "V")))
 
       (let* ((ldvr (if (equal jobvr "V") n 1))
-	     (xxx (allocate-complex-store ldvr)))
+	     (ldvl (if (equal jobvl "V") n 1)))
 
 	(multiple-value-bind (store-a store-wr store-wi store-vl store-vr
 				      work info)
 	    (dgeev jobvl
 		   jobvr
 		   n			; N
-		   xxx			; A
+		   work			; A
 		   n			; LDA
-		   xxx			; WR
-		   xxx			; WI
-		   xxx			; VL
-		   1			; LDVL
-		   xxx			; VR
+		   work			; WR
+		   work			; WI
+		   work			; VL
+		   ldvl			; LDVL
+		   work			; VR
 		   ldvr			; LDVR
 		   work			; WORK
 		   -1			; LWORK
@@ -390,22 +397,22 @@
 	  (:vv (values "V" "V")))
       
       (let* ((ldvr (if (equal jobvr "V") n 1))
-	     (xxx (allocate-complex-store ldvr)))
+	     (ldvl (if (equal jobvl "V") n 1)))
 
 	(multiple-value-bind (store-a store-w store-vl store-vr work info)
 	    (zgeev jobvl
 		   jobvr
 		   n			; N
-		   xxx			; A
+		   work			; A
 		   n			; LDA
-		   xxx			; W
-		   xxx			; VL
+		   work			; W
+		   work			; VL
 		   1			; LDVL
-		   xxx			; VR
+		   work			; VR
 		   ldvr			; LDVR
 		   work			; WORK
 		   -1			; LWORK
-		   xxx			; RWORK
+		   work			; RWORK
 		   0 )			; INFO
 	  (declare (ignore store-a store-w store-vl store-vr info))
 	  ;; The desired size in in work[0], which we convert to an
