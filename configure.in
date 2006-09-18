@@ -35,9 +35,13 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.17 2005/08/19 15:03:35 rtoy Exp $
+dnl $Id: configure.in,v 1.18 2006/09/18 13:22:17 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.18  2006/09/18 13:22:17  rtoy
+dnl Forgot to define MATLIB for darwin.  Fix from Matthew West,
+dnl matlisp-users, 2006/08/13.
+dnl
 dnl Revision 1.17  2005/08/19 15:03:35  rtoy
 dnl Compile dlamch without optimization because the causes issues with
 dnl geev and perhaps others.  The LAPACK FAQ recommends this as well.
@@ -366,6 +370,7 @@ case "$host" in
 #        FLIBS="-L/sw/lib -lf2c -lSystem -lcc_dynamic /usr/lib/bundle1.o"
 #        SHARED_LIB_LDFLAGS="-dynamiclib -flat_namespace -undefined suppress"
         SHARED_LIB_LDFLAGS="-bundle -flat_namespace -undefined suppress"
+	MATLIB="libmatlisp.so"
         ;;
   *-*-cygwin32)
 	AC_MSG_WARN([Configure has detected that you are compiling])
