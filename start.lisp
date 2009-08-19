@@ -43,9 +43,36 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp,v 1.11 2004/05/20 21:41:15 rtoy Exp $
+;;; $Id: start.lisp,v 1.12 2009/08/19 16:01:34 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp,v $
+;;; Revision 1.12  2009/08/19 16:01:34  rtoy
+;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
+;;; Gjerden.
+;;;
+;;; src/potrf.lisp:
+;;; o New file for matlisp interface to potrf.  Modeled after getrf.
+;;;
+;;; src/potrs.lisp:
+;;; o New file for matlisp interface to potrs.  Modeled after getrs.
+;;;
+;;; src/lapack.lisp:
+;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
+;;;
+;;; matlisp.mk.in:
+;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
+;;;   need to compile.
+;;;
+;;; packages.lisp:
+;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
+;;; o Export POTRF! and POTRS!.
+;;;
+;;; start.lisp:
+;;; o Don't use verbose output from mk:oos.
+;;;
+;;; system.dcl:
+;;; o Add potrf and potrs to system.
+;;;
 ;;; Revision 1.11  2004/05/20 21:41:15  rtoy
 ;;; Put the start up stuff in its own MATLISP-START package to prevent
 ;;; polluting COMMON-LISP-USER.
@@ -203,7 +230,7 @@
 (mk::operate-on-system :matlisp
 		       :load
 		       :minimal-load t
-		       :verbose t
+		       ; :verbose t
 		       :compile-during-load 
 		       #+:allegro-cl-lite nil
 		       #-:allegro-cl-lite t)

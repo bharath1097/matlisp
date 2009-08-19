@@ -26,9 +26,36 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.10 2005/08/19 15:03:35 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.11 2009/08/19 16:01:33 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.11  2009/08/19 16:01:33  rtoy
+# Add support for interfacing to potrf and potrs.  Submitted by Knut
+# Gjerden.
+#
+# src/potrf.lisp:
+# o New file for matlisp interface to potrf.  Modeled after getrf.
+#
+# src/potrs.lisp:
+# o New file for matlisp interface to potrs.  Modeled after getrs.
+#
+# src/lapack.lisp:
+# o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
+#
+# matlisp.mk.in:
+# o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
+#   need to compile.
+#
+# packages.lisp:
+# o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
+# o Export POTRF! and POTRS!.
+#
+# start.lisp:
+# o Don't use verbose output from mk:oos.
+#
+# system.dcl:
+# o Add potrf and potrs to system.
+#
 # Revision 1.10  2005/08/19 15:03:35  rtoy
 # Compile dlamch without optimization because the causes issues with
 # geev and perhaps others.  The LAPACK FAQ recommends this as well.
@@ -139,7 +166,9 @@ LAPACK_OBJS =  dlasq5.o dlasq6.o ieeeck.o zdrot.o dlabad.o \
 	dggbal.o  dlansy.o  dorg2r.o  izmax1.o	 zgetf2.o  zlasr.o   zunmlq.o \
 	dgghrd.o  dlanv2.o  dorgbr.o  zlassq.o  zunmqr.o \
 	dhgeqz.o  dlapy2.o  dorghr.o  \
-	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o $(NO_ATLAS_LAPACK_OBJS)
+	dhseqr.o  dlapy3.o  dorgl2.o  zheev.o    zlatrd.o \
+	dpotrf.o  dpotf2.o  dpotrs.o  zpotrs.o \
+	$(NO_ATLAS_LAPACK_OBJS)
 
 # The FFT package
 DFFTPACK_OBJS = zfftb.o \

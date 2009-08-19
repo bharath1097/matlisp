@@ -26,9 +26,36 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.21 2004/05/20 21:43:00 rtoy Exp $
+;;; $Id: packages.lisp,v 1.22 2009/08/19 16:01:34 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.22  2009/08/19 16:01:34  rtoy
+;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
+;;; Gjerden.
+;;;
+;;; src/potrf.lisp:
+;;; o New file for matlisp interface to potrf.  Modeled after getrf.
+;;;
+;;; src/potrs.lisp:
+;;; o New file for matlisp interface to potrs.  Modeled after getrs.
+;;;
+;;; src/lapack.lisp:
+;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
+;;;
+;;; matlisp.mk.in:
+;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
+;;;   need to compile.
+;;;
+;;; packages.lisp:
+;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
+;;; o Export POTRF! and POTRS!.
+;;;
+;;; start.lisp:
+;;; o Don't use verbose output from mk:oos.
+;;;
+;;; system.dcl:
+;;; o Add potrf and potrs to system.
+;;;
 ;;; Revision 1.21  2004/05/20 21:43:00  rtoy
 ;;; Add some docstrings to the packages, remove some unused stuff.
 ;;;
@@ -161,7 +188,8 @@
    "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
    "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
    "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
-   "DORGQR" "ZUNGQR")
+   "DORGQR" "ZUNGQR"
+   "DPOTRS" "ZPOTRS" "DPOTRF" "ZPOTRF")
   (:documentation "LAPACK routines"))
 
 (defpackage "DFFTPACK"
@@ -348,6 +376,8 @@
    "QR"
    "QR!"
    "GEQR!"
+   "POTRF!"
+   "POTRS!"
    "RAND"
    "REAL"
    "REAL-MATRIX"

@@ -26,9 +26,36 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.26 2005/08/19 16:55:35 rtoy Exp $
+;;; $Id: system.dcl,v 1.27 2009/08/19 16:01:34 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.27  2009/08/19 16:01:34  rtoy
+;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
+;;; Gjerden.
+;;;
+;;; src/potrf.lisp:
+;;; o New file for matlisp interface to potrf.  Modeled after getrf.
+;;;
+;;; src/potrs.lisp:
+;;; o New file for matlisp interface to potrs.  Modeled after getrs.
+;;;
+;;; src/lapack.lisp:
+;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
+;;;
+;;; matlisp.mk.in:
+;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
+;;;   need to compile.
+;;;
+;;; packages.lisp:
+;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
+;;; o Export POTRF! and POTRS!.
+;;;
+;;; start.lisp:
+;;; o Don't use verbose output from mk:oos.
+;;;
+;;; system.dcl:
+;;; o Add potrf and potrs to system.
+;;;
 ;;; Revision 1.26  2005/08/19 16:55:35  rtoy
 ;;; Make sure (most of) the source-pathnames have a trailing semicolon.
 ;;; Fixes an issue with Allegro 7.
@@ -208,7 +235,9 @@
 	:components ("gesv"
 		     "geev"
 		     "getrf"
-		     "getrs"))
+		     "getrs"
+		     "potrf"
+		     "potrs"))
 
        (:module "matlisp-functions"
         :source-pathname "matlisp:src;"

@@ -31,9 +31,36 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lapack.lisp,v 1.11 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: lapack.lisp,v 1.12 2009/08/19 16:01:36 rtoy Exp $
 ;;;
 ;;; $Log: lapack.lisp,v $
+;;; Revision 1.12  2009/08/19 16:01:36  rtoy
+;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
+;;; Gjerden.
+;;;
+;;; src/potrf.lisp:
+;;; o New file for matlisp interface to potrf.  Modeled after getrf.
+;;;
+;;; src/potrs.lisp:
+;;; o New file for matlisp interface to potrs.  Modeled after getrs.
+;;;
+;;; src/lapack.lisp:
+;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
+;;;
+;;; matlisp.mk.in:
+;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
+;;;   need to compile.
+;;;
+;;; packages.lisp:
+;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
+;;; o Export POTRF! and POTRS!.
+;;;
+;;; start.lisp:
+;;; o Don't use verbose output from mk:oos.
+;;;
+;;; system.dcl:
+;;; o Add potrf and potrs to system.
+;;;
 ;;; Revision 1.11  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -1509,4 +1536,281 @@
   (work (* :complex-double-float) :workspace-output)
   (lwork :integer :input)
   (rwork (* :double-float) :workspace-output)
+  (info :integer :output))
+
+(def-fortran-routine dpotrf :void
+  "
+       SUBROUTINE DPOTRF( UPLO, N, A, LDA, INFO )
+
+  -- LAPACK routine (version 3.1) --
+     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
+     November 2006
+
+     .. Scalar Arguments ..
+     CHARACTER          UPLO
+     INTEGER            INFO, LDA, N
+     ..
+     .. Array Arguments ..
+     DOUBLE PRECISION   A( LDA, * )
+     ..
+
+  Purpose
+  =======
+
+  DPOTRF computes the Cholesky factorization of a real symmetric
+  positive definite matrix A.
+
+  The factorization has the form
+     A = U**T * U,  if UPLO = 'U', or
+     A = L  * L**T,  if UPLO = 'L',
+  where U is an upper triangular matrix and L is lower triangular.
+
+  This is the block version of the algorithm, calling Level 3 BLAS.
+
+  Arguments
+  =========
+
+  UPLO    (input) CHARACTER*1
+          = 'U':  Upper triangle of A is stored;
+          = 'L':  Lower triangle of A is stored.
+
+  N       (input) INTEGER
+          The order of the matrix A.  N >= 0.
+
+  A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+          On entry, the symmetric matrix A.  If UPLO = 'U', the leading
+          N-by-N upper triangular part of A contains the upper
+          triangular part of the matrix A, and the strictly lower
+          triangular part of A is not referenced.  If UPLO = 'L', the
+          leading N-by-N lower triangular part of A contains the lower
+          triangular part of the matrix A, and the strictly upper
+          triangular part of A is not referenced.
+
+          On exit, if INFO = 0, the factor U or L from the Cholesky
+          factorization A = U**T*U or A = L*L**T.
+
+  LDA     (input) INTEGER
+          The leading dimension of the array A.  LDA >= max(1,N).
+
+  INFO    (output) INTEGER
+          = 0:  successful exit
+          < 0:  if INFO = -i, the i-th argument had an illegal value
+          > 0:  if INFO = i, the leading minor of order i is not
+                positive definite, and the factorization could not be
+                completed.
+
+  =====================================================================
+
+"
+  (uplo :string :input)
+  (n :integer :input)
+  (a (* :double-float) :input-output)
+  (lda :integer :input)
+  (info :integer :output))
+
+
+(def-fortran-routine dpotrs :void
+  "
+  SUBROUTINE DPOTRS( UPLO, N, NRHS, A, LDA, B, LDB, INFO )
+
+  -- LAPACK routine (version 3.1) --
+     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
+     November 2006
+
+     .. Scalar Arguments ..
+     CHARACTER          UPLO
+     INTEGER            INFO, LDA, LDB, N, NRHS
+     ..
+     .. Array Arguments ..
+     DOUBLE PRECISION   A( LDA, * ), B( LDB, * )
+     ..
+
+  Purpose
+  =======
+
+  DPOTRS solves a system of linear equations A*X = B with a symmetric
+  positive definite matrix A using the Cholesky factorization
+  A = U**T*U or A = L*L**T computed by DPOTRF.
+
+  Arguments
+  =========
+
+  UPLO    (input) CHARACTER*1
+          = 'U':  Upper triangle of A is stored;
+          = 'L':  Lower triangle of A is stored.
+
+  N       (input) INTEGER
+          The order of the matrix A.  N >= 0.
+
+  NRHS    (input) INTEGER
+          The number of right hand sides, i.e., the number of columns
+          of the matrix B.  NRHS >= 0.
+
+  A       (input) DOUBLE PRECISION array, dimension (LDA,N)
+          The triangular factor U or L from the Cholesky factorization
+          A = U**T*U or A = L*L**T, as computed by DPOTRF.
+
+  LDA     (input) INTEGER
+          The leading dimension of the array A.  LDA >= max(1,N).
+
+  B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+          On entry, the right hand side matrix B.
+          On exit, the solution matrix X.
+
+  LDB     (input) INTEGER
+          The leading dimension of the array B.  LDB >= max(1,N).
+
+  INFO    (output) INTEGER
+          = 0:  successful exit
+          < 0:  if INFO = -i, the i-th argument had an illegal value
+
+  =====================================================================
+
+"
+  (uplo :string :input)
+  (n :integer :input)
+  (nrhs :integer :input)
+  (a (* :double-float) :input)
+  (lda :integer :input)
+  (b (* :double-float) :input-output)
+  (ldb :integer :input)
+  (info :integer :output))
+
+
+(def-fortran-routine zpotrf :void
+  "
+       SUBROUTINE ZPOTRF( UPLO, N, A, LDA, INFO )
+
+  -- LAPACK routine (version 3.1) --
+     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
+     November 2006
+
+     .. Scalar Arguments ..
+     CHARACTER          UPLO
+     INTEGER            INFO, LDA, N
+     ..
+     .. Array Arguments ..
+     COMPLEX*16         A( LDA, * )
+     ..
+
+  Purpose
+  =======
+
+  ZPOTRF computes the Cholesky factorization of a complex Hermitian
+  positive definite matrix A.
+
+  The factorization has the form
+     A = U**H * U,  if UPLO = 'U', or
+     A = L  * L**H,  if UPLO = 'L',
+  where U is an upper triangular matrix and L is lower triangular.
+
+  This is the block version of the algorithm, calling Level 3 BLAS.
+
+  Arguments
+  =========
+
+  UPLO    (input) CHARACTER*1
+          = 'U':  Upper triangle of A is stored;
+          = 'L':  Lower triangle of A is stored.
+
+  N       (input) INTEGER
+          The order of the matrix A.  N >= 0.
+
+  A       (input/output) COMPLEX*16 array, dimension (LDA,N)
+          On entry, the Hermitian matrix A.  If UPLO = 'U', the leading
+          N-by-N upper triangular part of A contains the upper
+          triangular part of the matrix A, and the strictly lower
+          triangular part of A is not referenced.  If UPLO = 'L', the
+          leading N-by-N lower triangular part of A contains the lower
+          triangular part of the matrix A, and the strictly upper
+          triangular part of A is not referenced.
+
+          On exit, if INFO = 0, the factor U or L from the Cholesky
+          factorization A = U**H*U or A = L*L**H.
+
+  LDA     (input) INTEGER
+          The leading dimension of the array A.  LDA >= max(1,N).
+
+  INFO    (output) INTEGER
+          = 0:  successful exit
+          < 0:  if INFO = -i, the i-th argument had an illegal value
+          > 0:  if INFO = i, the leading minor of order i is not
+                positive definite, and the factorization could not be
+                completed.
+
+  =====================================================================
+
+"
+  (uplo :string :input)
+  (n :integer :input)
+  (a (* :complex-double-float) :input-output)
+  (lda :integer :input)
+  (info :integer :output))
+
+
+(def-fortran-routine zpotrs :void
+  "
+       SUBROUTINE ZPOTRS( UPLO, N, NRHS, A, LDA, B, LDB, INFO )
+
+  -- LAPACK routine (version 3.1) --
+     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
+     November 2006
+
+     .. Scalar Arguments ..
+     CHARACTER          UPLO
+     INTEGER            INFO, LDA, LDB, N, NRHS
+     ..
+     .. Array Arguments ..
+     COMPLEX*16         A( LDA, * ), B( LDB, * )
+     ..
+
+  Purpose
+  =======
+
+  ZPOTRS solves a system of linear equations A*X = B with a Hermitian
+  positive definite matrix A using the Cholesky factorization
+  A = U**H*U or A = L*L**H computed by ZPOTRF.
+
+  Arguments
+  =========
+
+  UPLO    (input) CHARACTER*1
+          = 'U':  Upper triangle of A is stored;
+          = 'L':  Lower triangle of A is stored.
+
+  N       (input) INTEGER
+          The order of the matrix A.  N >= 0.
+
+  NRHS    (input) INTEGER
+          The number of right hand sides, i.e., the number of columns
+          of the matrix B.  NRHS >= 0.
+
+  A       (input) COMPLEX*16 array, dimension (LDA,N)
+          The triangular factor U or L from the Cholesky factorization
+          A = U**H*U or A = L*L**H, as computed by ZPOTRF.
+
+  LDA     (input) INTEGER
+          The leading dimension of the array A.  LDA >= max(1,N).
+
+  B       (input/output) COMPLEX*16 array, dimension (LDB,NRHS)
+          On entry, the right hand side matrix B.
+          On exit, the solution matrix X.
+
+  LDB     (input) INTEGER
+          The leading dimension of the array B.  LDB >= max(1,N).
+
+  INFO    (output) INTEGER
+          = 0:  successful exit
+          < 0:  if INFO = -i, the i-th argument had an illegal value
+
+  =====================================================================
+
+"
+  (uplo :string :input)
+  (n :integer :input)
+  (nrhs :integer :input)
+  (a (* :complex-double-float) :input)
+  (lda :integer :input)
+  (b (* :complex-double-float) :input-output)
+  (ldb :integer :input)
   (info :integer :output))
