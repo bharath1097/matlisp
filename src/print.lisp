@@ -30,9 +30,20 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: print.lisp,v 1.8 2003/05/31 23:05:39 rtoy Exp $
+;;; $Id: print.lisp,v 1.9 2010/12/12 02:07:31 rtoy Exp $
 ;;;
 ;;; $Log: print.lisp,v $
+;;; Revision 1.9  2010/12/12 02:07:31  rtoy
+;;; matrix.lisp:
+;;;
+;;; o Apply patch from Nicolas Neuss for matrices with 0 dimensions.  (See
+;;;   <http://sourceforge.net/mailarchive/message.php?msg_id=1124576>)
+;;;
+;;; print.lisp:
+;;; o Apparently the above patch to print was also applied previously.  We
+;;;   just fix a bug in printing 0xm matrices.  Just exit early if the
+;;;   matrix has no dimensions.
+;;;
 ;;; Revision 1.8  2003/05/31 23:05:39  rtoy
 ;;; Indent more typically.
 ;;;
@@ -151,6 +162,9 @@ but got *PRINT-MATRIX* of type ~a"
       (declare (type fixnum max-n max-m))
       (format stream " ~d x ~d" number-of-rows number-of-cols)
 
+      ;; Early exit if the total number of elements is zero.
+      (when (zerop (number-of-elements matrix))
+	(return-from print-matrix))
       (decf max-n)
       (decf max-m)  
       (flet ((print-row (i)

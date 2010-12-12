@@ -30,9 +30,20 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.14 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.15 2010/12/12 02:07:31 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.15  2010/12/12 02:07:31  rtoy
+;;; matrix.lisp:
+;;;
+;;; o Apply patch from Nicolas Neuss for matrices with 0 dimensions.  (See
+;;;   <http://sourceforge.net/mailarchive/message.php?msg_id=1124576>)
+;;;
+;;; print.lisp:
+;;; o Apparently the above patch to print was also applied previously.  We
+;;;   just fix a bug in printing 0xm matrices.  Just exit early if the
+;;;   matrix has no dimensions.
+;;;
 ;;; Revision 1.14  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -684,7 +695,7 @@ integer storage.  Default INITIAL-ELEMENT = 0."
        (let ((arg (first args)))
 	 (typecase arg
 	   (integer
-	    (assert (plusp arg) nil
+	    (assert (not (minusp arg)) nil
 		    "matrix dimension must be positive, not ~A" arg)
 	    (make-real-matrix-dim arg arg))
 	   (sequence
@@ -695,8 +706,8 @@ integer storage.  Default INITIAL-ELEMENT = 0."
       (2
        (destructuring-bind (n m)
 	   args
-	 (assert (and (typep n '(integer 1))
-		      (typep n '(integer 1)))
+	 (assert (and (typep n '(integer 0))
+		      (typep n '(integer 0)))
 		 nil
 		 "cannot make a ~A x ~A matrix" n m)
 	 (make-real-matrix-dim n m)))
@@ -869,8 +880,8 @@ integer storage.  Default INITIAL-ELEMENT = 0."
        (let ((arg (first args)))
 	 (typecase arg
 	   (integer
-	    (assert (plusp arg) nil
-		    "matrix dimension must be positive, not ~A" arg)
+	    (assert (not (minusp arg)) nil
+		    "matrix dimension must be non-negative, not ~A" arg)
 	    (make-complex-matrix-dim arg arg))
 	   (sequence
 	    (make-complex-matrix-sequence arg))
@@ -880,8 +891,8 @@ integer storage.  Default INITIAL-ELEMENT = 0."
       (2
        (destructuring-bind (n m)
 	   args
-	 (assert (and (typep n '(integer 1))
-		      (typep n '(integer 1)))
+	 (assert (and (typep n '(integer 0))
+		      (typep n '(integer 0)))
 		 nil
 		 "cannot make a ~A x ~A matrix" n m)
 	 (make-complex-matrix-dim n m)))
