@@ -35,9 +35,14 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.18 2006/09/18 13:22:17 rtoy Exp $
+dnl $Id: configure.in,v 1.19 2010/12/30 16:34:01 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.19  2010/12/30 16:34:01  rtoy
+dnl Fixes for configuring on Mac OS X 10.5.  Use libtool -dynamic to
+dnl create the shared library.  Tested successfully with 10.5.8 and
+dnl gfortran and cmucl
+dnl
 dnl Revision 1.18  2006/09/18 13:22:17  rtoy
 dnl Forgot to define MATLIB for darwin.  Fix from Matthew West,
 dnl matlisp-users, 2006/08/13.
@@ -360,16 +365,20 @@ case "$host" in
 	MATLIB="libmatlisp.so"
   	;;
   *-*-darwin*)
-        LD="ld"
+	# We only use LD to create the shared library, so we can use
+	# libtool to do that.
+        LD="libtool"
 
 	# Cyrus Harmon says -lcc_dynamic isn't needed for Mac OS X
 	# 10.4.  But it's needed (apparently) for earlier versions.
 	# We need to be able to figure this out!)
 
-        FLIBS="-L/sw/lib -lf2c -lSystem /usr/lib/bundle1.o"
+#        FLIBS="-L/sw/lib -lf2c -lSystem /usr/lib/bundle1.o"
 #        FLIBS="-L/sw/lib -lf2c -lSystem -lcc_dynamic /usr/lib/bundle1.o"
 #        SHARED_LIB_LDFLAGS="-dynamiclib -flat_namespace -undefined suppress"
-        SHARED_LIB_LDFLAGS="-bundle -flat_namespace -undefined suppress"
+	# With libtool, we don't need to specify FLIB (already
+	# automatically configured correctly)
+        SHARED_LIB_LDFLAGS="-dynamic"
 	MATLIB="libmatlisp.so"
         ;;
   *-*-cygwin32)
