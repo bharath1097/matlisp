@@ -26,9 +26,21 @@
 #
 ##########################################################################
 #
-# $Id: matlisp.mk.in,v 1.11 2009/08/19 16:01:33 rtoy Exp $
+# $Id: matlisp.mk.in,v 1.12 2011/01/16 22:12:30 rtoy Exp $
 #
 # $Log: matlisp.mk.in,v $
+# Revision 1.12  2011/01/16 22:12:30  rtoy
+# configure.in:
+# o Add AC_HELP_STRING to make strings nice and neat.
+# o When building with CMUCL, we need to use 32-bit objects, so make
+#   that happen.
+# o On Darwin, FLIBS contains -lgfortranbegin, which we don't want when
+#   building our library.  Remove it from FLIBS.
+#
+# matlisp.mk.in:
+# o Use F77_32 if necessary to compile the Fortran sources.
+# o When building the shared library, include -lm -lc.
+#
 # Revision 1.11  2009/08/19 16:01:33  rtoy
 # Add support for interfacing to potrf and potrs.  Submitted by Knut
 # Gjerden.
@@ -291,10 +303,10 @@ all : $(MATLIB) lib/lazy-loader.o
 
 # The LAPACK FAQ says dlamch needs to be compiled without optimizations.
 $(srcdir)/LAPACK/SRC/dlamch.o : $(srcdir)/LAPACK/SRC/dlamch.f
-	$(F77) -g -c -o $*.o $^ 
+	$(F77) @F77_32@ -g -c -o $*.o $^ 
 
 $(srcdir)/lib/libmatlisp.so: $(OBJS)
-	$(LD) $(SHARED_LIB_LDFLAGS) $(LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS)
+	$(LD) $(SHARED_LIB_LDFLAGS) -o $(MATLIB) $(OBJS) $(FLIBS) -lm -lc
 
 $(srcdir)/lib/libmatlisp.dll: $(OBJS)
 	$(AR) $(ARFLAGS) $(srcdir)/lib/libmatlisp.a $(OBJS)

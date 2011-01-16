@@ -35,9 +35,21 @@ dnl
 dnl You need autoconf 2.50 or later.
 dnl ======================================================================
 dnl
-dnl $Id: configure.in,v 1.19 2010/12/30 16:34:01 rtoy Exp $
+dnl $Id: configure.in,v 1.20 2011/01/16 22:12:30 rtoy Exp $
 dnl
 dnl $Log: configure.in,v $
+dnl Revision 1.20  2011/01/16 22:12:30  rtoy
+dnl configure.in:
+dnl o Add AC_HELP_STRING to make strings nice and neat.
+dnl o When building with CMUCL, we need to use 32-bit objects, so make
+dnl   that happen.
+dnl o On Darwin, FLIBS contains -lgfortranbegin, which we don't want when
+dnl   building our library.  Remove it from FLIBS.
+dnl
+dnl matlisp.mk.in:
+dnl o Use F77_32 if necessary to compile the Fortran sources.
+dnl o When building the shared library, include -lm -lc.
+dnl
 dnl Revision 1.19  2010/12/30 16:34:01  rtoy
 dnl Fixes for configuring on Mac OS X 10.5.  Use libtool -dynamic to
 dnl create the shared library.  Tested successfully with 10.5.8 and
@@ -157,8 +169,8 @@ dnl Process our additional features
 
 dnl --with-lisp for the Lisp system we want to use.
 AC_ARG_WITH([lisp],
-[  --with-lisp=name        Which lisp system to use.  Currently supported
-                           systems are acl, sbcl and cmucl.],
+AC_HELP_STRING([--with-lisp=name],
+[Which lisp system to use.  Currently supported systems are acl, sbcl and cmucl.]),
 [LISPSYS=$withval
 
 dnl Verify we got a supported system and figure out the command
@@ -190,14 +202,14 @@ dnl Allow user to specify the Lisp executable name.  (The names aren't
 dnl standardized, and might actually conflict.)
 
 AC_ARG_WITH([lisp-exec],
-[  --with-lisp-exec=name   Name of lisp program],
+AC_HELP_STRING([--with-lisp-exec=name],[Name of lisp program]),
 [LISPEXEC=$withval]
 )
 
 dnl Allow user to use ATLAS if available.
 dnl We assume the standard names for the ATLAS libraries.
 AC_ARG_WITH([atlas],
-[  --with-atlas=libpath    Location of the ATLAS libraries],
+AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
 [
   # Building with ATLAS
   ATLAS_DIR="-L$withval"
@@ -215,7 +227,7 @@ NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dges
 
 dnl Specify the fortran compiler to use
 AC_ARG_WITH([f77],
-[  --with-f77=compiler     Fortran 77 compiler to use (default is g77)],
+AC_HELP_STRING([--with-f77=compiler],[Fortran 77 compiler to use (default is g77)]),
 [
   # Set the compiler
   F77="$withval"
@@ -223,7 +235,7 @@ AC_ARG_WITH([f77],
 
 dnl Specify the Fortran compiler flags
 AC_ARG_WITH([fflags],
-[  --with-fflags=flags     Compiler flags to use with Fortran compiler],
+AC_HELP_STRING([--with-fflags=flags], [Compiler flags to use with Fortran compiler]),
 [
   # Set flags
   FFLAGS="$withval"
@@ -282,6 +294,13 @@ dnl     `g77' does not accept `-g').  Otherwise, set `FFLAGS' to `-g' for
 dnl     all other Fortran 77 compilers.
 AC_PROG_F77
 
+# Determine the argument given to ld to make shared libraries.
+# (We should do a better job here.)
+if test "$LISPSYS" = cmucl;  then
+    F77_32=-m32
+    FFLAGS="$FFLAGS -m32"
+    LDFLAGS="$LDFLAGS -m32"
+fi
 dnl     Determine the linker flags (e.g. `-L' and `-l') for the "Fortran
 dnl     77 intrinsic and run-time libraries" that are required to
 dnl     successfully link a Fortran 77 program or shared library.  The
@@ -378,6 +397,15 @@ case "$host" in
 #        SHARED_LIB_LDFLAGS="-dynamiclib -flat_namespace -undefined suppress"
 	# With libtool, we don't need to specify FLIB (already
 	# automatically configured correctly)
+	FLIBS=`echo $FLIBS | sed 's;-lgfortranbegin;;'`
+
+	# If we're using gcc/gfortran, we also need to add -lgcc when
+	# building our shared library.  What is the proper what to do
+	# this?
+	if test "$GCC" = "yes"; then
+	    FLIBS="$FLIBS -lgcc"
+	fi
+
         SHARED_LIB_LDFLAGS="-dynamic"
 	MATLIB="libmatlisp.so"
         ;;
@@ -406,6 +434,7 @@ dnl     under AC_OUTPUT at the end of this file.
 AC_SUBST(MATLIB)
 AC_SUBST(F77)
 AC_SUBST(FFLAGS)
+AC_SUBST(F77_32)
 AC_SUBST(FLIBS)
 AC_SUBST(CC)
 AC_SUBST(CLIBS)
