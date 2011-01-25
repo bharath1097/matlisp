@@ -43,9 +43,14 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: start.lisp.in,v 1.2 2011/01/25 18:36:56 rtoy Exp $
+;;; $Id: start.lisp.in,v 1.3 2011/01/25 18:49:31 rtoy Exp $
 ;;;
 ;;; $Log: start.lisp.in,v $
+;;; Revision 1.3  2011/01/25 18:49:31  rtoy
+;;; Replace DEFLOGICALPATH with a simpler version that also supports
+;;; parallel source builds.  Hope this version works for sbcl and
+;;; allegro.
+;;;
 ;;; Revision 1.2  2011/01/25 18:36:56  rtoy
 ;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
 ;;; automake build infrastructure.
@@ -144,6 +149,7 @@
 (defun getlogicalroot ()
   root)
 
+#+nil
 (defun deflogicalpath (name)
   "
   Syntax
@@ -238,28 +244,60 @@
       )))
 )
 
-(setlogicalroot "matlisp")
-;;(deflogicalpath "matlisp")
+(defun deflogicalpath (name)
+  "
+  Syntax
+  ======
+  (DEFLOGICALPATH name)
 
-(setf (logical-pathname-translations "matlisp")
-      (list
-       (list "lib;**;*.*.*"
-	     (merge-pathnames "lib/**/*.*"
-			      (ext:default-directory)))
-       (list "bin;**;*.*.*"
-	     (merge-pathnames "bin/**/*.*"
-			      (ext:default-directory)))
-       (list "src;**;*.*.*"
-	     (merge-pathnames "src/**/*.*"
-			      (ext:default-directory)))
-       (list "srcdir;**;*.*.*"
-	     (merge-pathnames "**/*.*"
-			      (merge-pathnames ".."
-					       (ext:default-directory))))
-       (list "builddir;**;*.*.*"
-	     (merge-pathnames "**/*.*"
-			      (ext:default-directory)))
-       ))
+  Purpose
+  =======
+  Defines a reasonable logical pathname translation for NAME, which
+  must be a string.
+  The translations are defined for the directory and subdirectories
+  in which the file that contained the form was loaded.
+
+  Implementation Notes
+  ====================
+  DEFLOGICALPATH must be called on argument \"root\" first.  This
+  determines the root directory that will be used to dump the
+  file \"logical\" containing all the logical pathname translations.
+  In particular, a call to DEFLOGICALPATH on \"root\" clears
+  all entries in the file \"logical\".
+"
+  (flet ((default-dir ()
+	   #+:cmu (ext:default-directory)
+	   #+:allegro (user::current-directory)
+	   #+:sbcl *default-pathname-defaults*))
+    (setf (logical-pathname-translations "matlisp")
+	  (list
+	   ;; lib is where the libraries are.
+	   (list "lib;**;*.*.*"
+		 (merge-pathnames "lib/**/*.*"
+				  (default-dir)))
+	   ;; bin is where we put the compiled lisp files
+	   (list "bin;**;*.*.*"
+		 (merge-pathnames "bin/**/*.*"
+				  (default-dir)))
+	   ;; src is the src directory in our build directory
+	   (list "src;**;*.*.*"
+		 (merge-pathnames "src/**/*.*"
+				  (default-dir)))
+	   ;; srcdir is the source directory where the matlisp sources
+	   ;; are.  (Basically the top-level matlisp directory.)
+	   (list "srcdir;**;*.*.*"
+		 (merge-pathnames "@srcdir@/**/*.*"
+				  (default-dir)))
+	   ;; builddir is the top-level of the build directory.
+	   ;; Basically, it's the current directory.
+	   (list "builddir;**;*.*.*"
+		 (merge-pathnames "**/*.*"
+				  (default-dir)))))))
+
+(setlogicalroot "matlisp")
+(deflogicalpath "matlisp")
+
+
 
 (load "matlisp:srcdir;system.dcl")
 (load "matlisp:builddir;config.lisp")
