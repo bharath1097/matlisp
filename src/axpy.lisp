@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: axpy.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: axpy.lisp,v 1.8 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: axpy.lisp,v $
+;;; Revision 1.8  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.7.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.7  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -137,7 +144,7 @@
     (daxpy nxm alpha (store x) 1 (store result) 1)
     result))
 
-(defmethod axpy ((alpha real) (x real-matrix) (y real-matrix))
+(defmethod axpy ((alpha cl:real) (x real-matrix) (y real-matrix))
   (axpy (coerce alpha 'real-matrix-element-type) x y))
 
 (defmethod axpy ((alpha double-float) (x complex-matrix) (y real-matrix))
@@ -157,7 +164,7 @@
     (daxpy nxm 1.0d0 store-y 1 store-result 2) ;; same as (AXPY! 1d0 y result)
     result))
 
-(defmethod axpy ((alpha real) (x complex-matrix) (y real-matrix))
+(defmethod axpy ((alpha cl:real) (x complex-matrix) (y real-matrix))
   (axpy (coerce alpha 'real-matrix-element-type) x y))
 
 
@@ -168,7 +175,7 @@
     (daxpy nxm alpha (store x) 1 (store result) 2)
     result))
 
-(defmethod axpy ((alpha real) (x real-matrix) (y complex-matrix))
+(defmethod axpy ((alpha cl:real) (x real-matrix) (y complex-matrix))
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
 (defmethod axpy ((alpha double-float) (x complex-matrix) (y complex-matrix))
@@ -178,7 +185,7 @@
     (daxpy (* 2 nxm) alpha (store x) 1 (store result) 1)
     result))
 
-(defmethod axpy ((alpha real) (x complex-matrix) (y complex-matrix))
+(defmethod axpy ((alpha cl:real) (x complex-matrix) (y complex-matrix))
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
 
@@ -270,7 +277,7 @@
     (daxpy nxm alpha (store x) 1 (store y) 1)
     y))
 
-(defmethod axpy! ((alpha real) (x real-matrix) (y real-matrix))
+(defmethod axpy! ((alpha cl:real) (x real-matrix) (y real-matrix))
   (axpy! (coerce alpha 'real-matrix-element-type) x y))
 
 (defmethod axpy! ((alpha number) (x complex-matrix) (y real-matrix))
@@ -283,7 +290,7 @@ don't know how to coerce COMPLEX to REAL"))
     (daxpy nxm alpha (store x) 1 (store y) 2)
     y))
 
-(defmethod axpy! ((alpha real) (x real-matrix) (y complex-matrix))
+(defmethod axpy! ((alpha cl:real) (x real-matrix) (y complex-matrix))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
 (defmethod axpy! ((alpha double-float) (x complex-matrix) (y complex-matrix))
@@ -292,7 +299,7 @@ don't know how to coerce COMPLEX to REAL"))
     (daxpy (* 2 nxm) alpha (store x) 1 (store y) 1)
     y))
 
-(defmethod axpy! ((alpha real) (x complex-matrix) (y complex-matrix))
+(defmethod axpy! ((alpha cl:real) (x complex-matrix) (y complex-matrix))
   (axpy! (coerce alpha 'complex-matrix-element-type) x y))
 
 #+(or :cmu :sbcl)

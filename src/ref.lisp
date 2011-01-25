@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: ref.lisp,v 1.11 2004/12/03 17:56:50 rtoy Exp $
+;;; $Id: ref.lisp,v 1.12 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: ref.lisp,v $
+;;; Revision 1.12  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.11.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.11  2004/12/03 17:56:50  rtoy
 ;;; Oops. Several (setf matrix-ref-2d) methods were duplicated and wrong.
 ;;; Fixes bug noted by Michael Koerber, matlisp-users 2004-12-01.
@@ -1012,10 +1019,10 @@
       (setf (matrix-ref matrix i j) (coerce new 'real-matrix-element-type))
     (setf (matrix-ref matrix i) (coerce new 'real-matrix-element-type))))
 
-(defmethod (setf matrix-ref-1d) ((new real) (matrix real-matrix) i)
+(defmethod (setf matrix-ref-1d) ((new cl:real) (matrix real-matrix) i)
     (setf (matrix-ref-1d matrix i) (coerce new 'real-matrix-element-type)))
 
-(defmethod (setf matrix-ref-2d) ((new real) (matrix real-matrix) i j)
+(defmethod (setf matrix-ref-2d) ((new cl:real) (matrix real-matrix) i j)
   (setf (matrix-ref-2d matrix i j) (coerce new 'real-matrix-element-type)))
 
 

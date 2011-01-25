@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: matrix.lisp,v 1.15 2010/12/12 02:07:31 rtoy Exp $
+;;; $Id: matrix.lisp,v 1.16 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: matrix.lisp,v $
+;;; Revision 1.16  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.15.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.15  2010/12/12 02:07:31  rtoy
 ;;; matrix.lisp:
 ;;;
@@ -511,7 +518,7 @@ that way."))
    Fill MATRIX with FILL-ELEMENT.
 "))
 
-(defmethod fill-matrix ((matrix real-matrix) (fill real))
+(defmethod fill-matrix ((matrix real-matrix) (fill cl:real))
   (copy! fill matrix))
 
 (defmethod fill-matrix ((matrix real-matrix) (fill complex))
@@ -563,7 +570,7 @@ integer storage.  Default INITIAL-ELEMENT = 0."
   (let ((casted-fill
 	 (typecase fill
 	   (real-matrix-element-type fill)
-	   (real (coerce fill 'real-matrix-element-type))
+	   (cl:real (coerce fill 'real-matrix-element-type))
 	   (t (error "argument FILL-ELEMENT to MAKE-REAL-MATRIX-DIM must be a REAL")))))
 
     (declare (type real-matrix-element-type casted-fill))

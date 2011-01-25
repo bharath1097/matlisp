@@ -33,9 +33,17 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: lazy-loader.lisp.in,v 1.16 2005/06/24 04:04:08 rtoy Exp $
+;;; $Id: lazy-loader.lisp.in,v 1.17 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: lazy-loader.lisp.in,v $
+;;; Revision 1.17  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.16.2.1  2011/01/25 15:01:46  rtoy
+;;; Update for new libraries.  There's not just one libmatlisp library
+;;; anymore.
+;;;
 ;;; Revision 1.16  2005/06/24 04:04:08  rtoy
 ;;; Update for CMUCL with linkage tables.  In this case, we can just load
 ;;; up the matlisp shared lib.  But not if we're also using ATLAS, which
@@ -179,7 +187,11 @@
 ;; shared lib.
 #+(and cmu :linkage-table (not @ATLAS_P@))
 (defun load-blas-&-lapack-libraries ()
-  (ext:load-foreign (translate-logical-pathname "matlisp:lib;libmatlisp.so")))
+  (dolist (lib '("matlisp:lib;libdfftpack.@share_ext@"
+		 "matlisp:lib;libtoms715.@share_ext@"
+		 "matlisp:lib;libblas.@share_ext@"
+		 "matlisp:lib;liblapack.@share_ext@"))
+    (ext::load-foreign lib)))
 
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()
@@ -192,7 +204,7 @@
   #+(or :unix :linux) (load "matlisp:lib;libmatlisp.so")
   #+:mswindows (load "matlisp:lib;libmatlisp.dll"))
 
-(load-blas-&-lapack-libraries))
+)
 
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
@@ -212,4 +224,10 @@
 #+(and :allegro :mswindows)
 (defun unload-blas-&-lapack-libraries ()
   (ff:unload-foreign-library "matlisp:lib;libmatlisp.dll"))
+
+
+(eval-when (:load-toplevel :execute)
+  (format t "Loading BLAS and LAPACK libraries~%")
+  (load-blas-&-lapack-libraries)
+  (format t "DONE~%"))
 

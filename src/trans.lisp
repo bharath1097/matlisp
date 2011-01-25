@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: trans.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
+;;; $Id: trans.lisp,v 1.6 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: trans.lisp,v $
+;;; Revision 1.6  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.5.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.5  2001/06/22 12:52:41  rtoy
 ;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
 ;;; instead of using the error-prone make-array.
@@ -176,7 +183,7 @@
   (declare (type complex x))
   (conjugate x))
 
-(defmethod ctranspose ((x real))
+(defmethod ctranspose ((x cl:real))
   x)
 
 (defmethod ctranspose ((mat standard-matrix))

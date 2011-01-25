@@ -1,0 +1,5 @@
+Release notes for Matlisp 2.0
+
+ * Updated code to use libtool to create the libraries
+ * Support parallel builds where the build is done in a different
+   directory from the source.

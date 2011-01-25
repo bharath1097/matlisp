@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: diag.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: diag.lisp,v 1.8 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: diag.lisp,v $
+;;; Revision 1.8  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.7.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.7  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -127,7 +134,7 @@
       (dcopy p diag-element 0 (store mat) (1+ n))
       mat)))
 
-(defmethod (setf diag) ((new-diag real) (mat real-matrix))
+(defmethod (setf diag) ((new-diag cl:real) (mat real-matrix))
   (setf (diag mat) (coerce new-diag 'real-matrix-element-type)))
 
 (defmethod (setf diag) ((new-diag complex) (mat real-matrix))

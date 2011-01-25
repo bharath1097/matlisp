@@ -1,6 +1,9 @@
 -*- Mode: text -*-
 Requirements:
 =============
+As of Matlisp 2.0, we have only tested matlisp with cmucl.  This is
+mostly due to the changes in building the libraries for matlisp.
+
 Either CMUCL (version 18b), SBCL (version 0.8.5) or 
 Allegro CL (version 5.0 or later) is required.
 
@@ -45,22 +48,38 @@ The installation follows in a few easy steps:
 
 	cd matlisp
 
-4. Configure the system.
-   o If you're using Allegro CL, specify --with-lisp=acl.
-   o If you're using CMU CL, specify --with-lisp=cmucl
-   o If you're using SBCL, specify --with-lisp=sbcl
+4. Create a build directory.  (You can use any name you like).
+
+        mkdir build
+	cd build
+
+5. Configure the system.
+   First run 
+
+        autoreconf --install
+
+   to create all the necessary configuration files.  Then you can run
+   configure to configure the software:
+
+   o If you're using Allegro CL, specify --enable-acl
+   o If you're using CMU CL, specify --enable-cmucl
+   o If you're using SBCL, specify --enable-sbcl
    o Give the name of the Lisp executable via --with-lisp-exec=<name>
    o Run configure:
 
-   ./configure --with-lisp=<lisp> --with-lisp-exec=<exec> --prefix=`pwd`
+   ../configure --enable-<lisp> --with-lisp-exec=<exec>\
+        --libdir=$PWD/lib --enable-static=no
 
-   If you are not using g77 to compile, you may want to specify the
-   Fortran flags.  For example, to build with Sun's Fortran compiler
-   this can be used (from bash):
+   This assumes that you will run and use matlisp in the current
+   directory. Also, we disable building of static libraries since we
+   do expect to use the shared libraries.
 
-   ./configure --with-f77=f77 -with-fflags='-g -O -KPIC' ...
+   If configure does not select the desired Fortran compiler and
+   compiler flags, you can specify them like this:
 
-5. Build the Fortran and Lisp files
+   ../configure F77=f77 FFLAGS='-g -O -KPIC' ...
+
+6. Build the Fortran and Lisp files
 
 	make
                          

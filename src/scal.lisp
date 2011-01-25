@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: scal.lisp,v 1.5 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: scal.lisp,v 1.6 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: scal.lisp,v $
+;;; Revision 1.6  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.5.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.5  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -110,7 +117,7 @@
     (dscal nxm alpha (store result) 1)
     result))
 
-(defmethod scal ((alpha real) (x real-matrix))
+(defmethod scal ((alpha cl:real) (x real-matrix))
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
@@ -143,7 +150,7 @@
     
     result))
 
-(defmethod scal ((alpha real) (x complex-matrix))
+(defmethod scal ((alpha cl:real) (x complex-matrix))
   (scal (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
@@ -177,7 +184,7 @@ be a matrix to SCAL!"))
     (dscal nxm alpha (store x) 1)
     x))
 
-(defmethod scal! ((alpha real) (x real-matrix))
+(defmethod scal! ((alpha cl:real) (x real-matrix))
   (scal! (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal! ((alpha complex) (x real-matrix))
@@ -191,7 +198,7 @@ how to coerce COMPLEX to REAL"))
     
     x))
 
-(defmethod scal! ((alpha real) (x complex-matrix))
+(defmethod scal! ((alpha cl:real) (x complex-matrix))
   (scal! (coerce alpha 'real-matrix-element-type) x))
 
 (defmethod scal! ((alpha #+:cmu kernel::complex-double-float

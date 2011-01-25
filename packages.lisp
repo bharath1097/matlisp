@@ -26,9 +26,25 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: packages.lisp,v 1.22 2009/08/19 16:01:34 rtoy Exp $
+;;; $Id: packages.lisp,v 1.23 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: packages.lisp,v $
+;;; Revision 1.23  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.22.2.1  2011/01/25 18:16:10  rtoy
+;;; config.lisp.in:
+;;; o New file to setup some configuration.  Mostly taken from
+;;;   packages.lisp.
+;;;
+;;; configure.ac:
+;;; o Add mailing list and URL
+;;; o Build config.lisp from config.lisp.in
+;;;
+;;; packages.lisp:
+;;; o Move the non-package stuff to config.lisp.in.
+;;;
 ;;; Revision 1.22  2009/08/19 16:01:34  rtoy
 ;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
 ;;; Gjerden.
@@ -444,24 +460,3 @@
 (deftype real (&optional low high)
   `(cl::real ,low ,high))
 
-;; Although versions of CMUCL after 18e have find-class in CL, it
-;; still exists in the PCL package, so for backward compatibility with
-;; older versions, use PCL:FIND-CLASS for all CMUCL versions.
-#+cmu (setf (pcl:find-class 'real) (pcl:find-class 'cl:real))
-#-cmu (setf (find-class 'real) (find-class 'cl:real))
-
-
-(eval-when (load eval compile)
-(defparameter *matlisp-version* "Pre 2.0")
-
-#-(or :cmu :allegro :sbcl)
-(error "MATLISP version ~a requires CMUCL, SBCL or ALLEGRO CL" 
-       *matlisp-version*)
-
-(defun matlisp-version () *matlisp-version*)
-
-(defun matlisp-herald () (format nil "    MATLISP/~a" (matlisp-version)))
-
-#+:cmu
-(setf (getf ext:*herald-items* :matlisp)
-	     (list (matlisp-herald))))

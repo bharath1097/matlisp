@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: mplus.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: mplus.lisp,v 1.7 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: mplus.lisp,v $
+;;; Revision 1.7  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.6.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.6  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -159,13 +166,13 @@
       (daxpy nxm 1.0d0 b-array 0 (store result) 1)
       result)))
 
-(defmethod m+ ((a real-matrix) (b real))
+(defmethod m+ ((a real-matrix) (b cl:real))
   (m+ a (coerce b 'real-matrix-element-type)))
 
 (defmethod m+ ((a double-float) (b real-matrix))
   (m+ b a))
 
-(defmethod m+ ((a real) (b real-matrix))
+(defmethod m+ ((a cl:real) (b real-matrix))
   (m+ b (coerce a 'real-matrix-element-type)))
 
 (defmethod m+ ((a real-matrix) (b #+:cmu kernel::complex-double-float
@@ -203,13 +210,13 @@
       (daxpy nxm 1.0d0 b-array 0 (store result) 2)
       result)))
 
-(defmethod m+ ((a complex-matrix) (b real))
+(defmethod m+ ((a complex-matrix) (b cl:real))
   (m+ a (coerce b 'complex-matrix-element-type)))
 
 (defmethod m+ ((a double-float) (b complex-matrix))
   (m+ b a))
 
-(defmethod m+ ((a real) (b complex-matrix))
+(defmethod m+ ((a cl:real) (b complex-matrix))
   (m+ b (coerce a 'complex-matrix-element-type)))
 
 (defmethod m+ ((a complex-matrix) (b #+:cmu kernel::complex-double-float
@@ -266,13 +273,13 @@ don't know how to coerce COMPLEX to REAL."))
       (daxpy nxm 1.0d0 b-array 0 (store a) 1)
       a)))
 
-(defmethod m+! ((a real-matrix) (b real))
+(defmethod m+! ((a real-matrix) (b cl:real))
   (m+! a (coerce b 'real-matrix-element-type)))
 
 (defmethod m+! ((a double-float) (b real-matrix))
   (m+! b a))
 
-(defmethod m+! ((a real) (b real-matrix))
+(defmethod m+! ((a cl:real) (b real-matrix))
   (m+! b (coerce a 'real-matrix-element-type)))
 
 (defmethod m+! ((a real-matrix) (b complex))
@@ -292,13 +299,13 @@ don't know how to coerce COMPLEX to REAL"))
       (daxpy nxm 1.0d0 b-array 0 (store a) 2)
       a)))
 
-(defmethod m+! ((a complex-matrix) (b real))
+(defmethod m+! ((a complex-matrix) (b cl:real))
   (m+! a (coerce b 'complex-matrix-element-type)))
 
 (defmethod m+! ((a double-float) (b complex-matrix))
   (m+! b a))
 
-(defmethod m+! ((a real) (b complex-matrix))
+(defmethod m+! ((a cl:real) (b complex-matrix))
   (m+! b (coerce a 'complex-matrix-element-type)))
 
 #-:sbcl  ;; sbcl doesn't like constant arrays

@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: gemm.lisp,v 1.7 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: gemm.lisp,v 1.8 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: gemm.lisp,v $
+;;; Revision 1.8  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.7.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.7  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -211,10 +218,10 @@
  
 	 c)))
 
-(defmethod gemm! ((alpha real) 
+(defmethod gemm! ((alpha cl:real) 
 		  (a real-matrix) 
 		  (b real-matrix)
-		  (beta real) 
+		  (beta cl:real) 
 		  (c real-matrix) 
 		  &optional (job :nn))
   (gemm! (coerce alpha 'real-matrix-element-type)
@@ -347,10 +354,10 @@
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
 
-(defmethod gemm ((alpha real) 
+(defmethod gemm ((alpha cl:real) 
 		 (a real-matrix) 
 		 (b real-matrix)
-		 (beta real) 
+		 (beta cl:real) 
 		 (c real-matrix) 
 		 &optional (job :nn))
 

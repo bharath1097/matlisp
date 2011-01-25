@@ -30,9 +30,16 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: copy.lisp,v 1.8 2004/05/24 16:34:22 rtoy Exp $
+;;; $Id: copy.lisp,v 1.9 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: copy.lisp,v $
+;;; Revision 1.9  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.8.2.1  2011/01/25 18:16:53  rtoy
+;;; Use cl:real instead of real.
+;;;
 ;;; Revision 1.8  2004/05/24 16:34:22  rtoy
 ;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
 ;;; was incomplete.
@@ -201,7 +208,7 @@ don't know how to coerce a COMPLEX to a REAL"))
     (dcopy nxm *1x1-real-array* 0 (store y) 1)
     y))
 
-(defmethod copy! ((x real) (y real-matrix))
+(defmethod copy! ((x cl:real) (y real-matrix))
   (let ((nxm (number-of-elements y)))
     (setf (aref *1x1-real-array* 0) (coerce x 'real-matrix-element-type))
     (dcopy nxm *1x1-real-array* 0 (store y) 1)

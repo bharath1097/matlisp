@@ -26,9 +26,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: system.dcl,v 1.27 2009/08/19 16:01:34 rtoy Exp $
+;;; $Id: system.dcl,v 1.28 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;; $Log: system.dcl,v $
+;;; Revision 1.28  2011/01/25 18:36:56  rtoy
+;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
+;;; automake build infrastructure.
+;;;
+;;; Revision 1.27.2.1  2011/01/25 15:20:26  rtoy
+;;; o Rearrange paths sos that we can do a parallel build.
+;;; o Split out some of the modules into their own systems and update
+;;;   dependencies appropriately.
+;;;
 ;;; Revision 1.27  2009/08/19 16:01:34  rtoy
 ;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
 ;;; Gjerden.
@@ -151,22 +160,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package "COMMON-LISP-USER")
 
-(matlisp-start::deflogicalpath "matlisp")
+;;(matlisp-start::deflogicalpath "matlisp")
 
+#+nil
 (require "MAKE" (namestring 
 		 (translate-logical-pathname 
 		  "matlisp:defsystem.lisp")))
 
 (mk::defsystem matlisp-packages
-      :source-pathname "matlisp:"
+      :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+      :binary-pathname (translate-logical-pathname "matlisp:bin;")
       :source-extension "lisp"
       :components
       ((:file "packages")))
 
 (mk::defsystem lazy-loader
-      :source-pathname "matlisp:lib;"
+      :source-pathname (translate-logical-pathname "matlisp:lib;")
       :source-extension "lisp"
-      :binary-pathname "matlisp:bin;"
+      :binary-pathname (translate-logical-pathname "matlisp:bin;")
       :depends-on ("matlisp-packages")
       :components
       ((:file "lazy-loader"
@@ -174,37 +185,204 @@
 	      ;; otherwise, Allegro tries to
 	      ;; load the DLL (SO)'s twice
 	      ;; and fails.
-	)))
+	      )))
+
+(mk::defsystem fortran-names
+      :source-pathname (translate-logical-pathname "matlisp:src;")
+      :binary-pathname (translate-logical-pathname "matlisp:bin;")
+      :source-extension "lisp"
+      :depends-on ("matlisp-packages")
+      :components
+      (("f77-mangling")))
+
+(mk:defsystem matlisp-f2cl-macros
+  :source-pathname (translate-logical-pathname "matlisp:srcdir;lib-src;")
+  :binary-pathname (translate-logical-pathname "matlisp:bin;")
+  :source-extension "l"
+  :components
+  ((:file "macros")))
+
+(mk:defsystem matlisp-quadpack
+  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+  :binary-pathname (translate-logical-pathname "matlisp:bin;")
+  :source-extension "lisp"
+  :depends-on ("matlisp-f2cl-macros")
+  :components
+  ((:module "quadpack-functions"
+	    :source-pathname ""
+	    :components
+	    ((:module "quadpack-interface"
+		      :source-pathname "src"
+		      :components
+		      ((:file "quadpack")))
+	     (:module "quadpack-lib"
+		      :source-pathname "lib-src/quadpack/"
+		      :package "QUADPACK"
+		      :components
+		      (
+		       #+nil
+		       (:module mach-par
+				:source-pathname ""
+				:source-extension "lisp"
+				:binary-pathname "matlisp:bin;"
+				:components
+				((:file "d1mach")
+				 (:file "i1mach")))
+		       (:module src
+				:source-pathname ""
+				;; :depends-on ("mach-par")
+				:components
+				(
+				 ;; Support
+				 (:file "dqwgtf")
+				 (:file "dqcheb")
+				 (:file "dqk15w")
+				 (:file "dqwgts")
+				 (:file "dqwgtc")
+				 (:file "dgtsl")
+				 (:file "xerror")
+	       
+				 ;; Core integration routines
+				 (:file "dqk15")
+				 (:file "dqk31")
+				 (:file "dqk41")
+				 (:file "dqk51")
+				 (:file "dqk61")
+				 (:file "dqk21")
+				 (:file "dqk15i")
+				 (:file "dqelg")
+				 (:file "dqpsrt")
+				 (:file "dqc25s"
+					:depends-on ("dqcheb" "dqk15w"))
+				 (:file "dqmomo")
+				 (:file "dqc25c"
+					:depends-on ("dqcheb"
+						     "dqk15w"))
+				 (:file "dqc25f"
+					:depends-on ("dgtsl"
+						     "dqcheb"
+						     "dqk15w"
+						     "dqwgtf"))
+				 ;; Basic integrators
+				 (:file "dqage"
+					:depends-on ("dqk15"
+						     "dqk31"
+						     "dqk41"
+						     "dqk51"
+						     "dqk61"
+						     "dqk21"
+						     "dqpsrt"))
+				 (:file "dqagie"
+					:depends-on ("dqelg"
+						     "dqk15i"
+						     "dqpsrt"))
+				 (:file "dqagpe"
+					:depends-on ("dqelg"
+						     "dqpsrt"
+						     "dqk21"
+						     ))
+				 (:file "dqagse"
+					:depends-on ("dqk21"
+						     "dqelg"
+						     "dqpsrt"))
+				 (:file "dqawfe"
+					:depends-on ("dqagie"
+						     "dqawoe"
+						     "dqelg"))
+				 (:file "dqawoe"
+					:depends-on ("dqc25f"
+						     "dqpsrt"
+						     "dqelg"))
+				 (:file "dqawse"
+					:depends-on ("dqc25s"
+						     "dqmomo"
+						     "dqpsrt"))
+				 (:file "dqawce"
+					:depends-on ("dqc25c"
+						     "dqpsrt"))
+				 ;; Simplified interface routines
+				 (:file "dqng"
+					:depends-on ("xerror"))
+				 (:file "dqag"
+					:depends-on ("dqage"
+						     "xerror"))
+				 (:file "dqags"
+					:depends-on ("dqagse"
+						     "xerror"))
+				 (:file "dqagi"
+					:depends-on ("dqagie"
+						     "xerror"))
+				 (:file "dqawf"
+					:depends-on ("dqawfe"
+						     "xerror"))
+				 (:file "dqawo"
+					:depends-on ("dqawoe"
+						     "xerror"))
+				 (:file "dqaws"
+					:depends-on ("dqawse"
+						     "xerror"))
+				 (:file "dqawc"
+					:depends-on ("dqawce"
+						     "xerror"))))))))))
+
+(mk:defsystem matlisp-minpack
+  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+  :binary-pathname (translate-logical-pathname "matlisp:bin;")
+  :source-extension "lisp"
+  :depends-on ("matlisp-f2cl-macros")
+  :components
+  ((:module "minpack-functions"
+	    :components
+	    ((:module "minpack-lib"
+		      :source-pathname "lib-src/minpack/"
+		      :package "MINPACK"
+		      :components
+		      ((:file "dpmpar")
+		       (:file "enorm")
+		       (:file "fdjac2")
+		       (:file "qrsolv")
+		       (:file "lmpar")
+		       (:file "qrfac")
+		       (:file "lmdif")
+		       (:file "lmdif1")
+		       (:file "lmder")
+		       (:file "lmder1")
+		       (:file "dogleg")
+		       (:file "qform")
+		       (:file "r1mpyq")
+		       (:file "r1updt")
+		       (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
+		       (:file "hybrj1" :depends-on ("hybrj"))
+		       ))))))
 
 (mk::defsystem matlisp
-      :source-pathname "matlisp:"
+      :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+      :binary-pathname (translate-logical-pathname "matlisp:bin;")
       :source-extension "lisp"
-      :binary-pathname "matlisp:bin;"
       :depends-on ("lazy-loader"
-                   "matlisp-packages")
+                   "matlisp-packages"
+		   "fortran-names"
+		   "matlisp-f2cl-macros"
+		   "matlisp-quadpack")
       :components
       ((:module "foreign-interface"
-	:source-pathname "matlisp:src;"
+	:source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
-	:components ("f77-mangling"
-		     #+:cmu "ffi-cmu"
+	:components (#+:cmu "ffi-cmu"
 		     #+:sbcl "ffi-sbcl"
 		     #+:allegro "ffi-acl"
 		     ))
        (:module "foreign-functions"
-	:source-pathname "matlisp:src;"
+	:source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
 	:depends-on ("foreign-interface")
 	:components ("blas"
 		     "lapack"
 		     "dfftpack"
 		     #+nil "ranlib"))
        (:module "matlisp-essentials"
-	:source-pathname "matlisp:src;"
+	:source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
 	:components ("conditions"
@@ -214,9 +392,8 @@
 		     "copy"))
 
        (:module "matlisp-blas-wrappers"
-	:source-pathname "matlisp:src;"
+	:source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
 	:depends-on ("foreign-interface" 
 		     "foreign-functions"
 		     "matlisp-essentials")
@@ -226,9 +403,8 @@
 		     "gemm"))
 
        (:module "matlisp-lapack-wrappers"
-	:source-pathname "matlisp:src;"
+	:source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
 	:depends-on ("foreign-interface" 
 		     "foreign-functions"
 		     "matlisp-essentials")
@@ -240,9 +416,8 @@
 		     "potrs"))
 
        (:module "matlisp-functions"
-        :source-pathname "matlisp:src;"
+        :source-pathname "src"
 	:source-extension "lisp"
-	:binary-pathname ""
 	:depends-on ("foreign-interface"
 		     "foreign-functions"
 		     "matlisp-essentials"
@@ -273,34 +448,30 @@
 		     "fft"
 		     "geqr"))
        (:module "special-functions"
-		:source-pathname "matlisp:src;"
-		:binary-pathname ""
+		:source-pathname "src"
 		:depends-on ("matlisp-functions")
 		:components
 		((:file "specfun")))
        ;; Various add-on packages for matlisp
        ;; This is just the f2cl macros we need, not all of f2cl.
+       #+nil
        (:module "f2cl-macros"
-		:source-pathname "matlisp:lib-src;"
+		:source-pathname "lib-src"
 		:source-extension "l"
-		:binary-pathname ""
 		:components
 		((:file "macros")))
        ;; This is Quadpack, converted from the Fortran
        ;; implementation to Lisp via f2cl.
+       #+nil
        (:module "quadpack-functions"
-		:source-pathname ""
-		:binary-pathname ""
 		:depends-on ("f2cl-macros")
 		:components
 		((:module "quadpack-interface"
-			  :source-pathname "matlisp:src;"
-			  :binary-pathname ""
+			  :source-pathname "src"
 			  :components
 			  ((:file "quadpack")))
 		 (:module "quadpack-lib"
-			  :source-pathname "matlisp:lib-src;quadpack;"
-			  :binary-pathname ""
+			  :source-pathname "lib-src/quadpack/"
 			  :package "QUADPACK"
 			  :components
 			  (
@@ -308,14 +479,13 @@
 			   (:module mach-par
 				    :source-pathname ""
 				    :source-extension "lisp"
-				    :binary-pathname ""
+				    :binary-pathname "matlisp:bin;"
 				    :components
 				    ((:file "d1mach")
 				     (:file "i1mach")))
 			   (:module src
-				    :source-pathname ""
+				    :source-pathname "lib-src/quadpack/"
 				    ;; :depends-on ("mach-par")
-				    :binary-pathname ""
 				    :components
 				    (
 				     ;; Support
@@ -409,14 +579,12 @@
 				     (:file "dqawc"
 					    :depends-on ("dqawce"
 							 "xerror"))))))))
+       #+nil
        (:module "minpack-functions"
-		:source-pathname ""
-		:binary-pathname ""
 		:depends-on ("f2cl-macros")
 		:components
 		((:module "minpack-lib"
-			  :source-pathname "matlisp:lib-src;minpack;"
-			  :binary-pathname ""
+			  :source-pathname "lib-src/minpack/"
 			  :package "MINPACK"
 			  :components
 			  ((:file "dpmpar")
@@ -436,23 +604,23 @@
 			   (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
 			   (:file "hybrj1" :depends-on ("hybrj"))
 			   ))))
+       #+nil
        (:module "lib-src"
-		:binary-pathname ""
 		:components
 		(#+nil
 		 (:file "d1mach"
 			:package "MATLISP-LIB")
 		 (:module "cpoly"
+			  :source-pathname "lib-src/cpoly"
 			  :source-extension "lisp"
-			  :binary-pathname ""
 			  :components
 			  ((:file "cpoly")
 			   (:file "zeroin"
 				  :package "MATLISP-LIB")))
 		 #+(or :cmu :sbcl)
 		 (:module "gnuplot"
+			  :source-pathname "lib-src/gnuplot"
 			  :source-extension "lisp"
-			  :binary-pathname ""
 			  :components
 			  ((:file "gnuplot")))))))
 
