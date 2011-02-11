@@ -160,38 +160,24 @@
 
     (nreverse tokens)))
 
-;; For CMUCL, when we use ATLAS we need lazy-loader.o because ATLAS
-;; doesn't (normally) come with shared libs.
-#+(and :cmu (or @ATLAS_P@ (not :linkage-table)))
+;; For CMUCL with linkage tables, we can just load up various shared
+;; libraries.
+#+(and cmu :linkage-table)
 (defun load-blas-&-lapack-libraries ()
-  (ext::load-foreign "matlisp:lib;lazy-loader.o"
-		:libraries (tokenize-ld-args
-			     (concatenate 'string
-			         "@ATLAS_DIR@"
-				 " "
-				 "@ATLAS_LIBS@"
-				 " "
-				 "-L"
-				 (namestring
-				   (translate-logical-pathname "matlisp:lib"))
-				 " "
-				 "-R"
-				 (namestring
-				   (translate-logical-pathname "matlisp:lib"))
-				 " "
-			         "-lmatlisp"
-				 " "
-				 "@FLIBS@"))))
-
-;; For CMUCL with linkage tables, we can just load up the matlisp
-;; shared lib.
-#+(and cmu :linkage-table (not @ATLAS_P@))
-(defun load-blas-&-lapack-libraries ()
+  ;; Load the additional matlisp libraries
   (dolist (lib '("matlisp:lib;libdfftpack.@share_ext@"
-		 "matlisp:lib;libtoms715.@share_ext@"
-		 "matlisp:lib;libblas.@share_ext@"
-		 "matlisp:lib;liblapack.@share_ext@"))
-    (ext::load-foreign lib)))
+		 "matlisp:lib;libtoms715.@share_ext@"))
+    (ext::load-foreign lib))
+  (if @ATLAS_P@
+      ;; Load the atlas libraries
+      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
+	(ext:load-foreign (concatenate 'string "@ATLAS_DIR@"
+				       lib
+				       ".@share_ext@")))
+      ;; Not using atlas, so load our versions.
+      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
+		     "matlisp:lib;liblapack.@share_ext@"))
+	(ext::load-foreign lib))))
 
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()

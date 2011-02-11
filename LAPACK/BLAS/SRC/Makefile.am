@@ -7,6 +7,7 @@ endif
 libblas_la_LDFLAGS = $(FLIBS_OPTS)
 libblas_la_LIBADD = $(FLIBS_LIBS)
 
+if !ATLAS
 libblas_la_SOURCES = \
 	dasum.f \
 	daxpy.f \
@@ -82,3 +83,4 @@ libblas_la_SOURCES = \
 	ztrmv.f \
 	ztrsm.f \
 	ztrsv.f
+endif

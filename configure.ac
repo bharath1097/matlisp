@@ -75,7 +75,7 @@ AM_CONDITIONAL([CMUCL], [test x$cmucl = xtrue])
 # Enable sbcl
 AC_ARG_ENABLE([sbcl],
 AC_HELP_STRING([--enable-sbcl],
-[Enable cmucl]),
+[Enable sbcl]),
 [case "${enableval}" in
   yes) sbcl=true ;;
   no) sbcl=false ;;
@@ -169,16 +169,19 @@ AC_ARG_WITH([atlas],
 AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
 [
   # Building with ATLAS
-  ATLAS_DIR="-L$withval"
-  ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
+  ATLAS_DIR="$withval/"
+  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
+  atlas=true
   ATLAS_P=t
 ],
 [
   # Building without ATLAS.  Need these objects from our own copy of 
   # LAPACK.
+  atlas=false
   ATLAS_P=nil
 BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
 NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 ])
+AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
 AC_OUTPUT

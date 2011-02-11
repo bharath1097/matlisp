@@ -6,7 +6,12 @@ SUBDIRS = LAPACK/BLAS/SRC LAPACK/SRC dfftpack lib-src/toms715
 # This should build all the libraries we need.  Then we need to
 # install them before we can build the lisp code.
 all : 
-	$(MAKE) install
+	(cd dfftpack; $(MAKE) install)
+	(cd lib-src/toms715; $(MAKE) install)
+if !ATLAS
+	(cd LAPACK/SRC; $(MAKE) install)
+	(cd LAPACK/BLAS/SRC; $(MAKE) install)
+endif
 	$(MAKE) lisp
 
 lisp :
