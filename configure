@@ -615,6 +615,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+ATLAS_FALSE
+ATLAS_TRUE
 share_ext
 FLIBS_OPTS
 FLIBS_LIBS
@@ -1396,7 +1398,7 @@ Optional Features:
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
   --enable-cmucl          Enable cmucl
-  --enable-sbcl           Enable cmucl
+  --enable-sbcl           Enable sbcl
   --enable-acl            Enable acl
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -15059,18 +15061,28 @@ ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib
 if test "${with_atlas+set}" = set; then :
   withval=$with_atlas;
   # Building with ATLAS
-  ATLAS_DIR="-L$withval"
-  ATLAS_LIBS="-llapack -lcblas -lf77blas -latlas"
+  ATLAS_DIR="$withval/"
+  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
+  atlas=true
   ATLAS_P=t
 
 else
 
   # Building without ATLAS.  Need these objects from our own copy of
   # LAPACK.
+  atlas=false
   ATLAS_P=nil
 BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
 NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 
+fi
+
+ if test x$atlas = xtrue; then
+  ATLAS_TRUE=
+  ATLAS_FALSE='#'
+else
+  ATLAS_TRUE='#'
+  ATLAS_FALSE=
 fi
 
 
@@ -15237,6 +15249,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${CMUCL_TRUE}" && test -z "${CMUCL_FALSE}"; then
   as_fn_error $? "conditional \"CMUCL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ATLAS_TRUE}" && test -z "${ATLAS_FALSE}"; then
+  as_fn_error $? "conditional \"ATLAS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
