@@ -6,6 +6,8 @@ endif
 
 liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS_LIBS)
 liblapack_la_LDFLAGS = $(FLIBS_OPTS)
+
+if !ATLAS
 liblapack_la_SOURCES = \
 	dlasq5.f dlasq6.f ieeeck.f zdrot.f dlabad.f \
 	dlarf.f   dorglq.f  zhetd2.f  zlatrs.f \
@@ -37,4 +39,4 @@ liblapack_la_SOURCES = \
 	dpotrf.f  dpotf2.f  dpotrs.f  zpotrs.f \
 	dgesv.f dgetrf.f dgetrs.f dlaswp.f zgetrs.f zlaswp.f zgesv.f \
 	zgetrf.f
-
+endif
