@@ -2722,6 +2722,7 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -3701,10 +3702,12 @@ else
 fi
 
 
+
 ac_ext=f
 ac_compile='$F77 -c $FFLAGS conftest.$ac_ext >&5'
 ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_f77_compiler_gnu
+
 
 ac_ext=f
 ac_compile='$F77 -c $FFLAGS conftest.$ac_ext >&5'
@@ -3916,6 +3919,7 @@ ac_compile='$F77 -c $FFLAGS conftest.$ac_ext >&5'
 ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 
+
 ac_ext=f
 ac_compile='$F77 -c $FFLAGS conftest.$ac_ext >&5'
 ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3973,6 +3977,7 @@ ac_ext=f
 ac_compile='$F77 -c $FFLAGS conftest.$ac_ext >&5'
 ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_f77_compiler_gnu
+
 
 
 ac_ext=f
@@ -4627,6 +4632,7 @@ case $LISPSYS in
 esac
 
 enabled_lisp_count=0
+
 # Enable cmucl
 # Check whether --enable-cmucl was given.
 if test "${enable_cmucl+set}" = set; then :
@@ -4702,7 +4708,6 @@ if test "${with_lisp_exec+set}" = set; then :
   withval=$with_lisp_exec; LISPEXEC=$withval
 
 fi
-
 
 
 case `pwd` in
@@ -15024,9 +15029,6 @@ ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
 
-echo FLIBS_LIBS = $FLIBS_LIBS
-echo FLIBS-OPTS = $FLIBS_OPTS
-
 
 
 
@@ -15046,6 +15048,8 @@ echo FLIBS-OPTS = $FLIBS_OPTS
 AM_FFLAGS=
 
 echo host = $host
+
+# Set the extension for shared libraries.  This is not very robust.
 case $host in
   *darwin*) share_ext=dylib ;;
   *) share_ext=so ;;
@@ -15072,8 +15076,6 @@ else
   # LAPACK.
   atlas=false
   ATLAS_P=nil
-BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
-NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 
 fi
 
