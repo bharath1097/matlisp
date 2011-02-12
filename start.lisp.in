@@ -292,6 +292,9 @@
 	   ;; Basically, it's the current directory.
 	   (list "builddir;**;*.*.*"
 		 (merge-pathnames "**/*.*"
+				  (default-dir)))
+	   (list "*.*.*"
+		 (merge-pathnames "*.*"
 				  (default-dir)))))))
 
 (setlogicalroot "matlisp")
