@@ -111,11 +111,9 @@ execute the shell script")
 	   :init-function 
 	   #'(lambda () 
 	       (in-package "MATLISP-USER")
-	       (matlisp::load-blas-&-lapack-binaries)
 	       (format t "~%")
 	       (ext::print-herald)
 	       (format t "~%")
-	       (defparameter sys::*command-index* 0)
 	       (lisp::%top-level))))))
 
 #+:sbcl
