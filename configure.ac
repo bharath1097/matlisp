@@ -1,12 +1,55 @@
+dnl Copyright (c) 2000 The Regents of the University of California.
+dnl All rights reserved. 
+dnl
+dnl Permission is hereby granted, without written agreement and without
+dnl license or royalty fees, to use, copy, modify, and distribute this
+dnl software and its documentation for any purpose, provided that the
+dnl above copyright notice and the following two paragraphs appear in all
+dnl copies of this software.
+dnl
+dnl IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
+dnl FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+dnl ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+dnl THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+dnl SUCH DAMAGE.
+dnl
+dnl THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+dnl INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+dnl MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE
+dnl PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF
+dnl CALIFORNIA HAS NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+dnl ENHANCEMENTS, OR MODIFICATIONS.
+dnl
+dnl ======================================================================
+dnl
+dnl Process this file with autoreconf to produce the appropriate configure
+dnl script and Makefile.in's.  Then run configure to build.
+dnl
+
 AC_INIT([matlisp], [2.0],
         [matlisp-users@lists.sourceforge.net],,
         [http://matlisp.sourceforge.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_MACRO_DIR([m4])
+
+dnl Determine which C compiler to use.  (Probably don't need this
+dnl because we no longer use a C compiler to compile anything.)
 AC_PROG_CC
+
+dnl Set the Fortran language.
 AC_LANG_FORTRAN77
+
+dnl Determine a Fortran 77 compiler to use.  If `F77' is not already
+dnl set in the environment, check for `g77', `f77' and `f2c', in that
+dnl order.  Set the output variable `F77' to the name of the compiler
+dnl found.
 AC_PROG_F77
+
+dnl We need -c and -o supported by the Fortran compiler
 AC_PROG_F77_C_O
+
+dnl Figure out what libraries we need to link with the Fortran 
+dnl compiler
 AC_F77_LIBRARY_LDFLAGS
 
 # Figure out what the Fortran name mangling is
@@ -55,6 +98,7 @@ case $LISPSYS in
 esac
 
 enabled_lisp_count=0
+
 # Enable cmucl
 AC_ARG_ENABLE([cmucl],
 AC_HELP_STRING([--enable-cmucl],
@@ -116,16 +160,14 @@ AC_HELP_STRING([--with-lisp-exec=name],[Name of lisp program]),
 [LISPEXEC=$withval]
 )
 
-
+dnl We need libtool to build the libraries
 AC_PROG_LIBTOOL
 
 # Extract the library part and options part out of FLIBS.
 FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
 
-echo FLIBS_LIBS = $FLIBS_LIBS
-echo FLIBS-OPTS = $FLIBS_OPTS
-
+dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
 AC_SUBST(BLAS_OBJS)
 AC_SUBST(NO_ATLAS_LAPACK_OBJS)
@@ -145,6 +187,8 @@ AC_SUBST(share_ext)
 AM_FFLAGS=
 
 echo host = $host
+
+# Set the extension for shared libraries.  This is not very robust.
 case $host in
   *darwin*) share_ext=dylib ;;
   *) share_ext=so ;;
@@ -179,8 +223,6 @@ AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
   # LAPACK.
   atlas=false
   ATLAS_P=nil
-BLAS_OBJS="dgemm.o dswap.o dtrmv.o lsame.o zdotu.o zhemv.o ztrmv.o dgemv.o  dsymv.o  dtrsm.o  zher2.o   ztrsm.o dasum.o  dger.o   dsyr.o   dtrsv.o   zdscal.o zher2k.o ztrsv.o daxpy.o  dsyr2.o  dzasum.o xerbla.o  zgemm.o  zherk.o dcabs1.o dnrm2.o  dsyr2k.o dznrm2.o  zaxpy.o  zgemv.o  zscal.o dcopy.o  drot.o   dsyrk.o  idamax.o  zcopy.o  zgerc.o  zswap.o ddot.o	 dscal.o  dtrmm.o  izamax.o  zdotc.o  zgeru.o  ztrmm.o dsymm.o"
-NO_ATLAS_LAPACK_OBJS="dgetrf.o zgetrf.o dgetrs.o zgetrs.o dlaswp.o zlaswp.o dgesv.o zgesv.o"
 ])
 AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
