@@ -102,7 +102,8 @@
 	:depends-on ("foreign-interface" 
 		     "foreign-functions"
 		     "matlisp-essentials")
-	:components ((:file "gesv")
+	:components ((:file "gels")
+		     (:file "gesv")
 		     (:file "geev")
 		     (:file "getrf")
 		     (:file "getrs")

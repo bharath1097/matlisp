@@ -205,7 +205,8 @@
    "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
    "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
    "DORGQR" "ZUNGQR"
-   "DPOTRS" "ZPOTRS" "DPOTRF" "ZPOTRF")
+   "DPOTRS" "ZPOTRS" "DPOTRF" "ZPOTRF"
+   "DGELSY")
   (:documentation "LAPACK routines"))
 
 (defpackage "DFFTPACK"
@@ -319,6 +320,8 @@
    "FORTRAN-COMPLEX-MATRIX-INDEXING"
    "FORTRAN-MATRIX-INDEXING"
    "GEEV"
+   "GELSY!"
+   "GELSY"
    "GEMM!"
    "GEMM"
    "GESV!"

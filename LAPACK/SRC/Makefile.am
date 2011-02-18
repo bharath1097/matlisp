@@ -38,5 +38,7 @@ liblapack_la_SOURCES = \
 	dhseqr.f  dlapy3.f  dorgl2.f  zheev.f    zlatrd.f \
 	dpotrf.f  dpotf2.f  dpotrs.f  zpotrs.f \
 	dgesv.f dgetrf.f dgetrs.f dlaswp.f zgetrs.f zlaswp.f zgesv.f \
-	zgetrf.f
+	zgetrf.f \
+	dlaic1.f dlatrz.f dlarz.f dlarzb.f dlarzt.f dgelsy.f dtzrzf.f \
+	dormr3.f dormrz.f
 endif
