@@ -3,10 +3,10 @@
      $                   GIVPTR, GIVCOL, GIVNUM, WORK, RWORK, IWORK,
      $                   INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            CURLVL, CURPBM, CUTPNT, INFO, LDQ, N, QSIZ,
@@ -149,7 +149,7 @@
 *  =====================================================================
 *
 *     .. Local Scalars ..
-      INTEGER            COLTYP, CURR, I, IDLMDA, IND1, IND2, INDX,
+      INTEGER            COLTYP, CURR, I, IDLMDA, INDX,
      $                   INDXC, INDXP, IQ, IW, IZ, K, N1, N2, PTR
 *     ..
 *     .. External Subroutines ..
@@ -250,8 +250,6 @@
 *
          N1 = K
          N2 = N - K
-         IND1 = 1
-         IND2 = N
          CALL DLAMRG( N1, N2, D, 1, -1, INDXQ )
       ELSE
          QPTR( CURR+1 ) = QPTR( CURR )

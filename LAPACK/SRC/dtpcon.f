@@ -1,10 +1,12 @@
       SUBROUTINE DTPCON( NORM, UPLO, DIAG, N, AP, RCOND, WORK, IWORK,
      $                   INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 31, 1993
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIAG, NORM, UPLO
@@ -80,6 +82,9 @@
       INTEGER            IX, KASE, KASE1
       DOUBLE PRECISION   AINVNM, ANORM, SCALE, SMLNUM, XNORM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       INTEGER            IDAMAX
@@ -87,7 +92,7 @@
       EXTERNAL           LSAME, IDAMAX, DLAMCH, DLANTP
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLACON, DLATPS, DRSCL, XERBLA
+      EXTERNAL           DLACN2, DLATPS, DRSCL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, MAX
@@ -144,7 +149,7 @@
          END IF
          KASE = 0
    10    CONTINUE
-         CALL DLACON( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE )
+         CALL DLACN2( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE, ISAVE )
          IF( KASE.NE.0 ) THEN
             IF( KASE.EQ.KASE1 ) THEN
 *

@@ -2,10 +2,10 @@
      $                   LDD, E, LDE, F, LDF, SCALE, RDSUM, RDSCAL,
      $                   IWORK, PQ, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     January 2007
 *
 *     .. Scalar Arguments ..
       CHARACTER          TRANS
@@ -55,15 +55,15 @@
 *  This case is used to compute an estimate of Dif[(A, D), (B, E)] =
 *  sigma_min(Z) using reverse communicaton with DLACON.
 *
-*  DTGSY2 also (IJOB >= 1) contributes to the computation in STGSYL
+*  DTGSY2 also (IJOB >= 1) contributes to the computation in DTGSYL
 *  of an upper bound on the separation between to matrix pairs. Then
 *  the input (A, D), (B, E) are sub-pencils of the matrix pair in
-*  DTGSYL. See STGSYL for details.
+*  DTGSYL. See DTGSYL for details.
 *
 *  Arguments
 *  =========
 *
-*  TRANS   (input) CHARACTER
+*  TRANS   (input) CHARACTER*1
 *          = 'N', solve the generalized Sylvester equation (1).
 *          = 'T': solve the 'transposed' system (3).
 *
@@ -98,7 +98,7 @@
 *  LDB     (input) INTEGER
 *          The leading dimension of the matrix B. LDB >= max(1, N).
 *
-*  C       (input/ output) DOUBLE PRECISION array, dimension (LDC, N)
+*  C       (input/output) DOUBLE PRECISION array, dimension (LDC, N)
 *          On entry, C contains the right-hand-side of the first matrix
 *          equation in (1).
 *          On exit, if IJOB = 0, C has been overwritten by the
@@ -119,7 +119,7 @@
 *  LDE     (input) INTEGER
 *          The leading dimension of the matrix E. LDE >= max(1, N).
 *
-*  F       (input/ output) DOUBLE PRECISION array, dimension (LDF, N)
+*  F       (input/output) DOUBLE PRECISION array, dimension (LDF, N)
 *          On entry, F contains the right-hand-side of the second matrix
 *          equation in (1).
 *          On exit, if IJOB = 0, F has been overwritten by the
@@ -143,7 +143,7 @@
 *          On exit, the corresponding sum of squares updated with the
 *          contributions from the current sub-system.
 *          If TRANS = 'T' RDSUM is not touched.
-*          NOTE: RDSUM only makes sense when DTGSY2 is called by STGSYL.
+*          NOTE: RDSUM only makes sense when DTGSY2 is called by DTGSYL.
 *
 *  RDSCAL  (input/output) DOUBLE PRECISION
 *          On entry, scaling factor used to prevent overflow in RDSUM.
@@ -174,6 +174,8 @@
 *     Umea University, S-901 87 Umea, Sweden.
 *
 *  =====================================================================
+*  Replaced various illegal calls to DCOPY by calls to DLASET.
+*  Sven Hammarling, 27/5/02.
 *
 *     .. Parameters ..
       INTEGER            LDZ
@@ -197,7 +199,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DAXPY, DCOPY, DGEMM, DGEMV, DGER, DGESC2,
-     $                   DGETC2, DLATDF, DSCAL, XERBLA
+     $                   DGETC2, DLASET, DLATDF, DSCAL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX
@@ -211,24 +213,29 @@
       NOTRAN = LSAME( TRANS, 'N' )
       IF( .NOT.NOTRAN .AND. .NOT.LSAME( TRANS, 'T' ) ) THEN
          INFO = -1
-      ELSE IF( ( IJOB.LT.0 ) .OR. ( IJOB.GT.2 ) ) THEN
-         INFO = -2
-      ELSE IF( M.LE.0 ) THEN
-         INFO = -3
-      ELSE IF( N.LE.0 ) THEN
-         INFO = -4
-      ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
-         INFO = -5
-      ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
-         INFO = -8
-      ELSE IF( LDC.LT.MAX( 1, M ) ) THEN
-         INFO = -10
-      ELSE IF( LDD.LT.MAX( 1, M ) ) THEN
-         INFO = -12
-      ELSE IF( LDE.LT.MAX( 1, N ) ) THEN
-         INFO = -14
-      ELSE IF( LDF.LT.MAX( 1, M ) ) THEN
-         INFO = -16
+      ELSE IF( NOTRAN ) THEN
+         IF( ( IJOB.LT.0 ) .OR. ( IJOB.GT.2 ) ) THEN
+            INFO = -2
+         END IF
+      END IF
+      IF( INFO.EQ.0 ) THEN
+         IF( M.LE.0 ) THEN
+            INFO = -3
+         ELSE IF( N.LE.0 ) THEN
+            INFO = -4
+         ELSE IF( LDA.LT.MAX( 1, M ) ) THEN
+            INFO = -5
+         ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
+            INFO = -8
+         ELSE IF( LDC.LT.MAX( 1, M ) ) THEN
+            INFO = -10
+         ELSE IF( LDD.LT.MAX( 1, M ) ) THEN
+            INFO = -12
+         ELSE IF( LDE.LT.MAX( 1, N ) ) THEN
+            INFO = -14
+         ELSE IF( LDF.LT.MAX( 1, M ) ) THEN
+            INFO = -16
+         END IF
       END IF
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'DTGSY2', -INFO )
@@ -506,14 +513,14 @@
                      CALL DGER( MB, N-JE, ONE, RHS( 3 ), 1,
      $                          B( JS, JE+1 ), LDB, C( IS, JE+1 ), LDC )
                      CALL DGER( MB, N-JE, ONE, RHS( 3 ), 1,
-     $                          E( JS, JE+1 ), LDB, F( IS, JE+1 ), LDC )
+     $                          E( JS, JE+1 ), LDE, F( IS, JE+1 ), LDF )
                   END IF
 *
                ELSE IF( ( MB.EQ.2 ) .AND. ( NB.EQ.2 ) ) THEN
 *
 *                 Build an 8-by-8 system Z * x = RHS
 *
-                  CALL DCOPY( LDZ*LDZ, ZERO, 0, Z, 1 )
+                  CALL DLASET( 'F', LDZ, LDZ, ZERO, ZERO, Z, LDZ )
 *
                   Z( 1, 1 ) = A( IS, IS )
                   Z( 2, 1 ) = A( ISP1, IS )
@@ -631,7 +638,7 @@
 *
             IS = IWORK( I )
             ISP1 = IS + 1
-            IE = IWORK( I+1 ) - 1
+            IE = IWORK ( I+1 ) - 1
             MB = IE - IS + 1
             DO 190 J = Q, P + 2, -1
 *
@@ -841,7 +848,7 @@
 *
 *                 Build an 8-by-8 system Z' * x = RHS
 *
-                  CALL DCOPY( LDZ*LDZ, ZERO, 0, Z, 1 )
+                  CALL DLASET( 'F', LDZ, LDZ, ZERO, ZERO, Z, LDZ )
 *
                   Z( 1, 1 ) = A( IS, IS )
                   Z( 2, 1 ) = A( IS, ISP1 )

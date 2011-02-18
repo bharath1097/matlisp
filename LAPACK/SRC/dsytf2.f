@@ -1,9 +1,9 @@
       SUBROUTINE DSYTF2( UPLO, N, A, LDA, IPIV, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -76,6 +76,17 @@
 *  Further Details
 *  ===============
 *
+*  09-29-06 - patch from
+*    Bobby Cheng, MathWorks
+*
+*    Replace l.204 and l.372
+*         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+*    by
+*         IF( (MAX( ABSAKK, COLMAX ).EQ.ZERO) .OR. DISNAN(ABSAKK) ) THEN
+*
+*  01-01-96 - Based on modifications by
+*    J. Lewis, Boeing Computer Services Company
+*    A. Petitet, Computer Science Dept., Univ. of Tenn., Knoxville, USA
 *  1-96 - Based on modifications by J. Lewis, Boeing Computer Services
 *         Company
 *
@@ -128,9 +139,9 @@
      $                   ROWMAX, T, WK, WKM1, WKP1
 *     ..
 *     .. External Functions ..
-      LOGICAL            LSAME
+      LOGICAL            LSAME, DISNAN
       INTEGER            IDAMAX
-      EXTERNAL           LSAME, IDAMAX
+      EXTERNAL           LSAME, IDAMAX, DISNAN
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DSCAL, DSWAP, DSYR, XERBLA
@@ -191,9 +202,9 @@
             COLMAX = ZERO
          END IF
 *
-         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+         IF( (MAX( ABSAKK, COLMAX ).EQ.ZERO) .OR. DISNAN(ABSAKK) ) THEN
 *
-*           Column K is zero: set INFO and continue
+*           Column K is zero or contains a NaN: set INFO and continue
 *
             IF( INFO.EQ.0 )
      $         INFO = K
@@ -359,9 +370,9 @@
             COLMAX = ZERO
          END IF
 *
-         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+         IF( (MAX( ABSAKK, COLMAX ).EQ.ZERO) .OR. DISNAN(ABSAKK) ) THEN
 *
-*           Column K is zero: set INFO and continue
+*           Column K is zero or contains a NaN: set INFO and continue
 *
             IF( INFO.EQ.0 )
      $         INFO = K

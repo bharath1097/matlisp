@@ -1,10 +1,12 @@
       SUBROUTINE ZTPCON( NORM, UPLO, DIAG, N, AP, RCOND, WORK, RWORK,
      $                   INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 31, 1993
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call ZLACN2 in place of ZLACON, 10 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIAG, NORM, UPLO
@@ -81,6 +83,9 @@
       DOUBLE PRECISION   AINVNM, ANORM, SCALE, SMLNUM, XNORM
       COMPLEX*16         ZDUM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       INTEGER            IZAMAX
@@ -88,7 +93,7 @@
       EXTERNAL           LSAME, IZAMAX, DLAMCH, ZLANTP
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZDRSCL, ZLACON, ZLATPS
+      EXTERNAL           XERBLA, ZDRSCL, ZLACN2, ZLATPS
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, DIMAG, MAX
@@ -151,7 +156,7 @@
          END IF
          KASE = 0
    10    CONTINUE
-         CALL ZLACON( N, WORK( N+1 ), WORK, AINVNM, KASE )
+         CALL ZLACN2( N, WORK( N+1 ), WORK, AINVNM, KASE, ISAVE )
          IF( KASE.NE.0 ) THEN
             IF( KASE.EQ.KASE1 ) THEN
 *

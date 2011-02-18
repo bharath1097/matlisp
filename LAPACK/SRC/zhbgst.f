@@ -1,10 +1,10 @@
       SUBROUTINE ZHBGST( VECT, UPLO, N, KA, KB, AB, LDAB, BB, LDBB, X,
      $                   LDX, WORK, RWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO, VECT
@@ -131,7 +131,7 @@
          INFO = -3
       ELSE IF( KA.LT.0 ) THEN
          INFO = -4
-      ELSE IF( KB.LT.0 ) THEN
+      ELSE IF( KB.LT.0 .OR. KB.GT.KA ) THEN
          INFO = -5
       ELSE IF( LDAB.LT.KA+1 ) THEN
          INFO = -7
@@ -507,7 +507,7 @@
   230    CONTINUE
 *
          IF( KB.GT.1 ) THEN
-            DO 240 J = N - 1, I2 + KA, -1
+            DO 240 J = N - 1, J2 + KA, -1
                RWORK( J-M ) = RWORK( J-KA-M )
                WORK( J-M ) = WORK( J-KA-M )
   240       CONTINUE
@@ -771,7 +771,7 @@
   460    CONTINUE
 *
          IF( KB.GT.1 ) THEN
-            DO 470 J = N - 1, I2 + KA, -1
+            DO 470 J = N - 1, J2 + KA, -1
                RWORK( J-M ) = RWORK( J-KA-M )
                WORK( J-M ) = WORK( J-KA-M )
   470       CONTINUE

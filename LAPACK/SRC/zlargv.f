@@ -1,9 +1,9 @@
       SUBROUTINE ZLARGV( N, X, INCX, Y, INCY, C, INCC )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            INCC, INCX, INCY, N
@@ -61,6 +61,9 @@
 *
 *  6-6-96 - Modified with a new algorithm by W. Kahan and J. Demmel
 *
+*  This version has a few statements commented out for thread safety
+*  (machine parameters are computed on each entry). 10 feb 03, SJH.
+*
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -70,7 +73,8 @@
       PARAMETER          ( CZERO = ( 0.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            FIRST
+*     LOGICAL            FIRST
+
       INTEGER            COUNT, I, IC, IX, IY, J
       DOUBLE PRECISION   CS, D, DI, DR, EPS, F2, F2S, G2, G2S, SAFMIN,
      $                   SAFMN2, SAFMX2, SCALE
@@ -88,10 +92,10 @@
       DOUBLE PRECISION   ABS1, ABSSQ
 *     ..
 *     .. Save statement ..
-      SAVE               FIRST, SAFMX2, SAFMIN, SAFMN2
+*     SAVE               FIRST, SAFMX2, SAFMIN, SAFMN2
 *     ..
 *     .. Data statements ..
-      DATA               FIRST / .TRUE. /
+*     DATA               FIRST / .TRUE. /
 *     ..
 *     .. Statement Function definitions ..
       ABS1( FF ) = MAX( ABS( DBLE( FF ) ), ABS( DIMAG( FF ) ) )
@@ -99,14 +103,14 @@
 *     ..
 *     .. Executable Statements ..
 *
-      IF( FIRST ) THEN
-         FIRST = .FALSE.
+*     IF( FIRST ) THEN
+*        FIRST = .FALSE.
          SAFMIN = DLAMCH( 'S' )
          EPS = DLAMCH( 'E' )
          SAFMN2 = DLAMCH( 'B' )**INT( LOG( SAFMIN / EPS ) /
      $            LOG( DLAMCH( 'B' ) ) / TWO )
          SAFMX2 = ONE / SAFMN2
-      END IF
+*     END IF
       IX = 1
       IY = 1
       IC = 1

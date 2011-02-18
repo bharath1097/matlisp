@@ -2,10 +2,10 @@
      $                   LDVL, VR, LDVR, S, DIF, MM, M, WORK, LWORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          HOWMNY, JOB
@@ -124,12 +124,11 @@
 *          conjugate pair of eigenvalues, two elements are used.
 *          If HOWMNY = 'A', M is set to N.
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
-*          If JOB = 'E', WORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
-*          The dimension of the array WORK. LWORK >= N.
+*          The dimension of the array WORK. LWORK >= max(1,N).
 *          If JOB = 'V' or 'B' LWORK >= 2*N*(N+2)+16.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
@@ -323,12 +322,6 @@
       INFO = 0
       LQUERY = ( LWORK.EQ.-1 )
 *
-      IF( LSAME( JOB, 'V' ) .OR. LSAME( JOB, 'B' ) ) THEN
-         LWMIN = MAX( 1, 2*N*( N+2 )+16 )
-      ELSE
-         LWMIN = 1
-      END IF
-*
       IF( .NOT.WANTS .AND. .NOT.WANTDF ) THEN
          INFO = -1
       ELSE IF( .NOT.LSAME( HOWMNY, 'A' ) .AND. .NOT.SOMCON ) THEN
@@ -374,17 +367,20 @@
             M = N
          END IF
 *
+         IF( N.EQ.0 ) THEN
+            LWMIN = 1
+         ELSE IF( LSAME( JOB, 'V' ) .OR. LSAME( JOB, 'B' ) ) THEN
+            LWMIN = 2*N*( N + 2 ) + 16
+         ELSE
+            LWMIN = N
+         END IF
+         WORK( 1 ) = LWMIN
+*
          IF( MM.LT.M ) THEN
             INFO = -15
          ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
             INFO = -18
-*        ELSE IF( WANTDF .AND. LWORK.LT.2*N*( N+2 )+16 ) THEN
-*           INFO = -18
          END IF
-      END IF
-*
-      IF( INFO.EQ.0 ) THEN
-         WORK( 1 ) = LWMIN
       END IF
 *
       IF( INFO.NE.0 ) THEN

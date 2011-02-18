@@ -1,10 +1,10 @@
       SUBROUTINE DLAGTM( TRANS, N, NRHS, ALPHA, DL, D, DU, X, LDX, BETA,
      $                   B, LDB )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1992
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          TRANS
@@ -30,7 +30,7 @@
 *  Arguments
 *  =========
 *
-*  TRANS   (input) CHARACTER
+*  TRANS   (input) CHARACTER*1
 *          Specifies the operation applied to A.
 *          = 'N':  No transpose, B := alpha * A * X + beta * B
 *          = 'T':  Transpose,    B := alpha * A'* X + beta * B

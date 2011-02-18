@@ -1,9 +1,9 @@
       SUBROUTINE DGESC2( N, A, LDA, RHS, IPIV, JPIV, SCALE )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            LDA, N
@@ -41,17 +41,17 @@
 *          On entry, the right hand side vector b.
 *          On exit, the solution vector X.
 *
-*  IPIV    (iput) INTEGER array, dimension (N).
+*  IPIV    (input) INTEGER array, dimension (N).
 *          The pivot indices; for 1 <= i <= N, row i of the
 *          matrix has been interchanged with row IPIV(i).
 *
-*  JPIV    (iput) INTEGER array, dimension (N).
+*  JPIV    (input) INTEGER array, dimension (N).
 *          The pivot indices; for 1 <= j <= N, column j of the
 *          matrix has been interchanged with column JPIV(j).
 *
-*  SCALE    (output) DOUBLE PRECISION
-*           On exit, SCALE contains the scale factor. SCALE is chosen
-*           0 <= SCALE <= 1 to prevent owerflow in the solution.
+*  SCALE   (output) DOUBLE PRECISION
+*          On exit, SCALE contains the scale factor. SCALE is chosen
+*          0 <= SCALE <= 1 to prevent owerflow in the solution.
 *
 *  Further Details
 *  ===============

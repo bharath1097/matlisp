@@ -5,7 +5,7 @@ AM_FFLAGS = -m32
 endif
 
 liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS_LIBS)
-liblapack_la_LDFLAGS = $(FLIBS_OPTS)
+liblapack_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
 
 if !ATLAS
 liblapack_la_SOURCES = \
@@ -31,7 +31,9 @@ liblapack_la_SOURCES = \
 	dgesvd.f  dlamch.f  dtrsen.f	 zgeqr2.f  zlarfx.f  zungtr.f \
 	dgetf2.f  dlange.f  dlasy2.f  dtrsyl.f	 zgeqrf.f  zlartg.f  zunm2r.f \
 	dlanhs.f  dlatrd.f  dzsum1.f  zlascl.f  zunmbr.f \
-	dlanst.f  dorg2l.f  ilaenv.f	 zgesvd.f  zlaset.f  zunml2.f \
+	dlanst.f  dorg2l.f  \
+	ilaenv.f iladlc.f iladlr.f ilazlc.f ilazlr.f iparmq.f \
+	zgesvd.f  zlaset.f  zunml2.f \
 	dggbal.f  dlansy.f  dorg2r.f  izmax1.f	 zgetf2.f  zlasr.f   zunmlq.f \
 	dgghrd.f  dlanv2.f  dorgbr.f  zlassq.f  zunmqr.f \
 	dhgeqz.f  dlapy2.f  dorghr.f  \
@@ -40,5 +42,10 @@ liblapack_la_SOURCES = \
 	dgesv.f dgetrf.f dgetrs.f dlaswp.f zgetrs.f zlaswp.f zgesv.f \
 	zgetrf.f \
 	dlaic1.f dlatrz.f dlarz.f dlarzb.f dlarzt.f dgelsy.f dtzrzf.f \
-	dormr3.f dormrz.f
+	dormr3.f dormrz.f \
+	disnan.f dlacn2.f dlahr2.f dlaisnan.f \
+	dlaqr0.f dlaqr1.f dlaqr2.f dlaqr3.f dlaqr4.f dlaqr5.f \
+	zlaqr0.f zlaqr1.f zlaqr2.f zlaqr3.f zlaqr4.f zlaqr5.f \
+	dormhr.f \
+	zlacn2.f zlahr2.f zunmhr.f 
 endif

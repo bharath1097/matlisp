@@ -1,9 +1,9 @@
       SUBROUTINE DGEBAL( JOB, N, A, LDA, ILO, IHI, SCALE, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOB
@@ -105,7 +105,7 @@
       DOUBLE PRECISION   ZERO, ONE
       PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
       DOUBLE PRECISION   SCLFAC
-      PARAMETER          ( SCLFAC = 0.8D+1 )
+      PARAMETER          ( SCLFAC = 2.0D+0 )
       DOUBLE PRECISION   FACTOR
       PARAMETER          ( FACTOR = 0.95D+0 )
 *     ..
@@ -116,10 +116,10 @@
      $                   SFMIN2
 *     ..
 *     .. External Functions ..
-      LOGICAL            LSAME
+      LOGICAL            DISNAN, LSAME
       INTEGER            IDAMAX
       DOUBLE PRECISION   DLAMCH
-      EXTERNAL           LSAME, IDAMAX, DLAMCH
+      EXTERNAL           DISNAN, LSAME, IDAMAX, DLAMCH
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DSCAL, DSWAP, XERBLA
@@ -266,6 +266,14 @@
   160    CONTINUE
          IF( C.GE.G .OR. MAX( F, C, CA ).GE.SFMAX2 .OR.
      $       MIN( R, G, RA ).LE.SFMIN2 )GO TO 170
+            IF( DISNAN( C+F+CA+R+G+RA ) ) THEN
+*
+*           Exit if NaN to avoid infinite loop
+*
+            INFO = -3
+            CALL XERBLA( 'DGEBAL', -INFO )
+            RETURN
+         END IF
          F = F*SCLFAC
          C = C*SCLFAC
          CA = CA*SCLFAC

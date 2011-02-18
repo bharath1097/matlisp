@@ -1,10 +1,12 @@
       SUBROUTINE DPPRFS( UPLO, N, NRHS, AP, AFP, B, LDB, X, LDX, FERR,
      $                   BERR, WORK, IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -111,8 +113,11 @@
       INTEGER            COUNT, I, IK, J, K, KASE, KK, NZ
       DOUBLE PRECISION   EPS, LSTRES, S, SAFE1, SAFE2, SAFMIN, XK
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Subroutines ..
-      EXTERNAL           DAXPY, DCOPY, DLACON, DPPTRS, DSPMV, XERBLA
+      EXTERNAL           DAXPY, DCOPY, DLACN2, DPPTRS, DSPMV, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MAX
@@ -269,7 +274,7 @@
 *        is incremented by SAFE1 if the i-th component of
 *        abs(A)*abs(X) + abs(B) is less than SAFE2.
 *
-*        Use DLACON to estimate the infinity-norm of the matrix
+*        Use DLACN2 to estimate the infinity-norm of the matrix
 *           inv(A) * diag(W),
 *        where W = abs(R) + NZ*EPS*( abs(A)*abs(X)+abs(B) )))
 *
@@ -283,8 +288,8 @@
 *
          KASE = 0
   100    CONTINUE
-         CALL DLACON( N, WORK( 2*N+1 ), WORK( N+1 ), IWORK, FERR( J ),
-     $                KASE )
+         CALL DLACN2( N, WORK( 2*N+1 ), WORK( N+1 ), IWORK, FERR( J ),
+     $                KASE, ISAVE )
          IF( KASE.NE.0 ) THEN
             IF( KASE.EQ.1 ) THEN
 *

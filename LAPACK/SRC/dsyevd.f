@@ -1,10 +1,10 @@
       SUBROUTINE DSYEVD( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, IWORK,
      $                   LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -76,11 +76,12 @@
 *                                                1 + 6*N + 2*N**2.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK and IWORK
+*          arrays, returns these values as the first entries of the WORK
+*          and IWORK arrays, and no error message related to LWORK or
+*          LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -90,16 +91,21 @@
 *          If JOBZ  = 'V' and N > 1, LIWORK must be at least 3 + 5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK and IWORK arrays, and no error message related to
+*          LWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
 *          < 0:  if INFO = -i, the i-th argument had an illegal value
-*          > 0:  if INFO = i, the algorithm failed to converge; i
-*                off-diagonal elements of an intermediate tridiagonal
-*                form did not converge to zero.
+*          > 0:  if INFO = i and JOBZ = 'N', then the algorithm failed
+*                to converge; i off-diagonal elements of an intermediate
+*                tridiagonal form did not converge to zero;
+*                if INFO = i and JOBZ = 'V', then the algorithm failed
+*                to compute an eigenvalue while working on the submatrix
+*                lying in rows and columns INFO/(N+1) through
+*                mod(INFO,N+1).
 *
 *  Further Details
 *  ===============
@@ -109,6 +115,7 @@
 *     at Berkeley, USA
 *  Modified by Francoise Tisseur, University of Tennessee.
 *
+*  Modified description of INFO. Sven, 16 Feb 05.
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -125,8 +132,9 @@
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
+      INTEGER            ILAENV
       DOUBLE PRECISION   DLAMCH, DLANSY
-      EXTERNAL           LSAME, DLAMCH, DLANSY
+      EXTERNAL           LSAME, DLAMCH, DLANSY, ILAENV
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DLACPY, DLASCL, DORMTR, DSCAL, DSTEDC, DSTERF,
@@ -144,22 +152,6 @@
       LQUERY = ( LWORK.EQ.-1 .OR. LIWORK.EQ.-1 )
 *
       INFO = 0
-      IF( N.LE.1 ) THEN
-         LIWMIN = 1
-         LWMIN = 1
-         LOPT = LWMIN
-         LIOPT = LIWMIN
-      ELSE
-         IF( WANTZ ) THEN
-            LIWMIN = 3 + 5*N
-            LWMIN = 1 + 6*N + 2*N**2
-         ELSE
-            LIWMIN = 1
-            LWMIN = 2*N + 1
-         END IF
-         LOPT = LWMIN
-         LIOPT = LIWMIN
-      END IF
       IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -1
       ELSE IF( .NOT.( LOWER .OR. LSAME( UPLO, 'U' ) ) ) THEN
@@ -168,15 +160,34 @@
          INFO = -3
       ELSE IF( LDA.LT.MAX( 1, N ) ) THEN
          INFO = -5
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -8
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -10
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+         IF( N.LE.1 ) THEN
+            LIWMIN = 1
+            LWMIN = 1
+            LOPT = LWMIN
+            LIOPT = LIWMIN
+         ELSE
+            IF( WANTZ ) THEN
+               LIWMIN = 3 + 5*N
+               LWMIN = 1 + 6*N + 2*N**2
+            ELSE
+               LIWMIN = 1
+               LWMIN = 2*N + 1
+            END IF
+            LOPT = MAX( LWMIN, 2*N +
+     $                  ILAENV( 1, 'DSYTRD', UPLO, N, -1, -1, -1 ) )
+            LIOPT = LIWMIN
+         END IF
          WORK( 1 ) = LOPT
          IWORK( 1 ) = LIOPT
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -8
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -10
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN

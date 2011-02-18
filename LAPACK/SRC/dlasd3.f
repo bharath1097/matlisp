@@ -2,10 +2,10 @@
      $                   LDU2, VT, LDVT, VT2, LDVT2, IDXC, CTOT, Z,
      $                   INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Oak Ridge National Lab, Argonne National Lab,
-*     Courant Institute, NAG Ltd., and Rice University
-*     October 31, 1999
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, K, LDQ, LDU, LDU2, LDVT, LDVT2, NL, NR,
@@ -69,28 +69,28 @@
 *         of the deflated updating problem.  These are the poles
 *         of the secular equation.
 *
-*  U      (input) DOUBLE PRECISION array, dimension (LDU, N)
+*  U      (output) DOUBLE PRECISION array, dimension (LDU, N)
 *         The last N - K columns of this matrix contain the deflated
 *         left singular vectors.
 *
 *  LDU    (input) INTEGER
 *         The leading dimension of the array U.  LDU >= N.
 *
-*  U2     (input) DOUBLE PRECISION array, dimension (LDU2, N)
+*  U2     (input/output) DOUBLE PRECISION array, dimension (LDU2, N)
 *         The first K columns of this matrix contain the non-deflated
 *         left singular vectors for the split problem.
 *
 *  LDU2   (input) INTEGER
 *         The leading dimension of the array U2.  LDU2 >= N.
 *
-*  VT     (input) DOUBLE PRECISION array, dimension (LDVT, M)
+*  VT     (output) DOUBLE PRECISION array, dimension (LDVT, M)
 *         The last M - K columns of VT' contain the deflated
 *         right singular vectors.
 *
 *  LDVT   (input) INTEGER
 *         The leading dimension of the array VT.  LDVT >= N.
 *
-*  VT2    (input) DOUBLE PRECISION array, dimension (LDVT2, N)
+*  VT2    (input/output) DOUBLE PRECISION array, dimension (LDVT2, N)
 *         The first K columns of VT2' contain the non-deflated
 *         right singular vectors for the split problem.
 *
@@ -121,7 +121,7 @@
 *  INFO   (output) INTEGER
 *         = 0:  successful exit.
 *         < 0:  if INFO = -i, the i-th argument had an illegal value.
-*         > 0:  if INFO = 1, an singular value did not converge
+*         > 0:  if INFO = 1, a singular value did not converge
 *
 *  Further Details
 *  ===============
@@ -217,7 +217,7 @@
 *     changes the bottommost bits of DSIGMA(I). It does not account
 *     for hexadecimal or decimal machines without guard digits
 *     (we know of none). We use a subroutine call to compute
-*     2*DLAMBDA(I) to prevent optimizing compilers from eliminating
+*     2*DSIGMA(I) to prevent optimizing compilers from eliminating
 *     this code.
 *
       DO 20 I = 1, K

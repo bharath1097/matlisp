@@ -1,10 +1,10 @@
       SUBROUTINE ZHPGV( ITYPE, JOBZ, UPLO, N, AP, BP, W, Z, LDZ, WORK,
      $                  RWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -116,7 +116,7 @@
       UPPER = LSAME( UPLO, 'U' )
 *
       INFO = 0
-      IF( ITYPE.LT.0 .OR. ITYPE.GT.3 ) THEN
+      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
          INFO = -1
       ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -2

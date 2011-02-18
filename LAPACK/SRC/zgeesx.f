@@ -2,10 +2,10 @@
      $                   VS, LDVS, RCONDE, RCONDV, WORK, LWORK, RWORK,
      $                   BWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBVS, SENSE, SORT
@@ -56,7 +56,7 @@
 *          = 'N': Eigenvalues are not ordered;
 *          = 'S': Eigenvalues are ordered (see SELECT).
 *
-*  SELECT  (input) LOGICAL FUNCTION of one COMPLEX*16 argument
+*  SELECT  (external procedure) LOGICAL FUNCTION of one COMPLEX*16 argument
 *          SELECT must be declared EXTERNAL in the calling subroutine.
 *          If SORT = 'S', SELECT is used to select eigenvalues to order
 *          to the top left of the Schur form.
@@ -109,15 +109,23 @@
 *          condition number for the selected right invariant subspace.
 *          Not referenced if SENSE = 'N' or 'E'.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK.  LWORK >= max(1,2*N).
 *          Also, if SENSE = 'E' or 'V' or 'B', LWORK >= 2*SDIM*(N-SDIM),
 *          where SDIM is the number of selected eigenvalues computed by
-*          this routine.  Note that 2*SDIM*(N-SDIM) <= N*N/2.
+*          this routine.  Note that 2*SDIM*(N-SDIM) <= N*N/2. Note also
+*          that an error is only returned if LWORK < max(1,2*N), but if
+*          SENSE = 'E' or 'V' or 'B' this may not be large enough.
 *          For good performance, LWORK must generally be larger.
+*
+*          If LWORK = -1, then a workspace query is assumed; the routine
+*          only calculates upper bound on the optimal size of the
+*          array WORK, returns this value as the first entry of the WORK
+*          array, and no error message related to LWORK is issued by
+*          XERBLA.
 *
 *  RWORK   (workspace) DOUBLE PRECISION array, dimension (N)
 *
@@ -148,18 +156,18 @@
       PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            SCALEA, WANTSB, WANTSE, WANTSN, WANTST, WANTSV,
-     $                   WANTVS
+      LOGICAL            LQUERY, SCALEA, WANTSB, WANTSE, WANTSN, WANTST,
+     $                   WANTSV, WANTVS
       INTEGER            HSWORK, I, IBAL, ICOND, IERR, IEVAL, IHI, ILO,
-     $                   ITAU, IWRK, K, MAXB, MAXWRK, MINWRK
+     $                   ITAU, IWRK, LWRK, MAXWRK, MINWRK
       DOUBLE PRECISION   ANRM, BIGNUM, CSCALE, EPS, SMLNUM
 *     ..
 *     .. Local Arrays ..
       DOUBLE PRECISION   DUM( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLASCL, XERBLA, ZCOPY, ZGEBAK, ZGEBAL, ZGEHRD,
-     $                   ZHSEQR, ZLACPY, ZLASCL, ZTRSEN, ZUNGHR
+      EXTERNAL           DLABAD, DLASCL, XERBLA, ZCOPY, ZGEBAK, ZGEBAL,
+     $                   ZGEHRD, ZHSEQR, ZLACPY, ZLASCL, ZTRSEN, ZUNGHR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -168,7 +176,7 @@
       EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANGE
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          MAX, MIN, SQRT
+      INTRINSIC          MAX, SQRT
 *     ..
 *     .. Executable Statements ..
 *
@@ -181,6 +189,8 @@
       WANTSE = LSAME( SENSE, 'E' )
       WANTSV = LSAME( SENSE, 'V' )
       WANTSB = LSAME( SENSE, 'B' )
+      LQUERY = ( LWORK.EQ.-1 )
+*
       IF( ( .NOT.WANTVS ) .AND. ( .NOT.LSAME( JOBVS, 'N' ) ) ) THEN
          INFO = -1
       ELSE IF( ( .NOT.WANTST ) .AND. ( .NOT.LSAME( SORT, 'N' ) ) ) THEN
@@ -210,32 +220,40 @@
 *       depends on SDIM, which is computed by the routine ZTRSEN later
 *       in the code.)
 *
-      MINWRK = 1
-      IF( INFO.EQ.0 .AND. ( LWORK.GE.1 ) ) THEN
-         MAXWRK = N + N*ILAENV( 1, 'ZGEHRD', ' ', N, 1, N, 0 )
-         MINWRK = MAX( 1, 2*N )
-         IF( .NOT.WANTVS ) THEN
-            MAXB = MAX( ILAENV( 8, 'ZHSEQR', 'SN', N, 1, N, -1 ), 2 )
-            K = MIN( MAXB, N, MAX( 2, ILAENV( 4, 'ZHSEQR', 'SN', N, 1,
-     $          N, -1 ) ) )
-            HSWORK = MAX( K*( K+2 ), 2*N )
-            MAXWRK = MAX( MAXWRK, HSWORK, 1 )
+      IF( INFO.EQ.0 ) THEN
+         IF( N.EQ.0 ) THEN
+            MINWRK = 1
+            LWRK = 1
          ELSE
-            MAXWRK = MAX( MAXWRK, N+( N-1 )*
-     $               ILAENV( 1, 'ZUNGHR', ' ', N, 1, N, -1 ) )
-            MAXB = MAX( ILAENV( 8, 'ZHSEQR', 'SV', N, 1, N, -1 ), 2 )
-            K = MIN( MAXB, N, MAX( 2, ILAENV( 4, 'ZHSEQR', 'SV', N, 1,
-     $          N, -1 ) ) )
-            HSWORK = MAX( K*( K+2 ), 2*N )
-            MAXWRK = MAX( MAXWRK, HSWORK, 1 )
+            MAXWRK = N + N*ILAENV( 1, 'ZGEHRD', ' ', N, 1, N, 0 )
+            MINWRK = 2*N
+*
+            CALL ZHSEQR( 'S', JOBVS, N, 1, N, A, LDA, W, VS, LDVS,
+     $             WORK, -1, IEVAL )
+            HSWORK = WORK( 1 )
+*
+            IF( .NOT.WANTVS ) THEN
+               MAXWRK = MAX( MAXWRK, HSWORK )
+            ELSE
+               MAXWRK = MAX( MAXWRK, N + ( N - 1 )*ILAENV( 1, 'ZUNGHR',
+     $                       ' ', N, 1, N, -1 ) )
+               MAXWRK = MAX( MAXWRK, HSWORK )
+            END IF
+            LWRK = MAXWRK
+            IF( .NOT.WANTSN )
+     $         LWRK = MAX( LWRK, ( N*N )/2 )
          END IF
-         WORK( 1 ) = MAXWRK
+         WORK( 1 ) = LWRK
+*
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -15
+         END IF
       END IF
-      IF( LWORK.LT.MINWRK ) THEN
-         INFO = -15
-      END IF
+*
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZGEESX', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
          RETURN
       END IF
 *

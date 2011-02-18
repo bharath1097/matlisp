@@ -1,10 +1,12 @@
       SUBROUTINE DGBCON( NORM, N, KL, KU, AB, LDAB, IPIV, ANORM, RCOND,
      $                   WORK, IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          NORM
@@ -87,6 +89,9 @@
       INTEGER            IX, J, JP, KASE, KASE1, KD, LM
       DOUBLE PRECISION   AINVNM, SCALE, SMLNUM, T
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       INTEGER            IDAMAX
@@ -94,7 +99,7 @@
       EXTERNAL           LSAME, IDAMAX, DDOT, DLAMCH
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DAXPY, DLACON, DLATBS, DRSCL, XERBLA
+      EXTERNAL           DAXPY, DLACN2, DLATBS, DRSCL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MIN
@@ -148,7 +153,7 @@
       LNOTI = KL.GT.0
       KASE = 0
    10 CONTINUE
-      CALL DLACON( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE )
+      CALL DLACN2( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE, ISAVE )
       IF( KASE.NE.0 ) THEN
          IF( KASE.EQ.KASE1 ) THEN
 *

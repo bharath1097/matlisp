@@ -1,10 +1,10 @@
       SUBROUTINE DLALSD( UPLO, SMLSIZ, N, NRHS, D, E, B, LDB, RCOND,
      $                   RANK, WORK, IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -57,7 +57,7 @@
 *         On entry D contains the main diagonal of the bidiagonal
 *         matrix. On exit, if INFO = 0, D contains its singular values.
 *
-*  E      (input) DOUBLE PRECISION array, dimension (N-1)
+*  E      (input/output) DOUBLE PRECISION array, dimension (N-1)
 *         Contains the super-diagonal entries of the bidiagonal matrix.
 *         On exit, E has been destroyed.
 *
@@ -94,7 +94,7 @@
 *  INFO   (output) INTEGER
 *         = 0:  successful exit.
 *         < 0:  if INFO = -i, the i-th argument had an illegal value.
-*         > 0:  The algorithm failed to compute an singular value while
+*         > 0:  The algorithm failed to compute a singular value while
 *               working on the submatrix lying in rows and columns
 *               INFO/(N+1) through MOD(INFO,N+1).
 *
@@ -117,7 +117,7 @@
      $                   GIVPTR, I, ICMPQ1, ICMPQ2, IWK, J, K, NLVL,
      $                   NM1, NSIZE, NSUB, NWORK, PERM, POLES, S, SIZEI,
      $                   SMLSZP, SQRE, ST, ST1, U, VT, Z
-      DOUBLE PRECISION   CS, EPS, ORGNRM, R, SN, TOL
+      DOUBLE PRECISION   CS, EPS, ORGNRM, R, RCND, SN, TOL
 *     ..
 *     .. External Functions ..
       INTEGER            IDAMAX
@@ -154,7 +154,9 @@
 *     Set up the tolerance.
 *
       IF( ( RCOND.LE.ZERO ) .OR. ( RCOND.GE.ONE ) ) THEN
-         RCOND = EPS
+         RCND = EPS
+      ELSE
+         RCND = RCOND
       END IF
 *
       RANK = 0
@@ -223,7 +225,7 @@
          IF( INFO.NE.0 ) THEN
             RETURN
          END IF
-         TOL = RCOND*ABS( D( IDAMAX( N, D, 1 ) ) )
+         TOL = RCND*ABS( D( IDAMAX( N, D, 1 ) ) )
          DO 40 I = 1, N
             IF( D( I ).LE.TOL ) THEN
                CALL DLASET( 'A', 1, NRHS, ZERO, ZERO, B( I, 1 ), LDB )
@@ -373,7 +375,7 @@
 *
 *     Apply the singular values and treat the tiny ones as zero.
 *
-      TOL = RCOND*ABS( D( IDAMAX( N, D, 1 ) ) )
+      TOL = RCND*ABS( D( IDAMAX( N, D, 1 ) ) )
 *
       DO 70 I = 1, N
 *

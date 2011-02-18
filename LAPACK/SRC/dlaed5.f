@@ -1,9 +1,9 @@
       SUBROUTINE DLAED5( I, D, Z, DELTA, RHO, DLAM )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Oak Ridge National Lab, Argonne National Lab,
-*     Courant Institute, NAG Ltd., and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            I

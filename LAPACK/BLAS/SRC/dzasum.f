@@ -1,34 +1,48 @@
-      double precision function dzasum(n,zx,incx)
-c
-c     takes the sum of the absolute values.
-c     jack dongarra, 3/11/78.
-c     modified 3/93 to return if incx .le. 0.
-c     modified 12/3/93, array(1) declarations changed to array(*)
-c
-      double complex zx(*)
-      double precision stemp,dcabs1
-      integer i,incx,ix,n
-c
-      dzasum = 0.0d0
-      stemp = 0.0d0
-      if( n.le.0 .or. incx.le.0 )return
-      if(incx.eq.1)go to 20
-c
-c        code for increment not equal to 1
-c
-      ix = 1
-      do 10 i = 1,n
-        stemp = stemp + dcabs1(zx(ix))
-        ix = ix + incx
-   10 continue
-      dzasum = stemp
-      return
-c
-c        code for increment equal to 1
-c
-   20 do 30 i = 1,n
-        stemp = stemp + dcabs1(zx(i))
-   30 continue
-      dzasum = stemp
-      return
-      end
+      DOUBLE PRECISION FUNCTION DZASUM(N,ZX,INCX)
+*     .. Scalar Arguments ..
+      INTEGER INCX,N
+*     ..
+*     .. Array Arguments ..
+      DOUBLE COMPLEX ZX(*)
+*     ..
+*
+*  Purpose
+*  =======
+*
+*     takes the sum of the absolute values.
+*     jack dongarra, 3/11/78.
+*     modified 3/93 to return if incx .le. 0.
+*     modified 12/3/93, array(1) declarations changed to array(*)
+*
+*
+*     .. Local Scalars ..
+      DOUBLE PRECISION STEMP
+      INTEGER I,IX
+*     ..
+*     .. External Functions ..
+      DOUBLE PRECISION DCABS1
+      EXTERNAL DCABS1
+*     ..
+      DZASUM = 0.0d0
+      STEMP = 0.0d0
+      IF (N.LE.0 .OR. INCX.LE.0) RETURN
+      IF (INCX.EQ.1) GO TO 20
+*
+*        code for increment not equal to 1
+*
+      IX = 1
+      DO 10 I = 1,N
+          STEMP = STEMP + DCABS1(ZX(IX))
+          IX = IX + INCX
+   10 CONTINUE
+      DZASUM = STEMP
+      RETURN
+*
+*        code for increment equal to 1
+*
+   20 DO 30 I = 1,N
+          STEMP = STEMP + DCABS1(ZX(I))
+   30 CONTINUE
+      DZASUM = STEMP
+      RETURN
+      END

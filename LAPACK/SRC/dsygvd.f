@@ -1,10 +1,10 @@
       SUBROUTINE DSYGVD( ITYPE, JOBZ, UPLO, N, A, LDA, B, LDB, W, WORK,
      $                   LWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -87,7 +87,7 @@
 *  W       (output) DOUBLE PRECISION array, dimension (N)
 *          If INFO = 0, the eigenvalues in ascending order.
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -97,11 +97,12 @@
 *          If JOBZ = 'V' and N > 1, LWORK >= 1 + 6*N + 2*N**2.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK and IWORK
+*          arrays, returns these values as the first entries of the WORK
+*          and IWORK arrays, and no error message related to LWORK or
+*          LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -111,17 +112,23 @@
 *          If JOBZ  = 'V' and N > 1, LIWORK >= 3 + 5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK and IWORK arrays, and no error message related to
+*          LWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
 *          < 0:  if INFO = -i, the i-th argument had an illegal value
 *          > 0:  DPOTRF or DSYEVD returned an error code:
-*             <= N:  if INFO = i, DSYEVD failed to converge;
-*                    i off-diagonal elements of an intermediate
-*                    tridiagonal form did not converge to zero;
+*             <= N:  if INFO = i and JOBZ = 'N', then the algorithm
+*                    failed to converge; i off-diagonal elements of an
+*                    intermediate tridiagonal form did not converge to
+*                    zero;
+*                    if INFO = i and JOBZ = 'V', then the algorithm
+*                    failed to compute an eigenvalue while working on
+*                    the submatrix lying in rows and columns INFO/(N+1)
+*                    through mod(INFO,N+1);
 *             > N:   if INFO = N + i, for 1 <= i <= N, then the leading
 *                    minor of order i of B is not positive definite.
 *                    The factorization of B could not be completed and
@@ -133,6 +140,10 @@
 *  Based on contributions by
 *     Mark Fahey, Department of Mathematics, Univ. of Kentucky, USA
 *
+*  Modified so that no backsubstitution is performed if DSYEVD fails to
+*  converge (NEIG in old code could be greater than N causing out of
+*  bounds reference to A - reported by Ralf Meyer).  Also corrected the
+*  description of INFO and the test on ITYPE. Sven, 16 Feb 05.
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -142,7 +153,7 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY, UPPER, WANTZ
       CHARACTER          TRANS
-      INTEGER            LIOPT, LIWMIN, LOPT, LWMIN, NEIG
+      INTEGER            LIOPT, LIWMIN, LOPT, LWMIN
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -166,20 +177,16 @@
       IF( N.LE.1 ) THEN
          LIWMIN = 1
          LWMIN = 1
-         LOPT = LWMIN
-         LIOPT = LIWMIN
+      ELSE IF( WANTZ ) THEN
+         LIWMIN = 3 + 5*N
+         LWMIN = 1 + 6*N + 2*N**2
       ELSE
-         IF( WANTZ ) THEN
-            LIWMIN = 3 + 5*N
-            LWMIN = 1 + 6*N + 2*N**2
-         ELSE
-            LIWMIN = 1
-            LWMIN = 2*N + 1
-         END IF
-         LOPT = LWMIN
-         LIOPT = LIWMIN
+         LIWMIN = 1
+         LWMIN = 2*N + 1
       END IF
-      IF( ITYPE.LT.0 .OR. ITYPE.GT.3 ) THEN
+      LOPT = LWMIN
+      LIOPT = LIWMIN
+      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
          INFO = -1
       ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -2
@@ -191,15 +198,17 @@
          INFO = -6
       ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
          INFO = -8
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -11
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -13
       END IF
 *
       IF( INFO.EQ.0 ) THEN
          WORK( 1 ) = LOPT
          IWORK( 1 ) = LIOPT
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -230,13 +239,10 @@
       LOPT = MAX( DBLE( LOPT ), DBLE( WORK( 1 ) ) )
       LIOPT = MAX( DBLE( LIOPT ), DBLE( IWORK( 1 ) ) )
 *
-      IF( WANTZ ) THEN
+      IF( WANTZ .AND. INFO.EQ.0 ) THEN
 *
 *        Backtransform eigenvectors to the original problem.
 *
-         NEIG = N
-         IF( INFO.GT.0 )
-     $      NEIG = INFO - 1
          IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
 *
 *           For A*x=(lambda)*B*x and A*B*x=(lambda)*x;
@@ -248,7 +254,7 @@
                TRANS = 'T'
             END IF
 *
-            CALL DTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, ONE,
+            CALL DTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, N, ONE,
      $                  B, LDB, A, LDA )
 *
          ELSE IF( ITYPE.EQ.3 ) THEN
@@ -262,7 +268,7 @@
                TRANS = 'N'
             END IF
 *
-            CALL DTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, ONE,
+            CALL DTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, N, ONE,
      $                  B, LDB, A, LDA )
          END IF
       END IF

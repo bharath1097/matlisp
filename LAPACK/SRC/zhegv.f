@@ -1,10 +1,10 @@
       SUBROUTINE ZHEGV( ITYPE, JOBZ, UPLO, N, A, LDA, B, LDB, W, WORK,
      $                  LWORK, RWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -80,7 +80,7 @@
 *  W       (output) DOUBLE PRECISION array, dimension (N)
 *          If INFO = 0, the eigenvalues in ascending order.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -150,18 +150,22 @@
          INFO = -6
       ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
          INFO = -8
-      ELSE IF( LWORK.LT.MAX( 1, 2*N-1 ) .AND. .NOT.LQUERY ) THEN
-         INFO = -11
       END IF
 *
       IF( INFO.EQ.0 ) THEN
          NB = ILAENV( 1, 'ZHETRD', UPLO, N, -1, -1, -1 )
-         LWKOPT = ( NB+1 )*N
+         LWKOPT = MAX( 1, ( NB + 1 )*N )
          WORK( 1 ) = LWKOPT
+*
+         IF( LWORK.LT.MAX( 1, 2*N - 1 ) .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZHEGV ', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
          RETURN
       END IF
 *

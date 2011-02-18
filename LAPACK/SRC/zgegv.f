@@ -1,10 +1,10 @@
       SUBROUTINE ZGEGV( JOBVL, JOBVR, N, A, LDA, B, LDB, ALPHA, BETA,
      $                  VL, LDVL, VR, LDVR, WORK, LWORK, RWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBVL, JOBVR
@@ -22,22 +22,28 @@
 *
 *  This routine is deprecated and has been replaced by routine ZGGEV.
 *
-*  ZGEGV computes for a pair of N-by-N complex nonsymmetric matrices A
-*  and B, the generalized eigenvalues (alpha, beta), and optionally,
-*  the left and/or right generalized eigenvectors (VL and VR).
+*  ZGEGV computes the eigenvalues and, optionally, the left and/or right
+*  eigenvectors of a complex matrix pair (A,B).
+*  Given two square matrices A and B,
+*  the generalized nonsymmetric eigenvalue problem (GNEP) is to find the
+*  eigenvalues lambda and corresponding (non-zero) eigenvectors x such
+*  that
+*     A*x = lambda*B*x.
 *
-*  A generalized eigenvalue for a pair of matrices (A,B) is, roughly
-*  speaking, a scalar w or a ratio  alpha/beta = w, such that  A - w*B
-*  is singular.  It is usually represented as the pair (alpha,beta),
-*  as there is a reasonable interpretation for beta=0, and even for
-*  both being zero.  A good beginning reference is the book, "Matrix
-*  Computations", by G. Golub & C. van Loan (Johns Hopkins U. Press)
+*  An alternate form is to find the eigenvalues mu and corresponding
+*  eigenvectors y such that
+*     mu*A*y = B*y.
 *
-*  A right generalized eigenvector corresponding to a generalized
-*  eigenvalue  w  for a pair of matrices (A,B) is a vector  r  such
-*  that  (A - w B) r = 0 .  A left generalized eigenvector is a vector
-*  l such that l**H * (A - w B) = 0, where l**H is the
-*  conjugate-transpose of l.
+*  These two forms are equivalent with mu = 1/lambda and x = y if
+*  neither lambda nor mu is zero.  In order to deal with the case that
+*  lambda or mu is zero or small, two values alpha and beta are returned
+*  for each eigenvalue, such that lambda = alpha/beta and
+*  mu = beta/alpha.
+*
+*  The vectors x and y in the above equations are right eigenvectors of
+*  the matrix pair (A,B).  Vectors u and v satisfying
+*     u**H*A = lambda*u**H*B  or  mu*v**H*A = v**H*B
+*  are left eigenvectors of (A,B).
 *
 *  Note: this routine performs "full balancing" on A and B -- see
 *  "Further Details", below.
@@ -47,56 +53,61 @@
 *
 *  JOBVL   (input) CHARACTER*1
 *          = 'N':  do not compute the left generalized eigenvectors;
-*          = 'V':  compute the left generalized eigenvectors.
+*          = 'V':  compute the left generalized eigenvectors (returned
+*                  in VL).
 *
 *  JOBVR   (input) CHARACTER*1
 *          = 'N':  do not compute the right generalized eigenvectors;
-*          = 'V':  compute the right generalized eigenvectors.
+*          = 'V':  compute the right generalized eigenvectors (returned
+*                  in VR).
 *
 *  N       (input) INTEGER
 *          The order of the matrices A, B, VL, and VR.  N >= 0.
 *
 *  A       (input/output) COMPLEX*16 array, dimension (LDA, N)
-*          On entry, the first of the pair of matrices whose
-*          generalized eigenvalues and (optionally) generalized
-*          eigenvectors are to be computed.
-*          On exit, the contents will have been destroyed.  (For a
-*          description of the contents of A on exit, see "Further
-*          Details", below.)
+*          On entry, the matrix A.
+*          If JOBVL = 'V' or JOBVR = 'V', then on exit A
+*          contains the Schur form of A from the generalized Schur
+*          factorization of the pair (A,B) after balancing.  If no
+*          eigenvectors were computed, then only the diagonal elements
+*          of the Schur form will be correct.  See ZGGHRD and ZHGEQZ
+*          for details.
 *
 *  LDA     (input) INTEGER
 *          The leading dimension of A.  LDA >= max(1,N).
 *
 *  B       (input/output) COMPLEX*16 array, dimension (LDB, N)
-*          On entry, the second of the pair of matrices whose
-*          generalized eigenvalues and (optionally) generalized
-*          eigenvectors are to be computed.
-*          On exit, the contents will have been destroyed.  (For a
-*          description of the contents of B on exit, see "Further
-*          Details", below.)
+*          On entry, the matrix B.
+*          If JOBVL = 'V' or JOBVR = 'V', then on exit B contains the
+*          upper triangular matrix obtained from B in the generalized
+*          Schur factorization of the pair (A,B) after balancing.
+*          If no eigenvectors were computed, then only the diagonal
+*          elements of B will be correct.  See ZGGHRD and ZHGEQZ for
+*          details.
 *
 *  LDB     (input) INTEGER
 *          The leading dimension of B.  LDB >= max(1,N).
 *
 *  ALPHA   (output) COMPLEX*16 array, dimension (N)
-*  BETA    (output) COMPLEX*16 array, dimension (N)
-*          On exit, ALPHA(j)/BETA(j), j=1,...,N, will be the
-*          generalized eigenvalues.
+*          The complex scalars alpha that define the eigenvalues of
+*          GNEP.
 *
-*          Note: the quotients ALPHA(j)/BETA(j) may easily over- or
-*          underflow, and BETA(j) may even be zero.  Thus, the user
-*          should avoid naively computing the ratio alpha/beta.
-*          However, ALPHA will be always less than and usually
-*          comparable with norm(A) in magnitude, and BETA always less
-*          than and usually comparable with norm(B).
+*  BETA    (output) COMPLEX*16 array, dimension (N)
+*          The complex scalars beta that define the eigenvalues of GNEP.
+*          
+*          Together, the quantities alpha = ALPHA(j) and beta = BETA(j)
+*          represent the j-th eigenvalue of the matrix pair (A,B), in
+*          one of the forms lambda = alpha/beta or mu = beta/alpha.
+*          Since either lambda or mu may overflow, they should not,
+*          in general, be computed.
 *
 *  VL      (output) COMPLEX*16 array, dimension (LDVL,N)
-*          If JOBVL = 'V', the left generalized eigenvectors.  (See
-*          "Purpose", above.)
-*          Each eigenvector will be scaled so the largest component
-*          will have abs(real part) + abs(imag. part) = 1, *except*
-*          that for eigenvalues with alpha=beta=0, a zero vector will
-*          be returned as the corresponding eigenvector.
+*          If JOBVL = 'V', the left eigenvectors u(j) are stored
+*          in the columns of VL, in the same order as their eigenvalues.
+*          Each eigenvector is scaled so that its largest component has
+*          abs(real part) + abs(imag. part) = 1, except for eigenvectors
+*          corresponding to an eigenvalue with alpha = beta = 0, which
+*          are set to zero.
 *          Not referenced if JOBVL = 'N'.
 *
 *  LDVL    (input) INTEGER
@@ -104,27 +115,27 @@
 *          if JOBVL = 'V', LDVL >= N.
 *
 *  VR      (output) COMPLEX*16 array, dimension (LDVR,N)
-*          If JOBVR = 'V', the right generalized eigenvectors.  (See
-*          "Purpose", above.)
-*          Each eigenvector will be scaled so the largest component
-*          will have abs(real part) + abs(imag. part) = 1, *except*
-*          that for eigenvalues with alpha=beta=0, a zero vector will
-*          be returned as the corresponding eigenvector.
+*          If JOBVR = 'V', the right eigenvectors x(j) are stored
+*          in the columns of VR, in the same order as their eigenvalues.
+*          Each eigenvector is scaled so that its largest component has
+*          abs(real part) + abs(imag. part) = 1, except for eigenvectors
+*          corresponding to an eigenvalue with alpha = beta = 0, which
+*          are set to zero.
 *          Not referenced if JOBVR = 'N'.
 *
 *  LDVR    (input) INTEGER
 *          The leading dimension of the matrix VR. LDVR >= 1, and
 *          if JOBVR = 'V', LDVR >= N.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK.  LWORK >= max(1,2*N).
 *          For good performance, LWORK must generally be larger.
 *          To compute the optimal value of LWORK, call ILAENV to get
-*          blocksizes (for ZGEQRF, ZUNMQR, and CUNGQR.)  Then compute:
-*          NB  -- MAX of the blocksizes for ZGEQRF, ZUNMQR, and CUNGQR;
+*          blocksizes (for ZGEQRF, ZUNMQR, and ZUNGQR.)  Then compute:
+*          NB  -- MAX of the blocksizes for ZGEQRF, ZUNMQR, and ZUNGQR;
 *          The optimal LWORK is  MAX( 2*N, N*(NB+1) ).
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine

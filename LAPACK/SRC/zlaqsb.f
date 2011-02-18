@@ -1,9 +1,9 @@
       SUBROUTINE ZLAQSB( UPLO, N, KD, AB, LDAB, S, SCOND, AMAX, EQUED )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     February 29, 1992
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          EQUED, UPLO
@@ -52,7 +52,7 @@
 *  LDAB    (input) INTEGER
 *          The leading dimension of the array AB.  LDAB >= KD+1.
 *
-*  S       (output) DOUBLE PRECISION array, dimension (N)
+*  S       (input) DOUBLE PRECISION array, dimension (N)
 *          The scale factors for A.
 *
 *  SCOND   (input) DOUBLE PRECISION

@@ -1,9 +1,9 @@
       SUBROUTINE DSYGS2( ITYPE, UPLO, N, A, LDA, B, LDB, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     February 29, 1992
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -34,7 +34,7 @@
 *          = 1: compute inv(U')*A*inv(U) or inv(L)*A*inv(L');
 *          = 2 or 3: compute U*A*U' or L'*A*L.
 *
-*  UPLO    (input) CHARACTER
+*  UPLO    (input) CHARACTER*1
 *          Specifies whether the upper or lower triangular part of the
 *          symmetric matrix A is stored, and how B has been factorized.
 *          = 'U':  Upper triangular

@@ -1,10 +1,10 @@
       SUBROUTINE ZGGGLM( N, M, P, A, LDA, B, LDB, D, X, Y, WORK, LWORK,
      $                   INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDA, LDB, LWORK, M, N, P
@@ -30,7 +30,10 @@
 *  Under these assumptions, the constrained equation is always
 *  consistent, and there is a unique solution x and a minimal 2-norm
 *  solution y, which is obtained using a generalized QR factorization
-*  of A and B.
+*  of the matrices (A, B) given by
+*
+*     A = Q*(R),   B = Q*T*Z.
+*           (0)
 *
 *  In particular, if matrix B is square nonsingular, then the problem
 *  GLM is equivalent to the following weighted linear least squares
@@ -55,14 +58,18 @@
 *
 *  A       (input/output) COMPLEX*16 array, dimension (LDA,M)
 *          On entry, the N-by-M matrix A.
-*          On exit, A is destroyed.
+*          On exit, the upper triangular part of the array A contains
+*          the M-by-M upper triangular matrix R.
 *
 *  LDA     (input) INTEGER
 *          The leading dimension of the array A. LDA >= max(1,N).
 *
 *  B       (input/output) COMPLEX*16 array, dimension (LDB,P)
 *          On entry, the N-by-P matrix B.
-*          On exit, B is destroyed.
+*          On exit, if N <= P, the upper triangle of the subarray
+*          B(1:N,P-N+1:P) contains the N-by-N upper triangular matrix T;
+*          if N > P, the elements on and above the (N-P)th subdiagonal
+*          contain the N-by-P upper trapezoidal matrix T.
 *
 *  LDB     (input) INTEGER
 *          The leading dimension of the array B. LDB >= max(1,N).
@@ -75,14 +82,14 @@
 *  Y       (output) COMPLEX*16 array, dimension (P)
 *          On exit, X and Y are the solutions of the GLM problem.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK >= max(1,N+M+P).
 *          For optimum performance, LWORK >= M+min(N,P)+max(N,P)*NB,
 *          where NB is an upper bound for the optimal blocksizes for
-*          ZGEQRF, CGERQF, ZUNMQR and CUNMRQ.
+*          ZGEQRF, ZGERQF, ZUNMQR and ZUNMRQ.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
 *          only calculates the optimal size of the WORK array, returns
@@ -92,6 +99,15 @@
 *  INFO    (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
+*          = 1:  the upper triangular factor R associated with A in the
+*                generalized QR factorization of the pair (A, B) is
+*                singular, so that rank(A) < M; the least squares
+*                solution could not be computed.
+*          = 2:  the bottom (N-M) by (N-M) part of the upper trapezoidal
+*                factor T associated with B in the generalized QR
+*                factorization of the pair (A, B) is singular, so that
+*                rank( A B ) < N; the least squares solution could not
+*                be computed.
 *
 *  ===================================================================
 *
@@ -102,15 +118,16 @@
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY
-      INTEGER            I, LOPT, LWKOPT, NB, NB1, NB2, NB3, NB4, NP
+      INTEGER            I, LOPT, LWKMIN, LWKOPT, NB, NB1, NB2, NB3,
+     $                   NB4, NP
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZCOPY, ZGEMV, ZGGQRF, ZTRSV, ZUNMQR,
+      EXTERNAL           XERBLA, ZCOPY, ZGEMV, ZGGQRF, ZTRTRS, ZUNMQR,
      $                   ZUNMRQ
 *     ..
 *     .. External Functions ..
       INTEGER            ILAENV
-      EXTERNAL           ILAENV
+      EXTERNAL           ILAENV 
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          INT, MAX, MIN
@@ -121,13 +138,6 @@
 *
       INFO = 0
       NP = MIN( N, P )
-      NB1 = ILAENV( 1, 'ZGEQRF', ' ', N, M, -1, -1 )
-      NB2 = ILAENV( 1, 'ZGERQF', ' ', N, M, -1, -1 )
-      NB3 = ILAENV( 1, 'ZUNMQR', ' ', N, M, P, -1 )
-      NB4 = ILAENV( 1, 'ZUNMRQ', ' ', N, M, P, -1 )
-      NB = MAX( NB1, NB2, NB3, NB4 )
-      LWKOPT = M + NP + MAX( N, P )*NB
-      WORK( 1 ) = LWKOPT
       LQUERY = ( LWORK.EQ.-1 )
       IF( N.LT.0 ) THEN
          INFO = -1
@@ -139,9 +149,30 @@
          INFO = -5
       ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
          INFO = -7
-      ELSE IF( LWORK.LT.MAX( 1, N+M+P ) .AND. .NOT.LQUERY ) THEN
-         INFO = -12
       END IF
+*
+*     Calculate workspace
+*
+      IF( INFO.EQ.0) THEN
+         IF( N.EQ.0 ) THEN
+            LWKMIN = 1
+            LWKOPT = 1
+         ELSE
+            NB1 = ILAENV( 1, 'ZGEQRF', ' ', N, M, -1, -1 )
+            NB2 = ILAENV( 1, 'ZGERQF', ' ', N, M, -1, -1 )
+            NB3 = ILAENV( 1, 'ZUNMQR', ' ', N, M, P, -1 )
+            NB4 = ILAENV( 1, 'ZUNMRQ', ' ', N, M, P, -1 )
+            NB = MAX( NB1, NB2, NB3, NB4 )
+            LWKMIN = M + N + P
+            LWKOPT = M + NP + MAX( N, P )*NB
+         END IF
+         WORK( 1 ) = LWKOPT
+*
+         IF( LWORK.LT.LWKMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -12
+         END IF
+      END IF
+*
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZGGGLM', -INFO )
          RETURN
@@ -176,9 +207,17 @@
 *
 *     Solve T22*y2 = d2 for y2
 *
-      CALL ZTRSV( 'Upper', 'No transpose', 'Non unit', N-M,
-     $            B( M+1, M+P-N+1 ), LDB, D( M+1 ), 1 )
-      CALL ZCOPY( N-M, D( M+1 ), 1, Y( M+P-N+1 ), 1 )
+      IF( N.GT.M ) THEN
+         CALL ZTRTRS( 'Upper', 'No transpose', 'Non unit', N-M, 1,
+     $                B( M+1, M+P-N+1 ), LDB, D( M+1 ), N-M, INFO )
+*
+         IF( INFO.GT.0 ) THEN
+            INFO = 1
+            RETURN
+         END IF
+*
+         CALL ZCOPY( N-M, D( M+1 ), 1, Y( M+P-N+1 ), 1 )
+      END IF
 *
 *     Set y1 = 0
 *
@@ -193,11 +232,19 @@
 *
 *     Solve triangular system: R11*x = d1
 *
-      CALL ZTRSV( 'Upper', 'No Transpose', 'Non unit', M, A, LDA, D, 1 )
+      IF( M.GT.0 ) THEN
+         CALL ZTRTRS( 'Upper', 'No Transpose', 'Non unit', M, 1, A, LDA,
+     $                D, M, INFO )
 *
-*     Copy D to X
+         IF( INFO.GT.0 ) THEN
+            INFO = 2
+            RETURN
+         END IF
 *
-      CALL ZCOPY( M, D, 1, X, 1 )
+*        Copy D to X
+*
+         CALL ZCOPY( M, D, 1, X, 1 )
+      END IF
 *
 *     Backward transformation y = Z'*y
 *

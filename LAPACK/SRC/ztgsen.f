@@ -2,10 +2,12 @@
      $                   ALPHA, BETA, Q, LDQ, Z, LDZ, M, PL, PR, DIF,
      $                   WORK, LWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     January 2007
+*
+*     Modified to call ZLACN2 in place of ZLACON, 10 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       LOGICAL            WANTQ, WANTZ
@@ -134,7 +136,8 @@
 *          The dimension of the specified pair of left and right
 *          eigenspaces, (deflating subspaces) 0 <= M <= N.
 *
-*  PL, PR  (output) DOUBLE PRECISION
+*  PL      (output) DOUBLE PRECISION
+*  PR      (output) DOUBLE PRECISION
 *          If IJOB = 1, 4 or 5, PL, PR are lower bounds on the
 *          reciprocal  of the norm of "projections" onto left and right
 *          eigenspace with respect to the selected cluster.
@@ -147,13 +150,12 @@
 *          If IJOB = 2 or 4, DIF(1:2) are F-norm-based upper bounds on
 *          Difu and Difl. If IJOB = 3 or 5, DIF(1:2) are 1-norm-based
 *          estimates of Difu and Difl, computed using reversed
-*          communication with ZLACON.
+*          communication with ZLACN2.
 *          If M = 0 or N, DIF(1:2) = F-norm([A, B]).
 *          If IJOB = 0 or 1, DIF is not referenced.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
-*          IF IJOB = 0, WORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK >=  1
@@ -165,9 +167,8 @@
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER, dimension (LIWORK)
-*          IF IJOB = 0, IWORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
+*          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
 *          The dimension of the array IWORK. LIWORK >= 1.
@@ -331,9 +332,13 @@
       INTEGER            I, IERR, IJB, K, KASE, KS, LIWMIN, LWMIN, MN2,
      $                   N1, N2
       DOUBLE PRECISION   DSCALE, DSUM, RDSCAL, SAFMIN
+      COMPLEX*16         TEMP1, TEMP2
+*     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZLACON, ZLACPY, ZLASSQ, ZSCAL, ZTGEXC,
+      EXTERNAL           XERBLA, ZLACN2, ZLACPY, ZLASSQ, ZSCAL, ZTGEXC,
      $                   ZTGSYL
 *     ..
 *     .. Intrinsic Functions ..
@@ -541,7 +546,7 @@
          ELSE
 *
 *           Compute 1-norm-based estimates of Difu and Difl using
-*           reversed communication with ZLACON. In each step a
+*           reversed communication with ZLACN2. In each step a
 *           generalized Sylvester equation or a transposed variant
 *           is solved.
 *
@@ -555,7 +560,8 @@
 *           1-norm-based estimate of Difu.
 *
    40       CONTINUE
-            CALL ZLACON( MN2, WORK( MN2+1 ), WORK, DIF( 1 ), KASE )
+            CALL ZLACN2( MN2, WORK( MN2+1 ), WORK, DIF( 1 ), KASE,
+     $                   ISAVE )
             IF( KASE.NE.0 ) THEN
                IF( KASE.EQ.1 ) THEN
 *
@@ -583,7 +589,8 @@
 *           1-norm-based estimate of Difl.
 *
    50       CONTINUE
-            CALL ZLACON( MN2, WORK( MN2+1 ), WORK, DIF( 2 ), KASE )
+            CALL ZLACN2( MN2, WORK( MN2+1 ), WORK, DIF( 2 ), KASE,
+     $                   ISAVE )
             IF( KASE.NE.0 ) THEN
                IF( KASE.EQ.1 ) THEN
 *
@@ -617,13 +624,13 @@
       DO 60 K = 1, N
          DSCALE = ABS( B( K, K ) )
          IF( DSCALE.GT.SAFMIN ) THEN
-            WORK( 1 ) = DCONJG( B( K, K ) / DSCALE )
-            WORK( 2 ) = B( K, K ) / DSCALE
+            TEMP1 = DCONJG( B( K, K ) / DSCALE )
+            TEMP2 = B( K, K ) / DSCALE
             B( K, K ) = DSCALE
-            CALL ZSCAL( N-K, WORK( 1 ), B( K, K+1 ), LDB )
-            CALL ZSCAL( N-K+1, WORK( 1 ), A( K, K ), LDA )
+            CALL ZSCAL( N-K, TEMP1, B( K, K+1 ), LDB )
+            CALL ZSCAL( N-K+1, TEMP1, A( K, K ), LDA )
             IF( WANTQ )
-     $         CALL ZSCAL( N, WORK( 2 ), Q( 1, K ), 1 )
+     $         CALL ZSCAL( N, TEMP2, Q( 1, K ), 1 )
          ELSE
             B( K, K ) = DCMPLX( ZERO, ZERO )
          END IF

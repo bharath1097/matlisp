@@ -2,10 +2,10 @@
      $                   PERM, GIVPTR, GIVCOL, LDGCOL, GIVNUM, LDGNUM,
      $                   POLES, DIFL, DIFR, Z, K, C, S, RWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     December 1, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            GIVPTR, ICOMPQ, INFO, K, LDB, LDBX, LDGCOL,
@@ -182,7 +182,7 @@
       EXTERNAL           DLAMC3, DNRM2
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, DCMPLX, DIMAG
+      INTRINSIC          DBLE, DCMPLX, DIMAG, MAX
 *     ..
 *     .. Executable Statements ..
 *

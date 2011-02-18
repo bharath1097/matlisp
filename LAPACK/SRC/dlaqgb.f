@@ -1,10 +1,10 @@
       SUBROUTINE DLAQGB( M, N, KL, KU, AB, LDAB, R, C, ROWCND, COLCND,
      $                   AMAX, EQUED )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     February 29, 1992
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          EQUED
@@ -49,16 +49,16 @@
 *  LDAB    (input) INTEGER
 *          The leading dimension of the array AB.  LDA >= KL+KU+1.
 *
-*  R       (output) DOUBLE PRECISION array, dimension (M)
+*  R       (input) DOUBLE PRECISION array, dimension (M)
 *          The row scale factors for A.
 *
-*  C       (output) DOUBLE PRECISION array, dimension (N)
+*  C       (input) DOUBLE PRECISION array, dimension (N)
 *          The column scale factors for A.
 *
-*  ROWCND  (output) DOUBLE PRECISION
+*  ROWCND  (input) DOUBLE PRECISION
 *          Ratio of the smallest R(i) to the largest R(i).
 *
-*  COLCND  (output) DOUBLE PRECISION
+*  COLCND  (input) DOUBLE PRECISION
 *          Ratio of the smallest C(i) to the largest C(i).
 *
 *  AMAX    (input) DOUBLE PRECISION

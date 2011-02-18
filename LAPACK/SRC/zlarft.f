@@ -1,9 +1,9 @@
       SUBROUTINE ZLARFT( DIRECT, STOREV, N, K, V, LDV, TAU, T, LDT )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIRECT, STOREV
@@ -109,7 +109,7 @@
      $                   ZERO = ( 0.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
-      INTEGER            I, J
+      INTEGER            I, J, PREVLASTV, LASTV
       COMPLEX*16         VII
 *     ..
 *     .. External Subroutines ..
@@ -127,7 +127,9 @@
      $   RETURN
 *
       IF( LSAME( DIRECT, 'F' ) ) THEN
+         PREVLASTV = N
          DO 20 I = 1, K
+            PREVLASTV = MAX( PREVLASTV, I )
             IF( TAU( I ).EQ.ZERO ) THEN
 *
 *              H(i)  =  I
@@ -142,23 +144,33 @@
                VII = V( I, I )
                V( I, I ) = ONE
                IF( LSAME( STOREV, 'C' ) ) THEN
+!                 Skip any trailing zeros.
+                  DO LASTV = N, I+1, -1
+                     IF( V( LASTV, I ).NE.ZERO ) EXIT
+                  END DO
+                  J = MIN( LASTV, PREVLASTV )
 *
-*                 T(1:i-1,i) := - tau(i) * V(i:n,1:i-1)' * V(i:n,i)
+*                 T(1:i-1,i) := - tau(i) * V(i:j,1:i-1)' * V(i:j,i)
 *
-                  CALL ZGEMV( 'Conjugate transpose', N-I+1, I-1,
+                  CALL ZGEMV( 'Conjugate transpose', J-I+1, I-1,
      $                        -TAU( I ), V( I, 1 ), LDV, V( I, I ), 1,
      $                        ZERO, T( 1, I ), 1 )
                ELSE
+!                 Skip any trailing zeros.
+                  DO LASTV = N, I+1, -1
+                     IF( V( I, LASTV ).NE.ZERO ) EXIT
+                  END DO
+                  J = MIN( LASTV, PREVLASTV )
 *
-*                 T(1:i-1,i) := - tau(i) * V(1:i-1,i:n) * V(i,i:n)'
+*                 T(1:i-1,i) := - tau(i) * V(1:i-1,i:j) * V(i,i:j)'
 *
-                  IF( I.LT.N )
-     $               CALL ZLACGV( N-I, V( I, I+1 ), LDV )
-                  CALL ZGEMV( 'No transpose', I-1, N-I+1, -TAU( I ),
+                  IF( I.LT.J )
+     $               CALL ZLACGV( J-I, V( I, I+1 ), LDV )
+                  CALL ZGEMV( 'No transpose', I-1, J-I+1, -TAU( I ),
      $                        V( 1, I ), LDV, V( I, I ), LDV, ZERO,
      $                        T( 1, I ), 1 )
-                  IF( I.LT.N )
-     $               CALL ZLACGV( N-I, V( I, I+1 ), LDV )
+                  IF( I.LT.J )
+     $               CALL ZLACGV( J-I, V( I, I+1 ), LDV )
                END IF
                V( I, I ) = VII
 *
@@ -167,9 +179,15 @@
                CALL ZTRMV( 'Upper', 'No transpose', 'Non-unit', I-1, T,
      $                     LDT, T( 1, I ), 1 )
                T( I, I ) = TAU( I )
-            END IF
+               IF( I.GT.1 ) THEN
+                  PREVLASTV = MAX( PREVLASTV, LASTV )
+               ELSE
+                  PREVLASTV = LASTV
+               END IF
+             END IF
    20    CONTINUE
       ELSE
+         PREVLASTV = 1
          DO 40 I = K, 1, -1
             IF( TAU( I ).EQ.ZERO ) THEN
 *
@@ -186,26 +204,36 @@
                   IF( LSAME( STOREV, 'C' ) ) THEN
                      VII = V( N-K+I, I )
                      V( N-K+I, I ) = ONE
+!                    Skip any leading zeros.
+                     DO LASTV = 1, I-1
+                        IF( V( LASTV, I ).NE.ZERO ) EXIT
+                     END DO
+                     J = MAX( LASTV, PREVLASTV )
 *
 *                    T(i+1:k,i) :=
-*                            - tau(i) * V(1:n-k+i,i+1:k)' * V(1:n-k+i,i)
+*                            - tau(i) * V(j:n-k+i,i+1:k)' * V(j:n-k+i,i)
 *
-                     CALL ZGEMV( 'Conjugate transpose', N-K+I, K-I,
-     $                           -TAU( I ), V( 1, I+1 ), LDV, V( 1, I ),
+                     CALL ZGEMV( 'Conjugate transpose', N-K+I-J+1, K-I,
+     $                           -TAU( I ), V( J, I+1 ), LDV, V( J, I ),
      $                           1, ZERO, T( I+1, I ), 1 )
                      V( N-K+I, I ) = VII
                   ELSE
                      VII = V( I, N-K+I )
                      V( I, N-K+I ) = ONE
+!                    Skip any leading zeros.
+                     DO LASTV = 1, I-1
+                        IF( V( I, LASTV ).NE.ZERO ) EXIT
+                     END DO
+                     J = MAX( LASTV, PREVLASTV )
 *
 *                    T(i+1:k,i) :=
-*                            - tau(i) * V(i+1:k,1:n-k+i) * V(i,1:n-k+i)'
+*                            - tau(i) * V(i+1:k,j:n-k+i) * V(i,j:n-k+i)'
 *
-                     CALL ZLACGV( N-K+I-1, V( I, 1 ), LDV )
-                     CALL ZGEMV( 'No transpose', K-I, N-K+I, -TAU( I ),
-     $                           V( I+1, 1 ), LDV, V( I, 1 ), LDV, ZERO,
-     $                           T( I+1, I ), 1 )
-                     CALL ZLACGV( N-K+I-1, V( I, 1 ), LDV )
+                     CALL ZLACGV( N-K+I-1-J+1, V( I, J ), LDV )
+                     CALL ZGEMV( 'No transpose', K-I, N-K+I-J+1,
+     $                    -TAU( I ), V( I+1, J ), LDV, V( I, J ), LDV,
+     $                    ZERO, T( I+1, I ), 1 )
+                     CALL ZLACGV( N-K+I-1-J+1, V( I, J ), LDV )
                      V( I, N-K+I ) = VII
                   END IF
 *
@@ -213,6 +241,11 @@
 *
                   CALL ZTRMV( 'Lower', 'No transpose', 'Non-unit', K-I,
      $                        T( I+1, I+1 ), LDT, T( I+1, I ), 1 )
+                  IF( I.GT.1 ) THEN
+                     PREVLASTV = MIN( PREVLASTV, LASTV )
+                  ELSE
+                     PREVLASTV = LASTV
+                  END IF
                END IF
                T( I, I ) = TAU( I )
             END IF

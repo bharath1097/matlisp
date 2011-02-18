@@ -3,10 +3,10 @@
      $                   LSCALE, RSCALE, ABNRM, BBNRM, RCONDE, RCONDV,
      $                   WORK, LWORK, RWORK, IWORK, BWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          BALANC, JOBVL, JOBVR, SENSE
@@ -137,7 +137,8 @@
 *          The leading dimension of the matrix VR. LDVR >= 1, and
 *          if JOBVR = 'V', LDVR >= N.
 *
-*  ILO,IHI (output) INTEGER
+*  ILO     (output) INTEGER
+*  IHI     (output) INTEGER
 *          ILO and IHI are integer values such that on exit
 *          A(i,j) = 0 and B(i,j) = 0 if i > j and
 *          j = 1,...,ILO-1 or i = IHI+1,...,N.
@@ -173,33 +174,33 @@
 *
 *  RCONDE  (output) DOUBLE PRECISION array, dimension (N)
 *          If SENSE = 'E' or 'B', the reciprocal condition numbers of
-*          the selected eigenvalues, stored in consecutive elements of
-*          the array.
-*          If SENSE = 'V', RCONDE is not referenced.
+*          the eigenvalues, stored in consecutive elements of the array.
+*          If SENSE = 'N' or 'V', RCONDE is not referenced.
 *
 *  RCONDV  (output) DOUBLE PRECISION array, dimension (N)
 *          If JOB = 'V' or 'B', the estimated reciprocal condition
-*          numbers of the selected eigenvectors, stored in consecutive
-*          elements of the array. If the eigenvalues cannot be reordered
-*          to compute RCONDV(j), RCONDV(j) is set to 0; this can only
-*          occur when the true value would be very small anyway.
-*          If SENSE = 'E', RCONDV is not referenced.
-*          Not referenced if JOB = 'E'.
+*          numbers of the eigenvectors, stored in consecutive elements
+*          of the array. If the eigenvalues cannot be reordered to
+*          compute RCONDV(j), RCONDV(j) is set to 0; this can only occur
+*          when the true value would be very small anyway.
+*          If SENSE = 'N' or 'E', RCONDV is not referenced.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK >= max(1,2*N).
-*          If SENSE = 'N' or 'E', LWORK >= 2*N.
-*          If SENSE = 'V' or 'B', LWORK >= 2*N*N+2*N.
+*          If SENSE = 'E', LWORK >= max(1,4*N).
+*          If SENSE = 'V' or 'B', LWORK >= max(1,2*N*N+2*N).
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
 *          only calculates the optimal size of the WORK array, returns
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  RWORK   (workspace) DOUBLE PRECISION array, dimension (6*N)
+*  RWORK   (workspace) REAL array, dimension (lrwork)
+*          lrwork must be at least max(1,6*N) if BALANC = 'S' or 'B',
+*          and at least max(1,2*N) otherwise.
 *          Real workspace.
 *
 *  IWORK   (workspace) INTEGER array, dimension (N+2)
@@ -244,8 +245,6 @@
 *  For further explanation of the reciprocal condition numbers RCONDE
 *  and RCONDV, see section 4.11 of LAPACK User's Guide.
 *
-*  =====================================================================
-*
 *     .. Parameters ..
       DOUBLE PRECISION   ZERO, ONE
       PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
@@ -254,7 +253,7 @@
      $                   CONE = ( 1.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            ILASCL, ILBSCL, ILV, ILVL, ILVR, LQUERY,
+      LOGICAL            ILASCL, ILBSCL, ILV, ILVL, ILVR, LQUERY, NOSCL,
      $                   WANTSB, WANTSE, WANTSN, WANTSV
       CHARACTER          CHTEMP
       INTEGER            I, ICOLS, IERR, IJOBVL, IJOBVR, IN, IROWS,
@@ -267,9 +266,9 @@
       LOGICAL            LDUMMA( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLASCL, XERBLA, ZGEQRF, ZGGBAK, ZGGBAL, ZGGHRD,
-     $                   ZHGEQZ, ZLACPY, ZLASCL, ZLASET, ZTGEVC, ZTGSNA,
-     $                   ZUNGQR, ZUNMQR
+      EXTERNAL           DLABAD, DLASCL, XERBLA, ZGEQRF, ZGGBAK, ZGGBAL,
+     $                   ZGGHRD, ZHGEQZ, ZLACPY, ZLASCL, ZLASET, ZTGEVC,
+     $                   ZTGSNA, ZUNGQR, ZUNMQR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -313,6 +312,7 @@
       END IF
       ILV = ILVL .OR. ILVR
 *
+      NOSCL  = LSAME( BALANC, 'N' ) .OR. LSAME( BALANC, 'P' )
       WANTSN = LSAME( SENSE, 'N' )
       WANTSE = LSAME( SENSE, 'E' )
       WANTSV = LSAME( SENSE, 'V' )
@@ -322,9 +322,8 @@
 *
       INFO = 0
       LQUERY = ( LWORK.EQ.-1 )
-      IF( .NOT.( LSAME( BALANC, 'N' ) .OR. LSAME( BALANC,
-     $    'S' ) .OR. LSAME( BALANC, 'P' ) .OR. LSAME( BALANC, 'B' ) ) )
-     $     THEN
+      IF( .NOT.( NOSCL .OR. LSAME( BALANC,'S' ) .OR.
+     $    LSAME( BALANC, 'B' ) ) ) THEN
          INFO = -1
       ELSE IF( IJOBVL.LE.0 ) THEN
          INFO = -2
@@ -353,20 +352,32 @@
 *       following subroutine, as returned by ILAENV. The workspace is
 *       computed assuming ILO = 1 and IHI = N, the worst case.)
 *
-      MINWRK = 1
-      IF( INFO.EQ.0 .AND. ( LWORK.GE.1 .OR. LQUERY ) ) THEN
-         MAXWRK = N + N*ILAENV( 1, 'ZGEQRF', ' ', N, 1, N, 0 )
-         IF( WANTSE ) THEN
-            MINWRK = MAX( 1, 2*N )
-         ELSE IF( WANTSV .OR. WANTSB ) THEN
-            MINWRK = 2*N*N + 2*N
-            MAXWRK = MAX( MAXWRK, 2*N*N+2*N )
+      IF( INFO.EQ.0 ) THEN
+         IF( N.EQ.0 ) THEN
+            MINWRK = 1
+            MAXWRK = 1
+         ELSE
+            MINWRK = 2*N
+            IF( WANTSE ) THEN
+               MINWRK = 4*N
+            ELSE IF( WANTSV .OR. WANTSB ) THEN
+               MINWRK = 2*N*( N + 1)
+            END IF
+            MAXWRK = MINWRK
+            MAXWRK = MAX( MAXWRK,
+     $                    N + N*ILAENV( 1, 'ZGEQRF', ' ', N, 1, N, 0 ) )
+            MAXWRK = MAX( MAXWRK,
+     $                    N + N*ILAENV( 1, 'ZUNMQR', ' ', N, 1, N, 0 ) )
+            IF( ILVL ) THEN
+               MAXWRK = MAX( MAXWRK, N +
+     $                       N*ILAENV( 1, 'ZUNGQR', ' ', N, 1, N, 0 ) )
+            END IF 
          END IF
          WORK( 1 ) = MAXWRK
-      END IF
 *
-      IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
-         INFO = -25
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -25
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -419,7 +430,7 @@
      $   CALL ZLASCL( 'G', 0, 0, BNRM, BNRMTO, N, N, B, LDB, IERR )
 *
 *     Permute and/or balance the matrix pair (A,B)
-*     (Real Workspace: need 6*N)
+*     (Real Workspace: need 6*N if BALANC = 'S' or 'B', 1 otherwise)
 *
       CALL ZGGBAL( BALANC, N, A, LDA, B, LDB, ILO, IHI, LSCALE, RSCALE,
      $             RWORK, IERR )
@@ -468,8 +479,10 @@
 *
       IF( ILVL ) THEN
          CALL ZLASET( 'Full', N, N, CZERO, CONE, VL, LDVL )
-         CALL ZLACPY( 'L', IROWS-1, IROWS-1, B( ILO+1, ILO ), LDB,
-     $                VL( ILO+1, ILO ), LDVL )
+         IF( IROWS.GT.1 ) THEN
+            CALL ZLACPY( 'L', IROWS-1, IROWS-1, B( ILO+1, ILO ), LDB,
+     $                   VL( ILO+1, ILO ), LDVL )
+         END IF
          CALL ZUNGQR( IROWS, IROWS, IROWS, VL( ILO, ILO ), LDVL,
      $                WORK( ITAU ), WORK( IWRK ), LWORK+1-IWRK, IERR )
       END IF

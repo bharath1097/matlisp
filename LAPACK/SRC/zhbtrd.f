@@ -1,10 +1,10 @@
       SUBROUTINE ZHBTRD( VECT, UPLO, N, KD, AB, LDAB, D, E, Q, LDQ,
      $                   WORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO, VECT
@@ -249,8 +249,8 @@
 *
 *                 apply plane rotations from the left
 *
-                  CALL ZLACGV( NR, WORK( J1 ), KD1 )
                   IF( NR.GT.0 ) THEN
+                     CALL ZLACGV( NR, WORK( J1 ), KD1 )
                      IF( 2*KD-1.LT.NR ) THEN
 *
 *                    Dependent on the the number of diagonals either
@@ -459,8 +459,8 @@
 *                    Dependent on the the number of diagonals either
 *                    ZLARTV or ZROT is used
 *
-                  CALL ZLACGV( NR, WORK( J1 ), KD1 )
                   IF( NR.GT.0 ) THEN
+                     CALL ZLACGV( NR, WORK( J1 ), KD1 )
                      IF( NR.GT.2*KD-1 ) THEN
                         DO 150 L = 1, KD - 1
                            IF( J2+L.GT.N ) THEN

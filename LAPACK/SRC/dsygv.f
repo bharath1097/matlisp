@@ -1,10 +1,10 @@
       SUBROUTINE DSYGV( ITYPE, JOBZ, UPLO, N, A, LDA, B, LDB, W, WORK,
      $                  LWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -79,7 +79,7 @@
 *  W       (output) DOUBLE PRECISION array, dimension (N)
 *          If INFO = 0, the eigenvalues in ascending order.
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -113,7 +113,7 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY, UPPER, WANTZ
       CHARACTER          TRANS
-      INTEGER            LWKOPT, NB, NEIG
+      INTEGER            LWKMIN, LWKOPT, NB, NEIG
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -147,14 +147,17 @@
          INFO = -6
       ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
          INFO = -8
-      ELSE IF( LWORK.LT.MAX( 1, 3*N-1 ) .AND. .NOT.LQUERY ) THEN
-         INFO = -11
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+         LWKMIN = MAX( 1, 3*N - 1 )
          NB = ILAENV( 1, 'DSYTRD', UPLO, N, -1, -1, -1 )
-         LWKOPT = ( NB+2 )*N
+         LWKOPT = MAX( LWKMIN, ( NB + 2 )*N )
          WORK( 1 ) = LWKOPT
+*
+         IF( LWORK.LT.LWKMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN

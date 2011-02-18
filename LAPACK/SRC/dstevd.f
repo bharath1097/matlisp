@@ -1,10 +1,10 @@
       SUBROUTINE DSTEVD( JOBZ, N, D, E, Z, LDZ, WORK, LWORK, IWORK,
      $                   LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ
@@ -44,10 +44,9 @@
 *          A.
 *          On exit, if INFO = 0, the eigenvalues in ascending order.
 *
-*  E       (input/output) DOUBLE PRECISION array, dimension (N)
+*  E       (input/output) DOUBLE PRECISION array, dimension (N-1)
 *          On entry, the (n-1) subdiagonal elements of the tridiagonal
-*          matrix A, stored in elements 1 to N-1 of E; E(N) need not
-*          be set, but is used by the routine.
+*          matrix A, stored in elements 1 to N-1 of E.
 *          On exit, the contents of E are destroyed.
 *
 *  Z       (output) DOUBLE PRECISION array, dimension (LDZ, N)
@@ -71,11 +70,12 @@
 *                         ( 1 + 4*N + N**2 ).
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK and IWORK
+*          arrays, returns these values as the first entries of the WORK
+*          and IWORK arrays, and no error message related to LWORK or
+*          LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -84,9 +84,10 @@
 *          If JOBZ  = 'V' and N > 1 then LIWORK must be at least 3+5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK and IWORK arrays, and no error message related to
+*          LWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -138,15 +139,17 @@
          INFO = -2
       ELSE IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
          INFO = -6
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -8
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -10
       END IF
 *
       IF( INFO.EQ.0 ) THEN
          WORK( 1 ) = LWMIN
          IWORK( 1 ) = LIWMIN
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -8
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -10
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN

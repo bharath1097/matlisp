@@ -1,10 +1,10 @@
       SUBROUTINE ZHEEVD( JOBZ, UPLO, N, A, LDA, W, WORK, LWORK, RWORK,
      $                   LRWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -62,7 +62,7 @@
 *  W       (output) DOUBLE PRECISION array, dimension (N)
 *          If INFO = 0, the eigenvalues in ascending order.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -72,9 +72,10 @@
 *          If JOBZ  = 'V' and N > 1, LWORK must be at least 2*N + N**2.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK, RWORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
 *  RWORK   (workspace/output) DOUBLE PRECISION array,
 *                                         dimension (LRWORK)
@@ -88,11 +89,12 @@
 *                         1 + 5*N + 2*N**2.
 *
 *          If LRWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the RWORK array,
-*          returns this value as the first entry of the RWORK array, and
-*          no error message related to LRWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -102,16 +104,21 @@
 *          If JOBZ  = 'V' and N > 1, LIWORK must be at least 3 + 5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
 *          < 0:  if INFO = -i, the i-th argument had an illegal value
-*          > 0:  if INFO = i, the algorithm failed to converge; i
-*                off-diagonal elements of an intermediate tridiagonal
-*                form did not converge to zero.
+*          > 0:  if INFO = i and JOBZ = 'N', then the algorithm failed
+*                to converge; i off-diagonal elements of an intermediate
+*                tridiagonal form did not converge to zero;
+*                if INFO = i and JOBZ = 'V', then the algorithm failed
+*                to compute an eigenvalue while working on the submatrix
+*                lying in rows and columns INFO/(N+1) through
+*                mod(INFO,N+1).
 *
 *  Further Details
 *  ===============
@@ -120,6 +127,7 @@
 *     Jeff Rutter, Computer Science Division, University of California
 *     at Berkeley, USA
 *
+*  Modified description of INFO. Sven, 16 Feb 05.
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -138,15 +146,16 @@
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
+      INTEGER            ILAENV
       DOUBLE PRECISION   DLAMCH, ZLANHE
-      EXTERNAL           LSAME, DLAMCH, ZLANHE
+      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANHE
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DSCAL, DSTERF, XERBLA, ZHETRD, ZLACPY, ZLASCL,
      $                   ZSTEDC, ZUNMTR
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, INT, MAX, SQRT
+      INTRINSIC          MAX, SQRT
 *     ..
 *     .. Executable Statements ..
 *
@@ -157,27 +166,6 @@
       LQUERY = ( LWORK.EQ.-1 .OR. LRWORK.EQ.-1 .OR. LIWORK.EQ.-1 )
 *
       INFO = 0
-      IF( N.LE.1 ) THEN
-         LWMIN = 1
-         LRWMIN = 1
-         LIWMIN = 1
-         LOPT = LWMIN
-         LROPT = LRWMIN
-         LIOPT = LIWMIN
-      ELSE
-         IF( WANTZ ) THEN
-            LWMIN = 2*N + N*N
-            LRWMIN = 1 + 5*N + 2*N**2
-            LIWMIN = 3 + 5*N
-         ELSE
-            LWMIN = N + 1
-            LRWMIN = N
-            LIWMIN = 1
-         END IF
-         LOPT = LWMIN
-         LROPT = LRWMIN
-         LIOPT = LIWMIN
-      END IF
       IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -1
       ELSE IF( .NOT.( LOWER .OR. LSAME( UPLO, 'U' ) ) ) THEN
@@ -186,18 +174,42 @@
          INFO = -3
       ELSE IF( LDA.LT.MAX( 1, N ) ) THEN
          INFO = -5
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -8
-      ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -10
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -12
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+         IF( N.LE.1 ) THEN
+            LWMIN = 1
+            LRWMIN = 1
+            LIWMIN = 1
+            LOPT = LWMIN
+            LROPT = LRWMIN
+            LIOPT = LIWMIN
+         ELSE
+            IF( WANTZ ) THEN
+               LWMIN = 2*N + N*N
+               LRWMIN = 1 + 5*N + 2*N**2
+               LIWMIN = 3 + 5*N
+            ELSE
+               LWMIN = N + 1
+               LRWMIN = N
+               LIWMIN = 1
+            END IF
+            LOPT = MAX( LWMIN, N +
+     $                  ILAENV( 1, 'ZHETRD', UPLO, N, -1, -1, -1 ) )
+            LROPT = LRWMIN
+            LIOPT = LIWMIN
+         END IF
          WORK( 1 ) = LOPT
          RWORK( 1 ) = LROPT
          IWORK( 1 ) = LIOPT
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -8
+         ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -10
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -12
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -254,7 +266,6 @@
       LLRWK = LRWORK - INDRWK + 1
       CALL ZHETRD( UPLO, N, A, LDA, W, RWORK( INDE ), WORK( INDTAU ),
      $             WORK( INDWRK ), LLWORK, IINFO )
-      LOPT = MAX( DBLE( LOPT ), DBLE( N )+DBLE( WORK( INDWRK ) ) )
 *
 *     For eigenvalues only, call DSTERF.  For eigenvectors, first call
 *     ZSTEDC to generate the eigenvector matrix, WORK(INDWRK), of the
@@ -271,7 +282,6 @@
          CALL ZUNMTR( 'L', UPLO, 'N', N, N, A, LDA, WORK( INDTAU ),
      $                WORK( INDWRK ), N, WORK( INDWK2 ), LLWRK2, IINFO )
          CALL ZLACPY( 'A', N, N, WORK( INDWRK ), N, A, LDA )
-         LOPT = MAX( LOPT, N+N**2+INT( WORK( INDWK2 ) ) )
       END IF
 *
 *     If matrix was scaled, then rescale eigenvalues appropriately.

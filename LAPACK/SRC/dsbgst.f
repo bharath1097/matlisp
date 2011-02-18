@@ -1,10 +1,10 @@
       SUBROUTINE DSBGST( VECT, UPLO, N, KA, KB, AB, LDAB, BB, LDBB, X,
      $                   LDX, WORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO, VECT
@@ -125,7 +125,7 @@
          INFO = -3
       ELSE IF( KA.LT.0 ) THEN
          INFO = -4
-      ELSE IF( KB.LT.0 ) THEN
+      ELSE IF( KB.LT.0 .OR. KB.GT.KA ) THEN
          INFO = -5
       ELSE IF( LDAB.LT.KA+1 ) THEN
          INFO = -7

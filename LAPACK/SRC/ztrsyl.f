@@ -1,10 +1,10 @@
       SUBROUTINE ZTRSYL( TRANA, TRANB, ISGN, M, N, A, LDA, B, LDB, C,
      $                   LDC, SCALE, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          TRANA, TRANB
@@ -106,7 +106,7 @@
       EXTERNAL           LSAME, DLAMCH, ZLANGE, ZDOTC, ZDOTU, ZLADIV
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZDSCAL
+      EXTERNAL           DLABAD, XERBLA, ZDSCAL
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, DCMPLX, DCONJG, DIMAG, MAX, MIN
@@ -119,11 +119,9 @@
       NOTRNB = LSAME( TRANB, 'N' )
 *
       INFO = 0
-      IF( .NOT.NOTRNA .AND. .NOT.LSAME( TRANA, 'T' ) .AND. .NOT.
-     $    LSAME( TRANA, 'C' ) ) THEN
+      IF( .NOT.NOTRNA .AND. .NOT.LSAME( TRANA, 'C' ) ) THEN
          INFO = -1
-      ELSE IF( .NOT.NOTRNB .AND. .NOT.LSAME( TRANB, 'T' ) .AND. .NOT.
-     $         LSAME( TRANB, 'C' ) ) THEN
+      ELSE IF( .NOT.NOTRNB .AND. .NOT.LSAME( TRANB, 'C' ) ) THEN
          INFO = -2
       ELSE IF( ISGN.NE.1 .AND. ISGN.NE.-1 ) THEN
          INFO = -3
@@ -145,6 +143,7 @@
 *
 *     Quick return if possible
 *
+      SCALE = ONE
       IF( M.EQ.0 .OR. N.EQ.0 )
      $   RETURN
 *
@@ -158,7 +157,6 @@
       BIGNUM = ONE / SMLNUM
       SMIN = MAX( SMLNUM, EPS*ZLANGE( 'M', M, M, A, LDA, DUM ),
      $       EPS*ZLANGE( 'M', N, N, B, LDB, DUM ) )
-      SCALE = ONE
       SGN = ISGN
 *
       IF( NOTRNA .AND. NOTRNB ) THEN

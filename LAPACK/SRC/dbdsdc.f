@@ -1,10 +1,10 @@
       SUBROUTINE DBDSDC( UPLO, COMPQ, N, D, E, U, LDU, VT, LDVT, Q, IQ,
      $                   WORK, IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     December 1, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          COMPQ, UPLO
@@ -34,7 +34,7 @@
 *  It could conceivably fail on hexadecimal or decimal machines
 *  without guard digits, but we know of none.  See DLASD3 for details.
 *
-*  The code currently call DLASDQ if singular values only are desired.
+*  The code currently calls DLASDQ if singular values only are desired.
 *  However, it can be slightly modified to compute singular values
 *  using the divide and conquer method.
 *
@@ -60,7 +60,7 @@
 *          On entry, the n diagonal elements of the bidiagonal matrix B.
 *          On exit, if INFO=0, the singular values of B.
 *
-*  E       (input/output) DOUBLE PRECISION array, dimension (N)
+*  E       (input/output) DOUBLE PRECISION array, dimension (N-1)
 *          On entry, the elements of E contain the offdiagonal
 *          elements of the bidiagonal matrix whose SVD is desired.
 *          On exit, E has been destroyed.
@@ -109,7 +109,7 @@
 *             bottom of the computation tree (usually about 25).
 *          For other values of COMPQ, IQ is not referenced.
 *
-*  WORK    (workspace) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          If COMPQ = 'N' then LWORK >= (4 * N).
 *          If COMPQ = 'P' then LWORK >= (6 * N).
 *          If COMPQ = 'I' then LWORK >= (3 * N**2 + 4 * N).
@@ -119,7 +119,7 @@
 *  INFO    (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
-*          > 0:  The algorithm failed to compute an singular value.
+*          > 0:  The algorithm failed to compute a singular value.
 *                The update process of divide and conquer failed.
 *
 *  Further Details
@@ -129,6 +129,9 @@
 *     Ming Gu and Huan Ren, Computer Science Division, University of
 *     California at Berkeley, USA
 *
+*  =====================================================================
+*  Changed dimension statement in comment describing E from (N) to
+*  (N-1).  Sven, 17 Feb 05.
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -365,9 +368,9 @@
      $                      Q( START+( IC+QSTART-2 )*N ),
      $                      Q( START+( IS+QSTART-2 )*N ),
      $                      WORK( WSTART ), IWORK, INFO )
-               IF( INFO.NE.0 ) THEN
-                  RETURN
-               END IF
+            END IF
+            IF( INFO.NE.0 ) THEN
+               RETURN
             END IF
             START = I + 1
          END IF

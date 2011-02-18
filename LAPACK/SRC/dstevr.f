@@ -2,10 +2,10 @@
      $                   M, W, Z, LDZ, ISUPPZ, WORK, LWORK, IWORK,
      $                   LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 20, 2000
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE
@@ -25,8 +25,8 @@
 *  eigenvectors can be selected by specifying either a range of values
 *  or a range of indices for the desired eigenvalues.
 *
-*  Whenever possible, DSTEVR calls SSTEGR to compute the
-*  eigenspectrum using Relatively Robust Representations.  DSTEGR
+*  Whenever possible, DSTEVR calls DSTEMR to compute the
+*  eigenspectrum using Relatively Robust Representations.  DSTEMR
 *  computes eigenvalues by the dqds algorithm, while orthogonal
 *  eigenvectors are computed from various "good" L D L^T representations
 *  (also known as Relatively Robust Representations). Gram-Schmidt
@@ -51,12 +51,12 @@
 *  UC Berkeley, May 1997.
 *
 *
-*  Note 1 : DSTEVR calls SSTEGR when the full spectrum is requested
+*  Note 1 : DSTEVR calls DSTEMR when the full spectrum is requested
 *  on machines which conform to the ieee-754 floating point standard.
-*  DSTEVR calls SSTEBZ and SSTEIN on non-ieee machines and
+*  DSTEVR calls DSTEBZ and DSTEIN on non-ieee machines and
 *  when partial spectrum requests are made.
 *
-*  Normal execution of DSTEGR may create NaNs and infinities and
+*  Normal execution of DSTEMR may create NaNs and infinities and
 *  hence may abort due to a floating point exception in environments
 *  which do not handle NaNs and infinities in the ieee standard default
 *  manner.
@@ -85,9 +85,9 @@
 *          On exit, D may be multiplied by a constant factor chosen
 *          to avoid over/underflow in computing the eigenvalues.
 *
-*  E       (input/output) DOUBLE PRECISION array, dimension (N)
+*  E       (input/output) DOUBLE PRECISION array, dimension (max(1,N-1))
 *          On entry, the (n-1) subdiagonal elements of the tridiagonal
-*          matrix A in elements 1 to N-1 of E; E(N) need not be set.
+*          matrix A in elements 1 to N-1 of E.
 *          On exit, E may be multiplied by a constant factor chosen
 *          to avoid over/underflow in computing the eigenvalues.
 *
@@ -160,29 +160,31 @@
 *          ISUPPZ( 2*i ).
 ********** Implemented only for RANGE = 'A' or 'I' and IU - IL = N - 1
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal (and
 *          minimal) LWORK.
 *
 *  LWORK   (input) INTEGER
-*          The dimension of the array WORK.  LWORK >= 20*N.
+*          The dimension of the array WORK.  LWORK >= max(1,20*N).
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK and IWORK
+*          arrays, returns these values as the first entries of the WORK
+*          and IWORK arrays, and no error message related to LWORK or
+*          LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal (and
 *          minimal) LIWORK.
 *
 *  LIWORK  (input) INTEGER
-*          The dimension of the array IWORK.  LIWORK >= 10*N.
+*          The dimension of the array IWORK.  LIWORK >= max(1,10*N).
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK and IWORK arrays, and no error message related to
+*          LWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -201,11 +203,12 @@
 *  =====================================================================
 *
 *     .. Parameters ..
-      DOUBLE PRECISION   ZERO, ONE
-      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
+      DOUBLE PRECISION   ZERO, ONE, TWO
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0, TWO = 2.0D+0 )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            ALLEIG, INDEIG, LQUERY, VALEIG, WANTZ
+      LOGICAL            ALLEIG, INDEIG, TEST, LQUERY, VALEIG, WANTZ,
+     $                   TRYRAC
       CHARACTER          ORDER
       INTEGER            I, IEEEOK, IMAX, INDIBL, INDIFL, INDISP,
      $                   INDIWO, ISCALE, ITMP1, J, JJ, LIWMIN, LWMIN,
@@ -220,7 +223,7 @@
       EXTERNAL           LSAME, ILAENV, DLAMCH, DLANST
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DCOPY, DSCAL, DSTEBZ, DSTEGR, DSTEIN, DSTERF,
+      EXTERNAL           DCOPY, DSCAL, DSTEBZ, DSTEMR, DSTEIN, DSTERF,
      $                   DSWAP, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -239,8 +242,8 @@
       INDEIG = LSAME( RANGE, 'I' )
 *
       LQUERY = ( ( LWORK.EQ.-1 ) .OR. ( LIWORK.EQ.-1 ) )
-      LWMIN = 20*N
-      LIWMIN = 10*N
+      LWMIN = MAX( 1, 20*N )
+      LIWMIN = MAX( 1, 10*N )
 *
 *
       INFO = 0
@@ -265,16 +268,18 @@
       IF( INFO.EQ.0 ) THEN
          IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
             INFO = -14
-         ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-            INFO = -17
-         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-            INFO = -19
          END IF
       END IF
 *
       IF( INFO.EQ.0 ) THEN
          WORK( 1 ) = LWMIN
          IWORK( 1 ) = LIWMIN
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -17
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -19
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -337,22 +342,49 @@
             VUU = VU*SIGMA
          END IF
       END IF
+
+*     Initialize indices into workspaces.  Note: These indices are used only
+*     if DSTERF or DSTEMR fail.
+
+*     IWORK(INDIBL:INDIBL+M-1) corresponds to IBLOCK in DSTEBZ and
+*     stores the block indices of each of the M<=N eigenvalues.
+      INDIBL = 1
+*     IWORK(INDISP:INDISP+NSPLIT-1) corresponds to ISPLIT in DSTEBZ and
+*     stores the starting and finishing indices of each block.
+      INDISP = INDIBL + N
+*     IWORK(INDIFL:INDIFL+N-1) stores the indices of eigenvectors
+*     that corresponding to eigenvectors that fail to converge in
+*     DSTEIN.  This information is discarded; if any fail, the driver
+*     returns INFO > 0.
+      INDIFL = INDISP + N
+*     INDIWO is the offset of the remaining integer workspace.
+      INDIWO = INDISP + N
 *
 *     If all eigenvalues are desired, then
-*     call DSTERF or SSTEGR.  If this fails for some eigenvalue, then
+*     call DSTERF or DSTEMR.  If this fails for some eigenvalue, then
 *     try DSTEBZ.
 *
 *
-      IF( ( ALLEIG .OR. ( INDEIG .AND. IL.EQ.1 .AND. IU.EQ.N ) ) .AND.
-     $    IEEEOK.EQ.1 ) THEN
+      TEST = .FALSE.
+      IF( INDEIG ) THEN
+         IF( IL.EQ.1 .AND. IU.EQ.N ) THEN
+            TEST = .TRUE.
+         END IF
+      END IF
+      IF( ( ALLEIG .OR. TEST ) .AND. IEEEOK.EQ.1 ) THEN
          CALL DCOPY( N-1, E( 1 ), 1, WORK( 1 ), 1 )
          IF( .NOT.WANTZ ) THEN
             CALL DCOPY( N, D, 1, W, 1 )
             CALL DSTERF( N, W, WORK, INFO )
          ELSE
             CALL DCOPY( N, D, 1, WORK( N+1 ), 1 )
-            CALL DSTEGR( JOBZ, 'A', N, WORK( N+1 ), WORK, VL, VU, IL,
-     $                   IU, ABSTOL, M, W, Z, LDZ, ISUPPZ,
+            IF (ABSTOL .LE. TWO*N*EPS) THEN
+               TRYRAC = .TRUE.
+            ELSE
+               TRYRAC = .FALSE.
+            END IF
+            CALL DSTEMR( JOBZ, 'A', N, WORK( N+1 ), WORK, VL, VU, IL,
+     $                   IU, M, W, Z, LDZ, N, ISUPPZ, TRYRAC,
      $                   WORK( 2*N+1 ), LWORK-2*N, IWORK, LIWORK, INFO )
 *
          END IF
@@ -363,17 +395,14 @@
          INFO = 0
       END IF
 *
-*     Otherwise, call DSTEBZ and, if eigenvectors are desired, SSTEIN.
+*     Otherwise, call DSTEBZ and, if eigenvectors are desired, DSTEIN.
 *
       IF( WANTZ ) THEN
          ORDER = 'B'
       ELSE
          ORDER = 'E'
       END IF
-      INDIBL = 1
-      INDISP = INDIBL + N
-      INDIFL = INDISP + N
-      INDIWO = INDIFL + N
+
       CALL DSTEBZ( RANGE, ORDER, N, VLL, VUU, IL, IU, ABSTOL, D, E, M,
      $             NSPLIT, W, IWORK( INDIBL ), IWORK( INDISP ), WORK,
      $             IWORK( INDIWO ), INFO )

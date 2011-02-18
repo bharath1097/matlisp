@@ -2,10 +2,10 @@
      $                   S, B, LDB, X, LDX, RCOND, FERR, BERR, WORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          EQUED, FACT, UPLO
@@ -327,9 +327,8 @@
 *
 *        Return if INFO is non-zero.
 *
-         IF( INFO.NE.0 ) THEN
-            IF( INFO.GT.0 )
-     $         RCOND = ZERO
+         IF( INFO.GT.0 )THEN
+            RCOND = ZERO
             RETURN
          END IF
       END IF
@@ -341,11 +340,6 @@
 *     Compute the reciprocal of the condition number of A.
 *
       CALL DPOCON( UPLO, N, AF, LDAF, ANORM, RCOND, WORK, IWORK, INFO )
-*
-*     Set INFO = N+1 if the matrix is singular to working precision.
-*
-      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
-     $   INFO = N + 1
 *
 *     Compute the solution matrix X.
 *
@@ -371,6 +365,11 @@
             FERR( J ) = FERR( J ) / SCOND
    60    CONTINUE
       END IF
+*
+*     Set INFO = N+1 if the matrix is singular to working precision.
+*
+      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
+     $   INFO = N + 1
 *
       RETURN
 *

@@ -1,10 +1,10 @@
       SUBROUTINE ZGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK, LWORK,
      $                  INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          TRANS
@@ -45,7 +45,7 @@
 *  Arguments
 *  =========
 *
-*  TRANS   (input) CHARACTER
+*  TRANS   (input) CHARACTER*1
 *          = 'N': the linear system involves A;
 *          = 'C': the linear system involves A**H.
 *
@@ -73,12 +73,12 @@
 *          On entry, the matrix B of right hand side vectors, stored
 *          columnwise; B is M-by-NRHS if TRANS = 'N', or N-by-NRHS
 *          if TRANS = 'C'.
-*          On exit, B is overwritten by the solution vectors, stored
-*          columnwise:
+*          On exit, if INFO = 0, B is overwritten by the solution
+*          vectors, stored columnwise:
 *          if TRANS = 'N' and m >= n, rows 1 to n of B contain the least
 *          squares solution vectors; the residual sum of squares for the
-*          solution in each column is given by the sum of squares of
-*          elements N+1 to M in that column;
+*          solution in each column is given by the sum of squares of the
+*          modulus of elements N+1 to M in that column;
 *          if TRANS = 'N' and m < n, rows 1 to N of B contain the
 *          minimum norm solution vectors;
 *          if TRANS = 'C' and m >= n, rows 1 to M of B contain the
@@ -86,12 +86,12 @@
 *          if TRANS = 'C' and m < n, rows 1 to M of B contain the
 *          least squares solution vectors; the residual sum of squares
 *          for the solution in each column is given by the sum of
-*          squares of elements M+1 to N in that column.
+*          squares of the modulus of elements M+1 to N in that column.
 *
 *  LDB     (input) INTEGER
 *          The leading dimension of the array B. LDB >= MAX(1,M,N).
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -109,15 +109,18 @@
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
 *          < 0:  if INFO = -i, the i-th argument had an illegal value
+*          > 0:  if INFO =  i, the i-th diagonal element of the
+*                triangular factor of A is zero, so that A does not have
+*                full rank; the least squares solution could not be
+*                computed.
 *
 *  =====================================================================
 *
 *     .. Parameters ..
       DOUBLE PRECISION   ZERO, ONE
       PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
-      COMPLEX*16         CZERO, CONE
-      PARAMETER          ( CZERO = ( 0.0D+0, 0.0D+0 ),
-     $                   CONE = ( 1.0D+0, 0.0D+0 ) )
+      COMPLEX*16         CZERO
+      PARAMETER          ( CZERO = ( 0.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY, TPSD
@@ -134,8 +137,8 @@
       EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANGE
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZGELQF, ZGEQRF, ZLASCL, ZLASET, ZTRSM,
-     $                   ZUNMLQ, ZUNMQR
+      EXTERNAL           DLABAD, XERBLA, ZGELQF, ZGEQRF, ZLASCL, ZLASET,
+     $                   ZTRTRS, ZUNMLQ, ZUNMQR
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          DBLE, MAX, MIN
@@ -285,8 +288,12 @@
 *
 *           B(1:N,1:NRHS) := inv(R) * B(1:N,1:NRHS)
 *
-            CALL ZTRSM( 'Left', 'Upper', 'No transpose', 'Non-unit', N,
-     $                  NRHS, CONE, A, LDA, B, LDB )
+            CALL ZTRTRS( 'Upper', 'No transpose', 'Non-unit', N, NRHS,
+     $                   A, LDA, B, LDB, INFO )
+*
+            IF( INFO.GT.0 ) THEN
+               RETURN
+            END IF
 *
             SCLLEN = N
 *
@@ -296,8 +303,12 @@
 *
 *           B(1:N,1:NRHS) := inv(R') * B(1:N,1:NRHS)
 *
-            CALL ZTRSM( 'Left', 'Upper', 'Conjugate transpose',
-     $                  'Non-unit', N, NRHS, CONE, A, LDA, B, LDB )
+            CALL ZTRTRS( 'Upper', 'Conjugate transpose','Non-unit',
+     $                   N, NRHS, A, LDA, B, LDB, INFO )
+*
+            IF( INFO.GT.0 ) THEN
+               RETURN
+            END IF
 *
 *           B(N+1:M,1:NRHS) = ZERO
 *
@@ -334,8 +345,12 @@
 *
 *           B(1:M,1:NRHS) := inv(L) * B(1:M,1:NRHS)
 *
-            CALL ZTRSM( 'Left', 'Lower', 'No transpose', 'Non-unit', M,
-     $                  NRHS, CONE, A, LDA, B, LDB )
+            CALL ZTRTRS( 'Lower', 'No transpose', 'Non-unit', M, NRHS,
+     $                   A, LDA, B, LDB, INFO )
+*
+            IF( INFO.GT.0 ) THEN
+               RETURN
+            END IF
 *
 *           B(M+1:N,1:NRHS) = 0
 *
@@ -369,8 +384,12 @@
 *
 *           B(1:M,1:NRHS) := inv(L') * B(1:M,1:NRHS)
 *
-            CALL ZTRSM( 'Left', 'Lower', 'Conjugate transpose',
-     $                  'Non-unit', M, NRHS, CONE, A, LDA, B, LDB )
+            CALL ZTRTRS( 'Lower', 'Conjugate transpose', 'Non-unit',
+     $                   M, NRHS, A, LDA, B, LDB, INFO )
+*
+            IF( INFO.GT.0 ) THEN
+               RETURN
+            END IF
 *
             SCLLEN = M
 *

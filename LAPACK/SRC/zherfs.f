@@ -1,10 +1,12 @@
       SUBROUTINE ZHERFS( UPLO, N, NRHS, A, LDA, AF, LDAF, IPIV, B, LDB,
      $                   X, LDX, FERR, BERR, WORK, RWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call ZLACN2 in place of ZLACON, 10 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -124,8 +126,11 @@
       DOUBLE PRECISION   EPS, LSTRES, S, SAFE1, SAFE2, SAFMIN, XK
       COMPLEX*16         ZDUM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZAXPY, ZCOPY, ZHEMV, ZHETRS, ZLACON
+      EXTERNAL           XERBLA, ZAXPY, ZCOPY, ZHEMV, ZHETRS, ZLACN2
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, DIMAG, MAX
@@ -284,7 +289,7 @@
 *        is incremented by SAFE1 if the i-th component of
 *        abs(A)*abs(X) + abs(B) is less than SAFE2.
 *
-*        Use ZLACON to estimate the infinity-norm of the matrix
+*        Use ZLACN2 to estimate the infinity-norm of the matrix
 *           inv(A) * diag(W),
 *        where W = abs(R) + NZ*EPS*( abs(A)*abs(X)+abs(B) )))
 *
@@ -299,7 +304,7 @@
 *
          KASE = 0
   100    CONTINUE
-         CALL ZLACON( N, WORK( N+1 ), WORK, FERR( J ), KASE )
+         CALL ZLACN2( N, WORK( N+1 ), WORK, FERR( J ), KASE, ISAVE )
          IF( KASE.NE.0 ) THEN
             IF( KASE.EQ.1 ) THEN
 *

@@ -1,10 +1,12 @@
       SUBROUTINE ZGTCON( NORM, N, DL, D, DU, DU2, IPIV, ANORM, RCOND,
      $                   WORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call ZLACN2 in place of ZLACON, 10 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          NORM
@@ -84,12 +86,15 @@
       INTEGER            I, KASE, KASE1
       DOUBLE PRECISION   AINVNM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       EXTERNAL           LSAME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZGTTRS, ZLACON
+      EXTERNAL           XERBLA, ZGTTRS, ZLACN2
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          DCMPLX
@@ -137,7 +142,7 @@
       END IF
       KASE = 0
    20 CONTINUE
-      CALL ZLACON( N, WORK( N+1 ), WORK, AINVNM, KASE )
+      CALL ZLACN2( N, WORK( N+1 ), WORK, AINVNM, KASE, ISAVE )
       IF( KASE.NE.0 ) THEN
          IF( KASE.EQ.KASE1 ) THEN
 *

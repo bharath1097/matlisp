@@ -1,10 +1,10 @@
       SUBROUTINE DSYSV( UPLO, N, NRHS, A, LDA, IPIV, B, LDB, WORK,
      $                  LWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     May 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -81,12 +81,12 @@
 *  LDB     (input) INTEGER
 *          The leading dimension of the array B.  LDB >= max(1,N).
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The length of WORK.  LWORK >= 1, and for best performance
-*          LWORK >= N*NB, where NB is the optimal blocksize for
+*          LWORK >= max(1,N*NB), where NB is the optimal blocksize for
 *          DSYTRF.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
@@ -113,7 +113,7 @@
       EXTERNAL           LSAME, ILAENV
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DSYTRF, DSYTRS, XERBLA
+      EXTERNAL           DSYTRF, DSYTRS2, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX
@@ -139,8 +139,12 @@
       END IF
 *
       IF( INFO.EQ.0 ) THEN
-         NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
-         LWKOPT = N*NB
+         IF( N.EQ.0 ) THEN
+            LWKOPT = 1
+         ELSE
+            NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
+            LWKOPT = N*NB
+         END IF
          WORK( 1 ) = LWKOPT
       END IF
 *
@@ -156,9 +160,9 @@
       CALL DSYTRF( UPLO, N, A, LDA, IPIV, WORK, LWORK, INFO )
       IF( INFO.EQ.0 ) THEN
 *
-*        Solve the system A*X = B, overwriting B with X.
+*     Solve the system A*X = B, overwriting B with X.
 *
-         CALL DSYTRS( UPLO, N, NRHS, A, LDA, IPIV, B, LDB, INFO )
+      CALL DSYTRS2( UPLO, N, NRHS, A, LDA, IPIV, B, LDB, WORK, INFO )
 *
       END IF
 *

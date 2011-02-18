@@ -2,10 +2,10 @@
      $                   LDAFB, IPIV, EQUED, R, C, B, LDB, X, LDX,
      $                   RCOND, FERR, BERR, WORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          EQUED, FACT, TRANS
@@ -418,30 +418,27 @@
 *
 *        Return if INFO is non-zero.
 *
-         IF( INFO.NE.0 ) THEN
-            IF( INFO.GT.0 ) THEN
+         IF( INFO.GT.0 ) THEN
 *
-*              Compute the reciprocal pivot growth factor of the
-*              leading rank-deficient INFO columns of A.
+*           Compute the reciprocal pivot growth factor of the
+*           leading rank-deficient INFO columns of A.
 *
-               ANORM = ZERO
-               DO 90 J = 1, INFO
-                  DO 80 I = MAX( KU+2-J, 1 ),
-     $                    MIN( N+KU+1-J, KL+KU+1 )
-                     ANORM = MAX( ANORM, ABS( AB( I, J ) ) )
-   80             CONTINUE
-   90          CONTINUE
-               RPVGRW = DLANTB( 'M', 'U', 'N', INFO,
-     $                  MIN( INFO-1, KL+KU ), AFB( MAX( 1,
-     $                  KL+KU+2-INFO ), 1 ), LDAFB, WORK )
-               IF( RPVGRW.EQ.ZERO ) THEN
-                  RPVGRW = ONE
-               ELSE
-                  RPVGRW = ANORM / RPVGRW
-               END IF
-               WORK( 1 ) = RPVGRW
-               RCOND = ZERO
+            ANORM = ZERO
+            DO 90 J = 1, INFO
+               DO 80 I = MAX( KU+2-J, 1 ), MIN( N+KU+1-J, KL+KU+1 )
+                  ANORM = MAX( ANORM, ABS( AB( I, J ) ) )
+   80          CONTINUE
+   90       CONTINUE
+            RPVGRW = DLANTB( 'M', 'U', 'N', INFO, MIN( INFO-1, KL+KU ),
+     $                       AFB( MAX( 1, KL+KU+2-INFO ), 1 ), LDAFB,
+     $                       WORK )
+            IF( RPVGRW.EQ.ZERO ) THEN
+               RPVGRW = ONE
+            ELSE
+               RPVGRW = ANORM / RPVGRW
             END IF
+            WORK( 1 ) = RPVGRW
+            RCOND = ZERO
             RETURN
          END IF
       END IF
@@ -466,11 +463,6 @@
 *
       CALL DGBCON( NORM, N, KL, KU, AFB, LDAFB, IPIV, ANORM, RCOND,
      $             WORK, IWORK, INFO )
-*
-*     Set INFO = N+1 if the matrix is singular to working precision.
-*
-      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
-     $   INFO = N + 1
 *
 *     Compute the solution matrix X.
 *
@@ -508,6 +500,11 @@
             FERR( J ) = FERR( J ) / ROWCND
   150    CONTINUE
       END IF
+*
+*     Set INFO = N+1 if the matrix is singular to working precision.
+*
+      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
+     $   INFO = N + 1
 *
       WORK( 1 ) = RPVGRW
       RETURN

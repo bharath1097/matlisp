@@ -1,10 +1,10 @@
       SUBROUTINE ZHPEVD( JOBZ, UPLO, N, AP, W, Z, LDZ, WORK, LWORK,
      $                   RWORK, LRWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -71,8 +71,8 @@
 *          The leading dimension of the array Z.  LDZ >= 1, and if
 *          JOBZ = 'V', LDZ >= max(1,N).
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
-*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the required LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of array WORK.
@@ -81,13 +81,14 @@
 *          If JOBZ = 'V' and N > 1, LWORK must be at least 2*N.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the required sizes of the WORK, RWORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
 *  RWORK   (workspace/output) DOUBLE PRECISION array,
 *                                         dimension (LRWORK)
-*          On exit, if INFO = 0, RWORK(1) returns the optimal LRWORK.
+*          On exit, if INFO = 0, RWORK(1) returns the required LRWORK.
 *
 *  LRWORK  (input) INTEGER
 *          The dimension of array RWORK.
@@ -97,12 +98,13 @@
 *                    1 + 5*N + 2*N**2.
 *
 *          If LRWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the RWORK array,
-*          returns this value as the first entry of the RWORK array, and
-*          no error message related to LRWORK is issued by XERBLA.
+*          routine only calculates the required sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
-*          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
+*          On exit, if INFO = 0, IWORK(1) returns the required LIWORK.
 *
 *  LIWORK  (input) INTEGER
 *          The dimension of array IWORK.
@@ -110,9 +112,10 @@
 *          If JOBZ  = 'V' and N > 1, LIWORK must be at least 3 + 5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the required sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -156,21 +159,6 @@
       LQUERY = ( LWORK.EQ.-1 .OR. LRWORK.EQ.-1 .OR. LIWORK.EQ.-1 )
 *
       INFO = 0
-      IF( N.LE.1 ) THEN
-         LWMIN = 1
-         LIWMIN = 1
-         LRWMIN = 1
-      ELSE
-         IF( WANTZ ) THEN
-            LWMIN = 2*N
-            LRWMIN = 1 + 5*N + 2*N**2
-            LIWMIN = 3 + 5*N
-         ELSE
-            LWMIN = N
-            LRWMIN = N
-            LIWMIN = 1
-         END IF
-      END IF
       IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -1
       ELSE IF( .NOT.( LSAME( UPLO, 'L' ) .OR. LSAME( UPLO, 'U' ) ) )
@@ -180,22 +168,41 @@
          INFO = -3
       ELSE IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
          INFO = -7
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -9
-      ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -11
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -13
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+         IF( N.LE.1 ) THEN
+            LWMIN = 1
+            LIWMIN = 1
+            LRWMIN = 1
+         ELSE
+            IF( WANTZ ) THEN
+               LWMIN = 2*N
+               LRWMIN = 1 + 5*N + 2*N**2
+               LIWMIN = 3 + 5*N
+            ELSE
+               LWMIN = N
+               LRWMIN = N
+               LIWMIN = 1
+            END IF
+         END IF
          WORK( 1 ) = LWMIN
          RWORK( 1 ) = LRWMIN
          IWORK( 1 ) = LIWMIN
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -9
+         ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZHPEVD', -INFO )
+         RETURN
+      ELSE IF( LQUERY ) THEN
          RETURN
       END IF
 *

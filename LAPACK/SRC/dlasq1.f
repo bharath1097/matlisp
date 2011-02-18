@@ -1,9 +1,14 @@
       SUBROUTINE DLASQ1( N, D, E, WORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999 
+*  -- LAPACK routine (version 3.2)                                    --
+*
+*  -- Contributed by Osni Marques of the Lawrence Berkeley National   --
+*  -- Laboratory and Beresford Parlett of the Univ. of California at  --
+*  -- Berkeley                                                        --
+*  -- November 2008                                                   --
+*
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, N
@@ -67,7 +72,7 @@
       DOUBLE PRECISION   EPS, SCALE, SAFMIN, SIGMN, SIGMX
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLAS2, DLASQ2, DLASRT, XERBLA
+      EXTERNAL           DCOPY, DLAS2, DLASCL, DLASQ2, DLASRT, XERBLA
 *     ..
 *     .. External Functions ..
       DOUBLE PRECISION   DLAMCH

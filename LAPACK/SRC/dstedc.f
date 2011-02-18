@@ -1,10 +1,10 @@
       SUBROUTINE DSTEDC( COMPZ, N, D, E, Z, LDZ, WORK, LWORK, IWORK,
      $                   LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          COMPZ
@@ -79,13 +79,16 @@
 *                         that 2**k >= N.
 *          If COMPZ = 'I' and N > 1 then LWORK must be at least
 *                         ( 1 + 4*N + N**2 ).
+*          Note that for COMPZ = 'I' or 'V', then if N is less than or
+*          equal to the minimum divide size, usually 25, then LWORK need
+*          only be max(1,2*(N-1)).
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
 *          only calculates the optimal size of the WORK array, returns
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -95,6 +98,9 @@
 *                         ( 6 + 6*N + 5*N*lg N ).
 *          If COMPZ = 'I' and N > 1 then LIWORK must be at least
 *                         ( 3 + 5*N ).
+*          Note that for COMPZ = 'I' or 'V', then if N is less than or
+*          equal to the minimum divide size, usually 25, then LIWORK
+*          need only be 1.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
 *          routine only calculates the optimal size of the IWORK array,
@@ -124,8 +130,8 @@
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY
-      INTEGER            DTRTRW, END, I, ICOMPZ, II, J, K, LGN, LIWMIN,
-     $                   LWMIN, M, SMLSIZ, START, STOREZ
+      INTEGER            FINISH, I, ICOMPZ, II, J, K, LGN, LIWMIN,
+     $                   LWMIN, M, SMLSIZ, START, STOREZ, STRTRW
       DOUBLE PRECISION   EPS, ORGNRM, P, TINY
 *     ..
 *     .. External Functions ..
@@ -157,45 +163,54 @@
       ELSE
          ICOMPZ = -1
       END IF
-      IF( N.LE.1 .OR. ICOMPZ.LE.0 ) THEN
-         LIWMIN = 1
-         LWMIN = 1
-      ELSE
-         LGN = INT( LOG( DBLE( N ) ) / LOG( TWO ) )
-         IF( 2**LGN.LT.N )
-     $      LGN = LGN + 1
-         IF( 2**LGN.LT.N )
-     $      LGN = LGN + 1
-         IF( ICOMPZ.EQ.1 ) THEN
-            LWMIN = 1 + 3*N + 2*N*LGN + 3*N**2
-            LIWMIN = 6 + 6*N + 5*N*LGN
-         ELSE IF( ICOMPZ.EQ.2 ) THEN
-            LWMIN = 1 + 4*N + N**2
-            LIWMIN = 3 + 5*N
-         END IF
-      END IF
       IF( ICOMPZ.LT.0 ) THEN
          INFO = -1
       ELSE IF( N.LT.0 ) THEN
          INFO = -2
-      ELSE IF( ( LDZ.LT.1 ) .OR. ( ICOMPZ.GT.0 .AND. LDZ.LT.MAX( 1,
-     $         N ) ) ) THEN
+      ELSE IF( ( LDZ.LT.1 ) .OR.
+     $         ( ICOMPZ.GT.0 .AND. LDZ.LT.MAX( 1, N ) ) ) THEN
          INFO = -6
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -8
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -10
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+*
+*        Compute the workspace requirements
+*
+         SMLSIZ = ILAENV( 9, 'DSTEDC', ' ', 0, 0, 0, 0 )
+         IF( N.LE.1 .OR. ICOMPZ.EQ.0 ) THEN
+            LIWMIN = 1
+            LWMIN = 1
+         ELSE IF( N.LE.SMLSIZ ) THEN
+            LIWMIN = 1
+            LWMIN = 2*( N - 1 )
+         ELSE
+            LGN = INT( LOG( DBLE( N ) )/LOG( TWO ) )
+            IF( 2**LGN.LT.N )
+     $         LGN = LGN + 1
+            IF( 2**LGN.LT.N )
+     $         LGN = LGN + 1
+            IF( ICOMPZ.EQ.1 ) THEN
+               LWMIN = 1 + 3*N + 2*N*LGN + 3*N**2
+               LIWMIN = 6 + 6*N + 5*N*LGN
+            ELSE IF( ICOMPZ.EQ.2 ) THEN
+               LWMIN = 1 + 4*N + N**2
+               LIWMIN = 3 + 5*N
+            END IF
+         END IF
          WORK( 1 ) = LWMIN
          IWORK( 1 ) = LIWMIN
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT. LQUERY ) THEN
+            INFO = -8
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT. LQUERY ) THEN
+            INFO = -10
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'DSTEDC', -INFO )
          RETURN
-      ELSE IF( LQUERY ) THEN
+      ELSE IF (LQUERY) THEN
          RETURN
       END IF
 *
@@ -209,184 +224,180 @@
          RETURN
       END IF
 *
-      SMLSIZ = ILAENV( 9, 'DSTEDC', ' ', 0, 0, 0, 0 )
-*
 *     If the following conditional clause is removed, then the routine
 *     will use the Divide and Conquer routine to compute only the
 *     eigenvalues, which requires (3N + 3N**2) real workspace and
 *     (2 + 5N + 2N lg(N)) integer workspace.
 *     Since on many architectures DSTERF is much faster than any other
 *     algorithm for finding eigenvalues only, it is used here
-*     as the default.
+*     as the default. If the conditional clause is removed, then
+*     information on the size of workspace needs to be changed.
 *
 *     If COMPZ = 'N', use DSTERF to compute the eigenvalues.
 *
       IF( ICOMPZ.EQ.0 ) THEN
          CALL DSTERF( N, D, E, INFO )
-         RETURN
+         GO TO 50
       END IF
 *
 *     If N is smaller than the minimum divide size (SMLSIZ+1), then
 *     solve the problem with another solver.
 *
       IF( N.LE.SMLSIZ ) THEN
-         IF( ICOMPZ.EQ.0 ) THEN
-            CALL DSTERF( N, D, E, INFO )
-            RETURN
-         ELSE IF( ICOMPZ.EQ.2 ) THEN
-            CALL DSTEQR( 'I', N, D, E, Z, LDZ, WORK, INFO )
-            RETURN
-         ELSE
-            CALL DSTEQR( 'V', N, D, E, Z, LDZ, WORK, INFO )
-            RETURN
-         END IF
-      END IF
 *
-*     If COMPZ = 'V', the Z matrix must be stored elsewhere for later
-*     use.
+         CALL DSTEQR( COMPZ, N, D, E, Z, LDZ, WORK, INFO )
 *
-      IF( ICOMPZ.EQ.1 ) THEN
-         STOREZ = 1 + N*N
       ELSE
-         STOREZ = 1
-      END IF
 *
-      IF( ICOMPZ.EQ.2 ) THEN
-         CALL DLASET( 'Full', N, N, ZERO, ONE, Z, LDZ )
-      END IF
+*        If COMPZ = 'V', the Z matrix must be stored elsewhere for later
+*        use.
 *
-*     Scale.
-*
-      ORGNRM = DLANST( 'M', N, D, E )
-      IF( ORGNRM.EQ.ZERO )
-     $   RETURN
-*
-      EPS = DLAMCH( 'Epsilon' )
-*
-      START = 1
-*
-*     while ( START <= N )
-*
-   10 CONTINUE
-      IF( START.LE.N ) THEN
-*
-*     Let END be the position of the next subdiagonal entry such that
-*     E( END ) <= TINY or END = N if no such subdiagonal exists.  The
-*     matrix identified by the elements between START and END
-*     constitutes an independent sub-problem.
-*
-         END = START
-   20    CONTINUE
-         IF( END.LT.N ) THEN
-            TINY = EPS*SQRT( ABS( D( END ) ) )*SQRT( ABS( D( END+1 ) ) )
-            IF( ABS( E( END ) ).GT.TINY ) THEN
-               END = END + 1
-               GO TO 20
-            END IF
+         IF( ICOMPZ.EQ.1 ) THEN
+            STOREZ = 1 + N*N
+         ELSE
+            STOREZ = 1
          END IF
 *
-*        (Sub) Problem determined.  Compute its size and solve it.
+         IF( ICOMPZ.EQ.2 ) THEN
+            CALL DLASET( 'Full', N, N, ZERO, ONE, Z, LDZ )
+         END IF
 *
-         M = END - START + 1
-         IF( M.EQ.1 ) THEN
-            START = END + 1
+*        Scale.
+*
+         ORGNRM = DLANST( 'M', N, D, E )
+         IF( ORGNRM.EQ.ZERO )
+     $      GO TO 50
+*
+         EPS = DLAMCH( 'Epsilon' )
+*
+         START = 1
+*
+*        while ( START <= N )
+*
+   10    CONTINUE
+         IF( START.LE.N ) THEN
+*
+*           Let FINISH be the position of the next subdiagonal entry
+*           such that E( FINISH ) <= TINY or FINISH = N if no such
+*           subdiagonal exists.  The matrix identified by the elements
+*           between START and FINISH constitutes an independent
+*           sub-problem.
+*
+            FINISH = START
+   20       CONTINUE
+            IF( FINISH.LT.N ) THEN
+               TINY = EPS*SQRT( ABS( D( FINISH ) ) )*
+     $                    SQRT( ABS( D( FINISH+1 ) ) )
+               IF( ABS( E( FINISH ) ).GT.TINY ) THEN
+                  FINISH = FINISH + 1
+                  GO TO 20
+               END IF
+            END IF
+*
+*           (Sub) Problem determined.  Compute its size and solve it.
+*
+            M = FINISH - START + 1
+            IF( M.EQ.1 ) THEN
+               START = FINISH + 1
+               GO TO 10
+            END IF
+            IF( M.GT.SMLSIZ ) THEN
+*
+*              Scale.
+*
+               ORGNRM = DLANST( 'M', M, D( START ), E( START ) )
+               CALL DLASCL( 'G', 0, 0, ORGNRM, ONE, M, 1, D( START ), M,
+     $                      INFO )
+               CALL DLASCL( 'G', 0, 0, ORGNRM, ONE, M-1, 1, E( START ),
+     $                      M-1, INFO )
+*
+               IF( ICOMPZ.EQ.1 ) THEN
+                  STRTRW = 1
+               ELSE
+                  STRTRW = START
+               END IF
+               CALL DLAED0( ICOMPZ, N, M, D( START ), E( START ),
+     $                      Z( STRTRW, START ), LDZ, WORK( 1 ), N,
+     $                      WORK( STOREZ ), IWORK, INFO )
+               IF( INFO.NE.0 ) THEN
+                  INFO = ( INFO / ( M+1 )+START-1 )*( N+1 ) +
+     $                   MOD( INFO, ( M+1 ) ) + START - 1
+                  GO TO 50
+               END IF
+*
+*              Scale back.
+*
+               CALL DLASCL( 'G', 0, 0, ONE, ORGNRM, M, 1, D( START ), M,
+     $                      INFO )
+*
+            ELSE
+               IF( ICOMPZ.EQ.1 ) THEN
+*
+*                 Since QR won't update a Z matrix which is larger than
+*                 the length of D, we must solve the sub-problem in a
+*                 workspace and then multiply back into Z.
+*
+                  CALL DSTEQR( 'I', M, D( START ), E( START ), WORK, M,
+     $                         WORK( M*M+1 ), INFO )
+                  CALL DLACPY( 'A', N, M, Z( 1, START ), LDZ,
+     $                         WORK( STOREZ ), N )
+                  CALL DGEMM( 'N', 'N', N, M, M, ONE,
+     $                        WORK( STOREZ ), N, WORK, M, ZERO,
+     $                        Z( 1, START ), LDZ )
+               ELSE IF( ICOMPZ.EQ.2 ) THEN
+                  CALL DSTEQR( 'I', M, D( START ), E( START ),
+     $                         Z( START, START ), LDZ, WORK, INFO )
+               ELSE
+                  CALL DSTERF( M, D( START ), E( START ), INFO )
+               END IF
+               IF( INFO.NE.0 ) THEN
+                  INFO = START*( N+1 ) + FINISH
+                  GO TO 50
+               END IF
+            END IF
+*
+            START = FINISH + 1
             GO TO 10
          END IF
-         IF( M.GT.SMLSIZ ) THEN
-            INFO = SMLSIZ
 *
-*           Scale.
+*        endwhile
 *
-            ORGNRM = DLANST( 'M', M, D( START ), E( START ) )
-            CALL DLASCL( 'G', 0, 0, ORGNRM, ONE, M, 1, D( START ), M,
-     $                   INFO )
-            CALL DLASCL( 'G', 0, 0, ORGNRM, ONE, M-1, 1, E( START ),
-     $                   M-1, INFO )
+*        If the problem split any number of times, then the eigenvalues
+*        will not be properly ordered.  Here we permute the eigenvalues
+*        (and the associated eigenvectors) into ascending order.
 *
-            IF( ICOMPZ.EQ.1 ) THEN
-               DTRTRW = 1
+         IF( M.NE.N ) THEN
+            IF( ICOMPZ.EQ.0 ) THEN
+*
+*              Use Quick Sort
+*
+               CALL DLASRT( 'I', N, D, INFO )
+*
             ELSE
-               DTRTRW = START
-            END IF
-            CALL DLAED0( ICOMPZ, N, M, D( START ), E( START ),
-     $                   Z( DTRTRW, START ), LDZ, WORK( 1 ), N,
-     $                   WORK( STOREZ ), IWORK, INFO )
-            IF( INFO.NE.0 ) THEN
-               INFO = ( INFO / ( M+1 )+START-1 )*( N+1 ) +
-     $                MOD( INFO, ( M+1 ) ) + START - 1
-               RETURN
-            END IF
 *
-*           Scale back.
+*              Use Selection Sort to minimize swaps of eigenvectors
 *
-            CALL DLASCL( 'G', 0, 0, ONE, ORGNRM, M, 1, D( START ), M,
-     $                   INFO )
-*
-         ELSE
-            IF( ICOMPZ.EQ.1 ) THEN
-*
-*     Since QR won't update a Z matrix which is larger than the
-*     length of D, we must solve the sub-problem in a workspace and
-*     then multiply back into Z.
-*
-               CALL DSTEQR( 'I', M, D( START ), E( START ), WORK, M,
-     $                      WORK( M*M+1 ), INFO )
-               CALL DLACPY( 'A', N, M, Z( 1, START ), LDZ,
-     $                      WORK( STOREZ ), N )
-               CALL DGEMM( 'N', 'N', N, M, M, ONE, WORK( STOREZ ), LDZ,
-     $                     WORK, M, ZERO, Z( 1, START ), LDZ )
-            ELSE IF( ICOMPZ.EQ.2 ) THEN
-               CALL DSTEQR( 'I', M, D( START ), E( START ),
-     $                      Z( START, START ), LDZ, WORK, INFO )
-            ELSE
-               CALL DSTERF( M, D( START ), E( START ), INFO )
-            END IF
-            IF( INFO.NE.0 ) THEN
-               INFO = START*( N+1 ) + END
-               RETURN
-            END IF
-         END IF
-*
-         START = END + 1
-         GO TO 10
-      END IF
-*
-*     endwhile
-*
-*     If the problem split any number of times, then the eigenvalues
-*     will not be properly ordered.  Here we permute the eigenvalues
-*     (and the associated eigenvectors) into ascending order.
-*
-      IF( M.NE.N ) THEN
-         IF( ICOMPZ.EQ.0 ) THEN
-*
-*        Use Quick Sort
-*
-            CALL DLASRT( 'I', N, D, INFO )
-*
-         ELSE
-*
-*        Use Selection Sort to minimize swaps of eigenvectors
-*
-            DO 40 II = 2, N
-               I = II - 1
-               K = I
-               P = D( I )
-               DO 30 J = II, N
-                  IF( D( J ).LT.P ) THEN
-                     K = J
-                     P = D( J )
+               DO 40 II = 2, N
+                  I = II - 1
+                  K = I
+                  P = D( I )
+                  DO 30 J = II, N
+                     IF( D( J ).LT.P ) THEN
+                        K = J
+                        P = D( J )
+                     END IF
+   30             CONTINUE
+                  IF( K.NE.I ) THEN
+                     D( K ) = D( I )
+                     D( I ) = P
+                     CALL DSWAP( N, Z( 1, I ), 1, Z( 1, K ), 1 )
                   END IF
-   30          CONTINUE
-               IF( K.NE.I ) THEN
-                  D( K ) = D( I )
-                  D( I ) = P
-                  CALL DSWAP( N, Z( 1, I ), 1, Z( 1, K ), 1 )
-               END IF
-   40       CONTINUE
+   40          CONTINUE
+            END IF
          END IF
       END IF
 *
+   50 CONTINUE
       WORK( 1 ) = LWMIN
       IWORK( 1 ) = LIWMIN
 *

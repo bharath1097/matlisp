@@ -2,10 +2,10 @@
      $                   LDB, X, LDX, RCOND, FERR, BERR, WORK, LWORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          FACT, UPLO
@@ -154,13 +154,13 @@
 *          vector X(j) (i.e., the smallest relative change in
 *          any element of A or B that makes X(j) an exact solution).
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
-*          The length of WORK.  LWORK >= 3*N, and for best performance
-*          LWORK >= N*NB, where NB is the optimal blocksize for
-*          DSYTRF.
+*          The length of WORK.  LWORK >= max(1,3*N), and for best
+*          performance, when FACT = 'N', LWORK >= max(1,3*N,N*NB), where
+*          NB is the optimal blocksize for DSYTRF.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
 *          only calculates the optimal size of the WORK array, returns
@@ -237,8 +237,11 @@
       END IF
 *
       IF( INFO.EQ.0 ) THEN
-         NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
-         LWKOPT = N*NB
+         LWKOPT = MAX( 1, 3*N )
+         IF( NOFACT ) THEN
+            NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
+            LWKOPT = MAX( LWKOPT, N*NB )
+         END IF
          WORK( 1 ) = LWKOPT
       END IF
 *
@@ -258,9 +261,8 @@
 *
 *        Return if INFO is non-zero.
 *
-         IF( INFO.NE.0 ) THEN
-            IF( INFO.GT.0 )
-     $         RCOND = ZERO
+         IF( INFO.GT.0 )THEN
+            RCOND = ZERO
             RETURN
          END IF
       END IF
@@ -274,11 +276,6 @@
       CALL DSYCON( UPLO, N, AF, LDAF, IPIV, ANORM, RCOND, WORK, IWORK,
      $             INFO )
 *
-*     Set INFO = N+1 if the matrix is singular to working precision.
-*
-      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
-     $   INFO = N + 1
-*
 *     Compute the solution vectors X.
 *
       CALL DLACPY( 'Full', N, NRHS, B, LDB, X, LDX )
@@ -289,6 +286,13 @@
 *
       CALL DSYRFS( UPLO, N, NRHS, A, LDA, AF, LDAF, IPIV, B, LDB, X,
      $             LDX, FERR, BERR, WORK, IWORK, INFO )
+*
+*     Set INFO = N+1 if the matrix is singular to working precision.
+*
+      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
+     $   INFO = N + 1
+*
+      WORK( 1 ) = LWKOPT
 *
       RETURN
 *

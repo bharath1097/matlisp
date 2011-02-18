@@ -1,10 +1,10 @@
       SUBROUTINE DSTEVX( JOBZ, RANGE, N, D, E, VL, VU, IL, IU, ABSTOL,
      $                   M, W, Z, LDZ, WORK, IWORK, IFAIL, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE
@@ -46,9 +46,9 @@
 *          On exit, D may be multiplied by a constant factor chosen
 *          to avoid over/underflow in computing the eigenvalues.
 *
-*  E       (input/output) DOUBLE PRECISION array, dimension (N)
+*  E       (input/output) DOUBLE PRECISION array, dimension (max(1,N-1))
 *          On entry, the (n-1) subdiagonal elements of the tridiagonal
-*          matrix A in elements 1 to N-1 of E; E(N) need not be set.
+*          matrix A in elements 1 to N-1 of E.
 *          On exit, E may be multiplied by a constant factor chosen
 *          to avoid over/underflow in computing the eigenvalues.
 *
@@ -136,7 +136,7 @@
       PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            ALLEIG, INDEIG, VALEIG, WANTZ
+      LOGICAL            ALLEIG, INDEIG, TEST, VALEIG, WANTZ
       CHARACTER          ORDER
       INTEGER            I, IMAX, INDIBL, INDISP, INDIWO, INDWRK,
      $                   ISCALE, ITMP1, J, JJ, NSPLIT
@@ -254,8 +254,13 @@
 *     call DSTERF or SSTEQR.  If this fails for some eigenvalue, then
 *     try DSTEBZ.
 *
-      IF( ( ALLEIG .OR. ( INDEIG .AND. IL.EQ.1 .AND. IU.EQ.N ) ) .AND.
-     $    ( ABSTOL.LE.ZERO ) ) THEN
+      TEST = .FALSE.
+      IF( INDEIG ) THEN
+         IF( IL.EQ.1 .AND. IU.EQ.N ) THEN
+            TEST = .TRUE.
+         END IF
+      END IF
+      IF( ( ALLEIG .OR. TEST ) .AND. ( ABSTOL.LE.ZERO ) ) THEN
          CALL DCOPY( N, D, 1, W, 1 )
          CALL DCOPY( N-1, E( 1 ), 1, WORK( 1 ), 1 )
          INDWRK = N + 1

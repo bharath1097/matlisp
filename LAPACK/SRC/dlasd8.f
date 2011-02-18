@@ -1,10 +1,10 @@
       SUBROUTINE DLASD8( ICOMPQ, K, D, Z, VF, VL, DIFL, DIFR, LDDIFR,
      $                   DSIGMA, WORK, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Oak Ridge National Lab, Argonne National Lab,
-*     Courant Institute, NAG Ltd., and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.3.0) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            ICOMPQ, INFO, K, LDDIFR
@@ -43,9 +43,10 @@
 *  D       (output) DOUBLE PRECISION array, dimension ( K )
 *          On output, D contains the updated singular values.
 *
-*  Z       (input) DOUBLE PRECISION array, dimension ( K )
-*          The first K elements of this array contain the components
-*          of the deflation-adjusted updating row vector.
+*  Z       (input/output) DOUBLE PRECISION array, dimension ( K )
+*          On entry, the first K elements of this array contain the
+*          components of the deflation-adjusted updating row vector.
+*          On exit, Z is updated.
 *
 *  VF      (input/output) DOUBLE PRECISION array, dimension ( K )
 *          On entry, VF contains  information passed through DBEDE8.
@@ -74,17 +75,19 @@
 *  LDDIFR  (input) INTEGER
 *          The leading dimension of DIFR, must be at least K.
 *
-*  DSIGMA  (input) DOUBLE PRECISION array, dimension ( K )
-*          The first K elements of this array contain the old roots
-*          of the deflated updating problem.  These are the poles
+*  DSIGMA  (input/output) DOUBLE PRECISION array, dimension ( K )
+*          On entry, the first K elements of this array contain the old
+*          roots of the deflated updating problem.  These are the poles
 *          of the secular equation.
+*          On exit, the elements of DSIGMA may be very slightly altered
+*          in value.
 *
 *  WORK    (workspace) DOUBLE PRECISION array, dimension at least 3 * K
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
-*          > 0:  if INFO = 1, an singular value did not converge
+*          > 0:  if INFO = 1, a singular value did not converge
 *
 *  Further Details
 *  ===============
@@ -192,6 +195,7 @@
 *        If the root finder fails, the computation is terminated.
 *
          IF( INFO.NE.0 ) THEN
+            CALL XERBLA( 'DLASD4', -INFO )
             RETURN
          END IF
          WORK( IWK3I+J ) = WORK( IWK3I+J )*WORK( J )*WORK( IWK2I+J )
@@ -252,3 +256,4 @@
 *     End of DLASD8
 *
       END
+

@@ -3,10 +3,10 @@
      $                   GIVCOL, LDGCOL, PERM, GIVNUM, C, S, RWORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            ICOMPQ, INFO, LDB, LDBX, LDGCOL, LDU, N, NRHS,
@@ -54,10 +54,10 @@
 *  NRHS   (input) INTEGER
 *         The number of columns of B and BX. NRHS must be at least 1.
 *
-*  B      (input) COMPLEX*16 array, dimension ( LDB, NRHS )
+*  B      (input/output) COMPLEX*16 array, dimension ( LDB, NRHS )
 *         On input, B contains the right hand sides of the least
-*         squares problem in rows 1 through M. On output, B contains
-*         the solution X in rows 1 through N.
+*         squares problem in rows 1 through M.
+*         On output, B contains the solution X in rows 1 through N.
 *
 *  LDB    (input) INTEGER
 *         The leading dimension of B in the calling subprogram.
@@ -137,7 +137,7 @@
 *         the right null space of the I-th subproblem.
 *
 *  RWORK  (workspace) DOUBLE PRECISION array, dimension at least
-*         max ( N, (SMLSZ+1)*NRHS*3 ).
+*         MAX( (SMLSZ+1)*NRHS*3, N*(1+NRHS) + 2*NRHS ).
 *
 *  IWORK  (workspace) INTEGER array.
 *         The dimension must be at least 3 * N

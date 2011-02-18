@@ -1,10 +1,10 @@
       SUBROUTINE DGELSD( M, N, NRHS, A, LDA, B, LDB, S, RCOND, RANK,
      $                   WORK, LWORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK driver routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDA, LDB, LWORK, M, N, NRHS, RANK
@@ -91,7 +91,7 @@
 *          The effective rank of A, i.e., the number of singular values
 *          which are greater than RCOND*S(1).
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -113,9 +113,10 @@
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  IWORK   (workspace) INTEGER array, dimension (LIWORK)
-*          LIWORK >= 3 * MINMN * NLVL + 11 * MINMN,
+*  IWORK   (workspace) INTEGER array, dimension (MAX(1,LIWORK))
+*          LIWORK >= max(1, 3 * MINMN * NLVL + 11 * MINMN),
 *          where MINMN = MIN( M,N ).
+*          On exit, if INFO = 0, IWORK(1) returns the minimum LIWORK.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -141,8 +142,8 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            IASCL, IBSCL, IE, IL, ITAU, ITAUP, ITAUQ,
-     $                   LDWORK, MAXMN, MAXWRK, MINMN, MINWRK, MM,
-     $                   MNTHR, NLVL, NWORK, SMLSIZ, WLALSD
+     $                   LDWORK, LIWORK, MAXMN, MAXWRK, MINMN, MINWRK,
+     $                   MM, MNTHR, NLVL, NWORK, SMLSIZ, WLALSD
       DOUBLE PRECISION   ANRM, BIGNUM, BNRM, EPS, SFMIN, SMLNUM
 *     ..
 *     .. External Subroutines ..
@@ -188,12 +189,14 @@
 *     following subroutine, as returned by ILAENV.)
 *
       MINWRK = 1
+      LIWORK = 1
       MINMN = MAX( 1, MINMN )
       NLVL = MAX( INT( LOG( DBLE( MINMN ) / DBLE( SMLSIZ+1 ) ) /
      $       LOG( TWO ) ) + 1, 0 )
 *
       IF( INFO.EQ.0 ) THEN
          MAXWRK = 0
+         LIWORK = 3*MINMN*NLVL + 11*MINMN
          MM = M
          IF( M.GE.N .AND. M.GE.MNTHR ) THEN
 *
@@ -241,6 +244,10 @@
                MAXWRK = MAX( MAXWRK, M+NRHS*
      $                  ILAENV( 1, 'DORMLQ', 'LT', N, NRHS, M, -1 ) )
                MAXWRK = MAX( MAXWRK, M*M+4*M+WLALSD )
+!     XXX: Ensure the Path 2a case below is triggered.  The workspace
+!     calculation should use queries for all routines eventually.
+               MAXWRK = MAX( MAXWRK,
+     $              4*M+M*M+MAX( M, 2*M-4, NRHS, N-3*M ) )
             ELSE
 *
 *              Path 2 - remaining underdetermined cases.
@@ -257,6 +264,8 @@
          END IF
          MINWRK = MIN( MINWRK, MAXWRK )
          WORK( 1 ) = MAXWRK
+         IWORK( 1 ) = LIWORK
+
          IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
             INFO = -12
          END IF
@@ -399,14 +408,14 @@
      $                B, LDB, WORK( NWORK ), LWORK-NWORK+1, INFO )
 *
       ELSE IF( N.GE.MNTHR .AND. LWORK.GE.4*M+M*M+
-     $         MAX( M, 2*M-4, NRHS, N-3*M ) ) THEN
+     $         MAX( M, 2*M-4, NRHS, N-3*M, WLALSD ) ) THEN
 *
 *        Path 2a - underdetermined, with many more columns than rows
 *        and sufficient workspace for an efficient algorithm.
 *
          LDWORK = M
          IF( LWORK.GE.MAX( 4*M+M*LDA+MAX( M, 2*M-4, NRHS, N-3*M ),
-     $       M*LDA+M+M*NRHS ) )LDWORK = LDA
+     $       M*LDA+M+M*NRHS, 4*M+M*LDA+WLALSD ) )LDWORK = LDA
          ITAU = 1
          NWORK = M + 1
 *
@@ -522,6 +531,7 @@
 *
    10 CONTINUE
       WORK( 1 ) = MAXWRK
+      IWORK( 1 ) = LIWORK
       RETURN
 *
 *     End of DGELSD

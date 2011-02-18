@@ -1,19 +1,23 @@
-      SUBROUTINE DLAR1V( N, B1, BN, SIGMA, D, L, LD, LLD, GERSCH, Z,
-     $                   ZTZ, MINGMA, R, ISUPPZ, WORK )
+      SUBROUTINE DLAR1V( N, B1, BN, LAMBDA, D, L, LD, LLD,
+     $           PIVMIN, GAPTOL, Z, WANTNC, NEGCNT, ZTZ, MINGMA,
+     $           R, ISUPPZ, NRMINV, RESID, RQCORR, WORK )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
-      INTEGER            B1, BN, N, R
-      DOUBLE PRECISION   MINGMA, SIGMA, ZTZ
+      LOGICAL            WANTNC
+      INTEGER   B1, BN, N, NEGCNT, R
+      DOUBLE PRECISION   GAPTOL, LAMBDA, MINGMA, NRMINV, PIVMIN, RESID,
+     $                   RQCORR, ZTZ
 *     ..
 *     .. Array Arguments ..
       INTEGER            ISUPPZ( * )
-      DOUBLE PRECISION   D( * ), GERSCH( * ), L( * ), LD( * ), LLD( * ),
-     $                   WORK( * ), Z( * )
+      DOUBLE PRECISION   D( * ), L( * ), LD( * ), LLD( * ),
+     $                  WORK( * )
+      DOUBLE PRECISION Z( * )
 *     ..
 *
 *  Purpose
@@ -21,7 +25,10 @@
 *
 *  DLAR1V computes the (scaled) r-th column of the inverse of
 *  the sumbmatrix in rows B1 through BN of the tridiagonal matrix
-*  L D L^T - sigma I. The following steps accomplish this computation :
+*  L D L^T - sigma I. When sigma is close to an eigenvalue, the
+*  computed vector is an accurate eigenvector. Usually, r corresponds
+*  to the index where the eigenvector is largest in magnitude.
+*  The following steps accomplish this computation :
 *  (a) Stationary qd transform,  L D L^T - sigma I = L(+) D(+) L(+)^T,
 *  (b) Progressive qd transform, L D L^T - sigma I = U(-) D(-) U(-)^T,
 *  (c) Computation of the diagonal elements of the inverse of
@@ -44,9 +51,10 @@
 *  BN       (input) INTEGER
 *           Last index of the submatrix of L D L^T.
 *
-*  SIGMA    (input) DOUBLE PRECISION
-*           The shift. Initially, when R = 0, SIGMA should be a good
-*           approximation to an eigenvalue of L D L^T.
+*  LAMBDA    (input) DOUBLE PRECISION
+*           The shift. In order to compute an accurate eigenvector,
+*           LAMBDA should be a good approximation to an eigenvalue
+*           of L D L^T.
 *
 *  L        (input) DOUBLE PRECISION array, dimension (N-1)
 *           The (n-1) subdiagonal elements of the unit bidiagonal matrix
@@ -61,30 +69,56 @@
 *  LLD      (input) DOUBLE PRECISION array, dimension (N-1)
 *           The n-1 elements L(i)*L(i)*D(i).
 *
-*  GERSCH   (input) DOUBLE PRECISION array, dimension (2*N)
-*           The n Gerschgorin intervals. These are used to restrict
-*           the initial search for R, when R is input as 0.
+*  PIVMIN   (input) DOUBLE PRECISION
+*           The minimum pivot in the Sturm sequence.
 *
-*  Z        (output) DOUBLE PRECISION array, dimension (N)
-*           The (scaled) r-th column of the inverse. Z(R) is returned
-*           to be 1.
+*  GAPTOL   (input) DOUBLE PRECISION
+*           Tolerance that indicates when eigenvector entries are negligible
+*           w.r.t. their contribution to the residual.
+*
+*  Z        (input/output) DOUBLE PRECISION array, dimension (N)
+*           On input, all entries of Z must be set to 0.
+*           On output, Z contains the (scaled) r-th column of the
+*           inverse. The scaling is such that Z(R) equals 1.
+*
+*  WANTNC   (input) LOGICAL
+*           Specifies whether NEGCNT has to be computed.
+*
+*  NEGCNT   (output) INTEGER
+*           If WANTNC is .TRUE. then NEGCNT = the number of pivots < pivmin
+*           in the  matrix factorization L D L^T, and NEGCNT = -1 otherwise.
 *
 *  ZTZ      (output) DOUBLE PRECISION
-*           The square of the norm of Z.
+*           The square of the 2-norm of Z.
 *
 *  MINGMA   (output) DOUBLE PRECISION
 *           The reciprocal of the largest (in magnitude) diagonal
 *           element of the inverse of L D L^T - sigma I.
 *
 *  R        (input/output) INTEGER
-*           Initially, R should be input to be 0 and is then output as
-*           the index where the diagonal element of the inverse is
-*           largest in magnitude. In later iterations, this same value
-*           of R should be input.
+*           The twist index for the twisted factorization used to
+*           compute Z.
+*           On input, 0 <= R <= N. If R is input as 0, R is set to
+*           the index where (L D L^T - sigma I)^{-1} is largest
+*           in magnitude. If 1 <= R <= N, R is unchanged.
+*           On output, R contains the twist index used to compute Z.
+*           Ideally, R designates the position of the maximum entry in the
+*           eigenvector.
 *
 *  ISUPPZ   (output) INTEGER array, dimension (2)
 *           The support of the vector in Z, i.e., the vector Z is
 *           nonzero only in elements ISUPPZ(1) through ISUPPZ( 2 ).
+*
+*  NRMINV   (output) DOUBLE PRECISION
+*           NRMINV = 1/SQRT( ZTZ )
+*
+*  RESID    (output) DOUBLE PRECISION
+*           The residual of the FP vector.
+*           RESID = ABS( MINGMA )/SQRT( ZTZ )
+*
+*  RQCORR   (output) DOUBLE PRECISION
+*           The Rayleigh Quotient correction to LAMBDA.
+*           RQCORR = MINGMA*TMP
 *
 *  WORK     (workspace) DOUBLE PRECISION array, dimension (4*N)
 *
@@ -92,229 +126,242 @@
 *  ===============
 *
 *  Based on contributions by
-*     Inderjit Dhillon, IBM Almaden, USA
+*     Beresford Parlett, University of California, Berkeley, USA
+*     Jim Demmel, University of California, Berkeley, USA
+*     Inderjit Dhillon, University of Texas, Austin, USA
 *     Osni Marques, LBNL/NERSC, USA
+*     Christof Voemel, University of California, Berkeley, USA
 *
 *  =====================================================================
 *
 *     .. Parameters ..
-      INTEGER            BLKSIZ
-      PARAMETER          ( BLKSIZ = 32 )
       DOUBLE PRECISION   ZERO, ONE
       PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
+
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            SAWNAN
-      INTEGER            FROM, I, INDP, INDS, INDUMN, J, R1, R2, TO
+      LOGICAL            SAWNAN1, SAWNAN2
+      INTEGER            I, INDLPL, INDP, INDS, INDUMN, NEG1, NEG2, R1,
+     $                   R2
       DOUBLE PRECISION   DMINUS, DPLUS, EPS, S, TMP
 *     ..
 *     .. External Functions ..
+      LOGICAL DISNAN
       DOUBLE PRECISION   DLAMCH
-      EXTERNAL           DLAMCH
+      EXTERNAL           DISNAN, DLAMCH
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          ABS, MAX, MIN
+      INTRINSIC          ABS
 *     ..
 *     .. Executable Statements ..
 *
       EPS = DLAMCH( 'Precision' )
+
+
       IF( R.EQ.0 ) THEN
-*
-*        Eliminate the top and bottom indices from the possible values
-*        of R where the desired eigenvector is largest in magnitude.
-*
          R1 = B1
-         DO 10 I = B1, BN
-            IF( SIGMA.GE.GERSCH( 2*I-1 ) .OR. SIGMA.LE.GERSCH( 2*I ) )
-     $           THEN
-               R1 = I
-               GO TO 20
-            END IF
-   10    CONTINUE
-   20    CONTINUE
          R2 = BN
-         DO 30 I = BN, B1, -1
-            IF( SIGMA.GE.GERSCH( 2*I-1 ) .OR. SIGMA.LE.GERSCH( 2*I ) )
-     $           THEN
-               R2 = I
-               GO TO 40
-            END IF
-   30    CONTINUE
-   40    CONTINUE
       ELSE
          R1 = R
          R2 = R
       END IF
-*
+
+*     Storage for LPLUS
+      INDLPL = 0
+*     Storage for UMINUS
       INDUMN = N
       INDS = 2*N + 1
       INDP = 3*N + 1
-      SAWNAN = .FALSE.
-*
-*     Compute the stationary transform (using the differential form)
-*     untill the index R2
-*
+
       IF( B1.EQ.1 ) THEN
          WORK( INDS ) = ZERO
       ELSE
-         WORK( INDS ) = LLD( B1-1 )
+         WORK( INDS+B1-1 ) = LLD( B1-1 )
       END IF
-      S = WORK( INDS ) - SIGMA
-      DO 50 I = B1, R2 - 1
+
+*
+*     Compute the stationary transform (using the differential form)
+*     until the index R2.
+*
+      SAWNAN1 = .FALSE.
+      NEG1 = 0
+      S = WORK( INDS+B1-1 ) - LAMBDA
+      DO 50 I = B1, R1 - 1
          DPLUS = D( I ) + S
-         WORK( I ) = LD( I ) / DPLUS
-         WORK( INDS+I ) = S*WORK( I )*L( I )
-         S = WORK( INDS+I ) - SIGMA
-   50 CONTINUE
+         WORK( INDLPL+I ) = LD( I ) / DPLUS
+         IF(DPLUS.LT.ZERO) NEG1 = NEG1 + 1
+         WORK( INDS+I ) = S*WORK( INDLPL+I )*L( I )
+         S = WORK( INDS+I ) - LAMBDA
+ 50   CONTINUE
+      SAWNAN1 = DISNAN( S )
+      IF( SAWNAN1 ) GOTO 60
+      DO 51 I = R1, R2 - 1
+         DPLUS = D( I ) + S
+         WORK( INDLPL+I ) = LD( I ) / DPLUS
+         WORK( INDS+I ) = S*WORK( INDLPL+I )*L( I )
+         S = WORK( INDS+I ) - LAMBDA
+ 51   CONTINUE
+      SAWNAN1 = DISNAN( S )
 *
-      IF( .NOT.( S.GT.ZERO .OR. S.LT.ONE ) ) THEN
-*
-*        Run a slower version of the above loop if a NaN is detected
-*
-         SAWNAN = .TRUE.
-         J = B1 + 1
-   60    CONTINUE
-         IF( WORK( INDS+J ).GT.ZERO .OR. WORK( INDS+J ).LT.ONE ) THEN
-            J = J + 1
-            GO TO 60
-         END IF
-         WORK( INDS+J ) = LLD( J )
-         S = WORK( INDS+J ) - SIGMA
-         DO 70 I = J + 1, R2 - 1
+ 60   CONTINUE
+      IF( SAWNAN1 ) THEN
+*        Runs a slower version of the above loop if a NaN is detected
+         NEG1 = 0
+         S = WORK( INDS+B1-1 ) - LAMBDA
+         DO 70 I = B1, R1 - 1
             DPLUS = D( I ) + S
-            WORK( I ) = LD( I ) / DPLUS
-            IF( WORK( I ).EQ.ZERO ) THEN
-               WORK( INDS+I ) = LLD( I )
-            ELSE
-               WORK( INDS+I ) = S*WORK( I )*L( I )
-            END IF
-            S = WORK( INDS+I ) - SIGMA
-   70    CONTINUE
+            IF(ABS(DPLUS).LT.PIVMIN) DPLUS = -PIVMIN
+            WORK( INDLPL+I ) = LD( I ) / DPLUS
+            IF(DPLUS.LT.ZERO) NEG1 = NEG1 + 1
+            WORK( INDS+I ) = S*WORK( INDLPL+I )*L( I )
+            IF( WORK( INDLPL+I ).EQ.ZERO )
+     $                      WORK( INDS+I ) = LLD( I )
+            S = WORK( INDS+I ) - LAMBDA
+ 70      CONTINUE
+         DO 71 I = R1, R2 - 1
+            DPLUS = D( I ) + S
+            IF(ABS(DPLUS).LT.PIVMIN) DPLUS = -PIVMIN
+            WORK( INDLPL+I ) = LD( I ) / DPLUS
+            WORK( INDS+I ) = S*WORK( INDLPL+I )*L( I )
+            IF( WORK( INDLPL+I ).EQ.ZERO )
+     $                      WORK( INDS+I ) = LLD( I )
+            S = WORK( INDS+I ) - LAMBDA
+ 71      CONTINUE
       END IF
-      WORK( INDP+BN-1 ) = D( BN ) - SIGMA
+*
+*     Compute the progressive transform (using the differential form)
+*     until the index R1
+*
+      SAWNAN2 = .FALSE.
+      NEG2 = 0
+      WORK( INDP+BN-1 ) = D( BN ) - LAMBDA
       DO 80 I = BN - 1, R1, -1
          DMINUS = LLD( I ) + WORK( INDP+I )
          TMP = D( I ) / DMINUS
+         IF(DMINUS.LT.ZERO) NEG2 = NEG2 + 1
          WORK( INDUMN+I ) = L( I )*TMP
-         WORK( INDP+I-1 ) = WORK( INDP+I )*TMP - SIGMA
-   80 CONTINUE
+         WORK( INDP+I-1 ) = WORK( INDP+I )*TMP - LAMBDA
+ 80   CONTINUE
       TMP = WORK( INDP+R1-1 )
-      IF( .NOT.( TMP.GT.ZERO .OR. TMP.LT.ONE ) ) THEN
-*
-*        Run a slower version of the above loop if a NaN is detected
-*
-         SAWNAN = .TRUE.
-         J = BN - 3
-   90    CONTINUE
-         IF( WORK( INDP+J ).GT.ZERO .OR. WORK( INDP+J ).LT.ONE ) THEN
-            J = J - 1
-            GO TO 90
-         END IF
-         WORK( INDP+J ) = D( J+1 ) - SIGMA
-         DO 100 I = J, R1, -1
+      SAWNAN2 = DISNAN( TMP )
+
+      IF( SAWNAN2 ) THEN
+*        Runs a slower version of the above loop if a NaN is detected
+         NEG2 = 0
+         DO 100 I = BN-1, R1, -1
             DMINUS = LLD( I ) + WORK( INDP+I )
+            IF(ABS(DMINUS).LT.PIVMIN) DMINUS = -PIVMIN
             TMP = D( I ) / DMINUS
+            IF(DMINUS.LT.ZERO) NEG2 = NEG2 + 1
             WORK( INDUMN+I ) = L( I )*TMP
-            IF( TMP.EQ.ZERO ) THEN
-               WORK( INDP+I-1 ) = D( I ) - SIGMA
-            ELSE
-               WORK( INDP+I-1 ) = WORK( INDP+I )*TMP - SIGMA
-            END IF
-  100    CONTINUE
+            WORK( INDP+I-1 ) = WORK( INDP+I )*TMP - LAMBDA
+            IF( TMP.EQ.ZERO )
+     $          WORK( INDP+I-1 ) = D( I ) - LAMBDA
+ 100     CONTINUE
       END IF
 *
 *     Find the index (from R1 to R2) of the largest (in magnitude)
 *     diagonal element of the inverse
 *
       MINGMA = WORK( INDS+R1-1 ) + WORK( INDP+R1-1 )
-      IF( MINGMA.EQ.ZERO )
+      IF( MINGMA.LT.ZERO ) NEG1 = NEG1 + 1
+      IF( WANTNC ) THEN
+         NEGCNT = NEG1 + NEG2
+      ELSE
+         NEGCNT = -1
+      ENDIF
+      IF( ABS(MINGMA).EQ.ZERO )
      $   MINGMA = EPS*WORK( INDS+R1-1 )
       R = R1
       DO 110 I = R1, R2 - 1
          TMP = WORK( INDS+I ) + WORK( INDP+I )
          IF( TMP.EQ.ZERO )
      $      TMP = EPS*WORK( INDS+I )
-         IF( ABS( TMP ).LT.ABS( MINGMA ) ) THEN
+         IF( ABS( TMP ).LE.ABS( MINGMA ) ) THEN
             MINGMA = TMP
             R = I + 1
          END IF
-  110 CONTINUE
+ 110  CONTINUE
 *
-*     Compute the (scaled) r-th column of the inverse
+*     Compute the FP vector: solve N^T v = e_r
 *
       ISUPPZ( 1 ) = B1
       ISUPPZ( 2 ) = BN
       Z( R ) = ONE
       ZTZ = ONE
-      IF( .NOT.SAWNAN ) THEN
-         FROM = R - 1
-         TO = MAX( R-BLKSIZ, B1 )
-  120    CONTINUE
-         IF( FROM.GE.B1 ) THEN
-            DO 130 I = FROM, TO, -1
-               Z( I ) = -( WORK( I )*Z( I+1 ) )
-               ZTZ = ZTZ + Z( I )*Z( I )
-  130       CONTINUE
-            IF( ABS( Z( TO ) ).LE.EPS .AND. ABS( Z( TO+1 ) ).LE.EPS )
+*
+*     Compute the FP vector upwards from R
+*
+      IF( .NOT.SAWNAN1 .AND. .NOT.SAWNAN2 ) THEN
+         DO 210 I = R-1, B1, -1
+            Z( I ) = -( WORK( INDLPL+I )*Z( I+1 ) )
+            IF( (ABS(Z(I))+ABS(Z(I+1)))* ABS(LD(I)).LT.GAPTOL )
      $           THEN
-               ISUPPZ( 1 ) = TO + 2
-            ELSE
-               FROM = TO - 1
-               TO = MAX( TO-BLKSIZ, B1 )
-               GO TO 120
-            END IF
-         END IF
-         FROM = R + 1
-         TO = MIN( R+BLKSIZ, BN )
-  140    CONTINUE
-         IF( FROM.LE.BN ) THEN
-            DO 150 I = FROM, TO
-               Z( I ) = -( WORK( INDUMN+I-1 )*Z( I-1 ) )
-               ZTZ = ZTZ + Z( I )*Z( I )
-  150       CONTINUE
-            IF( ABS( Z( TO ) ).LE.EPS .AND. ABS( Z( TO-1 ) ).LE.EPS )
-     $           THEN
-               ISUPPZ( 2 ) = TO - 2
-            ELSE
-               FROM = TO + 1
-               TO = MIN( TO+BLKSIZ, BN )
-               GO TO 140
-            END IF
-         END IF
+               Z( I ) = ZERO
+               ISUPPZ( 1 ) = I + 1
+               GOTO 220
+            ENDIF
+            ZTZ = ZTZ + Z( I )*Z( I )
+ 210     CONTINUE
+ 220     CONTINUE
       ELSE
-         DO 160 I = R - 1, B1, -1
+*        Run slower loop if NaN occurred.
+         DO 230 I = R - 1, B1, -1
             IF( Z( I+1 ).EQ.ZERO ) THEN
                Z( I ) = -( LD( I+1 ) / LD( I ) )*Z( I+2 )
-            ELSE IF( ABS( Z( I+1 ) ).LE.EPS .AND. ABS( Z( I+2 ) ).LE.
-     $               EPS ) THEN
-               ISUPPZ( 1 ) = I + 3
-               GO TO 170
             ELSE
-               Z( I ) = -( WORK( I )*Z( I+1 ) )
+               Z( I ) = -( WORK( INDLPL+I )*Z( I+1 ) )
+            END IF
+            IF( (ABS(Z(I))+ABS(Z(I+1)))* ABS(LD(I)).LT.GAPTOL )
+     $           THEN
+               Z( I ) = ZERO
+               ISUPPZ( 1 ) = I + 1
+               GO TO 240
             END IF
             ZTZ = ZTZ + Z( I )*Z( I )
-  160    CONTINUE
-  170    CONTINUE
-         DO 180 I = R, BN - 1
+ 230     CONTINUE
+ 240     CONTINUE
+      ENDIF
+
+*     Compute the FP vector downwards from R in blocks of size BLKSIZ
+      IF( .NOT.SAWNAN1 .AND. .NOT.SAWNAN2 ) THEN
+         DO 250 I = R, BN-1
+            Z( I+1 ) = -( WORK( INDUMN+I )*Z( I ) )
+            IF( (ABS(Z(I))+ABS(Z(I+1)))* ABS(LD(I)).LT.GAPTOL )
+     $         THEN
+               Z( I+1 ) = ZERO
+               ISUPPZ( 2 ) = I
+               GO TO 260
+            END IF
+            ZTZ = ZTZ + Z( I+1 )*Z( I+1 )
+ 250     CONTINUE
+ 260     CONTINUE
+      ELSE
+*        Run slower loop if NaN occurred.
+         DO 270 I = R, BN - 1
             IF( Z( I ).EQ.ZERO ) THEN
                Z( I+1 ) = -( LD( I-1 ) / LD( I ) )*Z( I-1 )
-            ELSE IF( ABS( Z( I ) ).LE.EPS .AND. ABS( Z( I-1 ) ).LE.EPS )
-     $                THEN
-               ISUPPZ( 2 ) = I - 2
-               GO TO 190
             ELSE
                Z( I+1 ) = -( WORK( INDUMN+I )*Z( I ) )
             END IF
+            IF( (ABS(Z(I))+ABS(Z(I+1)))* ABS(LD(I)).LT.GAPTOL )
+     $           THEN
+               Z( I+1 ) = ZERO
+               ISUPPZ( 2 ) = I
+               GO TO 280
+            END IF
             ZTZ = ZTZ + Z( I+1 )*Z( I+1 )
-  180    CONTINUE
-  190    CONTINUE
+ 270     CONTINUE
+ 280     CONTINUE
       END IF
-      DO 200 I = B1, ISUPPZ( 1 ) - 3
-         Z( I ) = ZERO
-  200 CONTINUE
-      DO 210 I = ISUPPZ( 2 ) + 3, BN
-         Z( I ) = ZERO
-  210 CONTINUE
+*
+*     Compute quantities for convergence test
+*
+      TMP = ONE / ZTZ
+      NRMINV = SQRT( TMP )
+      RESID = ABS( MINGMA )*NRMINV
+      RQCORR = MINGMA*TMP
+*
 *
       RETURN
 *

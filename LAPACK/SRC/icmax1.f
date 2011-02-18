@@ -1,9 +1,9 @@
       INTEGER          FUNCTION ICMAX1( N, CX, INCX )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            INCX, N
@@ -43,7 +43,7 @@
       COMPLEX            ZDUM
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          ABS, REAL
+      INTRINSIC          ABS
 *     ..
 *     .. Statement Functions ..
       REAL               CABS1

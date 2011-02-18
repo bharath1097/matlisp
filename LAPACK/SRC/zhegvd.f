@@ -1,10 +1,10 @@
       SUBROUTINE ZHEGVD( ITYPE, JOBZ, UPLO, N, A, LDA, B, LDB, W, WORK,
      $                   LWORK, RWORK, LRWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -88,7 +88,7 @@
 *  W       (output) DOUBLE PRECISION array, dimension (N)
 *          If INFO = 0, the eigenvalues in ascending order.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -98,11 +98,12 @@
 *          If JOBZ  = 'V' and N > 1, LWORK >= 2*N + N**2.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal sizes of the WORK, RWORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
-*  RWORK   (workspace/output) DOUBLE PRECISION array, dimension (LRWORK)
+*  RWORK   (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LRWORK))
 *          On exit, if INFO = 0, RWORK(1) returns the optimal LRWORK.
 *
 *  LRWORK  (input) INTEGER
@@ -112,11 +113,12 @@
 *          If JOBZ  = 'V' and N > 1, LRWORK >= 1 + 5*N + 2*N**2.
 *
 *          If LRWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the RWORK array,
-*          returns this value as the first entry of the RWORK array, and
-*          no error message related to LRWORK is issued by XERBLA.
+*          routine only calculates the optimal sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -125,13 +127,24 @@
 *          If JOBZ  = 'N' and N > 1, LIWORK >= 1.
 *          If JOBZ  = 'V' and N > 1, LIWORK >= 3 + 5*N.
 *
+*          If LIWORK = -1, then a workspace query is assumed; the
+*          routine only calculates the optimal sizes of the WORK, RWORK
+*          and IWORK arrays, returns these values as the first entries
+*          of the WORK, RWORK and IWORK arrays, and no error message
+*          related to LWORK or LRWORK or LIWORK is issued by XERBLA.
+*
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
 *          < 0:  if INFO = -i, the i-th argument had an illegal value
 *          > 0:  ZPOTRF or ZHEEVD returned an error code:
-*             <= N:  if INFO = i, ZHEEVD failed to converge;
-*                    i off-diagonal elements of an intermediate
-*                    tridiagonal form did not converge to zero;
+*             <= N:  if INFO = i and JOBZ = 'N', then the algorithm
+*                    failed to converge; i off-diagonal elements of an
+*                    intermediate tridiagonal form did not converge to
+*                    zero;
+*                    if INFO = i and JOBZ = 'V', then the algorithm
+*                    failed to compute an eigenvalue while working on
+*                    the submatrix lying in rows and columns INFO/(N+1)
+*                    through mod(INFO,N+1);
 *             > N:   if INFO = N + i, for 1 <= i <= N, then the leading
 *                    minor of order i of B is not positive definite.
 *                    The factorization of B could not be completed and
@@ -143,6 +156,10 @@
 *  Based on contributions by
 *     Mark Fahey, Department of Mathematics, Univ. of Kentucky, USA
 *
+*  Modified so that no backsubstitution is performed if ZHEEVD fails to
+*  converge (NEIG in old code could be greater than N causing out of
+*  bounds reference to A - reported by Ralf Meyer).  Also corrected the
+*  description of INFO and the test on ITYPE. Sven, 16 Feb 05.
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -152,7 +169,7 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY, UPPER, WANTZ
       CHARACTER          TRANS
-      INTEGER            LIOPT, LIWMIN, LOPT, LROPT, LRWMIN, LWMIN, NEIG
+      INTEGER            LIOPT, LIWMIN, LOPT, LROPT, LRWMIN, LWMIN
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -177,24 +194,19 @@
          LWMIN = 1
          LRWMIN = 1
          LIWMIN = 1
-         LOPT = LWMIN
-         LROPT = LRWMIN
-         LIOPT = LIWMIN
+      ELSE IF( WANTZ ) THEN
+         LWMIN = 2*N + N*N
+         LRWMIN = 1 + 5*N + 2*N*N
+         LIWMIN = 3 + 5*N
       ELSE
-         IF( WANTZ ) THEN
-            LWMIN = 2*N + N*N
-            LRWMIN = 1 + 5*N + 2*N*N
-            LIWMIN = 3 + 5*N
-         ELSE
-            LWMIN = N + 1
-            LRWMIN = N
-            LIWMIN = 1
-         END IF
-         LOPT = LWMIN
-         LROPT = LRWMIN
-         LIOPT = LIWMIN
+         LWMIN = N + 1
+         LRWMIN = N
+         LIWMIN = 1
       END IF
-      IF( ITYPE.LT.0 .OR. ITYPE.GT.3 ) THEN
+      LOPT = LWMIN
+      LROPT = LRWMIN
+      LIOPT = LIWMIN
+      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
          INFO = -1
       ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -2
@@ -206,18 +218,20 @@
          INFO = -6
       ELSE IF( LDB.LT.MAX( 1, N ) ) THEN
          INFO = -8
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -11
-      ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -13
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -15
       END IF
 *
       IF( INFO.EQ.0 ) THEN
          WORK( 1 ) = LOPT
          RWORK( 1 ) = LROPT
          IWORK( 1 ) = LIOPT
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         ELSE IF( LRWORK.LT.LRWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -15
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -249,13 +263,10 @@
       LROPT = MAX( DBLE( LROPT ), DBLE( RWORK( 1 ) ) )
       LIOPT = MAX( DBLE( LIOPT ), DBLE( IWORK( 1 ) ) )
 *
-      IF( WANTZ ) THEN
+      IF( WANTZ .AND. INFO.EQ.0 ) THEN
 *
 *        Backtransform eigenvectors to the original problem.
 *
-         NEIG = N
-         IF( INFO.GT.0 )
-     $      NEIG = INFO - 1
          IF( ITYPE.EQ.1 .OR. ITYPE.EQ.2 ) THEN
 *
 *           For A*x=(lambda)*B*x and A*B*x=(lambda)*x;
@@ -267,7 +278,7 @@
                TRANS = 'C'
             END IF
 *
-            CALL ZTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, CONE,
+            CALL ZTRSM( 'Left', UPLO, TRANS, 'Non-unit', N, N, CONE,
      $                  B, LDB, A, LDA )
 *
          ELSE IF( ITYPE.EQ.3 ) THEN
@@ -281,7 +292,7 @@
                TRANS = 'N'
             END IF
 *
-            CALL ZTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, NEIG, CONE,
+            CALL ZTRMM( 'Left', UPLO, TRANS, 'Non-unit', N, N, CONE,
      $                  B, LDB, A, LDA )
          END IF
       END IF

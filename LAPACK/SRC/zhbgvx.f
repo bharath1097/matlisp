@@ -2,10 +2,10 @@
      $                   LDBB, Q, LDQ, VL, VU, IL, IU, ABSTOL, M, W, Z,
      $                   LDZ, WORK, RWORK, IWORK, IFAIL, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE, UPLO
@@ -184,7 +184,7 @@
      $                   CONE = ( 1.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            ALLEIG, INDEIG, UPPER, VALEIG, WANTZ
+      LOGICAL            ALLEIG, INDEIG, TEST, UPPER, VALEIG, WANTZ
       CHARACTER          ORDER, VECT
       INTEGER            I, IINFO, INDD, INDE, INDEE, INDIBL, INDISP,
      $                   INDIWK, INDRWK, INDWRK, ITMP1, J, JJ, NSPLIT
@@ -229,15 +229,26 @@
          INFO = -8
       ELSE IF( LDBB.LT.KB+1 ) THEN
          INFO = -10
-      ELSE IF( VALEIG .AND. N.GT.0 .AND. VU.LE.VL ) THEN
+      ELSE IF( LDQ.LT.1 .OR. ( WANTZ .AND. LDQ.LT.N ) ) THEN
          INFO = -12
-      ELSE IF( INDEIG .AND. IL.LT.1 ) THEN
-         INFO = -13
-      ELSE IF( INDEIG .AND. ( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) ) THEN
-         INFO = -14
-      ELSE IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
-         INFO = -19
+      ELSE
+         IF( VALEIG ) THEN
+            IF( N.GT.0 .AND. VU.LE.VL )
+     $         INFO = -14
+         ELSE IF( INDEIG ) THEN
+            IF( IL.LT.1 .OR. IL.GT.MAX( 1, N ) ) THEN
+               INFO = -15
+            ELSE IF ( IU.LT.MIN( N, IL ) .OR. IU.GT.N ) THEN
+               INFO = -16
+            END IF
+         END IF
       END IF
+      IF( INFO.EQ.0) THEN
+         IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
+            INFO = -21
+         END IF
+      END IF
+*
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZHBGVX', -INFO )
          RETURN
@@ -245,6 +256,7 @@
 *
 *     Quick return if possible
 *
+      M = 0
       IF( N.EQ.0 )
      $   RETURN
 *
@@ -280,8 +292,13 @@
 *     to zero, then call DSTERF or ZSTEQR.  If this fails for some
 *     eigenvalue, then try DSTEBZ.
 *
-      IF( ( ALLEIG .OR. ( INDEIG .AND. IL.EQ.1 .AND. IU.EQ.N ) ) .AND.
-     $    ( ABSTOL.LE.ZERO ) ) THEN
+      TEST = .FALSE.
+      IF( INDEIG ) THEN
+         IF( IL.EQ.1 .AND. IU.EQ.N ) THEN
+            TEST = .TRUE.
+         END IF
+      END IF
+      IF( ( ALLEIG .OR. TEST ) .AND. ( ABSTOL.LE.ZERO ) ) THEN
          CALL DCOPY( N, RWORK( INDD ), 1, W, 1 )
          INDEE = INDRWK + 2*N
          CALL DCOPY( N-1, RWORK( INDE ), 1, RWORK( INDEE ), 1 )

@@ -1,10 +1,10 @@
       SUBROUTINE DLAGV2( A, LDA, B, LDB, ALPHAR, ALPHAI, BETA, CSL, SNL,
      $                   CSR, SNR )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            LDA, LDB
@@ -142,6 +142,7 @@
          SNR = ZERO
          A( 2, 1 ) = ZERO
          B( 2, 1 ) = ZERO
+         WI = ZERO
 *
 *     Check if B is singular
 *
@@ -154,6 +155,7 @@
          A( 2, 1 ) = ZERO
          B( 1, 1 ) = ZERO
          B( 2, 1 ) = ZERO
+         WI = ZERO
 *
       ELSE IF( ABS( B( 2, 2 ) ).LE.ULP ) THEN
          CALL DLARTG( A( 2, 2 ), A( 2, 1 ), CSR, SNR, T )
@@ -165,6 +167,7 @@
          A( 2, 1 ) = ZERO
          B( 2, 1 ) = ZERO
          B( 2, 2 ) = ZERO
+         WI = ZERO
 *
       ELSE
 *
@@ -280,8 +283,6 @@
          BETA( 1 ) = ONE
          BETA( 2 ) = ONE
       END IF
-*
-   10 CONTINUE
 *
       RETURN
 *

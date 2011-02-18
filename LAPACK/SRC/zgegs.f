@@ -2,10 +2,10 @@
      $                  VSL, LDVSL, VSR, LDVSR, WORK, LWORK, RWORK,
      $                  INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBVSL, JOBVSR
@@ -23,83 +23,71 @@
 *
 *  This routine is deprecated and has been replaced by routine ZGGES.
 *
-*  ZGEGS computes for a pair of N-by-N complex nonsymmetric matrices A,
-*  B:  the generalized eigenvalues (alpha, beta), the complex Schur
-*  form (A, B), and optionally left and/or right Schur vectors
-*  (VSL and VSR).
-*
-*  (If only the generalized eigenvalues are needed, use the driver ZGEGV
-*  instead.)
-*
-*  A generalized eigenvalue for a pair of matrices (A,B) is, roughly
-*  speaking, a scalar w or a ratio  alpha/beta = w, such that  A - w*B
-*  is singular.  It is usually represented as the pair (alpha,beta),
-*  as there is a reasonable interpretation for beta=0, and even for
-*  both being zero.  A good beginning reference is the book, "Matrix
-*  Computations", by G. Golub & C. van Loan (Johns Hopkins U. Press)
-*
-*  The (generalized) Schur form of a pair of matrices is the result of
-*  multiplying both matrices on the left by one unitary matrix and
-*  both on the right by another unitary matrix, these two unitary
-*  matrices being chosen so as to bring the pair of matrices into
-*  upper triangular form with the diagonal elements of B being
-*  non-negative real numbers (this is also called complex Schur form.)
-*
-*  The left and right Schur vectors are the columns of VSL and VSR,
-*  respectively, where VSL and VSR are the unitary matrices
-*  which reduce A and B to Schur form:
-*
-*  Schur form of (A,B) = ( (VSL)**H A (VSR), (VSL)**H B (VSR) )
+*  ZGEGS computes the eigenvalues, Schur form, and, optionally, the
+*  left and or/right Schur vectors of a complex matrix pair (A,B).
+*  Given two square matrices A and B, the generalized Schur
+*  factorization has the form
+*  
+*     A = Q*S*Z**H,  B = Q*T*Z**H
+*  
+*  where Q and Z are unitary matrices and S and T are upper triangular.
+*  The columns of Q are the left Schur vectors
+*  and the columns of Z are the right Schur vectors.
+*  
+*  If only the eigenvalues of (A,B) are needed, the driver routine
+*  ZGEGV should be used instead.  See ZGEGV for a description of the
+*  eigenvalues of the generalized nonsymmetric eigenvalue problem
+*  (GNEP).
 *
 *  Arguments
 *  =========
 *
 *  JOBVSL   (input) CHARACTER*1
 *          = 'N':  do not compute the left Schur vectors;
-*          = 'V':  compute the left Schur vectors.
+*          = 'V':  compute the left Schur vectors (returned in VSL).
 *
 *  JOBVSR   (input) CHARACTER*1
 *          = 'N':  do not compute the right Schur vectors;
-*          = 'V':  compute the right Schur vectors.
+*          = 'V':  compute the right Schur vectors (returned in VSR).
 *
 *  N       (input) INTEGER
 *          The order of the matrices A, B, VSL, and VSR.  N >= 0.
 *
 *  A       (input/output) COMPLEX*16 array, dimension (LDA, N)
-*          On entry, the first of the pair of matrices whose generalized
-*          eigenvalues and (optionally) Schur vectors are to be
-*          computed.
-*          On exit, the generalized Schur form of A.
+*          On entry, the matrix A.
+*          On exit, the upper triangular matrix S from the generalized
+*          Schur factorization.
 *
 *  LDA     (input) INTEGER
 *          The leading dimension of A.  LDA >= max(1,N).
 *
 *  B       (input/output) COMPLEX*16 array, dimension (LDB, N)
-*          On entry, the second of the pair of matrices whose
-*          generalized eigenvalues and (optionally) Schur vectors are
-*          to be computed.
-*          On exit, the generalized Schur form of B.
+*          On entry, the matrix B.
+*          On exit, the upper triangular matrix T from the generalized
+*          Schur factorization.
 *
 *  LDB     (input) INTEGER
 *          The leading dimension of B.  LDB >= max(1,N).
 *
 *  ALPHA   (output) COMPLEX*16 array, dimension (N)
-*  BETA    (output) COMPLEX*16 array, dimension (N)
-*          On exit,  ALPHA(j)/BETA(j), j=1,...,N, will be the
-*          generalized eigenvalues.  ALPHA(j), j=1,...,N  and  BETA(j),
-*          j=1,...,N  are the diagonals of the complex Schur form (A,B)
-*          output by ZGEGS.  The  BETA(j) will be non-negative real.
+*          The complex scalars alpha that define the eigenvalues of
+*          GNEP.  ALPHA(j) = S(j,j), the diagonal element of the Schur
+*          form of A.
 *
-*          Note: the quotients ALPHA(j)/BETA(j) may easily over- or
-*          underflow, and BETA(j) may even be zero.  Thus, the user
-*          should avoid naively computing the ratio alpha/beta.
-*          However, ALPHA will be always less than and usually
-*          comparable with norm(A) in magnitude, and BETA always less
-*          than and usually comparable with norm(B).
+*  BETA    (output) COMPLEX*16 array, dimension (N)
+*          The non-negative real scalars beta that define the
+*          eigenvalues of GNEP.  BETA(j) = T(j,j), the diagonal element
+*          of the triangular factor T.
+*
+*          Together, the quantities alpha = ALPHA(j) and beta = BETA(j)
+*          represent the j-th eigenvalue of the matrix pair (A,B), in
+*          one of the forms lambda = alpha/beta or mu = beta/alpha.
+*          Since either lambda or mu may overflow, they should not,
+*          in general, be computed.
+*
 *
 *  VSL     (output) COMPLEX*16 array, dimension (LDVSL,N)
-*          If JOBVSL = 'V', VSL will contain the left Schur vectors.
-*          (See "Purpose", above.)
+*          If JOBVSL = 'V', the matrix of left Schur vectors Q.
 *          Not referenced if JOBVSL = 'N'.
 *
 *  LDVSL   (input) INTEGER
@@ -107,15 +95,14 @@
 *          if JOBVSL = 'V', LDVSL >= N.
 *
 *  VSR     (output) COMPLEX*16 array, dimension (LDVSR,N)
-*          If JOBVSR = 'V', VSR will contain the right Schur vectors.
-*          (See "Purpose", above.)
+*          If JOBVSR = 'V', the matrix of right Schur vectors Z.
 *          Not referenced if JOBVSR = 'N'.
 *
 *  LDVSR   (input) INTEGER
 *          The leading dimension of the matrix VSR. LDVSR >= 1, and
 *          if JOBVSR = 'V', LDVSR >= N.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER

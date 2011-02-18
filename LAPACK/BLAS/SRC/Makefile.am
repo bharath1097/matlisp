@@ -4,11 +4,12 @@ if CMUCL
 AM_FFLAGS = -m32
 endif
 
-libblas_la_LDFLAGS = $(FLIBS_OPTS)
+libblas_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
 libblas_la_LIBADD = $(FLIBS_LIBS)
 
 if !ATLAS
 libblas_la_SOURCES = \
+	scabs1.f \
 	dasum.f \
 	daxpy.f \
 	dcabs1.f \

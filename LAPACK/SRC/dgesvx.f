@@ -2,10 +2,10 @@
      $                   EQUED, R, C, B, LDB, X, LDX, RCOND, FERR, BERR,
      $                   WORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          EQUED, FACT, TRANS
@@ -393,22 +393,20 @@
 *
 *        Return if INFO is non-zero.
 *
-         IF( INFO.NE.0 ) THEN
-            IF( INFO.GT.0 ) THEN
+         IF( INFO.GT.0 ) THEN
 *
-*              Compute the reciprocal pivot growth factor of the
-*              leading rank-deficient INFO columns of A.
+*           Compute the reciprocal pivot growth factor of the
+*           leading rank-deficient INFO columns of A.
 *
-               RPVGRW = DLANTR( 'M', 'U', 'N', INFO, INFO, AF, LDAF,
-     $                  WORK )
-               IF( RPVGRW.EQ.ZERO ) THEN
-                  RPVGRW = ONE
-               ELSE
-                  RPVGRW = DLANGE( 'M', N, INFO, A, LDA, WORK ) / RPVGRW
-               END IF
-               WORK( 1 ) = RPVGRW
-               RCOND = ZERO
+            RPVGRW = DLANTR( 'M', 'U', 'N', INFO, INFO, AF, LDAF,
+     $               WORK )
+            IF( RPVGRW.EQ.ZERO ) THEN
+               RPVGRW = ONE
+            ELSE
+               RPVGRW = DLANGE( 'M', N, INFO, A, LDA, WORK ) / RPVGRW
             END IF
+            WORK( 1 ) = RPVGRW
+            RCOND = ZERO
             RETURN
          END IF
       END IF
@@ -432,11 +430,6 @@
 *     Compute the reciprocal of the condition number of A.
 *
       CALL DGECON( NORM, N, AF, LDAF, ANORM, RCOND, WORK, IWORK, INFO )
-*
-*     Set INFO = N+1 if the matrix is singular to working precision.
-*
-      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
-     $   INFO = N + 1
 *
 *     Compute the solution matrix X.
 *
@@ -475,6 +468,11 @@
       END IF
 *
       WORK( 1 ) = RPVGRW
+*
+*     Set INFO = N+1 if the matrix is singular to working precision.
+*
+      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
+     $   INFO = N + 1
       RETURN
 *
 *     End of DGESVX

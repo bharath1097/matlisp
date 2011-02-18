@@ -1,10 +1,11 @@
       SUBROUTINE ZGESDD( JOBZ, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK,
      $                   LWORK, RWORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK driver routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
+*     8-15-00:  Improve consistency of WS calculations (eca)
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ
@@ -53,11 +54,11 @@
 *                  min(M,N) rows of V**H are returned in the arrays U
 *                  and VT;
 *          = 'O':  If M >= N, the first N columns of U are overwritten
-*                  on the array A and all rows of V**H are returned in
+*                  in the array A and all rows of V**H are returned in
 *                  the array VT;
 *                  otherwise, all columns of U are returned in the
 *                  array U and the first M rows of V**H are overwritten
-*                  in the array VT;
+*                  in the array A;
 *          = 'N':  no columns of U or rows of V**H are computed.
 *
 *  M       (input) INTEGER
@@ -108,7 +109,7 @@
 *          JOBZ = 'A' or JOBZ = 'O' and M >= N, LDVT >= N;
 *          if JOBZ = 'S', LDVT >= min(M,N).
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -119,12 +120,15 @@
 *          if JOBZ = 'S' or 'A',
 *                LWORK >= min(M,N)*min(M,N)+2*min(M,N)+max(M,N).
 *          For good performance, LWORK should generally be larger.
-*          If LWORK < 0 but other input arguments are legal, WORK(1)
-*          returns the optimal LWORK.
 *
-*  RWORK   (workspace) DOUBLE PRECISION array, dimension (LRWORK)
-*          If JOBZ = 'N', LRWORK >= 7*min(M,N).
-*          Otherwise, LRWORK >= 5*min(M,N)*min(M,N) + 5*min(M,N)
+*          If LWORK = -1, a workspace query is assumed.  The optimal
+*          size for the WORK array is calculated and stored in WORK(1),
+*          and no other work except argument checking is performed.
+*
+*  RWORK   (workspace) DOUBLE PRECISION array, dimension (MAX(1,LRWORK))
+*          If JOBZ = 'N', LRWORK >= 5*min(M,N).
+*          Otherwise,
+*          LRWORK >= min(M,N)*max(5*min(M,N)+7,2*max(M,N)+2*min(M,N)+1)
 *
 *  IWORK   (workspace) INTEGER array, dimension (8*min(M,N))
 *
@@ -143,14 +147,16 @@
 *  =====================================================================
 *
 *     .. Parameters ..
+      INTEGER            LQUERV
+      PARAMETER          ( LQUERV = -1 )
       COMPLEX*16         CZERO, CONE
-      PARAMETER          ( CZERO = ( 0.0D0, 0.0D0 ),
-     $                   CONE = ( 1.0D0, 0.0D0 ) )
+      PARAMETER          ( CZERO = ( 0.0D+0, 0.0D+0 ),
+     $                   CONE = ( 1.0D+0, 0.0D+0 ) )
       DOUBLE PRECISION   ZERO, ONE
-      PARAMETER          ( ZERO = 0.0D0, ONE = 1.0D0 )
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            LQUERY, WNTQA, WNTQAS, WNTQN, WNTQO, WNTQS
+      LOGICAL            WNTQA, WNTQAS, WNTQN, WNTQO, WNTQS
       INTEGER            BLK, CHUNK, I, IE, IERR, IL, IR, IRU, IRVT,
      $                   ISCL, ITAU, ITAUP, ITAUQ, IU, IVT, LDWKVT,
      $                   LDWRKL, LDWRKR, LDWRKU, MAXWRK, MINMN, MINWRK,
@@ -162,15 +168,15 @@
       DOUBLE PRECISION   DUM( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DBDSDC, DLASCL, XERBLA, ZGEBRD, ZGELQF, ZGEMM, 
-     $                   ZGEQRF, ZLACP2, ZLACPY, ZLACRM, ZLARCM, ZLASCL, 
+      EXTERNAL           DBDSDC, DLASCL, XERBLA, ZGEBRD, ZGELQF, ZGEMM,
+     $                   ZGEQRF, ZLACP2, ZLACPY, ZLACRM, ZLARCM, ZLASCL,
      $                   ZLASET, ZUNGBR, ZUNGLQ, ZUNGQR, ZUNMBR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       INTEGER            ILAENV
       DOUBLE PRECISION   DLAMCH, ZLANGE
-      EXTERNAL           DLAMCH, ILAENV, LSAME, ZLANGE
+      EXTERNAL           LSAME, ILAENV, DLAMCH, ZLANGE
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          INT, MAX, MIN, SQRT
@@ -190,7 +196,6 @@
       WNTQN = LSAME( JOBZ, 'N' )
       MINWRK = 1
       MAXWRK = 1
-      LQUERY = ( LWORK.EQ.-1 )
 *
       IF( .NOT.( WNTQA .OR. WNTQS .OR. WNTQO .OR. WNTQN ) ) THEN
          INFO = -1
@@ -221,19 +226,21 @@
          IF( M.GE.N ) THEN
 *
 *           There is no complex work space needed for bidiagonal SVD
-*           The real work space needed for bidiagonal SVD is BDSPAC,
-*           BDSPAC = 3*N*N + 4*N
+*           The real work space needed for bidiagonal SVD is BDSPAC
+*           for computing singular values and singular vectors; BDSPAN
+*           for computing singular values only.
+*           BDSPAC = 5*N*N + 7*N
+*           BDSPAN = MAX(7*N+4, 3*N+2+SMLSIZ*(SMLSIZ+8))
 *
             IF( M.GE.MNTHR1 ) THEN
                IF( WNTQN ) THEN
 *
 *                 Path 1 (M much larger than N, JOBZ='N')
 *
-                  WRKBL = N + N*ILAENV( 1, 'ZGEQRF', ' ', M, N, -1,
-     $                    -1 )
-                  WRKBL = MAX( WRKBL, 2*N+2*N*
-     $                    ILAENV( 1, 'ZGEBRD', ' ', N, N, -1, -1 ) )
-                  MAXWRK = WRKBL
+                  MAXWRK = N + N*ILAENV( 1, 'ZGEQRF', ' ', M, N, -1,
+     $                     -1 )
+                  MAXWRK = MAX( MAXWRK, 2*N+2*N*
+     $                     ILAENV( 1, 'ZGEBRD', ' ', N, N, -1, -1 ) )
                   MINWRK = 3*N
                ELSE IF( WNTQO ) THEN
 *
@@ -335,8 +342,11 @@
          ELSE
 *
 *           There is no complex work space needed for bidiagonal SVD
-*           The real work space needed for bidiagonal SVD is BDSPAC,
-*           BDSPAC = 3*M*M + 4*M
+*           The real work space needed for bidiagonal SVD is BDSPAC
+*           for computing singular values and singular vectors; BDSPAN
+*           for computing singular values only.
+*           BDSPAC = 5*M*M + 7*M
+*           BDSPAN = MAX(7*M+4, 3*M+2+SMLSIZ*(SMLSIZ+8))
 *
             IF( N.GE.MNTHR1 ) THEN
                IF( WNTQN ) THEN
@@ -447,24 +457,22 @@
             END IF
          END IF
          MAXWRK = MAX( MAXWRK, MINWRK )
+      END IF
+      IF( INFO.EQ.0 ) THEN
          WORK( 1 ) = MAXWRK
+         IF( LWORK.LT.MINWRK .AND. LWORK.NE.LQUERV )
+     $      INFO = -13
       END IF
 *
-      IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
-         INFO = -13
-      END IF
+*     Quick returns
+*
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZGESDD', -INFO )
          RETURN
-      ELSE IF( LQUERY ) THEN
-         RETURN
       END IF
-*
-*     Quick return if possible
-*
+      IF( LWORK.EQ.LQUERV )
+     $   RETURN
       IF( M.EQ.0 .OR. N.EQ.0 ) THEN
-         IF( LWORK.GE.1 )
-     $      WORK( 1 ) = ONE
          RETURN
       END IF
 *
@@ -529,7 +537,7 @@
 *
 *              Perform bidiagonal SVD, compute singular values only
 *              (CWorkspace: 0)
-*              (RWorkspace: need BDSPAC)
+*              (RWorkspace: need BDSPAN)
 *
                CALL DBDSDC( 'U', 'N', N, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -844,7 +852,7 @@
 *
 *              Compute singular values only
 *              (Cworkspace: 0)
-*              (Rworkspace: need BDSPAC)
+*              (Rworkspace: need BDSPAN)
 *
                CALL DBDSDC( 'U', 'N', N, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -1040,7 +1048,7 @@
 *
 *              Compute singular values only
 *              (Cworkspace: 0)
-*              (Rworkspace: need BDSPAC)
+*              (Rworkspace: need BDSPAN)
 *
                CALL DBDSDC( 'U', 'N', N, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -1176,8 +1184,10 @@
 *              Set the right corner of U to identity matrix
 *
                CALL ZLASET( 'F', M, M, CZERO, CZERO, U, LDU )
-               CALL ZLASET( 'F', M-N, M-N, CZERO, CONE, U( N+1, N+1 ),
-     $                      LDU )
+               IF( M.GT.N ) THEN
+                  CALL ZLASET( 'F', M-N, M-N, CZERO, CONE,
+     $                         U( N+1, N+1 ), LDU )
+               END IF
 *
 *              Copy real matrix RWORK(IRU) to complex matrix U
 *              Overwrite U by left singular vectors of A
@@ -1205,8 +1215,8 @@
       ELSE
 *
 *        A has more columns than rows. If A has sufficiently more
-*        columns than rows, first reduce using the LQ decomposition
-*        (if sufficient workspace available)
+*        columns than rows, first reduce using the LQ decomposition (if
+*        sufficient workspace available)
 *
          IF( N.GE.MNTHR1 ) THEN
 *
@@ -1245,7 +1255,7 @@
 *
 *              Perform bidiagonal SVD, compute singular values only
 *              (CWorkspace: 0)
-*              (RWorkspace: need BDSPAC)
+*              (RWorkspace: need BDSPAN)
 *
                CALL DBDSDC( 'U', 'N', M, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -1567,7 +1577,7 @@
 *
 *              Compute singular values only
 *              (Cworkspace: 0)
-*              (Rworkspace: need BDSPAC)
+*              (Rworkspace: need BDSPAN)
 *
                CALL DBDSDC( 'L', 'N', M, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -1763,7 +1773,7 @@
 *
 *              Compute singular values only
 *              (Cworkspace: 0)
-*              (Rworkspace: need BDSPAC)
+*              (Rworkspace: need BDSPAN)
 *
                CALL DBDSDC( 'L', 'N', M, S, RWORK( IE ), DUM, 1, DUM, 1,
      $                      DUM, IDUM, RWORK( NRWORK ), IWORK, INFO )
@@ -1907,17 +1917,15 @@
      $                      WORK( ITAUQ ), U, LDU, WORK( NWORK ),
      $                      LWORK-NWORK+1, IERR )
 *
-*              Set the right corner of VT to identity matrix
+*              Set all of VT to identity matrix
 *
-               CALL ZLASET( 'F', N-M, N-M, CZERO, CONE, VT( M+1, M+1 ),
-     $                      LDVT )
+               CALL ZLASET( 'F', N, N, CZERO, CONE, VT, LDVT )
 *
 *              Copy real matrix RWORK(IRVT) to complex matrix VT
 *              Overwrite VT by right singular vectors of A
 *              (CWorkspace: need 2*M+N, prefer 2*M+N*NB)
 *              (RWorkspace: M*M)
 *
-               CALL ZLASET( 'F', N, N, CZERO, CZERO, VT, LDVT )
                CALL ZLACP2( 'F', M, M, RWORK( IRVT ), M, VT, LDVT )
                CALL ZUNMBR( 'P', 'R', 'C', N, N, M, A, LDA,
      $                      WORK( ITAUP ), VT, LDVT, WORK( NWORK ),
@@ -1934,9 +1942,15 @@
          IF( ANRM.GT.BIGNUM )
      $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN, 1, S, MINMN,
      $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.GT.BIGNUM )
+     $      CALL DLASCL( 'G', 0, 0, BIGNUM, ANRM, MINMN-1, 1,
+     $                   RWORK( IE ), MINMN, IERR )
          IF( ANRM.LT.SMLNUM )
      $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN, 1, S, MINMN,
      $                   IERR )
+         IF( INFO.NE.0 .AND. ANRM.LT.SMLNUM )
+     $      CALL DLASCL( 'G', 0, 0, SMLNUM, ANRM, MINMN-1, 1,
+     $                   RWORK( IE ), MINMN, IERR )
       END IF
 *
 *     Return optimal workspace in WORK(1)

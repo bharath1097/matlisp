@@ -1,9 +1,9 @@
       SUBROUTINE DSTEV( JOBZ, N, D, E, Z, LDZ, WORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ
@@ -34,10 +34,9 @@
 *          A.
 *          On exit, if INFO = 0, the eigenvalues in ascending order.
 *
-*  E       (input/output) DOUBLE PRECISION array, dimension (N)
+*  E       (input/output) DOUBLE PRECISION array, dimension (N-1)
 *          On entry, the (n-1) subdiagonal elements of the tridiagonal
-*          matrix A, stored in elements 1 to N-1 of E; E(N) need not
-*          be set, but is used by the routine.
+*          matrix A, stored in elements 1 to N-1 of E.
 *          On exit, the contents of E are destroyed.
 *
 *  Z       (output) DOUBLE PRECISION array, dimension (LDZ, N)

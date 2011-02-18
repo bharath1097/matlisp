@@ -1,10 +1,12 @@
       SUBROUTINE DGTCON( NORM, N, DL, D, DU, DU2, IPIV, ANORM, RCOND,
      $                   WORK, IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          NORM
@@ -86,12 +88,15 @@
       INTEGER            I, KASE, KASE1
       DOUBLE PRECISION   AINVNM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       EXTERNAL           LSAME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DGTTRS, DLACON, XERBLA
+      EXTERNAL           DGTTRS, DLACN2, XERBLA
 *     ..
 *     .. Executable Statements ..
 *
@@ -136,7 +141,7 @@
       END IF
       KASE = 0
    20 CONTINUE
-      CALL DLACON( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE )
+      CALL DLACN2( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE, ISAVE )
       IF( KASE.NE.0 ) THEN
          IF( KASE.EQ.KASE1 ) THEN
 *

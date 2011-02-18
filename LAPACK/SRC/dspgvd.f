@@ -1,10 +1,10 @@
       SUBROUTINE DSPGVD( ITYPE, JOBZ, UPLO, N, AP, BP, W, Z, LDZ, WORK,
      $                   LWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, UPLO
@@ -87,8 +87,8 @@
 *          The leading dimension of the array Z.  LDZ >= 1, and if
 *          JOBZ = 'V', LDZ >= max(1,N).
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
-*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the required LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK.
@@ -97,12 +97,13 @@
 *          If JOBZ = 'V' and N > 1, LWORK >= 1 + 6*N + 2*N**2.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the required sizes of the WORK and IWORK
+*          arrays, returns these values as the first entries of the WORK
+*          and IWORK arrays, and no error message related to LWORK or
+*          LIWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
-*          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
+*          On exit, if INFO = 0, IWORK(1) returns the required LIWORK.
 *
 *  LIWORK  (input) INTEGER
 *          The dimension of the array IWORK.
@@ -110,9 +111,10 @@
 *          If JOBZ  = 'V' and N > 1, LIWORK >= 3 + 5*N.
 *
 *          If LIWORK = -1, then a workspace query is assumed; the
-*          routine only calculates the optimal size of the IWORK array,
-*          returns this value as the first entry of the IWORK array, and
-*          no error message related to LIWORK is issued by XERBLA.
+*          routine only calculates the required sizes of the WORK and
+*          IWORK arrays, returns these values as the first entries of
+*          the WORK and IWORK arrays, and no error message related to
+*          LWORK or LIWORK is issued by XERBLA.
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -141,7 +143,7 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY, UPPER, WANTZ
       CHARACTER          TRANS
-      INTEGER            J, LGN, LIWMIN, LWMIN, NEIG
+      INTEGER            J, LIWMIN, LWMIN, NEIG
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -151,7 +153,7 @@
       EXTERNAL           DPPTRF, DSPEVD, DSPGST, DTPMV, DTPSV, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, INT, LOG, MAX
+      INTRINSIC          DBLE, MAX
 *     ..
 *     .. Executable Statements ..
 *
@@ -162,26 +164,7 @@
       LQUERY = ( LWORK.EQ.-1 .OR. LIWORK.EQ.-1 )
 *
       INFO = 0
-      IF( N.LE.1 ) THEN
-         LGN = 0
-         LIWMIN = 1
-         LWMIN = 1
-      ELSE
-         LGN = INT( LOG( DBLE( N ) ) / LOG( TWO ) )
-         IF( 2**LGN.LT.N )
-     $      LGN = LGN + 1
-         IF( 2**LGN.LT.N )
-     $      LGN = LGN + 1
-         IF( WANTZ ) THEN
-            LIWMIN = 3 + 5*N
-            LWMIN = 1 + 5*N + 2*N*LGN + 2*N**2
-         ELSE
-            LIWMIN = 1
-            LWMIN = 2*N
-         END IF
-      END IF
-*
-      IF( ITYPE.LT.0 .OR. ITYPE.GT.3 ) THEN
+      IF( ITYPE.LT.1 .OR. ITYPE.GT.3 ) THEN
          INFO = -1
       ELSE IF( .NOT.( WANTZ .OR. LSAME( JOBZ, 'N' ) ) ) THEN
          INFO = -2
@@ -189,17 +172,31 @@
          INFO = -3
       ELSE IF( N.LT.0 ) THEN
          INFO = -4
-      ELSE IF( LDZ.LT.MAX( 1, N ) ) THEN
+      ELSE IF( LDZ.LT.1 .OR. ( WANTZ .AND. LDZ.LT.N ) ) THEN
          INFO = -9
-      ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -11
-      ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
-         INFO = -13
       END IF
 *
       IF( INFO.EQ.0 ) THEN
+         IF( N.LE.1 ) THEN
+            LIWMIN = 1
+            LWMIN = 1
+         ELSE
+            IF( WANTZ ) THEN
+               LIWMIN = 3 + 5*N
+               LWMIN = 1 + 6*N + 2*N**2
+            ELSE
+               LIWMIN = 1
+               LWMIN = 2*N
+            END IF
+         END IF
          WORK( 1 ) = LWMIN
          IWORK( 1 ) = LIWMIN
+*
+         IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -11
+         ELSE IF( LIWORK.LT.LIWMIN .AND. .NOT.LQUERY ) THEN
+            INFO = -13
+         END IF
       END IF
 *
       IF( INFO.NE.0 ) THEN

@@ -1,10 +1,10 @@
       SUBROUTINE DLAEXC( WANTQ, N, T, LDT, Q, LDQ, J1, N1, N2, WORK,
      $                   INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     February 29, 1992
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       LOGICAL            WANTQ
@@ -41,7 +41,7 @@
 *          canonical form.
 *          On exit, the updated matrix T, again in Schur canonical form.
 *
-*  LDT     (input)  INTEGER
+*  LDT     (input) INTEGER
 *          The leading dimension of the array T. LDT >= max(1,N).
 *
 *  Q       (input/output) DOUBLE PRECISION array, dimension (LDQ,N)

@@ -1,21 +1,34 @@
-      subroutine zrotg(ca,cb,c,s)
-      double complex ca,cb,s
-      double precision c
-      double precision norm,scale
-      double complex alpha
-      if (cdabs(ca) .ne. 0.0d0) go to 10
-         c = 0.0d0
-         s = (1.0d0,0.0d0)
-         ca = cb
-         go to 20
-   10 continue
-         scale = cdabs(ca) + cdabs(cb)
-         norm = scale*dsqrt((cdabs(ca/dcmplx(scale,0.0d0)))**2 +
-     *                      (cdabs(cb/dcmplx(scale,0.0d0)))**2)
-         alpha = ca /cdabs(ca)
-         c = cdabs(ca) / norm
-         s = alpha * dconjg(cb) / norm
-         ca = alpha * norm
-   20 continue
-      return
-      end
+      SUBROUTINE ZROTG(CA,CB,C,S)
+*     .. Scalar Arguments ..
+      DOUBLE COMPLEX CA,CB,S
+      DOUBLE PRECISION C
+*     ..
+*
+*  Purpose
+*  =======
+*
+*     determines a double complex Givens rotation.
+*
+*     .. Local Scalars ..
+      DOUBLE COMPLEX ALPHA
+      DOUBLE PRECISION NORM,SCALE
+*     ..
+*     .. Intrinsic Functions ..
+      INTRINSIC CDABS,DCMPLX,DCONJG,DSQRT
+*     ..
+      IF (CDABS(CA).NE.0.0d0) GO TO 10
+      C = 0.0d0
+      S = (1.0d0,0.0d0)
+      CA = CB
+      GO TO 20
+   10 CONTINUE
+      SCALE = CDABS(CA) + CDABS(CB)
+      NORM = SCALE*DSQRT((CDABS(CA/DCMPLX(SCALE,0.0d0)))**2+
+     +       (CDABS(CB/DCMPLX(SCALE,0.0d0)))**2)
+      ALPHA = CA/CDABS(CA)
+      C = CDABS(CA)/NORM
+      S = ALPHA*DCONJG(CB)/NORM
+      CA = ALPHA*NORM
+   20 CONTINUE
+      RETURN
+      END

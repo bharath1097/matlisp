@@ -1,10 +1,10 @@
       SUBROUTINE ZGELSD( M, N, NRHS, A, LDA, B, LDB, S, RCOND, RANK,
      $                   WORK, LWORK, RWORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDA, LDB, LWORK, M, N, NRHS, RANK
@@ -74,7 +74,7 @@
 *          On exit, B is overwritten by the N-by-NRHS solution matrix X.
 *          If m >= n and RANK = n, the residual sum-of-squares for
 *          the solution in the i-th column is given by the sum of
-*          squares of elements n+1:m in that column.
+*          squares of the modulus of elements n+1:m in that column.
 *
 *  LDB     (input) INTEGER
 *          The leading dimension of the array B.  LDB >= max(1,M,N).
@@ -92,39 +92,44 @@
 *          The effective rank of A, i.e., the number of singular values
 *          which are greater than RCOND*S(1).
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK must be at least 1.
 *          The exact minimum amount of workspace needed depends on M,
 *          N and NRHS. As long as LWORK is at least
-*              2 * N + N * NRHS
+*              2*N + N*NRHS
 *          if M is greater than or equal to N or
-*              2 * M + M * NRHS
+*              2*M + M*NRHS
 *          if M is less than N, the code will execute correctly.
 *          For good performance, LWORK should generally be larger.
 *
 *          If LWORK = -1, then a workspace query is assumed; the routine
-*          only calculates the optimal size of the WORK array, returns
-*          this value as the first entry of the WORK array, and no error
-*          message related to LWORK is issued by XERBLA.
+*          only calculates the optimal size of the array WORK and the
+*          minimum sizes of the arrays RWORK and IWORK, and returns
+*          these values as the first entries of the WORK, RWORK and
+*          IWORK arrays, and no error message related to LWORK is issued
+*          by XERBLA.
 *
-*  RWORK   (workspace) DOUBLE PRECISION array, dimension at least
+*  RWORK   (workspace) DOUBLE PRECISION array, dimension (MAX(1,LRWORK))
+*          LRWORK >=
 *             10*N + 2*N*SMLSIZ + 8*N*NLVL + 3*SMLSIZ*NRHS +
-*             (SMLSIZ+1)**2
+*             MAX( (SMLSIZ+1)**2, N*(1+NRHS) + 2*NRHS )
 *          if M is greater than or equal to N or
 *             10*M + 2*M*SMLSIZ + 8*M*NLVL + 3*SMLSIZ*NRHS +
-*             (SMLSIZ+1)**2
+*             MAX( (SMLSIZ+1)**2, N*(1+NRHS) + 2*NRHS )
 *          if M is less than N, the code will execute correctly.
 *          SMLSIZ is returned by ILAENV and is equal to the maximum
 *          size of the subproblems at the bottom of the computation
 *          tree (usually about 25), and
 *             NLVL = MAX( 0, INT( LOG_2( MIN( M,N )/(SMLSIZ+1) ) ) + 1 )
+*          On exit, if INFO = 0, RWORK(1) returns the minimum LRWORK.
 *
-*  IWORK   (workspace) INTEGER array, dimension (LIWORK)
-*          LIWORK >= 3 * MINMN * NLVL + 11 * MINMN,
+*  IWORK   (workspace) INTEGER array, dimension (MAX(1,LIWORK))
+*          LIWORK >= max(1, 3*MINMN*NLVL + 11*MINMN),
 *          where MINMN = MIN( M,N ).
+*          On exit, if INFO = 0, IWORK(1) returns the minimum LIWORK.
 *
 *  INFO    (output) INTEGER
 *          = 0: successful exit
@@ -144,16 +149,16 @@
 *  =====================================================================
 *
 *     .. Parameters ..
-      DOUBLE PRECISION   ZERO, ONE
-      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
+      DOUBLE PRECISION   ZERO, ONE, TWO
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0, TWO = 2.0D+0 )
       COMPLEX*16         CZERO
       PARAMETER          ( CZERO = ( 0.0D+0, 0.0D+0 ) )
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            IASCL, IBSCL, IE, IL, ITAU, ITAUP, ITAUQ,
-     $                   LDWORK, MAXMN, MAXWRK, MINMN, MINWRK, MM,
-     $                   MNTHR, NRWORK, NWORK, SMLSIZ
+     $                   LDWORK, LIWORK, LRWORK, MAXMN, MAXWRK, MINMN,
+     $                   MINWRK, MM, MNTHR, NLVL, NRWORK, NWORK, SMLSIZ
       DOUBLE PRECISION   ANRM, BIGNUM, BNRM, EPS, SFMIN, SMLNUM
 *     ..
 *     .. External Subroutines ..
@@ -167,7 +172,7 @@
       EXTERNAL           ILAENV, DLAMCH, ZLANGE
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DCMPLX, MAX, MIN
+      INTRINSIC          INT, LOG, MAX, MIN, DBLE
 *     ..
 *     .. Executable Statements ..
 *
@@ -176,7 +181,6 @@
       INFO = 0
       MINMN = MIN( M, N )
       MAXMN = MAX( M, N )
-      MNTHR = ILAENV( 6, 'ZGELSD', ' ', M, N, NRHS, -1 )
       LQUERY = ( LWORK.EQ.-1 )
       IF( M.LT.0 ) THEN
          INFO = -1
@@ -190,8 +194,6 @@
          INFO = -7
       END IF
 *
-      SMLSIZ = ILAENV( 9, 'ZGELSD', ' ', 0, 0, 0, 0 )
-*
 *     Compute workspace.
 *     (Note: Comments in the code beginning "Workspace:" describe the
 *     minimal amount of workspace needed at that point in the code,
@@ -199,68 +201,90 @@
 *     NB refers to the optimal block size for the immediately
 *     following subroutine, as returned by ILAENV.)
 *
-      MINWRK = 1
       IF( INFO.EQ.0 ) THEN
-         MAXWRK = 0
-         MM = M
-         IF( M.GE.N .AND. M.GE.MNTHR ) THEN
+         MINWRK = 1
+         MAXWRK = 1
+         LIWORK = 1
+         LRWORK = 1
+         IF( MINMN.GT.0 ) THEN
+            SMLSIZ = ILAENV( 9, 'ZGELSD', ' ', 0, 0, 0, 0 )
+            MNTHR = ILAENV( 6, 'ZGELSD', ' ', M, N, NRHS, -1 )
+            NLVL = MAX( INT( LOG( DBLE( MINMN ) / DBLE( SMLSIZ + 1 ) ) /
+     $                  LOG( TWO ) ) + 1, 0 )
+            LIWORK = 3*MINMN*NLVL + 11*MINMN
+            MM = M
+            IF( M.GE.N .AND. M.GE.MNTHR ) THEN
 *
-*           Path 1a - overdetermined, with many more rows than columns.
+*              Path 1a - overdetermined, with many more rows than
+*                        columns.
 *
-            MM = N
-            MAXWRK = MAX( MAXWRK, N*ILAENV( 1, 'ZGEQRF', ' ', M, N, -1,
-     $               -1 ) )
-            MAXWRK = MAX( MAXWRK, NRHS*ILAENV( 1, 'ZUNMQR', 'LC', M,
-     $               NRHS, N, -1 ) )
-         END IF
-         IF( M.GE.N ) THEN
-*
-*           Path 1 - overdetermined or exactly determined.
-*
-            MAXWRK = MAX( MAXWRK, 2*N+( MM+N )*
-     $               ILAENV( 1, 'ZGEBRD', ' ', MM, N, -1, -1 ) )
-            MAXWRK = MAX( MAXWRK, 2*N+NRHS*
-     $               ILAENV( 1, 'ZUNMBR', 'QLC', MM, NRHS, N, -1 ) )
-            MAXWRK = MAX( MAXWRK, 2*N+( N-1 )*
-     $               ILAENV( 1, 'ZUNMBR', 'PLN', N, NRHS, N, -1 ) )
-            MAXWRK = MAX( MAXWRK, 2*N+N*NRHS )
-            MINWRK = MAX( 2*N+MM, 2*N+N*NRHS )
-         END IF
-         IF( N.GT.M ) THEN
-            IF( N.GE.MNTHR ) THEN
-*
-*              Path 2a - underdetermined, with many more columns
-*              than rows.
-*
-               MAXWRK = M + M*ILAENV( 1, 'ZGELQF', ' ', M, N, -1, -1 )
-               MAXWRK = MAX( MAXWRK, M*M+4*M+2*M*
-     $                  ILAENV( 1, 'ZGEBRD', ' ', M, M, -1, -1 ) )
-               MAXWRK = MAX( MAXWRK, M*M+4*M+NRHS*
-     $                  ILAENV( 1, 'ZUNMBR', 'QLC', M, NRHS, M, -1 ) )
-               MAXWRK = MAX( MAXWRK, M*M+4*M+( M-1 )*
-     $                  ILAENV( 1, 'ZUNMLQ', 'LC', N, NRHS, M, -1 ) )
-               IF( NRHS.GT.1 ) THEN
-                  MAXWRK = MAX( MAXWRK, M*M+M+M*NRHS )
-               ELSE
-                  MAXWRK = MAX( MAXWRK, M*M+2*M )
-               END IF
-               MAXWRK = MAX( MAXWRK, M*M+4*M+M*NRHS )
-            ELSE
-*
-*              Path 2 - underdetermined.
-*
-               MAXWRK = 2*M + ( N+M )*ILAENV( 1, 'ZGEBRD', ' ', M, N,
-     $                  -1, -1 )
-               MAXWRK = MAX( MAXWRK, 2*M+NRHS*
-     $                  ILAENV( 1, 'ZUNMBR', 'QLC', M, NRHS, M, -1 ) )
-               MAXWRK = MAX( MAXWRK, 2*M+M*
-     $                  ILAENV( 1, 'ZUNMBR', 'PLN', N, NRHS, M, -1 ) )
-               MAXWRK = MAX( MAXWRK, 2*M+M*NRHS )
+               MM = N
+               MAXWRK = MAX( MAXWRK, N*ILAENV( 1, 'ZGEQRF', ' ', M, N,
+     $                       -1, -1 ) )
+               MAXWRK = MAX( MAXWRK, NRHS*ILAENV( 1, 'ZUNMQR', 'LC', M,
+     $                       NRHS, N, -1 ) )
             END IF
-            MINWRK = MAX( 2*M+N, 2*M+M*NRHS )
+            IF( M.GE.N ) THEN
+*
+*              Path 1 - overdetermined or exactly determined.
+*
+               LRWORK = 10*N + 2*N*SMLSIZ + 8*N*NLVL + 3*SMLSIZ*NRHS +
+     $                  MAX( (SMLSIZ+1)**2, N*(1+NRHS) + 2*NRHS )
+               MAXWRK = MAX( MAXWRK, 2*N + ( MM + N )*ILAENV( 1,
+     $                       'ZGEBRD', ' ', MM, N, -1, -1 ) )
+               MAXWRK = MAX( MAXWRK, 2*N + NRHS*ILAENV( 1, 'ZUNMBR',
+     $                       'QLC', MM, NRHS, N, -1 ) )
+               MAXWRK = MAX( MAXWRK, 2*N + ( N - 1 )*ILAENV( 1,
+     $                       'ZUNMBR', 'PLN', N, NRHS, N, -1 ) )
+               MAXWRK = MAX( MAXWRK, 2*N + N*NRHS )
+               MINWRK = MAX( 2*N + MM, 2*N + N*NRHS )
+            END IF
+            IF( N.GT.M ) THEN
+               LRWORK = 10*M + 2*M*SMLSIZ + 8*M*NLVL + 3*SMLSIZ*NRHS +
+     $                  MAX( (SMLSIZ+1)**2, N*(1+NRHS) + 2*NRHS )
+               IF( N.GE.MNTHR ) THEN
+*
+*                 Path 2a - underdetermined, with many more columns
+*                           than rows.
+*
+                  MAXWRK = M + M*ILAENV( 1, 'ZGELQF', ' ', M, N, -1,
+     $                     -1 )
+                  MAXWRK = MAX( MAXWRK, M*M + 4*M + 2*M*ILAENV( 1,
+     $                          'ZGEBRD', ' ', M, M, -1, -1 ) )
+                  MAXWRK = MAX( MAXWRK, M*M + 4*M + NRHS*ILAENV( 1,
+     $                          'ZUNMBR', 'QLC', M, NRHS, M, -1 ) )
+                  MAXWRK = MAX( MAXWRK, M*M + 4*M + ( M - 1 )*ILAENV( 1,
+     $                          'ZUNMLQ', 'LC', N, NRHS, M, -1 ) )
+                  IF( NRHS.GT.1 ) THEN
+                     MAXWRK = MAX( MAXWRK, M*M + M + M*NRHS )
+                  ELSE
+                     MAXWRK = MAX( MAXWRK, M*M + 2*M )
+                  END IF
+                  MAXWRK = MAX( MAXWRK, M*M + 4*M + M*NRHS )
+!     XXX: Ensure the Path 2a case below is triggered.  The workspace
+!     calculation should use queries for all routines eventually.
+                  MAXWRK = MAX( MAXWRK,
+     $                 4*M+M*M+MAX( M, 2*M-4, NRHS, N-3*M ) )
+               ELSE
+*
+*                 Path 2 - underdetermined.
+*
+                  MAXWRK = 2*M + ( N + M )*ILAENV( 1, 'ZGEBRD', ' ', M,
+     $                     N, -1, -1 )
+                  MAXWRK = MAX( MAXWRK, 2*M + NRHS*ILAENV( 1, 'ZUNMBR',
+     $                          'QLC', M, NRHS, M, -1 ) )
+                  MAXWRK = MAX( MAXWRK, 2*M + M*ILAENV( 1, 'ZUNMBR',
+     $                          'PLN', N, NRHS, M, -1 ) )
+                  MAXWRK = MAX( MAXWRK, 2*M + M*NRHS )
+               END IF
+               MINWRK = MAX( 2*M + N, 2*M + M*NRHS )
+            END IF
          END IF
          MINWRK = MIN( MINWRK, MAXWRK )
-         WORK( 1 ) = DCMPLX( MAXWRK, 0 )
+         WORK( 1 ) = MAXWRK
+         IWORK( 1 ) = LIWORK
+         RWORK( 1 ) = LRWORK
+*
          IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
             INFO = -12
          END IF
@@ -270,7 +294,7 @@
          CALL XERBLA( 'ZGELSD', -INFO )
          RETURN
       ELSE IF( LQUERY ) THEN
-         GO TO 10
+         RETURN
       END IF
 *
 *     Quick return if possible.
@@ -537,7 +561,9 @@
       END IF
 *
    10 CONTINUE
-      WORK( 1 ) = DCMPLX( MAXWRK, 0 )
+      WORK( 1 ) = MAXWRK
+      IWORK( 1 ) = LIWORK
+      RWORK( 1 ) = LRWORK
       RETURN
 *
 *     End of ZGELSD

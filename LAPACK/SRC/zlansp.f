@@ -1,9 +1,9 @@
       DOUBLE PRECISION FUNCTION ZLANSP( NORM, UPLO, N, AP, WORK )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1992
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          NORM, UPLO
@@ -37,7 +37,7 @@
 *  where  norm1  denotes the  one norm of a matrix (maximum column sum),
 *  normI  denotes the  infinity norm  of a matrix  (maximum row sum) and
 *  normF  denotes the  Frobenius norm of a matrix (square root of sum of
-*  squares).  Note that  max(abs(A(i,j)))  is not a  matrix norm.
+*  squares).  Note that  max(abs(A(i,j)))  is not a consistent matrix norm.
 *
 *  Arguments
 *  =========
@@ -63,7 +63,7 @@
 *          if UPLO = 'U', AP(i + (j-1)*j/2) = A(i,j) for 1<=i<=j;
 *          if UPLO = 'L', AP(i + (j-1)*(2n-j)/2) = A(i,j) for j<=i<=n.
 *
-*  WORK    (workspace) DOUBLE PRECISION array, dimension (LWORK),
+*  WORK    (workspace) DOUBLE PRECISION array, dimension (MAX(1,LWORK)),
 *          where LWORK >= N when NORM = 'I' or '1' or 'O'; otherwise,
 *          WORK is not referenced.
 *

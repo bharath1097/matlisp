@@ -1,10 +1,12 @@
       SUBROUTINE DSPCON( UPLO, N, AP, IPIV, ANORM, RCOND, WORK, IWORK,
      $                   INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 31, 1993
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -57,7 +59,7 @@
 *
 *  WORK    (workspace) DOUBLE PRECISION array, dimension (2*N)
 *
-*  IWORK    (workspace) INTEGER array, dimension (N)
+*  IWORK   (workspace) INTEGER array, dimension (N)
 *
 *  INFO    (output) INTEGER
 *          = 0:  successful exit
@@ -74,12 +76,15 @@
       INTEGER            I, IP, KASE
       DOUBLE PRECISION   AINVNM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Functions ..
       LOGICAL            LSAME
       EXTERNAL           LSAME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLACON, DSPTRS, XERBLA
+      EXTERNAL           DLACN2, DSPTRS, XERBLA
 *     ..
 *     .. Executable Statements ..
 *
@@ -137,7 +142,7 @@
 *
       KASE = 0
    30 CONTINUE
-      CALL DLACON( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE )
+      CALL DLACN2( N, WORK( N+1 ), WORK, IWORK, AINVNM, KASE, ISAVE )
       IF( KASE.NE.0 ) THEN
 *
 *        Multiply by inv(L*D*L') or inv(U*D*U').

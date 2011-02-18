@@ -1,10 +1,10 @@
       SUBROUTINE DPTSVX( FACT, N, NRHS, D, E, DF, EF, B, LDB, X, LDX,
      $                   RCOND, FERR, BERR, WORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          FACT
@@ -197,9 +197,8 @@
 *
 *        Return if INFO is non-zero.
 *
-         IF( INFO.NE.0 ) THEN
-            IF( INFO.GT.0 )
-     $         RCOND = ZERO
+         IF( INFO.GT.0 )THEN
+            RCOND = ZERO
             RETURN
          END IF
       END IF
@@ -212,11 +211,6 @@
 *
       CALL DPTCON( N, DF, EF, ANORM, RCOND, WORK, INFO )
 *
-*     Set INFO = N+1 if the matrix is singular to working precision.
-*
-      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
-     $   INFO = N + 1
-*
 *     Compute the solution vectors X.
 *
       CALL DLACPY( 'Full', N, NRHS, B, LDB, X, LDX )
@@ -227,6 +221,11 @@
 *
       CALL DPTRFS( N, NRHS, D, E, DF, EF, B, LDB, X, LDX, FERR, BERR,
      $             WORK, INFO )
+*
+*     Set INFO = N+1 if the matrix is singular to working precision.
+*
+      IF( RCOND.LT.DLAMCH( 'Epsilon' ) )
+     $   INFO = N + 1
 *
       RETURN
 *

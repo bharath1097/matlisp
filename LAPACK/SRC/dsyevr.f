@@ -2,10 +2,10 @@
      $                   ABSTOL, M, W, Z, LDZ, ISUPPZ, WORK, LWORK,
      $                   IWORK, LIWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 20, 2000
+*  -- LAPACK driver routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ, RANGE, UPLO
@@ -21,42 +21,59 @@
 *  =======
 *
 *  DSYEVR computes selected eigenvalues and, optionally, eigenvectors
-*  of a real symmetric matrix T.  Eigenvalues and eigenvectors can be
+*  of a real symmetric matrix A.  Eigenvalues and eigenvectors can be
 *  selected by specifying either a range of values or a range of
 *  indices for the desired eigenvalues.
 *
-*  Whenever possible, DSYEVR calls DSTEGR to compute the
-*  eigenspectrum using Relatively Robust Representations.  DSTEGR
+*  DSYEVR first reduces the matrix A to tridiagonal form T with a call
+*  to DSYTRD.  Then, whenever possible, DSYEVR calls DSTEMR to compute
+*  the eigenspectrum using Relatively Robust Representations.  DSTEMR
 *  computes eigenvalues by the dqds algorithm, while orthogonal
 *  eigenvectors are computed from various "good" L D L^T representations
 *  (also known as Relatively Robust Representations). Gram-Schmidt
 *  orthogonalization is avoided as far as possible. More specifically,
-*  the various steps of the algorithm are as follows. For the i-th
-*  unreduced block of T,
-*     (a) Compute T - sigma_i = L_i D_i L_i^T, such that L_i D_i L_i^T
-*          is a relatively robust representation,
-*     (b) Compute the eigenvalues, lambda_j, of L_i D_i L_i^T to high
-*         relative accuracy by the dqds algorithm,
-*     (c) If there is a cluster of close eigenvalues, "choose" sigma_i
-*         close to the cluster, and go to step (a),
-*     (d) Given the approximate eigenvalue lambda_j of L_i D_i L_i^T,
-*         compute the corresponding eigenvector by forming a
-*         rank-revealing twisted factorization.
+*  the various steps of the algorithm are as follows.
+*
+*  For each unreduced block (submatrix) of T,
+*     (a) Compute T - sigma I  = L D L^T, so that L and D
+*         define all the wanted eigenvalues to high relative accuracy.
+*         This means that small relative changes in the entries of D and L
+*         cause only small relative changes in the eigenvalues and
+*         eigenvectors. The standard (unfactored) representation of the
+*         tridiagonal matrix T does not have this property in general.
+*     (b) Compute the eigenvalues to suitable accuracy.
+*         If the eigenvectors are desired, the algorithm attains full
+*         accuracy of the computed eigenvalues only right before
+*         the corresponding vectors have to be computed, see steps c) and d).
+*     (c) For each cluster of close eigenvalues, select a new
+*         shift close to the cluster, find a new factorization, and refine
+*         the shifted eigenvalues to suitable accuracy.
+*     (d) For each eigenvalue with a large enough relative separation compute
+*         the corresponding eigenvector by forming a rank revealing twisted
+*         factorization. Go back to (c) for any clusters that remain.
+*
 *  The desired accuracy of the output can be specified by the input
 *  parameter ABSTOL.
 *
-*  For more details, see "A new O(n^2) algorithm for the symmetric
-*  tridiagonal eigenvalue/eigenvector problem", by Inderjit Dhillon,
-*  Computer Science Division Technical Report No. UCB//CSD-97-971,
-*  UC Berkeley, May 1997.
+*  For more details, see DSTEMR's documentation and:
+*  - Inderjit S. Dhillon and Beresford N. Parlett: "Multiple representations
+*    to compute orthogonal eigenvectors of symmetric tridiagonal matrices,"
+*    Linear Algebra and its Applications, 387(1), pp. 1-28, August 2004.
+*  - Inderjit Dhillon and Beresford Parlett: "Orthogonal Eigenvectors and
+*    Relative Gaps," SIAM Journal on Matrix Analysis and Applications, Vol. 25,
+*    2004.  Also LAPACK Working Note 154.
+*  - Inderjit Dhillon: "A new O(n^2) algorithm for the symmetric
+*    tridiagonal eigenvalue/eigenvector problem",
+*    Computer Science Division Technical Report No. UCB/CSD-97-971,
+*    UC Berkeley, May 1997.
 *
 *
-*  Note 1 : DSYEVR calls DSTEGR when the full spectrum is requested
+*  Note 1 : DSYEVR calls DSTEMR when the full spectrum is requested
 *  on machines which conform to the ieee-754 floating point standard.
 *  DSYEVR calls DSTEBZ and SSTEIN on non-ieee machines and
 *  when partial spectrum requests are made.
 *
-*  Normal execution of DSTEGR may create NaNs and infinities and
+*  Normal execution of DSTEMR may create NaNs and infinities and
 *  hence may abort due to a floating point exception in environments
 *  which do not handle NaNs and infinities in the ieee standard default
 *  manner.
@@ -131,7 +148,7 @@
 *          eigenvalues are computed to high relative accuracy when
 *          possible in future releases.  The current code does not
 *          make any guarantees about high relative accuracy, but
-*          furutre releases will. See J. Barlow and J. Demmel,
+*          future releases will. See J. Barlow and J. Demmel,
 *          "Computing Accurate Eigensystems of Scaled Diagonally
 *          Dominant Matrices", LAPACK Working Note #7, for a discussion
 *          of which matrices define their eigenvalues to high relative
@@ -154,6 +171,7 @@
 *          Note: the user must ensure that at least max(1,M) columns are
 *          supplied in the array Z; if RANGE = 'V', the exact value of M
 *          is not known in advance and an upper bound must be used.
+*          Supplying N columns is always safe.
 *
 *  LDZ     (input) INTEGER
 *          The leading dimension of the array Z.  LDZ >= 1, and if
@@ -166,7 +184,7 @@
 *          ISUPPZ( 2*i ).
 ********** Implemented only for RANGE = 'A' or 'I' and IU - IL = N - 1
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -180,7 +198,7 @@
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
 *          On exit, if INFO = 0, IWORK(1) returns the optimal LWORK.
 *
 *  LIWORK  (input) INTEGER
@@ -204,19 +222,22 @@
 *     Osni Marques, LBNL/NERSC, USA
 *     Ken Stanley, Computer Science Division, University of
 *       California at Berkeley, USA
+*     Jason Riedy, Computer Science Division, University of
+*       California at Berkeley, USA
 *
 * =====================================================================
 *
 *     .. Parameters ..
-      DOUBLE PRECISION   ZERO, ONE
-      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0 )
+      DOUBLE PRECISION   ZERO, ONE, TWO
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0, TWO = 2.0D+0 )
 *     ..
 *     .. Local Scalars ..
-      LOGICAL            ALLEIG, INDEIG, LOWER, LQUERY, VALEIG, WANTZ
+      LOGICAL            ALLEIG, INDEIG, LOWER, LQUERY, VALEIG, WANTZ,
+     $                   TRYRAC
       CHARACTER          ORDER
       INTEGER            I, IEEEOK, IINFO, IMAX, INDD, INDDD, INDE,
      $                   INDEE, INDIBL, INDIFL, INDISP, INDIWO, INDTAU,
-     $                   INDWK, INDWKN, ISCALE, ITMP1, J, JJ, LIWMIN,
+     $                   INDWK, INDWKN, ISCALE, J, JJ, LIWMIN,
      $                   LLWORK, LLWRKN, LWKOPT, LWMIN, NB, NSPLIT
       DOUBLE PRECISION   ABSTLL, ANRM, BIGNUM, EPS, RMAX, RMIN, SAFMIN,
      $                   SIGMA, SMLNUM, TMP1, VLL, VUU
@@ -228,7 +249,7 @@
       EXTERNAL           LSAME, ILAENV, DLAMCH, DLANSY
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DCOPY, DORMTR, DSCAL, DSTEBZ, DSTEGR, DSTEIN,
+      EXTERNAL           DCOPY, DORMTR, DSCAL, DSTEBZ, DSTEMR, DSTEIN,
      $                   DSTERF, DSWAP, DSYTRD, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -285,8 +306,8 @@
       END IF
 *
       IF( INFO.EQ.0 ) THEN
-         NB = ILAENV( 1, 'ZHETRD', UPLO, N, -1, -1, -1 )
-         NB = MAX( NB, ILAENV( 1, 'ZUNMTR', UPLO, N, -1, -1, -1 ) )
+         NB = ILAENV( 1, 'DSYTRD', UPLO, N, -1, -1, -1 )
+         NB = MAX( NB, ILAENV( 1, 'DORMTR', UPLO, N, -1, -1, -1 ) )
          LWKOPT = MAX( ( NB+1 )*N, LWMIN )
          WORK( 1 ) = LWKOPT
          IWORK( 1 ) = LIWMIN
@@ -318,8 +339,11 @@
                W( 1 ) = A( 1, 1 )
             END IF
          END IF
-         IF( WANTZ )
-     $      Z( 1, 1 ) = ONE
+         IF( WANTZ ) THEN
+            Z( 1, 1 ) = ONE
+            ISUPPZ( 1 ) = 1
+            ISUPPZ( 2 ) = 1
+         END IF
          RETURN
       END IF
 *
@@ -336,8 +360,10 @@
 *
       ISCALE = 0
       ABSTLL = ABSTOL
-      VLL = VL
-      VUU = VU
+      IF (VALEIG) THEN
+         VLL = VL
+         VUU = VU
+      END IF
       ANRM = DLANSY( 'M', UPLO, N, A, LDA, WORK )
       IF( ANRM.GT.ZERO .AND. ANRM.LT.RMIN ) THEN
          ISCALE = 1
@@ -363,22 +389,51 @@
             VUU = VU*SIGMA
          END IF
       END IF
+
+*     Initialize indices into workspaces.  Note: The IWORK indices are
+*     used only if DSTERF or DSTEMR fail.
+
+*     WORK(INDTAU:INDTAU+N-1) stores the scalar factors of the
+*     elementary reflectors used in DSYTRD.
+      INDTAU = 1
+*     WORK(INDD:INDD+N-1) stores the tridiagonal's diagonal entries.
+      INDD = INDTAU + N
+*     WORK(INDE:INDE+N-1) stores the off-diagonal entries of the
+*     tridiagonal matrix from DSYTRD.
+      INDE = INDD + N
+*     WORK(INDDD:INDDD+N-1) is a copy of the diagonal entries over
+*     -written by DSTEMR (the DSTERF path copies the diagonal to W).
+      INDDD = INDE + N
+*     WORK(INDEE:INDEE+N-1) is a copy of the off-diagonal entries over
+*     -written while computing the eigenvalues in DSTERF and DSTEMR.
+      INDEE = INDDD + N
+*     INDWK is the starting offset of the left-over workspace, and
+*     LLWORK is the remaining workspace size.
+      INDWK = INDEE + N
+      LLWORK = LWORK - INDWK + 1
+
+*     IWORK(INDIBL:INDIBL+M-1) corresponds to IBLOCK in DSTEBZ and
+*     stores the block indices of each of the M<=N eigenvalues.
+      INDIBL = 1
+*     IWORK(INDISP:INDISP+NSPLIT-1) corresponds to ISPLIT in DSTEBZ and
+*     stores the starting and finishing indices of each block.
+      INDISP = INDIBL + N
+*     IWORK(INDIFL:INDIFL+N-1) stores the indices of eigenvectors
+*     that corresponding to eigenvectors that fail to converge in
+*     DSTEIN.  This information is discarded; if any fail, the driver
+*     returns INFO > 0.
+      INDIFL = INDISP + N
+*     INDIWO is the offset of the remaining integer workspace.
+      INDIWO = INDISP + N
+
 *
 *     Call DSYTRD to reduce symmetric matrix to tridiagonal form.
 *
-      INDTAU = 1
-      INDE = INDTAU + N
-      INDD = INDE + N
-      INDEE = INDD + N
-      INDDD = INDEE + N
-      INDIFL = INDDD + N
-      INDWK = INDIFL + N
-      LLWORK = LWORK - INDWK + 1
       CALL DSYTRD( UPLO, N, A, LDA, WORK( INDD ), WORK( INDE ),
      $             WORK( INDTAU ), WORK( INDWK ), LLWORK, IINFO )
 *
 *     If all eigenvalues are desired
-*     then call DSTERF or SSTEGR and DORMTR.
+*     then call DSTERF or DSTEMR and DORMTR.
 *
       IF( ( ALLEIG .OR. ( INDEIG .AND. IL.EQ.1 .AND. IU.EQ.N ) ) .AND.
      $    IEEEOK.EQ.1 ) THEN
@@ -390,9 +445,15 @@
             CALL DCOPY( N-1, WORK( INDE ), 1, WORK( INDEE ), 1 )
             CALL DCOPY( N, WORK( INDD ), 1, WORK( INDDD ), 1 )
 *
-            CALL DSTEGR( JOBZ, 'A', N, WORK( INDDD ), WORK( INDEE ),
-     $                   VL, VU, IL, IU, ABSTOL, M, W, Z, LDZ, ISUPPZ,
-     $                   WORK( INDWK ), LWORK, IWORK, LIWORK, INFO )
+            IF (ABSTOL .LE. TWO*N*EPS) THEN
+               TRYRAC = .TRUE.
+            ELSE
+               TRYRAC = .FALSE.
+            END IF
+            CALL DSTEMR( JOBZ, 'A', N, WORK( INDDD ), WORK( INDEE ),
+     $                   VL, VU, IL, IU, M, W, Z, LDZ, N, ISUPPZ,
+     $                   TRYRAC, WORK( INDWK ), LWORK, IWORK, LIWORK,
+     $                   INFO )
 *
 *
 *
@@ -410,24 +471,23 @@
 *
 *
          IF( INFO.EQ.0 ) THEN
+*           Everything worked.  Skip DSTEBZ/DSTEIN.  IWORK(:) are
+*           undefined.
             M = N
             GO TO 30
          END IF
          INFO = 0
       END IF
 *
-*     Otherwise, call DSTEBZ and, if eigenvectors are desired, SSTEIN.
-*     Also call DSTEBZ and SSTEIN if SSTEGR fails.
+*     Otherwise, call DSTEBZ and, if eigenvectors are desired, DSTEIN.
+*     Also call DSTEBZ and DSTEIN if DSTEMR fails.
 *
       IF( WANTZ ) THEN
          ORDER = 'B'
       ELSE
          ORDER = 'E'
       END IF
-      INDIFL = 1
-      INDIBL = INDIFL + N
-      INDISP = INDIBL + N
-      INDIWO = INDISP + N
+
       CALL DSTEBZ( RANGE, ORDER, N, VLL, VUU, IL, IU, ABSTLL,
      $             WORK( INDD ), WORK( INDE ), M, NSPLIT, W,
      $             IWORK( INDIBL ), IWORK( INDISP ), WORK( INDWK ),
@@ -450,6 +510,7 @@
 *
 *     If matrix was scaled, then rescale eigenvalues appropriately.
 *
+*  Jump here if DSTEMR/DSTEIN succeeded.
    30 CONTINUE
       IF( ISCALE.EQ.1 ) THEN
          IF( INFO.EQ.0 ) THEN
@@ -461,7 +522,9 @@
       END IF
 *
 *     If eigenvalues are not in order, then sort them, along with
-*     eigenvectors.
+*     eigenvectors.  Note: We do not sort the IFAIL portion of IWORK.
+*     It may not be initialized (if DSTEMR/DSTEIN succeeded), and we do
+*     not return this detailed information to the user.
 *
       IF( WANTZ ) THEN
          DO 50 J = 1, M - 1
@@ -475,11 +538,8 @@
    40       CONTINUE
 *
             IF( I.NE.0 ) THEN
-               ITMP1 = IWORK( INDIBL+I-1 )
                W( I ) = W( J )
-               IWORK( INDIBL+I-1 ) = IWORK( INDIBL+J-1 )
                W( J ) = TMP1
-               IWORK( INDIBL+J-1 ) = ITMP1
                CALL DSWAP( N, Z( 1, I ), 1, Z( 1, J ), 1 )
             END IF
    50    CONTINUE

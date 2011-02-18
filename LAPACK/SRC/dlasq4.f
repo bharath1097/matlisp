@@ -1,14 +1,19 @@
       SUBROUTINE DLASQ4( I0, N0, Z, PP, N0IN, DMIN, DMIN1, DMIN2, DN,
-     $                   DN1, DN2, TAU, TTYPE )
+     $                   DN1, DN2, TAU, TTYPE, G )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK routine (version 3.2)                                    --
+*
+*  -- Contributed by Osni Marques of the Lawrence Berkeley National   --
+*  -- Laboratory and Beresford Parlett of the Univ. of California at  --
+*  -- Berkeley                                                        --
+*  -- November 2008                                                   --
+*
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
 *
 *     .. Scalar Arguments ..
       INTEGER            I0, N0, N0IN, PP, TTYPE
-      DOUBLE PRECISION   DMIN, DMIN1, DMIN2, DN, DN1, DN2, TAU
+      DOUBLE PRECISION   DMIN, DMIN1, DMIN2, DN, DN1, DN2, G, TAU
 *     ..
 *     .. Array Arguments ..
       DOUBLE PRECISION   Z( * )
@@ -17,7 +22,7 @@
 *  Purpose
 *  =======
 *
-*  DLASQ4 computes an approximation TAU to the smallest eigenvalue 
+*  DLASQ4 computes an approximation TAU to the smallest eigenvalue
 *  using values of d from the previous transform.
 *
 *  I0    (input) INTEGER
@@ -59,6 +64,10 @@
 *  TTYPE (output) INTEGER
 *        Shift type.
 *
+*  G     (input/output) REAL
+*        G is passed as an argument in order to save its value between
+*        calls to DLASQ4.
+*
 *  Further Details
 *  ===============
 *  CNST1 = 9/16
@@ -76,16 +85,10 @@
 *     ..
 *     .. Local Scalars ..
       INTEGER            I4, NN, NP
-      DOUBLE PRECISION   A2, B1, B2, G, GAM, GAP1, GAP2, S
+      DOUBLE PRECISION   A2, B1, B2, GAM, GAP1, GAP2, S
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX, MIN, SQRT
-*     ..
-*     .. Save statement ..
-      SAVE               G
-*     ..
-*     .. Data statement ..
-      DATA               G / ZERO /
 *     ..
 *     .. Executable Statements ..
 *

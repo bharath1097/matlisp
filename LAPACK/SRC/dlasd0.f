@@ -1,10 +1,10 @@
       SUBROUTINE DLASD0( N, SQRE, D, E, U, LDU, VT, LDVT, SMLSIZ, IWORK,
      $                   WORK, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDU, LDVT, N, SMLSIZ, SQRE
@@ -64,16 +64,16 @@
 *         On entry, maximum size of the subproblems at the
 *         bottom of the computation tree.
 *
-*  IWORK  INTEGER work array.
+*  IWORK  (workspace) INTEGER work array.
 *         Dimension must be at least (8 * N)
 *
-*  WORK   DOUBLE PRECISION work array.
+*  WORK   (workspace) DOUBLE PRECISION work array.
 *         Dimension must be at least (3 * M**2 + 2 * M)
 *
 *  INFO   (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
-*          > 0:  if INFO = 1, an singular value did not converge
+*          > 0:  if INFO = 1, a singular value did not converge
 *
 *  Further Details
 *  ===============

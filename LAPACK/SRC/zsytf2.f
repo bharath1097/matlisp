@@ -1,9 +1,9 @@
       SUBROUTINE ZSYTF2( UPLO, N, A, LDA, IPIV, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -76,6 +76,14 @@
 *  Further Details
 *  ===============
 *
+*  09-29-06 - patch from
+*    Bobby Cheng, MathWorks
+*
+*    Replace l.209 and l.377
+*         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+*    by
+*         IF( (MAX( ABSAKK, COLMAX ).EQ.ZERO) .OR. DISNAN(ABSAKK) ) THEN
+*
 *  1-96 - Based on modifications by J. Lewis, Boeing Computer Services
 *         Company
 *
@@ -130,9 +138,9 @@
       COMPLEX*16         D11, D12, D21, D22, R1, T, WK, WKM1, WKP1, Z
 *     ..
 *     .. External Functions ..
-      LOGICAL            LSAME
+      LOGICAL            DISNAN, LSAME
       INTEGER            IZAMAX
-      EXTERNAL           LSAME, IZAMAX
+      EXTERNAL           DISNAN, LSAME, IZAMAX
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           XERBLA, ZSCAL, ZSWAP, ZSYR
@@ -199,9 +207,9 @@
             COLMAX = ZERO
          END IF
 *
-         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO .OR. DISNAN(ABSAKK) ) THEN
 *
-*           Column K is zero: set INFO and continue
+*           Column K is zero or contains a NaN: set INFO and continue
 *
             IF( INFO.EQ.0 )
      $         INFO = K
@@ -367,9 +375,9 @@
             COLMAX = ZERO
          END IF
 *
-         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO ) THEN
+         IF( MAX( ABSAKK, COLMAX ).EQ.ZERO .OR. DISNAN(ABSAKK) ) THEN
 *
-*           Column K is zero: set INFO and continue
+*           Column K is zero or contains a NaN: set INFO and continue
 *
             IF( INFO.EQ.0 )
      $         INFO = K

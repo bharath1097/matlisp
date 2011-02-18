@@ -1,10 +1,10 @@
       SUBROUTINE DGESDD( JOBZ, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK,
      $                   LWORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK driver routine (version 3.2.1)                                  --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     March 2009
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBZ
@@ -59,7 +59,7 @@
 *                  the array VT;
 *                  otherwise, all columns of U are returned in the
 *                  array U and the first M rows of V**T are overwritten
-*                  in the array VT;
+*                  in the array A;
 *          = 'N':  no columns of U or rows of V**T are computed.
 *
 *  M       (input) INTEGER
@@ -110,21 +110,21 @@
 *          JOBZ = 'A' or JOBZ = 'O' and M >= N, LDVT >= N;
 *          if JOBZ = 'S', LDVT >= min(M,N).
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK;
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK >= 1.
 *          If JOBZ = 'N',
-*            LWORK >= 3*min(M,N) + max(max(M,N),6*min(M,N)).
+*            LWORK >= 3*min(M,N) + max(max(M,N),7*min(M,N)).
 *          If JOBZ = 'O',
-*            LWORK >= 3*min(M,N)*min(M,N) + 
+*            LWORK >= 3*min(M,N) + 
 *                     max(max(M,N),5*min(M,N)*min(M,N)+4*min(M,N)).
 *          If JOBZ = 'S' or 'A'
-*            LWORK >= 3*min(M,N)*min(M,N) +
+*            LWORK >= 3*min(M,N) +
 *                     max(max(M,N),4*min(M,N)*min(M,N)+4*min(M,N)).
 *          For good performance, LWORK should generally be larger.
-*          If LWORK < 0 but other input arguments are legal, WORK(1)
+*          If LWORK = -1 but other input arguments are legal, WORK(1)
 *          returns the optimal LWORK.
 *
 *  IWORK   (workspace) INTEGER array, dimension (8*min(M,N))
@@ -171,7 +171,7 @@
       EXTERNAL           DLAMCH, DLANGE, ILAENV, LSAME
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, INT, MAX, MIN, SQRT
+      INTRINSIC          INT, MAX, MIN, SQRT
 *     ..
 *     .. Executable Statements ..
 *
@@ -179,14 +179,11 @@
 *
       INFO = 0
       MINMN = MIN( M, N )
-      MNTHR = INT( MINMN*11.0D0 / 6.0D0 )
       WNTQA = LSAME( JOBZ, 'A' )
       WNTQS = LSAME( JOBZ, 'S' )
       WNTQAS = WNTQA .OR. WNTQS
       WNTQO = LSAME( JOBZ, 'O' )
       WNTQN = LSAME( JOBZ, 'N' )
-      MINWRK = 1
-      MAXWRK = 1
       LQUERY = ( LWORK.EQ.-1 )
 *
       IF( .NOT.( WNTQA .OR. WNTQS .OR. WNTQO .OR. WNTQN ) ) THEN
@@ -213,11 +210,14 @@
 *       NB refers to the optimal block size for the immediately
 *       following subroutine, as returned by ILAENV.)
 *
-      IF( INFO.EQ.0 .AND. M.GT.0 .AND. N.GT.0 ) THEN
-         IF( M.GE.N ) THEN
+      IF( INFO.EQ.0 ) THEN
+         MINWRK = 1
+         MAXWRK = 1
+         IF( M.GE.N .AND. MINMN.GT.0 ) THEN
 *
 *           Compute space needed for DBDSDC
 *
+            MNTHR = INT( MINMN*11.0D0 / 6.0D0 )
             IF( WNTQN ) THEN
                BDSPAC = 7*N
             ELSE
@@ -316,10 +316,11 @@
                   MINWRK = 3*N + MAX( M, BDSPAC )
                END IF
             END IF
-         ELSE
+         ELSE IF( MINMN.GT.0 ) THEN
 *
 *           Compute space needed for DBDSDC
 *
+            MNTHR = INT( MINMN*11.0D0 / 6.0D0 )
             IF( WNTQN ) THEN
                BDSPAC = 7*M
             ELSE
@@ -419,12 +420,14 @@
                END IF
             END IF
          END IF
+         MAXWRK = MAX( MAXWRK, MINWRK )
          WORK( 1 ) = MAXWRK
+*
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -12
+         END IF
       END IF
 *
-      IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
-         INFO = -12
-      END IF
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'DGESDD', -INFO )
          RETURN
@@ -435,8 +438,6 @@
 *     Quick return if possible
 *
       IF( M.EQ.0 .OR. N.EQ.0 ) THEN
-         IF( LWORK.GE.1 )
-     $      WORK( 1 ) = ONE
          RETURN
       END IF
 *
@@ -869,8 +870,10 @@
 *
 *              Set the right corner of U to identity matrix
 *
-               CALL DLASET( 'F', M-N, M-N, ZERO, ONE, U( N+1, N+1 ),
-     $                      LDU )
+               IF( M.GT.N ) THEN
+                  CALL DLASET( 'F', M-N, M-N, ZERO, ONE, U( N+1, N+1 ),
+     $                         LDU )
+               END IF
 *
 *              Overwrite U by left singular vectors of A and VT
 *              by right singular vectors of A
@@ -1294,8 +1297,10 @@
 *
 *              Set the right corner of VT to identity matrix
 *
-               CALL DLASET( 'F', N-M, N-M, ZERO, ONE, VT( M+1, M+1 ),
-     $                      LDVT )
+               IF( N.GT.M ) THEN
+                  CALL DLASET( 'F', N-M, N-M, ZERO, ONE, VT( M+1, M+1 ),
+     $                         LDVT )
+               END IF
 *
 *              Overwrite U by left singular vectors of A and VT
 *              by right singular vectors of A
@@ -1326,7 +1331,7 @@
 *
 *     Return optimal workspace in WORK(1)
 *
-      WORK( 1 ) = DBLE( MAXWRK )
+      WORK( 1 ) = MAXWRK
 *
       RETURN
 *

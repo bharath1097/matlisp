@@ -1,12 +1,12 @@
       SUBROUTINE XERBLA( SRNAME, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
-      CHARACTER*6        SRNAME
+      CHARACTER*(*)      SRNAME
       INTEGER            INFO
 *     ..
 *
@@ -23,7 +23,7 @@
 *  Arguments
 *  =========
 *
-*  SRNAME  (input) CHARACTER*6
+*  SRNAME  (input) CHARACTER*(*)
 *          The name of the routine which called XERBLA.
 *
 *  INFO    (input) INTEGER
@@ -32,13 +32,16 @@
 *
 * =====================================================================
 *
+*     .. Intrinsic Functions ..
+      INTRINSIC          LEN_TRIM
+*     ..
 *     .. Executable Statements ..
 *
-      WRITE( *, FMT = 9999 )SRNAME, INFO
+      WRITE( *, FMT = 9999 )SRNAME( 1:LEN_TRIM( SRNAME ) ), INFO
 *
       STOP
 *
- 9999 FORMAT( ' ** On entry to ', A6, ' parameter number ', I2, ' had ',
+ 9999 FORMAT( ' ** On entry to ', A, ' parameter number ', I2, ' had ',
      $      'an illegal value' )
 *
 *     End of XERBLA

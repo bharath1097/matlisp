@@ -1,9 +1,9 @@
       SUBROUTINE DGEQPF( M, N, A, LDA, JPVT, TAU, WORK, INFO )
 *
-*  -- LAPACK test routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     March 31, 1993
+*  -- LAPACK deprecated computational routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDA, M, N
@@ -75,6 +75,12 @@
 *     jpvt(j) = i
 *  then the jth column of P is the ith canonical unit vector.
 *
+*  Partial column norm updating strategy modified by
+*    Z. Drmac and Z. Bujanovic, Dept. of Mathematics,
+*    University of Zagreb, Croatia.
+*     June 2010
+*  For more details see LAPACK Working Note 176.
+*
 *  =====================================================================
 *
 *     .. Parameters ..
@@ -83,7 +89,7 @@
 *     ..
 *     .. Local Scalars ..
       INTEGER            I, ITEMP, J, MA, MN, PVT
-      DOUBLE PRECISION   AII, TEMP, TEMP2
+      DOUBLE PRECISION   AII, TEMP, TEMP2, TOL3Z
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DGEQR2, DLARF, DLARFG, DORM2R, DSWAP, XERBLA
@@ -93,8 +99,8 @@
 *     ..
 *     .. External Functions ..
       INTEGER            IDAMAX
-      DOUBLE PRECISION   DNRM2
-      EXTERNAL           IDAMAX, DNRM2
+      DOUBLE PRECISION   DLAMCH, DNRM2
+      EXTERNAL           IDAMAX, DLAMCH, DNRM2
 *     ..
 *     .. Executable Statements ..
 *
@@ -114,6 +120,7 @@
       END IF
 *
       MN = MIN( M, N )
+      TOL3Z = SQRT(DLAMCH('Epsilon'))
 *
 *     Move initial columns up front
 *
@@ -195,11 +202,14 @@
 *
             DO 30 J = I + 1, N
                IF( WORK( J ).NE.ZERO ) THEN
-                  TEMP = ONE - ( ABS( A( I, J ) ) / WORK( J ) )**2
-                  TEMP = MAX( TEMP, ZERO )
-                  TEMP2 = ONE + 0.05D0*TEMP*
-     $                    ( WORK( J ) / WORK( N+J ) )**2
-                  IF( TEMP2.EQ.ONE ) THEN
+*
+*                 NOTE: The following 4 lines follow from the analysis in
+*                 Lapack Working Note 176.
+*                 
+                  TEMP = ABS( A( I, J ) ) / WORK( J )
+                  TEMP = MAX( ZERO, ( ONE+TEMP )*( ONE-TEMP ) )
+                  TEMP2 = TEMP*( WORK( J ) / WORK( N+J ) )**2
+                  IF( TEMP2 .LE. TOL3Z ) THEN 
                      IF( M-I.GT.0 ) THEN
                         WORK( J ) = DNRM2( M-I, A( I+1, J ), 1 )
                         WORK( N+J ) = WORK( J )

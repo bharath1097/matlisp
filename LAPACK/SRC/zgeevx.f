@@ -2,10 +2,10 @@
      $                   LDVL, VR, LDVR, ILO, IHI, SCALE, ABNRM, RCONDE,
      $                   RCONDV, WORK, LWORK, RWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          BALANC, JOBVL, JOBVR, SENSE
@@ -129,7 +129,8 @@
 *          The leading dimension of the array VR.  LDVR >= 1; if
 *          JOBVR = 'V', LDVR >= N.
 *
-*  ILO,IHI (output) INTEGER
+*  ILO     (output) INTEGER
+*  IHI     (output) INTEGER
 *          ILO and IHI are integer values determined when A was
 *          balanced.  The balanced A(i,j) = 0 if I > J and
 *          J = 1,...,ILO-1 or I = IHI+1,...,N.
@@ -157,7 +158,7 @@
 *          RCONDV(j) is the reciprocal condition number of the j-th
 *          right eigenvector.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
 *          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
@@ -191,8 +192,8 @@
       LOGICAL            LQUERY, SCALEA, WANTVL, WANTVR, WNTSNB, WNTSNE,
      $                   WNTSNN, WNTSNV
       CHARACTER          JOB, SIDE
-      INTEGER            HSWORK, I, ICOND, IERR, ITAU, IWRK, K, MAXB,
-     $                   MAXWRK, MINWRK, NOUT
+      INTEGER            HSWORK, I, ICOND, IERR, ITAU, IWRK, K, MAXWRK,
+     $                   MINWRK, NOUT
       DOUBLE PRECISION   ANRM, BIGNUM, CSCALE, EPS, SCL, SMLNUM
       COMPLEX*16         TMP
 *     ..
@@ -201,9 +202,9 @@
       DOUBLE PRECISION   DUM( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLASCL, XERBLA, ZDSCAL, ZGEBAK, ZGEBAL, ZGEHRD,
-     $                   ZHSEQR, ZLACPY, ZLASCL, ZSCAL, ZTREVC, ZTRSNA,
-     $                   ZUNGHR
+      EXTERNAL           DLABAD, DLASCL, XERBLA, ZDSCAL, ZGEBAK, ZGEBAL,
+     $                   ZGEHRD, ZHSEQR, ZLACPY, ZLASCL, ZSCAL, ZTREVC,
+     $                   ZTRSNA, ZUNGHR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -212,7 +213,7 @@
       EXTERNAL           LSAME, IDAMAX, ILAENV, DLAMCH, DZNRM2, ZLANGE
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, DCMPLX, DCONJG, DIMAG, MAX, MIN, SQRT
+      INTRINSIC          DBLE, DCMPLX, DCONJG, DIMAG, MAX, SQRT
 *     ..
 *     .. Executable Statements ..
 *
@@ -226,9 +227,8 @@
       WNTSNE = LSAME( SENSE, 'E' )
       WNTSNV = LSAME( SENSE, 'V' )
       WNTSNB = LSAME( SENSE, 'B' )
-      IF( .NOT.( LSAME( BALANC, 'N' ) .OR. LSAME( BALANC,
-     $    'S' ) .OR. LSAME( BALANC, 'P' ) .OR. LSAME( BALANC, 'B' ) ) )
-     $     THEN
+      IF( .NOT.( LSAME( BALANC, 'N' ) .OR. LSAME( BALANC, 'S' ) .OR.
+     $    LSAME( BALANC, 'P' ) .OR. LSAME( BALANC, 'B' ) ) ) THEN
          INFO = -1
       ELSE IF( ( .NOT.WANTVL ) .AND. ( .NOT.LSAME( JOBVL, 'N' ) ) ) THEN
          INFO = -2
@@ -259,45 +259,57 @@
 *       calculated below. HSWORK is computed assuming ILO=1 and IHI=N,
 *       the worst case.)
 *
-      MINWRK = 1
-      IF( INFO.EQ.0 .AND. ( LWORK.GE.1 .OR. LQUERY ) ) THEN
-         MAXWRK = N + N*ILAENV( 1, 'ZGEHRD', ' ', N, 1, N, 0 )
-         IF( ( .NOT.WANTVL ) .AND. ( .NOT.WANTVR ) ) THEN
-            MINWRK = MAX( 1, 2*N )
-            IF( .NOT.( WNTSNN .OR. WNTSNE ) )
-     $         MINWRK = MAX( MINWRK, N*N+2*N )
-            MAXB = MAX( ILAENV( 8, 'ZHSEQR', 'SN', N, 1, N, -1 ), 2 )
-            IF( WNTSNN ) THEN
-               K = MIN( MAXB, N, MAX( 2, ILAENV( 4, 'ZHSEQR', 'EN', N,
-     $             1, N, -1 ) ) )
-            ELSE
-               K = MIN( MAXB, N, MAX( 2, ILAENV( 4, 'ZHSEQR', 'SN', N,
-     $             1, N, -1 ) ) )
-            END IF
-            HSWORK = MAX( K*( K+2 ), 2*N )
-            MAXWRK = MAX( MAXWRK, 1, HSWORK )
-            IF( .NOT.( WNTSNN .OR. WNTSNE ) )
-     $         MAXWRK = MAX( MAXWRK, N*N+2*N )
+      IF( INFO.EQ.0 ) THEN
+         IF( N.EQ.0 ) THEN
+            MINWRK = 1
+            MAXWRK = 1
          ELSE
-            MINWRK = MAX( 1, 2*N )
-            IF( .NOT.( WNTSNN .OR. WNTSNE ) )
-     $         MINWRK = MAX( MINWRK, N*N+2*N )
-            MAXB = MAX( ILAENV( 8, 'ZHSEQR', 'SN', N, 1, N, -1 ), 2 )
-            K = MIN( MAXB, N, MAX( 2, ILAENV( 4, 'ZHSEQR', 'EN', N, 1,
-     $          N, -1 ) ) )
-            HSWORK = MAX( K*( K+2 ), 2*N )
-            MAXWRK = MAX( MAXWRK, 1, HSWORK )
-            MAXWRK = MAX( MAXWRK, N+( N-1 )*
-     $               ILAENV( 1, 'ZUNGHR', ' ', N, 1, N, -1 ) )
-            IF( .NOT.( WNTSNN .OR. WNTSNE ) )
-     $         MAXWRK = MAX( MAXWRK, N*N+2*N )
-            MAXWRK = MAX( MAXWRK, 2*N, 1 )
+            MAXWRK = N + N*ILAENV( 1, 'ZGEHRD', ' ', N, 1, N, 0 )
+*
+            IF( WANTVL ) THEN
+               CALL ZHSEQR( 'S', 'V', N, 1, N, A, LDA, W, VL, LDVL,
+     $                WORK, -1, INFO )
+            ELSE IF( WANTVR ) THEN
+               CALL ZHSEQR( 'S', 'V', N, 1, N, A, LDA, W, VR, LDVR,
+     $                WORK, -1, INFO )
+            ELSE
+               IF( WNTSNN ) THEN
+                  CALL ZHSEQR( 'E', 'N', N, 1, N, A, LDA, W, VR, LDVR,
+     $                WORK, -1, INFO )
+               ELSE
+                  CALL ZHSEQR( 'S', 'N', N, 1, N, A, LDA, W, VR, LDVR,
+     $                WORK, -1, INFO )
+               END IF
+            END IF
+            HSWORK = WORK( 1 )
+*
+            IF( ( .NOT.WANTVL ) .AND. ( .NOT.WANTVR ) ) THEN
+               MINWRK = 2*N
+               IF( .NOT.( WNTSNN .OR. WNTSNE ) )
+     $            MINWRK = MAX( MINWRK, N*N + 2*N )
+               MAXWRK = MAX( MAXWRK, HSWORK )
+               IF( .NOT.( WNTSNN .OR. WNTSNE ) )
+     $            MAXWRK = MAX( MAXWRK, N*N + 2*N )
+            ELSE
+               MINWRK = 2*N
+               IF( .NOT.( WNTSNN .OR. WNTSNE ) )
+     $            MINWRK = MAX( MINWRK, N*N + 2*N )
+               MAXWRK = MAX( MAXWRK, HSWORK )
+               MAXWRK = MAX( MAXWRK, N + ( N - 1 )*ILAENV( 1, 'ZUNGHR',
+     $                       ' ', N, 1, N, -1 ) )
+               IF( .NOT.( WNTSNN .OR. WNTSNE ) )
+     $            MAXWRK = MAX( MAXWRK, N*N + 2*N )
+               MAXWRK = MAX( MAXWRK, 2*N )
+            END IF
+            MAXWRK = MAX( MAXWRK, MINWRK )
          END IF
          WORK( 1 ) = MAXWRK
+*
+         IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
+            INFO = -20
+         END IF
       END IF
-      IF( LWORK.LT.MINWRK .AND. .NOT.LQUERY ) THEN
-         INFO = -20
-      END IF
+*
       IF( INFO.NE.0 ) THEN
          CALL XERBLA( 'ZGEEVX', -INFO )
          RETURN

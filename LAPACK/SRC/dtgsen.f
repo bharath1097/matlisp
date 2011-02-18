@@ -2,10 +2,12 @@
      $                   ALPHAR, ALPHAI, BETA, Q, LDQ, Z, LDZ, M, PL,
      $                   PR, DIF, WORK, LWORK, IWORK, LIWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     January 2007
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       LOGICAL            WANTQ, WANTZ
@@ -145,7 +147,8 @@
 *          The dimension of the specified pair of left and right eigen-
 *          spaces (deflating subspaces). 0 <= M <= N.
 *
-*  PL, PR  (output) DOUBLE PRECISION
+*  PL      (output) DOUBLE PRECISION
+*  PR      (output) DOUBLE PRECISION
 *          If IJOB = 1, 4 or 5, PL, PR are lower bounds on the
 *          reciprocal of the norm of "projections" onto left and right
 *          eigenspaces with respect to the selected cluster.
@@ -161,9 +164,9 @@
 *          If M = 0 or N, DIF(1:2) = F-norm([A, B]).
 *          If IJOB = 0 or 1, DIF is not referenced.
 *
-*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (LWORK)
-*          IF IJOB = 0, WORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) DOUBLE PRECISION array,
+*          dimension (MAX(1,LWORK)) 
+*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK   (input) INTEGER
 *          The dimension of the array WORK. LWORK >=  4*N+16.
@@ -175,9 +178,8 @@
 *          this value as the first entry of the WORK array, and no error
 *          message related to LWORK is issued by XERBLA.
 *
-*  IWORK   (workspace/output) INTEGER array, dimension (LIWORK)
-*          IF IJOB = 0, IWORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
+*  IWORK   (workspace/output) INTEGER array, dimension (MAX(1,LIWORK))
+*          On exit, if INFO = 0, IWORK(1) returns the optimal LIWORK.
 *
 *  LIWORK  (input) INTEGER
 *          The dimension of the array IWORK. LIWORK >= 1.
@@ -343,8 +345,11 @@
      $                   MN2, N1, N2
       DOUBLE PRECISION   DSCALE, DSUM, EPS, RDSCAL, SMLNUM
 *     ..
+*     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
+*     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLACON, DLACPY, DLAG2, DLASSQ, DTGEXC, DTGSYL,
+      EXTERNAL           DLACN2, DLACPY, DLAG2, DLASSQ, DTGEXC, DTGSYL,
      $                   XERBLA
 *     ..
 *     .. External Functions ..
@@ -581,7 +586,7 @@
 *
 *
 *           Compute 1-norm-based estimates of Difu and Difl using
-*           reversed communication with DLACON. In each step a
+*           reversed communication with DLACN2. In each step a
 *           generalized Sylvester equation or a transposed variant
 *           is solved.
 *
@@ -595,8 +600,8 @@
 *           1-norm-based estimate of Difu.
 *
    40       CONTINUE
-            CALL DLACON( MN2, WORK( MN2+1 ), WORK, IWORK, DIF( 1 ),
-     $                   KASE )
+            CALL DLACN2( MN2, WORK( MN2+1 ), WORK, IWORK, DIF( 1 ),
+     $                   KASE, ISAVE )
             IF( KASE.NE.0 ) THEN
                IF( KASE.EQ.1 ) THEN
 *
@@ -624,8 +629,8 @@
 *           1-norm-based estimate of Difl.
 *
    50       CONTINUE
-            CALL DLACON( MN2, WORK( MN2+1 ), WORK, IWORK, DIF( 2 ),
-     $                   KASE )
+            CALL DLACN2( MN2, WORK( MN2+1 ), WORK, IWORK, DIF( 2 ),
+     $                   KASE, ISAVE )
             IF( KASE.NE.0 ) THEN
                IF( KASE.EQ.1 ) THEN
 *
@@ -696,7 +701,7 @@
                   DO 70 I = 1, N
                      A( K, I ) = -A( K, I )
                      B( K, I ) = -B( K, I )
-                     Q( I, K ) = -Q( I, K )
+                     IF( WANTQ ) Q( I, K ) = -Q( I, K )
    70             CONTINUE
                END IF
 *

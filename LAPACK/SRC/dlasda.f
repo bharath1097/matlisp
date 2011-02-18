@@ -2,10 +2,10 @@
      $                   DIFL, DIFR, Z, POLES, GIVPTR, GIVCOL, LDGCOL,
      $                   PERM, GIVNUM, C, S, WORK, IWORK, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     October 31, 1999
+*  -- LAPACK auxiliary routine (version 3.2.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     June 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            ICOMPQ, INFO, LDGCOL, LDU, N, SMLSIZ, SQRE
@@ -158,7 +158,7 @@
 *  INFO   (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
-*          > 0:  if INFO = 1, an singular value did not converge
+*          > 0:  if INFO = 1, a singular value did not converge
 *
 *  Further Details
 *  ===============

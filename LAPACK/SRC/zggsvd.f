@@ -2,10 +2,10 @@
      $                   LDB, ALPHA, BETA, U, LDU, V, LDV, Q, LDQ, WORK,
      $                   RWORK, IWORK, INFO )
 *
-*  -- LAPACK driver routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          JOBQ, JOBU, JOBV
@@ -197,7 +197,7 @@
 *             endfor
 *          such that ALPHA(1) >= ALPHA(2) >= ... >= ALPHA(N).
 *
-*  INFO    (output)INTEGER
+*  INFO    (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
 *          > 0:  if INFO = 1, the Jacobi-type procedure failed to

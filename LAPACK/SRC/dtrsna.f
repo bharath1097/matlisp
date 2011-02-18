@@ -2,10 +2,12 @@
      $                   LDVR, S, SEP, MM, M, WORK, LDWORK, IWORK,
      $                   INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     September 30, 1994
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     Modified to call DLACN2 in place of DLACON, 5 Feb 03, SJH.
 *
 *     .. Scalar Arguments ..
       CHARACTER          HOWMNY, JOB
@@ -118,14 +120,14 @@
 *          used to store the estimated condition numbers.
 *          If HOWMNY = 'A', M is set to N.
 *
-*  WORK    (workspace) DOUBLE PRECISION array, dimension (LDWORK,N+1)
+*  WORK    (workspace) DOUBLE PRECISION array, dimension (LDWORK,N+6)
 *          If JOB = 'E', WORK is not referenced.
 *
 *  LDWORK  (input) INTEGER
 *          The leading dimension of the array WORK.
 *          LDWORK >= 1; and if JOB = 'V' or 'B', LDWORK >= N.
 *
-*  IWORK   (workspace) INTEGER array, dimension (N)
+*  IWORK   (workspace) INTEGER array, dimension (2*(N-1))
 *          If JOB = 'E', IWORK is not referenced.
 *
 *  INFO    (output) INTEGER
@@ -185,6 +187,7 @@
      $                   MU, PROD, PROD1, PROD2, RNRM, SCALE, SMLNUM, SN
 *     ..
 *     .. Local Arrays ..
+      INTEGER            ISAVE( 3 )
       DOUBLE PRECISION   DUMMY( 1 )
 *     ..
 *     .. External Functions ..
@@ -193,7 +196,7 @@
       EXTERNAL           LSAME, DDOT, DLAMCH, DLAPY2, DNRM2
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLACON, DLACPY, DLAQTR, DTREXC, XERBLA
+      EXTERNAL           DLACN2, DLACPY, DLAQTR, DTREXC, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MAX, SQRT
@@ -428,8 +431,8 @@
                EST = ZERO
                KASE = 0
    50          CONTINUE
-               CALL DLACON( NN, WORK( 1, N+2 ), WORK( 1, N+4 ), IWORK,
-     $                      EST, KASE )
+               CALL DLACN2( NN, WORK( 1, N+2 ), WORK( 1, N+4 ), IWORK,
+     $                      EST, KASE, ISAVE )
                IF( KASE.NE.0 ) THEN
                   IF( KASE.EQ.1 ) THEN
                      IF( N2.EQ.1 ) THEN

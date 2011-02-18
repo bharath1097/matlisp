@@ -3,10 +3,10 @@
      $                   LDGNUM, POLES, DIFL, DIFR, Z, K, C, S, WORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.3.0) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2010
 *
 *     .. Scalar Arguments ..
       INTEGER            GIVPTR, ICOMPQ, INFO, K, LDGCOL, LDGNUM, NL,
@@ -111,10 +111,10 @@
 *         the lower block. On exit, VL contains the last components of
 *         all right singular vectors of the bidiagonal matrix.
 *
-*  ALPHA  (input) DOUBLE PRECISION
+*  ALPHA  (input/output) DOUBLE PRECISION
 *         Contains the diagonal element associated with the added row.
 *
-*  BETA   (input) DOUBLE PRECISION
+*  BETA   (input/output) DOUBLE PRECISION
 *         Contains the off-diagonal element associated with the added
 *         row.
 *
@@ -191,7 +191,7 @@
 *  INFO   (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
-*          > 0:  if INFO = 1, an singular value did not converge
+*          > 0:  if INFO = 1, a singular value did not converge
 *
 *  Further Details
 *  ===============
@@ -281,6 +281,13 @@
 *
       CALL DLASD8( ICOMPQ, K, D, Z, VF, VL, DIFL, DIFR, LDGNUM,
      $             WORK( ISIGMA ), WORK( IW ), INFO )
+*
+*     Handle error returned
+*
+      IF( INFO.NE.0 ) THEN
+         CALL XERBLA( 'DLASD8', -INFO )
+         RETURN
+      END IF
 *
 *     Save the poles if ICOMPQ = 1.
 *

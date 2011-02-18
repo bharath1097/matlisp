@@ -1,10 +1,15 @@
       SUBROUTINE DLASQ5( I0, N0, Z, PP, TAU, DMIN, DMIN1, DMIN2, DN,
      $                   DNM1, DNM2, IEEE )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     May 17, 2000
+*  -- LAPACK routine (version 3.2)                                    --
+*
+*  -- Contributed by Osni Marques of the Lawrence Berkeley National   --
+*  -- Laboratory and Beresford Parlett of the Univ. of California at  --
+*  -- Berkeley                                                        --
+*  -- November 2008                                                   --
+*
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
 *
 *     .. Scalar Arguments ..
       LOGICAL            IEEE
@@ -80,7 +85,7 @@
      $   RETURN
 *
       J4 = 4*I0 + PP - 3
-      EMIN = Z( J4+4 )
+      EMIN = Z( J4+4 ) 
       D = Z( J4 ) - TAU
       DMIN = D
       DMIN1 = -Z( J4 )
@@ -91,7 +96,7 @@
 *
          IF( PP.EQ.0 ) THEN
             DO 10 J4 = 4*I0, 4*( N0-3 ), 4
-               Z( J4-2 ) = D + Z( J4-1 )
+               Z( J4-2 ) = D + Z( J4-1 ) 
                TEMP = Z( J4+1 ) / Z( J4-2 )
                D = D*TEMP - TAU
                DMIN = MIN( DMIN, D )
@@ -100,7 +105,7 @@
    10       CONTINUE
          ELSE
             DO 20 J4 = 4*I0, 4*( N0-3 ), 4
-               Z( J4-3 ) = D + Z( J4 )
+               Z( J4-3 ) = D + Z( J4 ) 
                TEMP = Z( J4+2 ) / Z( J4-3 )
                D = D*TEMP - TAU
                DMIN = MIN( DMIN, D )
@@ -109,7 +114,7 @@
    20       CONTINUE
          END IF
 *
-*        Unroll last two steps.
+*        Unroll last two steps. 
 *
          DNM2 = D
          DMIN2 = DMIN
@@ -134,10 +139,10 @@
 *
          IF( PP.EQ.0 ) THEN
             DO 30 J4 = 4*I0, 4*( N0-3 ), 4
-               Z( J4-2 ) = D + Z( J4-1 )
+               Z( J4-2 ) = D + Z( J4-1 ) 
                IF( D.LT.ZERO ) THEN
                   RETURN
-               ELSE
+               ELSE 
                   Z( J4 ) = Z( J4+1 )*( Z( J4-1 ) / Z( J4-2 ) )
                   D = Z( J4+1 )*( D / Z( J4-2 ) ) - TAU
                END IF
@@ -146,10 +151,10 @@
    30       CONTINUE
          ELSE
             DO 40 J4 = 4*I0, 4*( N0-3 ), 4
-               Z( J4-3 ) = D + Z( J4 )
+               Z( J4-3 ) = D + Z( J4 ) 
                IF( D.LT.ZERO ) THEN
                   RETURN
-               ELSE
+               ELSE 
                   Z( J4-1 ) = Z( J4+2 )*( Z( J4 ) / Z( J4-3 ) )
                   D = Z( J4+2 )*( D / Z( J4-3 ) ) - TAU
                END IF
@@ -158,7 +163,7 @@
    40       CONTINUE
          END IF
 *
-*        Unroll last two steps.
+*        Unroll last two steps. 
 *
          DNM2 = D
          DMIN2 = DMIN

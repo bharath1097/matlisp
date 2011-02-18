@@ -1,9 +1,9 @@
       SUBROUTINE DLACON( N, V, X, ISGN, EST, KASE )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     February 29, 1992
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            KASE, N
@@ -39,8 +39,10 @@
 *
 *  ISGN   (workspace) INTEGER array, dimension (N)
 *
-*  EST    (output) DOUBLE PRECISION
-*         An estimate (a lower bound) for norm(A).
+*  EST    (input/output) DOUBLE PRECISION
+*         On entry with KASE = 1 or 2 and JUMP = 3, EST should be
+*         unchanged from the previous call to DLACON.
+*         On exit, EST is an estimate (a lower bound) for norm(A). 
 *
 *  KASE   (input/output) INTEGER
 *         On the initial call to DLACON, KASE should be 0.
@@ -118,7 +120,7 @@
       RETURN
 *
 *     ................ ENTRY   (JUMP = 2)
-*     FIRST ITERATION.  X HAS BEEN OVERWRITTEN BY TRANDPOSE(A)*X.
+*     FIRST ITERATION.  X HAS BEEN OVERWRITTEN BY TRANSPOSE(A)*X.
 *
    40 CONTINUE
       J = IDAMAX( N, X, 1 )
@@ -163,7 +165,7 @@
       RETURN
 *
 *     ................ ENTRY   (JUMP = 4)
-*     X HAS BEEN OVERWRITTEN BY TRANDPOSE(A)*X.
+*     X HAS BEEN OVERWRITTEN BY TRANSPOSE(A)*X.
 *
   110 CONTINUE
       JLAST = J

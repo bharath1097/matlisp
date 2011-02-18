@@ -2,10 +2,10 @@
      $                   LDVL, VR, LDVR, S, DIF, MM, M, WORK, LWORK,
      $                   IWORK, INFO )
 *
-*  -- LAPACK routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       CHARACTER          HOWMNY, JOB
@@ -112,13 +112,12 @@
 *          the specified condition numbers; for each selected eigenvalue
 *          one element is used. If HOWMNY = 'A', M is set to N.
 *
-*  WORK    (workspace/output) COMPLEX*16 array, dimension (LWORK)
-*          If JOB = 'E', WORK is not referenced.  Otherwise,
-*          on exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*  WORK    (workspace/output) COMPLEX*16 array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 *
 *  LWORK  (input) INTEGER
-*          The dimension of the array WORK. LWORK >= 1.
-*          If JOB = 'V' or 'B', LWORK >= 2*N*N.
+*          The dimension of the array WORK. LWORK >= max(1,N).
+*          If JOB = 'V' or 'B', LWORK >= max(1,2*N*N).
 *
 *  IWORK   (workspace) INTEGER array, dimension (N+2)
 *          If JOB = 'E', IWORK is not referenced.
@@ -217,8 +216,7 @@
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY, SOMCON, WANTBH, WANTDF, WANTS
-      INTEGER            I, IERR, IFST, ILST, K, KS, LLWRK, LWMIN, N1,
-     $                   N2
+      INTEGER            I, IERR, IFST, ILST, K, KS, LWMIN, N1, N2
       DOUBLE PRECISION   BIGNUM, COND, EPS, LNRM, RNRM, SCALE, SMLNUM
       COMPLEX*16         YHAX, YHBX
 *     ..
@@ -232,7 +230,7 @@
       EXTERNAL           LSAME, DLAMCH, DLAPY2, DZNRM2, ZDOTC
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZGEMV, ZLACPY, ZTGEXC, ZTGSYL
+      EXTERNAL           DLABAD, XERBLA, ZGEMV, ZLACPY, ZTGEXC, ZTGSYL
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DCMPLX, MAX
@@ -249,12 +247,6 @@
 *
       INFO = 0
       LQUERY = ( LWORK.EQ.-1 )
-*
-      IF( LSAME( JOB, 'V' ) .OR. LSAME( JOB, 'B' ) ) THEN
-         LWMIN = MAX( 1, 2*N*N )
-      ELSE
-         LWMIN = 1
-      END IF
 *
       IF( .NOT.WANTS .AND. .NOT.WANTDF ) THEN
          INFO = -1
@@ -285,15 +277,20 @@
             M = N
          END IF
 *
+         IF( N.EQ.0 ) THEN
+            LWMIN = 1
+         ELSE IF( LSAME( JOB, 'V' ) .OR. LSAME( JOB, 'B' ) ) THEN
+            LWMIN = 2*N*N
+         ELSE
+            LWMIN = N
+         END IF
+         WORK( 1 ) = LWMIN
+*
          IF( MM.LT.M ) THEN
             INFO = -15
          ELSE IF( LWORK.LT.LWMIN .AND. .NOT.LQUERY ) THEN
             INFO = -18
          END IF
-      END IF
-*
-      IF( INFO.EQ.0 ) THEN
-         WORK( 1 ) = LWMIN
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -314,7 +311,6 @@
       SMLNUM = DLAMCH( 'S' ) / EPS
       BIGNUM = ONE / SMLNUM
       CALL DLABAD( SMLNUM, BIGNUM )
-      LLWRK = LWORK - 2*N*N
       KS = 0
       DO 20 K = 1, N
 *
@@ -352,44 +348,44 @@
          IF( WANTDF ) THEN
             IF( N.EQ.1 ) THEN
                DIF( KS ) = DLAPY2( ABS( A( 1, 1 ) ), ABS( B( 1, 1 ) ) )
-               GO TO 20
-            END IF
-*
-*           Estimate the reciprocal condition number of the k-th
-*           eigenvectors.
-*
-*           Copy the matrix (A, B) to the array WORK and move the
-*           (k,k)th pair to the (1,1) position.
-*
-            CALL ZLACPY( 'Full', N, N, A, LDA, WORK, N )
-            CALL ZLACPY( 'Full', N, N, B, LDB, WORK( N*N+1 ), N )
-            IFST = K
-            ILST = 1
-*
-            CALL ZTGEXC( .FALSE., .FALSE., N, WORK, N, WORK( N*N+1 ), N,
-     $                   DUMMY, 1, DUMMY1, 1, IFST, ILST, IERR )
-*
-            IF( IERR.GT.0 ) THEN
-*
-*              Ill-conditioned problem - swap rejected.
-*
-               DIF( KS ) = ZERO
             ELSE
 *
-*              Reordering successful, solve generalized Sylvester
-*              equation for R and L,
-*                         A22 * R - L * A11 = A12
-*                         B22 * R - L * B11 = B12,
-*              and compute estimate of Difl[(A11,B11), (A22, B22)].
+*              Estimate the reciprocal condition number of the k-th
+*              eigenvectors.
 *
-               N1 = 1
-               N2 = N - N1
-               I = N*N + 1
-               CALL ZTGSYL( 'N', IDIFJB, N2, N1, WORK( N*N1+N1+1 ), N,
-     $                      WORK, N, WORK( N1+1 ), N, WORK( N*N1+N1+I ),
-     $                      N, WORK( I ), N, WORK( N1+I ), N, SCALE,
-     $                      DIF( KS ), WORK( N*N*2+1 ), LLWRK, IWORK,
-     $                      IERR )
+*              Copy the matrix (A, B) to the array WORK and move the
+*              (k,k)th pair to the (1,1) position.
+*
+               CALL ZLACPY( 'Full', N, N, A, LDA, WORK, N )
+               CALL ZLACPY( 'Full', N, N, B, LDB, WORK( N*N+1 ), N )
+               IFST = K
+               ILST = 1
+*
+               CALL ZTGEXC( .FALSE., .FALSE., N, WORK, N, WORK( N*N+1 ),
+     $                      N, DUMMY, 1, DUMMY1, 1, IFST, ILST, IERR )
+*
+               IF( IERR.GT.0 ) THEN
+*
+*                 Ill-conditioned problem - swap rejected.
+*
+                  DIF( KS ) = ZERO
+               ELSE
+*
+*                 Reordering successful, solve generalized Sylvester
+*                 equation for R and L,
+*                            A22 * R - L * A11 = A12
+*                            B22 * R - L * B11 = B12,
+*                 and compute estimate of Difl[(A11,B11), (A22, B22)].
+*
+                  N1 = 1
+                  N2 = N - N1
+                  I = N*N + 1
+                  CALL ZTGSYL( 'N', IDIFJB, N2, N1, WORK( N*N1+N1+1 ),
+     $                         N, WORK, N, WORK( N1+1 ), N,
+     $                         WORK( N*N1+N1+I ), N, WORK( I ), N,
+     $                         WORK( N1+I ), N, SCALE, DIF( KS ), DUMMY,
+     $                         1, IWORK, IERR )
+               END IF
             END IF
          END IF
 *

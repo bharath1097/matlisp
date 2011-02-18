@@ -1,9 +1,9 @@
       SUBROUTINE ZLAHRD( N, K, NB, A, LDA, TAU, T, LDT, Y, LDY )
 *
-*  -- LAPACK auxiliary routine (version 3.0) --
-*     Univ. of Tennessee, Univ. of California Berkeley, NAG Ltd.,
-*     Courant Institute, Argonne National Lab, and Rice University
-*     June 30, 1999
+*  -- LAPACK auxiliary routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
 *
 *     .. Scalar Arguments ..
       INTEGER            K, LDA, LDT, LDY, N, NB
@@ -22,7 +22,9 @@
 *  Q' * A * Q. The routine returns the matrices V and T which determine
 *  Q as a block reflector I - V*T*V', and also the matrix Y = A * V * T.
 *
-*  This is an auxiliary routine called by ZGEHRD.
+*  This is an OBSOLETE auxiliary routine. 
+*  This routine will be 'deprecated' in a  future release.
+*  Please use the new routine ZLAHR2 instead.
 *
 *  Arguments
 *  =========
