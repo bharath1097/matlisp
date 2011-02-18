@@ -123,7 +123,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(require :defsystem)
+(require :asdf)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defpackage "MATLISP-START"
@@ -302,18 +302,12 @@
 
 
 
-(load "matlisp:srcdir;system.dcl")
+(load "matlisp:srcdir;maxima.asd")
 (load "matlisp:builddir;config.lisp")
 
 (in-package "CL-USER")
 
-(mk::operate-on-system :matlisp
-		       :load
-		       :minimal-load t
-		       ; :verbose t
-		       :compile-during-load 
-		       #+:allegro-cl-lite nil
-		       #-:allegro-cl-lite t)
+(asdf:oos 'asdf:load-op :matlisp)
 
 (load "matlisp:srcdir;save.lisp")
 

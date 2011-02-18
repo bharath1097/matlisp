@@ -259,7 +259,7 @@ execute the executable file")
 ;;
 ;; This works, but probably needs more work to get everything we need
 ;; done.
-#+cmu
+#+(or)
 (defun save-matlisp-library ()
   (let ((output
 	 (merge-pathnames "matlisp:matlisp-library"
