@@ -331,9 +331,10 @@
   :source-extension "lisp"
   :depends-on ("matlisp-f2cl-macros")
   :components
-  ((:module "minpack-functions"
+  ((:module "lib-src"
+	    :source-pathname ""
 	    :components
-	    ((:module "minpack-lib"
+	    ((:module "minpack"
 		      :source-pathname "lib-src/minpack/"
 		      :package "MINPACK"
 		      :components
