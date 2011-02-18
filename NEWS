@@ -1,5 +1,10 @@
 Release notes for Matlisp 2.0
 
+2011-02-17
+ * Use asdf2 instead of mk:defsys to build the Lisp code.
+
+2011-01-25
+
  * Updated code to use libtool to create the libraries
  * Support parallel builds where the build is done in a different
    directory from the source.
