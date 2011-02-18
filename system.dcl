@@ -202,160 +202,6 @@
   :components
   ((:file "macros")))
 
-(mk:defsystem matlisp-quadpack
-  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
-  :binary-pathname (translate-logical-pathname "matlisp:bin;")
-  :source-extension "lisp"
-  :depends-on ("matlisp-f2cl-macros")
-  :components
-  ((:module "quadpack-functions"
-	    :source-pathname ""
-	    :components
-	    ((:module "quadpack-interface"
-		      :source-pathname "src"
-		      :components
-		      ((:file "quadpack")))
-	     (:module "quadpack-lib"
-		      :source-pathname "lib-src/quadpack/"
-		      :package "QUADPACK"
-		      :components
-		      (
-		       #+nil
-		       (:module mach-par
-				:source-pathname ""
-				:source-extension "lisp"
-				:binary-pathname "matlisp:bin;"
-				:components
-				((:file "d1mach")
-				 (:file "i1mach")))
-		       (:module src
-				:source-pathname ""
-				;; :depends-on ("mach-par")
-				:components
-				(
-				 ;; Support
-				 (:file "dqwgtf")
-				 (:file "dqcheb")
-				 (:file "dqk15w")
-				 (:file "dqwgts")
-				 (:file "dqwgtc")
-				 (:file "dgtsl")
-				 (:file "xerror")
-	       
-				 ;; Core integration routines
-				 (:file "dqk15")
-				 (:file "dqk31")
-				 (:file "dqk41")
-				 (:file "dqk51")
-				 (:file "dqk61")
-				 (:file "dqk21")
-				 (:file "dqk15i")
-				 (:file "dqelg")
-				 (:file "dqpsrt")
-				 (:file "dqc25s"
-					:depends-on ("dqcheb" "dqk15w"))
-				 (:file "dqmomo")
-				 (:file "dqc25c"
-					:depends-on ("dqcheb"
-						     "dqk15w"))
-				 (:file "dqc25f"
-					:depends-on ("dgtsl"
-						     "dqcheb"
-						     "dqk15w"
-						     "dqwgtf"))
-				 ;; Basic integrators
-				 (:file "dqage"
-					:depends-on ("dqk15"
-						     "dqk31"
-						     "dqk41"
-						     "dqk51"
-						     "dqk61"
-						     "dqk21"
-						     "dqpsrt"))
-				 (:file "dqagie"
-					:depends-on ("dqelg"
-						     "dqk15i"
-						     "dqpsrt"))
-				 (:file "dqagpe"
-					:depends-on ("dqelg"
-						     "dqpsrt"
-						     "dqk21"
-						     ))
-				 (:file "dqagse"
-					:depends-on ("dqk21"
-						     "dqelg"
-						     "dqpsrt"))
-				 (:file "dqawfe"
-					:depends-on ("dqagie"
-						     "dqawoe"
-						     "dqelg"))
-				 (:file "dqawoe"
-					:depends-on ("dqc25f"
-						     "dqpsrt"
-						     "dqelg"))
-				 (:file "dqawse"
-					:depends-on ("dqc25s"
-						     "dqmomo"
-						     "dqpsrt"))
-				 (:file "dqawce"
-					:depends-on ("dqc25c"
-						     "dqpsrt"))
-				 ;; Simplified interface routines
-				 (:file "dqng"
-					:depends-on ("xerror"))
-				 (:file "dqag"
-					:depends-on ("dqage"
-						     "xerror"))
-				 (:file "dqags"
-					:depends-on ("dqagse"
-						     "xerror"))
-				 (:file "dqagi"
-					:depends-on ("dqagie"
-						     "xerror"))
-				 (:file "dqawf"
-					:depends-on ("dqawfe"
-						     "xerror"))
-				 (:file "dqawo"
-					:depends-on ("dqawoe"
-						     "xerror"))
-				 (:file "dqaws"
-					:depends-on ("dqawse"
-						     "xerror"))
-				 (:file "dqawc"
-					:depends-on ("dqawce"
-						     "xerror"))))))))))
-
-(mk:defsystem matlisp-minpack
-  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
-  :binary-pathname (translate-logical-pathname "matlisp:bin;")
-  :source-extension "lisp"
-  :depends-on ("matlisp-f2cl-macros")
-  :components
-  ((:module "lib-src"
-	    :source-pathname ""
-	    :components
-	    ((:module "minpack"
-		      :source-pathname "lib-src/minpack/"
-		      :package "MINPACK"
-		      :components
-		      ((:file "dpmpar")
-		       (:file "enorm")
-		       (:file "fdjac2")
-		       (:file "qrsolv")
-		       (:file "lmpar")
-		       (:file "qrfac")
-		       (:file "lmdif")
-		       (:file "lmdif1")
-		       (:file "lmder")
-		       (:file "lmder1")
-		       (:file "dogleg")
-		       (:file "qform")
-		       (:file "r1mpyq")
-		       (:file "r1updt")
-		       (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
-		       (:file "hybrj1" :depends-on ("hybrj"))
-		       ))))))
-
 (mk::defsystem matlisp
       :source-pathname (translate-logical-pathname "matlisp:srcdir;")
       :binary-pathname (translate-logical-pathname "matlisp:bin;")
@@ -363,8 +209,7 @@
       :depends-on ("lazy-loader"
                    "matlisp-packages"
 		   "fortran-names"
-		   "matlisp-f2cl-macros"
-		   "matlisp-quadpack")
+		   "matlisp-f2cl-macros")
       :components
       ((:module "foreign-interface"
 	:source-pathname "src"
@@ -624,4 +469,147 @@
 			  :source-extension "lisp"
 			  :components
 			  ((:file "gnuplot")))))))
+
+
+;; Add-on packages
+(mk:defsystem matlisp-quadpack
+  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+  :binary-pathname (translate-logical-pathname "matlisp:bin;")
+  :source-extension "lisp"
+  :depends-on ("matlisp-f2cl-macros")
+  :components
+  ((:module "quadpack-interface"
+	    :source-pathname "src"
+	    :components
+	    ((:file "quadpack")))
+   (:module "lib-src"
+	    ;;:source-pathname ""
+	    :components
+	    ((:module "quadpack"
+		      ;;:source-pathname "lib-src/quadpack/"
+		      :package "QUADPACK"
+		      :components
+		      (
+		       ;; Support
+		       (:file "dqwgtf")
+		       (:file "dqcheb")
+		       (:file "dqk15w")
+		       (:file "dqwgts")
+		       (:file "dqwgtc")
+		       (:file "dgtsl")
+		       (:file "xerror")
+	       
+		       ;; Core integration routines
+		       (:file "dqk15")
+		       (:file "dqk31")
+		       (:file "dqk41")
+		       (:file "dqk51")
+		       (:file "dqk61")
+		       (:file "dqk21")
+		       (:file "dqk15i")
+		       (:file "dqelg")
+		       (:file "dqpsrt")
+		       (:file "dqc25s"
+			      :depends-on ("dqcheb" "dqk15w"))
+		       (:file "dqmomo")
+		       (:file "dqc25c"
+			      :depends-on ("dqcheb"
+					   "dqk15w"))
+		       (:file "dqc25f"
+			      :depends-on ("dgtsl"
+					   "dqcheb"
+					   "dqk15w"
+					   "dqwgtf"))
+		       ;; Basic integrators
+		       (:file "dqage"
+			      :depends-on ("dqk15"
+					   "dqk31"
+					   "dqk41"
+					   "dqk51"
+					   "dqk61"
+					   "dqk21"
+					   "dqpsrt"))
+		       (:file "dqagie"
+			      :depends-on ("dqelg"
+					   "dqk15i"
+					   "dqpsrt"))
+		       (:file "dqagpe"
+			      :depends-on ("dqelg"
+					   "dqpsrt"
+					   "dqk21"
+					   ))
+		       (:file "dqagse"
+			      :depends-on ("dqk21"
+					   "dqelg"
+					   "dqpsrt"))
+		       (:file "dqawfe"
+			      :depends-on ("dqagie"
+					   "dqawoe"
+					   "dqelg"))
+		       (:file "dqawoe"
+			      :depends-on ("dqc25f"
+					   "dqpsrt"
+					   "dqelg"))
+		       (:file "dqawse"
+			      :depends-on ("dqc25s"
+					   "dqmomo"
+					   "dqpsrt"))
+		       (:file "dqawce"
+			      :depends-on ("dqc25c"
+					   "dqpsrt"))
+		       ;; Simplified interface routines
+		       (:file "dqng"
+			      :depends-on ("xerror"))
+		       (:file "dqag"
+			      :depends-on ("dqage"
+					   "xerror"))
+		       (:file "dqags"
+			      :depends-on ("dqagse"
+					   "xerror"))
+		       (:file "dqagi"
+			      :depends-on ("dqagie"
+					   "xerror"))
+		       (:file "dqawf"
+			      :depends-on ("dqawfe"
+					   "xerror"))
+		       (:file "dqawo"
+			      :depends-on ("dqawoe"
+					   "xerror"))
+		       (:file "dqaws"
+			      :depends-on ("dqawse"
+					   "xerror"))
+		       (:file "dqawc"
+			      :depends-on ("dqawce"
+					   "xerror"))))))))
+
+(mk:defsystem matlisp-minpack
+  :source-pathname (translate-logical-pathname "matlisp:srcdir;")
+  :binary-pathname (translate-logical-pathname "matlisp:bin;")
+  :source-extension "lisp"
+  :depends-on ("matlisp-f2cl-macros")
+  :components
+  ((:module "lib-src"
+	    :source-pathname ""
+	    :components
+	    ((:module "minpack"
+		      :source-pathname "lib-src/minpack/"
+		      :package "MINPACK"
+		      :components
+		      ((:file "dpmpar")
+		       (:file "enorm")
+		       (:file "fdjac2")
+		       (:file "qrsolv")
+		       (:file "lmpar")
+		       (:file "qrfac")
+		       (:file "lmdif")
+		       (:file "lmdif1")
+		       (:file "lmder")
+		       (:file "lmder1")
+		       (:file "dogleg")
+		       (:file "qform")
+		       (:file "r1mpyq")
+		       (:file "r1updt")
+		       (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
+		       (:file "hybrj1" :depends-on ("hybrj"))
+		       ))))))
 
