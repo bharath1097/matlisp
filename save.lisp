@@ -259,14 +259,24 @@ execute the executable file")
 ;;
 ;; This works, but probably needs more work to get everything we need
 ;; done.
-#+(or)
+#+cmu
 (defun save-matlisp-library ()
   (let ((output
 	 (merge-pathnames "matlisp:matlisp-library"
 			  (make-pathname :type (c::backend-fasl-file-type c::*target-backend*)))))
-    (ext:run-program "cat"
-		     (append (mk:files-in-system "matlisp-packages" t :binary)
-			     (mk:files-in-system "lazy-loader" t :binary)
-			     (mk:files-in-system "matlisp" t :binary))
-		     :output output
-		     :if-output-exists :supersede)))
+    (labels ((module-fasls (module)
+	       (let ((compile-op (make-instance 'asdf:compile-op)))
+		 (mapcan #'(lambda (component)
+			     (typecase component
+			       (asdf:source-file
+				(asdf:output-files compile-op component))
+			       (asdf:module
+				(module-fasls component))))
+			 (asdf:module-components module)))))
+      (ext:run-program "cat"
+		       (mapcar #'namestring
+			       (append (module-fasls (asdf:find-system "matlisp-packages"))
+				       (module-fasls (asdf:find-system "lazy-loader"))
+				       (module-fasls (asdf:find-system "matlisp"))))
+		       :output output
+		       :if-output-exists :supersede))))
