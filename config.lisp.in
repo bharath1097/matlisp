@@ -43,7 +43,7 @@
 ;; still exists in the PCL package, so for backward compatibility with
 ;; older versions, use PCL:FIND-CLASS for all CMUCL versions.
 #+cmu (setf (pcl:find-class 'real) (pcl:find-class 'cl:real))
-#-cmu (setf (find-class 'real) (find-class 'cl:real))
+;;#-cmu (setf (find-class 'real) (find-class 'cl:real))
 
 
 (eval-when (load eval compile)

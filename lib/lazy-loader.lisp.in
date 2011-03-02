@@ -181,7 +181,22 @@
 
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()
-  (sb-alien:load-shared-object "matlisp:lib;libmatlisp.so"))
+    ;; Load the additional matlisp libraries
+  (dolist (lib '("matlisp:lib;libdfftpack.@share_ext@"
+		 "matlisp:lib;libtoms715.@share_ext@"))
+    (sb-alien::load-shared-object lib))
+  (if @ATLAS_P@
+      ;; Load the atlas libraries
+      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
+	(sb-alien:load-shared-object (concatenate 'string "@ATLAS_DIR@"
+				       lib
+				       ".@share_ext@")))
+      ;; Not using atlas, so load our versions.
+      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
+		     "matlisp:lib;liblapack.@share_ext@"))
+	(sb-alien:load-shared-object lib))))
+
+;;(sb-alien:load-shared-object "matlisp:lib;libmatlisp.so")
 
 
 
