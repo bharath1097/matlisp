@@ -843,7 +843,7 @@ integer storage.  Default INITIAL-ELEMENT = 0."
   "
  Syntax
  ======
- (MAKE-FLOAT-MATRIX {arg}*)
+ (MAKE-COMPLEX-MATRIX {arg}*)
 
  Purpose
  =======
@@ -905,4 +905,3 @@ integer storage.  Default INITIAL-ELEMENT = 0."
 	 (make-complex-matrix-dim n m)))
       (t
        (error "require 1 or 2 arguments to make a matrix")))))
-
