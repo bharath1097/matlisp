@@ -252,6 +252,9 @@ don't know how to coerce a COMPLEX to a REAL"))
   =======
   Create a new Lisp array with the same dimensions as the matrix and
   with the same elements.  This is a copy of the matrix.
+
+  Row and column vectors are converted to a 1D lisp vector.  Other
+  matrices are converted a 2D lisp array.
 "))
 
 (defun convert-1d-array (m eltype)
