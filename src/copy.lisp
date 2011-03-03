@@ -240,3 +240,50 @@ don't know how to coerce a COMPLEX to a REAL"))
     y))
 
     
+
+(defgeneric convert-to-lisp-array (matrix)
+  (:documentation
+   "
+  Syntax
+  ======
+  (CONVERT-TO-LISP-ARRAY matrix)
+
+  Purpose
+  =======
+  Create a new Lisp array with the same dimensions as the matrix and
+  with the same elements.  This is a copy of the matrix.
+"))
+
+(defun convert-1d-array (m eltype)
+  (let ((array (make-array (* (number-of-rows m)
+			      (number-of-cols m))
+			   :element-type eltype)))
+    ;; We could do this faster by accessing the storage directly, but
+    ;; this is easy.
+    (dotimes (k (length array))
+      (setf (aref array k) (matrix-ref m k)))
+    array))
+
+(defun convert-2d-array (m eltype)
+  (let* ((nrows (number-of-rows m))
+	 (ncols (number-of-cols m))
+	 (array (make-array (list (number-of-rows m)
+				  (number-of-cols m))
+			    :element-type eltype)))
+    ;; We could do this faster by accessing the storage directly, but
+    ;; this is easy.
+    (dotimes (r nrows)
+      (dotimes (c ncols)
+	(setf (aref array r c)
+	      (matrix-ref m r c))))
+    array))
+
+(defmethod convert-to-lisp-array ((m real-matrix))
+  (if (or (row-vector-p m) (col-vector-p m))
+      (convert-1d-array m 'double-float)
+      (convert-2d-array m 'double-float)))
+
+(defmethod convert-to-lisp-array ((m complex-matrix))
+  (if (or (row-vector-p m) (col-vector-p m))
+      (convert-1d-array m '(complex double-float))
+      (convert-2d-array m '(complex double-float))))
