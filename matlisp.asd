@@ -50,11 +50,18 @@
       :components
       ((:file "f77-mangling")))
 
+(defclass f2cl-cl-source-file (asdf:cl-source-file)
+  ())
+ 
+(defmethod asdf:source-file-type ((f f2cl-cl-source-file) (m asdf:module))
+  "l")
+
 (asdf:defsystem matlisp-f2cl-macros
   :pathname #.(translate-logical-pathname "matlisp:srcdir;lib-src;")
   :depends-on ("matlisp-packages")
+  :default-component-class f2cl-cl-source-file 
   :components
-  ((:file "macros" :type "l")))
+  ((:file "macros")))
 
 (asdf:defsystem matlisp
       :pathname #.(translate-logical-pathname "matlisp:srcdir;")
@@ -64,21 +71,21 @@
 		   "matlisp-f2cl-macros")
       :components
       ((:module "foreign-interface"
-	:pathname "src"
+	:pathname "src/"
 	:components ((:file
 		      #+:cmu "ffi-cmu"
 		      #+:sbcl "ffi-sbcl"
 		      #+:allegro "ffi-acl"
 		      )))
        (:module "foreign-functions"
-	:pathname "src"
+	:pathname "src/"
 	:depends-on ("foreign-interface")
 	:components ((:file "blas")
 		     (:file "lapack")
 		     (:file "dfftpack")
 		     #+nil (:file "ranlib")))
        (:module "matlisp-essentials"
-	:pathname "src"
+	:pathname "src/"
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
 	:components ((:file "conditions")
@@ -88,7 +95,7 @@
 		     (:file "copy")))
 
        (:module "matlisp-blas-wrappers"
-	:pathname "src"
+	:pathname "src/"
 	:depends-on ("foreign-interface" 
 		     "foreign-functions"
 		     "matlisp-essentials")
@@ -98,7 +105,7 @@
 		     (:file "gemm")))
 
        (:module "matlisp-lapack-wrappers"
-	:pathname "src"
+	:pathname "src/"
 	:depends-on ("foreign-interface" 
 		     "foreign-functions"
 		     "matlisp-essentials")
@@ -111,7 +118,7 @@
 		     (:file "potrs")))
 
        (:module "matlisp-functions"
-        :pathname "src"
+        :pathname "src/"
 	:depends-on ("foreign-interface"
 		     "foreign-functions"
 		     "matlisp-essentials"
@@ -142,7 +149,7 @@
 		     (:file "fft")
 		     (:file "geqr")))
        (:module "special-functions"
-		:pathname "src"
+		:pathname "src/"
 		:depends-on ("matlisp-functions")
 		:components
 		((:file "specfun")))))
@@ -154,7 +161,7 @@
   :depends-on ("matlisp-f2cl-macros")
   :components
   ((:module "quadpack-interface"
-	    :pathname "src"
+	    :pathname "src/"
 	    :components
 	    ((:file "quadpack")))
    (:module "lib-src"
