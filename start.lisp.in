@@ -206,7 +206,7 @@
 
 
 
-(load "matlisp:srcdir;maxima.asd")
+(load "matlisp:srcdir;matlisp.asd")
 (load "matlisp:builddir;config.lisp")
 
 (in-package "CL-USER")
