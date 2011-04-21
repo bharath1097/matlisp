@@ -19,3 +19,15 @@ dgeev.  The workspace query doesn't work as the code comments say.
 The version included with matlisp has this fixed by copying the
 corresponding code from zgeev, which does work.
 
+Build Issues
+============
+
+ Mac OS X
+ ========
+ o The stock version of m4 on Mac OS X 10.6 (and perhaps others) has a
+   bug that causes m4 to crash, preventing autoreconf from working.
+   You can upgrade m4 to from 1.4.6 (in OSX 10.6) to something newer.
+   Or you can use a different version of autoreconf, like the version
+   from MacPorts.
+
+
