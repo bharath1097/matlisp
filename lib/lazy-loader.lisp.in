@@ -202,8 +202,39 @@
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
-  #+(or :unix :linux) (load "matlisp:lib;libmatlisp.so")
-  #+:mswindows (load "matlisp:lib;libmatlisp.dll"))
+  #+:linux86-64
+  (progn 
+    ;; Load the libraries.
+    (load "matlisp:lib;linux64;libdfftpack.so")
+    (load "matlisp:lib;linux64;libtoms715.so")
+    (load "matlisp:lib;linux64;libblas.so")
+    (load "matlisp:lib;linux64;liblapack.so"))
+  #+:microsoft-32
+  (progn 
+    ;; The libblas and liblapack have dependencies that need to be satisfied.
+    ;; It's annoying, but the easiest way I know to do it is change into the directory
+    ;; when attempting to load the dll.
+    (let ((old-dir (excl:current-directory)))
+      ;; Change to the win32 directory.
+      (excl:chdir "matlisp:lib;win32;")
+      ;; Load the libraries.
+      (load "./libblas.dll")
+      (load "./liblapack.dll")
+      ;; Change back.
+      (excl:chdir old-dir)))
+  #+:microsoft-64
+  (progn 
+    ;; The libblas and liblapack have dependencies that need to be satisfied.
+    ;; It's annoying, but the easiest way I know to do it is change into the directory
+    ;; when attempting to load the dll.
+    (let ((old-dir (excl:current-directory)))
+      ;; Change to the win64 directory.
+      (excl:chdir "matlisp:lib;win64;")
+      ;; Load the libraries.
+      (load "./libblas64.dll")
+      (load "./liblapack64.dll")
+      ;; Change back.
+      (excl:chdir old-dir))))
 
 )
 
@@ -220,11 +251,29 @@
 
 #+(and :allegro (not :mswindows))
 (defun unload-blas-&-lapack-libraries ()
-  (ff:unload-foreign-library "matlisp:lib;libmatlisp.so"))
+  (ff:unload-foreign-library "matlisp:lib;linux64;libdfftpack.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;libtoms715.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;libblas.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;liblapack.so"))
 
 #+(and :allegro :mswindows)
 (defun unload-blas-&-lapack-libraries ()
-  (ff:unload-foreign-library "matlisp:lib;libmatlisp.dll"))
+  #+:microsoft-32 (let ((old-dir (excl:current-directory)))
+					  ;; Change to the win32 directory.
+					  (excl:chdir "matlisp:lib;win32;")
+					  ;; Unload the libraries.
+					  (ff:unload-foreign-library "./liblapack.dll")
+					  (ff:unload-foreign-library "./libblas.dll")
+					  ;; Change back.
+					  (excl:chdir old-dir))
+  #+:microsoft-64 (let ((old-dir (excl:current-directory)))
+					  ;; Change to the win64 directory.
+					  (excl:chdir "matlisp:lib;win64;")
+					  ;; Unload the libraries.
+					  (ff:unload-foreign-library "./liblapack64.dll")
+					  (ff:unload-foreign-library "./libblas64.dll")
+					  ;; Change back.
+					  (excl:chdir old-dir)))
 
 
 (eval-when (:load-toplevel :execute)
