@@ -221,7 +221,7 @@
 			    par
 			  (case type
 			    (:string
-			     (pushnew `(,(scat "LEN-" name) sb-c::int :copy) aux-pars)
+			     (pushnew `(,(scat "LEN-" name) sb-c::int :in) aux-pars)
 			     `(,name sb-c::c-string ,(get-read-in-style style type)))
 			    (t
 			     `(,name ,(get-read-in-type type) ,(get-read-in-style style type))))))
