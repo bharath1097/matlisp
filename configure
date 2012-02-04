@@ -617,6 +617,7 @@ LTLIBOBJS
 LIBOBJS
 ATLAS_FALSE
 ATLAS_TRUE
+GIT_VERSION
 share_ext
 FLIBS_OPTS
 FLIBS_LIBS
@@ -15085,6 +15086,8 @@ ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 # Extract the library part and options part out of FLIBS.
 FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
+
+GIT_VERSION=`git describe --dirty`
 
 
 
