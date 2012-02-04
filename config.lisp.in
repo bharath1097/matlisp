@@ -48,7 +48,7 @@
 
 (eval-when (load eval compile)
 (defparameter *matlisp-version*
-  "@PACKAGE_VERSION@")
+  "@PACKAGE_VERSION@ @GIT_VERSION@")
 
 #-(or :cmu :allegro :sbcl)
 (error "MATLISP version ~a requires CMUCL, SBCL or ALLEGRO CL" 

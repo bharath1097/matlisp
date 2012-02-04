@@ -167,6 +167,7 @@ AC_PROG_LIBTOOL
 FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
 
+GIT_VERSION=`git describe --dirty`
 dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
 AC_SUBST(BLAS_OBJS)
@@ -183,6 +184,7 @@ AC_SUBST(srcdir)
 AC_SUBST(FLIBS_LIBS)
 AC_SUBST(FLIBS_OPTS)
 AC_SUBST(share_ext)
+AC_SUBST(GIT_VERSION)
 
 AM_FFLAGS=
 
