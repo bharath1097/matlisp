@@ -204,6 +204,7 @@ AC_CONFIG_FILES([
   LAPACK/BLAS/SRC/Makefile
   dfftpack/Makefile
   lib-src/toms715/Makefile
+  lib-src/odepack/Makefile
   src/f77-mangling.lisp
 ])
 

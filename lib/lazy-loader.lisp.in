@@ -160,13 +160,17 @@
 
     (nreverse tokens)))
 
+(defvar *additional-libs*
+  '("matlisp:lib;libdfftpack.@share_ext@"
+    "matlisp:lib;libtoms715.@share_ext@"
+    "matlisp:lib;libodepack.@share_ext@"))
+
 ;; For CMUCL with linkage tables, we can just load up various shared
 ;; libraries.
 #+(and cmu :linkage-table)
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
-  (dolist (lib '("matlisp:lib;libdfftpack.@share_ext@"
-		 "matlisp:lib;libtoms715.@share_ext@"))
+  (dolist (lib *additional-libs*)
     (ext::load-foreign lib))
   (if @ATLAS_P@
       ;; Load the atlas libraries
@@ -182,8 +186,7 @@
 #+:sbcl
 (defun load-blas-&-lapack-libraries ()
     ;; Load the additional matlisp libraries
-  (dolist (lib '("matlisp:lib;libdfftpack.@share_ext@"
-		 "matlisp:lib;libtoms715.@share_ext@"))
+  (dolist (lib *additional-libs*)
     (sb-alien::load-shared-object lib))
   (if @ATLAS_P@
       ;; Load the atlas libraries
@@ -205,8 +208,8 @@
   #+:linux86-64
   (progn 
     ;; Load the libraries.
-    (load "matlisp:lib;linux64;libdfftpack.so")
-    (load "matlisp:lib;linux64;libtoms715.so")
+    (dolist (lib *additional-libs*)
+      (load lib))
     (load "matlisp:lib;linux64;libblas.so")
     (load "matlisp:lib;linux64;liblapack.so"))
   #+:microsoft-32

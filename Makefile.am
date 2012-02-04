@@ -1,4 +1,4 @@
-SUBDIRS = LAPACK/BLAS/SRC LAPACK/SRC dfftpack lib-src/toms715
+SUBDIRS = LAPACK/BLAS/SRC LAPACK/SRC dfftpack lib-src/toms715 lib-src/odepack
 #ACLOCAL_AMFLAGS = -I m4
 
 #AM_FFLAGS=
@@ -8,6 +8,7 @@ SUBDIRS = LAPACK/BLAS/SRC LAPACK/SRC dfftpack lib-src/toms715
 all : 
 	(cd dfftpack; $(MAKE) install)
 	(cd lib-src/toms715; $(MAKE) install)
+	(cd lib-src/odepack; $(MAKE) install)
 if !ATLAS
 	(cd LAPACK/SRC; $(MAKE) install)
 	(cd LAPACK/BLAS/SRC; $(MAKE) install)
