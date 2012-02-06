@@ -160,6 +160,13 @@
 
     (nreverse tokens)))
 
+(defvar *shared-library-extension*
+  "@share_ext@"
+  "Filename extension used for shared libraries.")
+
+(defvar *shared-library-pathname-extension*
+  (make-pathname :type "@share_ext@"))
+
 (defvar *additional-libs*
   '("matlisp:lib;libdfftpack.@share_ext@"
     "matlisp:lib;libtoms715.@share_ext@"
