@@ -3,13 +3,13 @@
 (in-package "FORTRAN-FFI-ACCESSORS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-(defconstant +f77-lower-case+ t
-  "Fortran names are lower case if non-NIL")
-(defconstant +f77-underscore+ t
-  "Fortran names have a trailing underscore if non-NIL")
-(defconstant +f77-extra-underscore+ nil
-  "Fortran names containing an underscore have an extra underscore appended if non-NIL")
-)
+  (defconstant +f77-lower-case+ t
+    "Fortran names are lower case if non-NIL")
+  (defconstant +f77-underscore+ t
+    "Fortran names have a trailing underscore if non-NIL")
+  (defconstant +f77-extra-underscore+ nil
+    "Fortran names containing an underscore have an extra underscore
+    appended if non-NIL"))
 
 (defun %cat% (prefix-string s &optional suffix-string)
   (concatenate 'string 
@@ -41,6 +41,3 @@
     (if +f77-lower-case+
 	(string-downcase name)
 	name)))
-  
-
-
