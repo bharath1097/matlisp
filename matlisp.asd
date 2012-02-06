@@ -75,7 +75,10 @@
 	:components ((:file
 		      #+(or cmu sbcl) "ffi-cffi"
 		      #+:allegro "ffi-acl"
-		      )))
+		      )
+		     #+(or cmu sbcl)
+		     (:file
+		      "cffi-helpers")))
        (:module "foreign-functions"
 	:pathname "src/"
 	:depends-on ("foreign-interface")
