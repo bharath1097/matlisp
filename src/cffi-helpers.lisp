@@ -1,4 +1,6 @@
 ;;
+(in-package "FORTRAN-FFI-ACCESSORS")
+
 (defmacro with-gensyms (symlist &body body)
   `(let ,(mapcar #'(lambda (sym)
 		      `(,sym (gensym ,(symbol-name sym))))

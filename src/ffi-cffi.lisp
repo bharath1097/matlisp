@@ -8,6 +8,8 @@
 
 ;; Callbacks : (:function <output-type> {(params)})
 
+(in-package "FORTRAN-FFI-ACCESSORS")
+
 (defconstant +ffi-types+ '(:single-float :double-float
 			   :complex-single-float :complex-double-float
 			   :integer :long
