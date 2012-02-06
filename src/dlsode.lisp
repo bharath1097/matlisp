@@ -1,3 +1,4 @@
+(in-package "MATLISP")
 #+nil
 (progn
 (asdf:oos 'asdf:load-op :cffi)
@@ -8,13 +9,14 @@
 )
 
 (cffi:define-foreign-library libodepack
-  (:unix #.(translate-logical-pathname "matlisp:lib;libodepack.dylib"))
+  (:unix #.(translate-logical-pathname
+	    (merge-pathnames "matlisp:lib;libodepack"
+			     *shared-library-pathname-extension*)))
   (t (:default "libodepack")))
 
 (cffi:use-foreign-library libodepack)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
 (def-fortran-routine dlsode :void
   "DLSODE in ODEPACK"
   (field (:callback :void
@@ -99,3 +101,6 @@
 (defvar y (make-array 2 :element-type 'double-float :initial-contents `(,(/ pi 2) 0d0)))
 
 (lsode-evolve #'pend-field y #(0d0 1d0) #'pend-report)
+;; Should return
+;; 1.0d0 1.074911802207049d0 -0.975509986605856d0
+;; 2.0d0 -0.20563950412081608d0 -1.3992359518735706d0
