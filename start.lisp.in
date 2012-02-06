@@ -205,12 +205,22 @@
 (deflogicalpath "matlisp")
 
 
+;; Load quicklisp.  This is requirement for now so we can easily get
+;; cffi.
+#-quicklisp
+(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+				       (user-homedir-pathname))))
+  (when (probe-file quicklisp-init)
+    (load quicklisp-init)))
 
+(ql:quickload "cffi")
 (load "matlisp:srcdir;matlisp.asd")
 (load "matlisp:builddir;config.lisp")
 
 (in-package "CL-USER")
 
+#+(or cmu sbcl)
+(asdf:oos 'asdf:load-op :cffi)
 (asdf:oos 'asdf:load-op :matlisp)
 
 (load "matlisp:srcdir;save.lisp")
