@@ -288,3 +288,12 @@
 		       (:file "hybrj" :depends-on ("dogleg" "qform" "r1mpyq" "r1updt"))
 		       (:file "hybrj1" :depends-on ("hybrj"))
 		       ))))))
+
+(asdf:defsystem matlisp-odepack
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :depends-on ("matlisp-f2cl-macros")
+  :components
+  ((:module "src"
+    :components
+    ((:file "dlsode")))))
+
