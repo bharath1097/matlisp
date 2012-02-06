@@ -73,8 +73,7 @@
       ((:module "foreign-interface"
 	:pathname "src/"
 	:components ((:file
-		      #+:cmu "ffi-cmu"
-		      #+:sbcl "ffi-sbcl"
+		      #+(or cmu sbcl) "ffi-cffi"
 		      #+:allegro "ffi-acl"
 		      )))
        (:module "foreign-functions"
