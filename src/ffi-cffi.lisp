@@ -141,14 +141,12 @@
     `(eval-when (load eval compile)
        (progn
 
-	 ;; Removing 'inlines'
-	 ;; It seems that CMUCL has a problem
-	 ;; with inlines of FFI's when a
-	 ;; lisp image is saved.  Until
-	 ;; the matter is clarified we
-	 ;; leave out 'inline's
+	 ;; Removing 'inlines' It seems that CMUCL has a problem with
+	 ;; inlines of FFI's when a lisp image is saved.  Until the
+	 ;; matter is clarified we leave out 'inline's
          
-	 ;(declaim (inline ,lisp-name))   ;sbcl 0.8.5 has problems with inlining
+	 ;(declaim (inline ,lisp-name)) ;sbcl 0.8.5 has problems with
+	 ;inlining
 	 (cffi:defcfun (,fortran-name ,lisp-name) ,@(get-return-type hack-return-type)
 	   ,@(parse-fortran-parameters hack-body))
 	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
@@ -262,10 +260,7 @@
        (simple-array (unsigned-byte  8) (*))))
 
 (defun vector-sap (vec)
-  #+cmu
-  (sys:vector-sap vec)
-  #+sbcl
-  (sb-sys:vector-sap vec))
+  (cffi::with-pointer-to-vector-data vec))
 
 (defun vector-data-address (vec)
   (locally
@@ -290,15 +285,34 @@
    ,@body)
   #+sbcl
   `(sb-int:with-float-traps-masked (:underflow :overflow :inexact :divide-by-zero :invalid)
-    ,@body))
+     ,@body)
+  #+ccl
+  (let ((old-fpu-modes (gensym "OLD-FPU-MODES-")))
+    `(let ((old-fpu-modes (get-fpu-mode)))
+       (unwind-protect
+	    (progn ,@body)
+	 (apply #'set-fpu-mode old-fpu-modes)))))
 
 
+#-ccl
 (defmacro with-vector-data-addresses (vlist &body body)
   `(with-fortran-float-modes
-       (#+cmu sys::without-gcing
-	#+sbcl sb-sys::without-gcing
-	 (let (,@(mapcar #'(lambda (pair)
-			     `(,(first pair)
-				(vector-data-address ,(second pair))))
-			 vlist))
-	   ,@body))))
+     (#+cmu sys::without-gcing
+      #+sbcl sb-sys::without-gcing
+      #-(or cmu sbcl) progn
+      (let (,@(mapcar #'(lambda (pair)
+			  `(,(first pair)
+			    (vector-data-address ,(second pair))))
+		      vlist))
+	,@body))))
+
+#+ccl
+(defmacro ccl-with-vector-data-addresses (vlist &body body)
+  (if (rest vlist)
+      `(with-fortran-float-modes
+	 (with-pointer-to-ivector (,(caar vlist) ,(cadar vlist))
+	   (ccl-with-vector-data-addresses ,(rest vlist) ,@body)))
+      `(with-pointer-to-ivectoor (,(caar vlist) ,(cdar vlist))
+	 ,@body)))
+
+

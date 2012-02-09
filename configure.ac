@@ -147,6 +147,21 @@ AC_HELP_STRING([--enable-acl],
 ],
 [acl=false])
 
+# Enable ccl
+AC_ARG_ENABLE([ccl],
+AC_HELP_STRING([--enable-ccl],
+[Enable ccl]),
+[case "${enableval}" in
+  yes) ccl=true ;;
+  no) ccl=fasle ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-ccl]) ;;
+ esac
+ LISPEVAL='-e'
+ LISPEXEC=ccl
+ enabled_lisp_count=`expr $enabled_lisp_count + 1`
+],
+[ccl=false])
+ 
 # Only one lisp can be enabled at a time.
 if test $enabled_lisp_count -gt 1; then
   AC_MSG_ERROR([Only one Lisp can be enabled at a time.])
@@ -168,6 +183,10 @@ FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | 
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
 
 GIT_VERSION=`git describe --dirty`
+
+# Check that quicklisp exists.  We need that currently to get cffi.
+AC_CHECK_FILE($HOME/quicklisp/setup.lisp, HAVE_QL="(and)", HAVE_QL="(or)")
+
 dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
 AC_SUBST(BLAS_OBJS)
@@ -185,6 +204,7 @@ AC_SUBST(FLIBS_LIBS)
 AC_SUBST(FLIBS_OPTS)
 AC_SUBST(share_ext)
 AC_SUBST(GIT_VERSION)
+AC_SUBST(HAVE_QL)
 
 AM_FFLAGS=
 
@@ -228,5 +248,7 @@ AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
   ATLAS_P=nil
 ])
 AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
+
+echo FLIBS = $FLIBS
 
 AC_OUTPUT

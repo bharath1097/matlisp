@@ -173,7 +173,7 @@
 "
   (flet ((default-dir ()
 	   (load-time-value *load-truename*)))
-    (setf (logical-pathname-translations "matlisp")
+    (setf (logical-pathname-translations name)
 	  (list
 	   ;; lib is where the libraries are.
 	   (list "lib;**;*.*.*"
@@ -207,19 +207,21 @@
 
 ;; Load quicklisp.  This is requirement for now so we can easily get
 ;; cffi.
-#-quicklisp
+#+(and @HAVE_QL@ (not quicklisp))
 (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
 				       (user-homedir-pathname))))
   (when (probe-file quicklisp-init)
     (load quicklisp-init)))
 
+#+(and @HAVE_QL@ (not quicklisp))
 (ql:quickload "cffi")
+
 (load "matlisp:srcdir;matlisp.asd")
 (load "matlisp:builddir;config.lisp")
 
 (in-package "CL-USER")
 
-#+(or cmu sbcl)
+#+(or cmu sbcl ccl)
 (asdf:oos 'asdf:load-op :cffi)
 (asdf:oos 'asdf:load-op :matlisp)
 

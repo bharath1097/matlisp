@@ -151,7 +151,7 @@
   (flet ((default-dir ()
 	     #+:cmu (ext:default-directory)
 	     #+:allegro (user::current-directory)
-             #+:sbcl *default-pathname-defaults*))
+             #+(or :sbcl ccl) *default-pathname-defaults*))
     (flet ((load-pathname ()
 	     (merge-pathnames 
 	      (if *load-pathname* 
@@ -182,7 +182,7 @@
 	      "")
 	      (default-dir))))
 
-      #+(or :cmu :sbcl)
+      #+(or :cmu :sbcl ccl)
       (setf (logical-pathname-translations name)
 	(list 
 	 (list "**;*.*.*"  

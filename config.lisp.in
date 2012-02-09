@@ -50,7 +50,7 @@
 (defparameter *matlisp-version*
   "@PACKAGE_VERSION@ @GIT_VERSION@")
 
-#-(or :cmu :allegro :sbcl)
+#-(or :cmu :allegro :sbcl ccl)
 (error "MATLISP version ~a requires CMUCL, SBCL or ALLEGRO CL" 
        *matlisp-version*)
 

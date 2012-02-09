@@ -72,13 +72,15 @@
       :components
       ((:module "foreign-interface"
 	:pathname "src/"
-	:components ((:file
-		      #+(or cmu sbcl) "ffi-cffi"
-		      #+:allegro "ffi-acl"
-		      )
-		     #+(or cmu sbcl)
+	:components (#+:allegro
+		     (:file "ffi-acl")
+		     #+quicklisp
+		     (:file "ffi-cffi"
+			    :depends-on ("cffi-helpers"))
+		     #+quicklisp
 		     (:file
-		      "cffi-helpers")))
+		      "cffi-helpers")
+		     ))
        (:module "foreign-functions"
 	:pathname "src/"
 	:depends-on ("foreign-interface")

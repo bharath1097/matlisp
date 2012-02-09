@@ -248,6 +248,22 @@
 
 )
 
+#+ccl
+(defun load-blas-&-lapack-libraries ()
+  (format t "FLIBS = ~S~%" "@FLIBS_LIBS@")
+  (dolist (lib *additional-libs*)
+    (ccl:open-shared-library (namestring (translate-logical-pathname lib))))
+  (if @ATLAS_P@
+      ;; Load the atlas libraries
+      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
+	(ccl:open-shared-library (concatenate 'string "@ATLAS_DIR@"
+					  lib
+					  ".@share_ext@")))
+      ;; Not using atlas, so load our versions.
+      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
+		     "matlisp:lib;liblapack.@share_ext@"))
+	(ccl:open-shared-library (namestring (translate-logical-pathname lib))))))
+
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
   (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
