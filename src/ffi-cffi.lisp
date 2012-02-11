@@ -10,14 +10,14 @@
 
 (in-package "FORTRAN-FFI-ACCESSORS")
 
-(defconstant +ffi-types+ '(:single-float :double-float
-			   :complex-single-float :complex-double-float
-			   :integer :long
-			   :string
-			   :callback))
+;; (defconstant +ffi-types+ '(:single-float :double-float
+;; 			   :complex-single-float :complex-double-float
+;; 			   :integer :long
+;; 			   :string
+;; 			   :callback))
 
-(defconstant +ffi-styles+ '(:input :input-value
-			    :input-output :output))
+;; (defconstant +ffi-styles+ '(:input :input-value
+;; 			    :input-output :output))
 
 ;; Get the equivalent CFFI type.
 ;; If the type is an array, get the type of the array element type.
@@ -105,8 +105,8 @@
 			    (:string
 			     ;; String lengths are appended to the function arguments,
 			     ;; passed by value.
-			     (pushnew `(,(scat "LEN-" name) ,(->cffi-type :integer)) aux-pars)
-			     `(,name ,(->cffi-type :string)))
+			     (pushnew `(,(scat "LEN-" name) ,@(->cffi-type :integer)) aux-pars)
+			     `(,name ,@(->cffi-type :string)))
 			    (t
 			     `(,name ,@(get-read-in-type type style))))))
 		    pars)))
@@ -227,22 +227,31 @@
       `(
       	(defun ,name ,defun-args
       	  ,@doc
-      	  (with-foreign-objects-stack-ed (,@ref-vars)
-	    (with-vector-data-addresses (,@array-vars)
-	      (let* (,@aux-args
-		     (ret (,ffi-fn ,@ffi-args ,@aux-ffi-args)))
-		;; Copy values in reference pointers back to local variables.
-		;; Lisp has local scope; its safe to modify variables in parameter lists.
-		,@(mapcar #'(lambda (decl)
-			      (destructuring-bind (ffi-var var type) decl
-				(if (member type '(:complex-single-float :complex-double-float))
-				    `(setq ,var (complex (cffi:mem-aref ,ffi-var ,@(->cffi-type type) 0) (cffi:mem-aref ,ffi-var ,@(->cffi-type type) 1)))
-				    `(setq ,var (cffi:mem-aref ,ffi-var ,@(->cffi-type type))))))
-			  (remove-if-not #'(lambda (x) (member (first x) ref-vars :key #'car))
-					 return-vars))
-		,(if (not (eq return-type :void))
-		     `(values ret ,@(mapcar #'second return-vars))
-		     `(values ,@(mapcar #'second return-vars)))))))))))
+	  (let (,@(if (not (null hidden-var-name))
+		      `((,hidden-var-name ,@(if (eq (second (first pars)) :complex-single-float)
+						`(#C(0e0 0e0))
+						`(#C(0d0 0d0)))))))
+	    (with-foreign-objects-stack-ed (,@ref-vars)
+	      (with-vector-data-addresses (,@array-vars)
+		(let* (,@aux-args		     
+		       ;;Style warnings are annoying.
+		       ,@(if (not (eq return-type :void))
+			     `((ret (,ffi-fn ,@ffi-args ,@aux-ffi-args))))
+		       )
+		  ,@(if (eq return-type :void)
+			`((,ffi-fn ,@ffi-args ,@aux-ffi-args)))
+		  ;; Copy values in reference pointers back to local variables.
+		  ;; Lisp has local scope; its safe to modify variables in parameter lists.
+		  ,@(mapcar #'(lambda (decl)
+				(destructuring-bind (ffi-var var type) decl
+				  (if (member type '(:complex-single-float :complex-double-float))
+				      `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 0) (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 1)))
+				      `(setq ,var (cffi:mem-aref ,ffi-var ,@(->cffi-type type))))))
+			    (remove-if-not #'(lambda (x) (member (first x) ref-vars :key #'car))
+					   return-vars))
+		  ,(if (not (eq return-type :void))
+		       `(values ret ,@(mapcar #'second return-vars))
+		       `(values ,@(mapcar #'second return-vars))))))))))))
 
 ;; Supporting multidimensional arrays is a pain.
 (deftype matlisp-specialized-array ()
@@ -260,7 +269,8 @@
        (simple-array (unsigned-byte  8) (*))))
 
 (defun vector-sap (vec)
-  (cffi::with-pointer-to-vector-data vec))
+  #+cmu (sys:vector-sap vec)
+  #+sbcl (sb-sys:vector-sap vec))
 
 (defun vector-data-address (vec)
   (locally
@@ -294,7 +304,7 @@
 	 (apply #'set-fpu-mode old-fpu-modes)))))
 
 
-#-ccl
+#+nil
 (defmacro with-vector-data-addresses (vlist &body body)
   `(with-fortran-float-modes
      (#+cmu sys::without-gcing
@@ -305,6 +315,16 @@
 			    (vector-data-address ,(second pair))))
 		      vlist))
 	,@body))))
+
+(defmacro with-vector-data-addresses (vlist &body body)
+  (labels ((frob (v body)
+	     (if (rest v)
+		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar vlist))
+		    ,(frob (rest v) body))
+		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar vlist))
+		    ,@body))))
+    `(with-fortran-float-modes
+       ,(frob vlist body))))
 
 #+ccl
 (defmacro ccl-with-vector-data-addresses (vlist &body body)
