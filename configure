@@ -617,6 +617,7 @@ LTLIBOBJS
 LIBOBJS
 ATLAS_FALSE
 ATLAS_TRUE
+HAVE_QL
 GIT_VERSION
 share_ext
 FLIBS_OPTS
@@ -752,6 +753,7 @@ enable_dependency_tracking
 enable_cmucl
 enable_sbcl
 enable_acl
+enable_ccl
 with_lisp_exec
 enable_shared
 enable_static
@@ -1398,6 +1400,7 @@ Optional Features:
   --enable-cmucl          Enable cmucl
   --enable-sbcl           Enable sbcl
   --enable-acl            Enable acl
+  --enable-ccl            Enable ccl
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -4689,6 +4692,23 @@ if test "${enable_acl+set}" = set; then :
 
 else
   acl=false
+fi
+
+
+# Enable ccl
+# Check whether --enable-ccl was given.
+if test "${enable_ccl+set}" = set; then :
+  enableval=$enable_ccl; case "${enableval}" in
+  yes) ccl=true ;;
+  no) ccl=fasle ;;
+  *) as_fn_error $? "bad value ${enableval} for --enable-ccl" "$LINENO" 5 ;;
+ esac
+ LISPEVAL='-e'
+ LISPEXEC=ccl
+ enabled_lisp_count=`expr $enabled_lisp_count + 1`
+
+else
+  ccl=false
 fi
 
 
@@ -15087,7 +15107,38 @@ ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
 FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
 
-GIT_VERSION=`git describe --dirty`
+# We need to add -ff2c to get the expected behavior (hidden return
+# variable) for functions that return complex numbers.
+AM_FFLAGS=-ff2c
+
+# GIT_VERSION=`git describe --dirty`
+
+# Check that quicklisp exists.  We need that currently to get cffi.
+as_ac_File=`$as_echo "ac_cv_file_$HOME/quicklisp/setup.lisp" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $HOME/quicklisp/setup.lisp" >&5
+$as_echo_n "checking for $HOME/quicklisp/setup.lisp... " >&6; }
+if eval \${$as_ac_File+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  test "$cross_compiling" = yes &&
+  as_fn_error $? "cannot check for file existence when cross compiling" "$LINENO" 5
+if test -r "$HOME/quicklisp/setup.lisp"; then
+  eval "$as_ac_File=yes"
+else
+  eval "$as_ac_File=no"
+fi
+fi
+eval ac_res=\$$as_ac_File
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
+  HAVE_QL="(and)"
+else
+  HAVE_QL="(or)"
+fi
+
+
+
 
 
 
@@ -15148,6 +15199,8 @@ else
 fi
 
 
+echo FLIBS = $FLIBS
+echo HAVE_QL = $HAVE_QL
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
