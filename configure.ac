@@ -206,8 +206,6 @@ AC_SUBST(share_ext)
 AC_SUBST(GIT_VERSION)
 AC_SUBST(HAVE_QL)
 
-AM_FFLAGS=
-
 echo host = $host
 
 # Set the extension for shared libraries.  This is not very robust.
@@ -250,5 +248,5 @@ AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
 AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
 echo FLIBS = $FLIBS
-
+echo HAVE_QL = $HAVE_QL
 AC_OUTPUT
