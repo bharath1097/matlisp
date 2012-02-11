@@ -213,7 +213,7 @@
   (when (probe-file quicklisp-init)
     (load quicklisp-init)))
 
-#+(and @HAVE_QL@ (not quicklisp))
+#+@HAVE_QL@
 (ql:quickload "cffi")
 
 (load "matlisp:srcdir;matlisp.asd")
@@ -221,8 +221,6 @@
 
 (in-package "CL-USER")
 
-#+(or cmu sbcl ccl)
-(asdf:oos 'asdf:load-op :cffi)
 (asdf:oos 'asdf:load-op :matlisp)
 
 (load "matlisp:srcdir;save.lisp")
