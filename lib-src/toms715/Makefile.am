@@ -1,11 +1,12 @@
 lib_LTLIBRARIES = libtoms715.la
 
+AM_FFLAGS = -ff2c
 if CMUCL
-AM_FFLAGS = -m32
+AM_FFLAGS += -m32
 endif
 
 libtoms715_la_LDFLAGS = $(FLIBS_OPTS)
-libtoms715_la_LIBADD = $(FLIBS_LIBS)
+libtoms715_la_LIBADD = $(FLIBS)
 
 libtoms715_la_SOURCES = \
 anorm.f \

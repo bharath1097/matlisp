@@ -1,13 +1,14 @@
 lib_LTLIBRARIES = libdfftpack.la
 
+AM_FFLAGS=-ff2c
 if CMUCL
-AM_FFLAGS = -m32
+AM_FFLAGS += -m32
 endif
 
 AM_LDFLAGS = $(FLIBS)
 
 libdfftpack_la_LDFLAGS = $(FLIBS_OPTS)
-libdfftpack_la_LIBADD = $(FLIBS_LIBS)
+libdfftpack_la_LIBADD = $(FLIBS)
 
 libdfftpack_la_SOURCES = \
 	cfftb1.f \

@@ -1,10 +1,11 @@
 lib_LTLIBRARIES = liblapack.la
 
+AM_FFLAGS = -ff2c
 if CMUCL
-AM_FFLAGS = -m32
+AM_FFLAGS += -m32
 endif
 
-liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS_LIBS)
+liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS)
 liblapack_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
 
 if !ATLAS

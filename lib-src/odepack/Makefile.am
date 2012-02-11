@@ -1,11 +1,12 @@
 lib_LTLIBRARIES = libodepack.la
 
+AM_FFLAGS = -ff2c
 if CMUCL
-AM_FFLAGS = -m32
+AM_FFLAGS += -m32
 endif
 
 libodepack_la_LDFLAGS = $(FLIBS_OPTS)
-libodepack_la_LIBADD = $(FLIBS_LIBS)
+libodepack_la_LIBADD = $(FLIBS)
 
 libodepack_la_SOURCES = \
 adjlr.f \

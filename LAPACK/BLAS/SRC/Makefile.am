@@ -1,11 +1,12 @@
 lib_LTLIBRARIES = libblas.la
 
+AM_FFLAGS = -ff2c
 if CMUCL
-AM_FFLAGS = -m32
+AM_FFLAGS += -m32
 endif
 
-libblas_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
-libblas_la_LIBADD = $(FLIBS_LIBS)
+libblas_la_LDFLAGS = $(FLIBS) -version-info 3:3:0
+libblas_la_LIBADD = $(FLIBS)
 
 if !ATLAS
 libblas_la_SOURCES = \
