@@ -231,18 +231,11 @@
 	 c
 	 job))
 
-(let ((complex-alpha (allocate-complex-store 1))
-      (complex-beta (allocate-complex-store 1)))
-
-(defmethod gemm! ((alpha #+:cmu kernel::complex-double-float
-                         #+:sbcl sb-kernel::complex-double-float
-			 #+:allegro number) 
-		  (a complex-matrix) 
+(defmethod gemm! ((alpha number)
+		  (a complex-matrix)
 		  (b complex-matrix)
-		  (beta #+:cmu kernel::complex-double-float
-                        #+:sbcl sb-kernel::complex-double-float
-			#+:allegro number) 
-		  (c complex-matrix) 
+		  (beta number)
+		  (c complex-matrix)
 		  &optional (job :nn))
 
   (let ((n (nrows c))
@@ -261,44 +254,24 @@
 	 (declare (type fixnum lda ldb)
 		  (type (string 1) job-a job-b))
 
-	 #+:allegro (setq alpha (complex-coerce alpha))
-	 #+:allegro (setq beta (complex-coerce beta))
-
-	 (setf (aref complex-alpha 0) (realpart alpha))
-	 (setf (aref complex-alpha 1) (imagpart alpha))
-	 (setf (aref complex-beta 0) (realpart beta))
-	 (setf (aref complex-beta 1) (imagpart beta))
+	 (setq alpha (complex-coerce alpha))
+	 (setq beta (complex-coerce beta))
 
 	 (zgemm job-a     ; TRANSA
 		job-b     ; TRANSB
 		n         ; M
 		m         ; N (LAPACK takes N,M opposite our convention)
 		k         ; K
-		complex-alpha  ; ALPHA
+		alpha  ; ALPHA
 		(store a) ; A
 		lda       ; LDA
 		(store b) ; B
 		ldb       ; LDB
-		complex-beta      ; BETA
+		beta      ; BETA
 		(store c) ; C
-		n )       ; LDC
+		n)       ; LDC
  
 	 c)))
-)
-
-#+(or :cmu :sbcl)
-(defmethod gemm! ((alpha number) 
-		  (a complex-matrix) 
-		  (b complex-matrix)
-		  (beta number) 
-		  (c complex-matrix) 
-		  &optional (job :nn))
-  (gemm! (complex-coerce alpha)
-	 a
-	 b
-	 (complex-coerce beta)
-	 c
-	 job))
 
 
 (defmethod gemm! ((alpha number) 
