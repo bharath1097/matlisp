@@ -319,12 +319,14 @@
 (defmacro with-vector-data-addresses (vlist &body body)
   (labels ((frob (v body)
 	     (if (rest v)
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar vlist))
+		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
 		    ,(frob (rest v) body))
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar vlist))
+		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
 		    ,@body))))
     `(with-fortran-float-modes
-       ,(frob vlist body))))
+       ,@(if (null vlist)
+	     `(,@body)
+	     `(,(frob vlist body))))))
 
 #+ccl
 (defmacro ccl-with-vector-data-addresses (vlist &body body)
