@@ -10,33 +10,39 @@
 
 (in-package "FORTRAN-FFI-ACCESSORS")
 
-;; (defconstant +ffi-types+ '(:single-float :double-float
-;; 			   :complex-single-float :complex-double-float
-;; 			   :integer :long
-;; 			   :string
-;; 			   :callback))
+#+(or)
+(defconstant +ffi-types+ '(:single-float :double-float
+			   :complex-single-float :complex-double-float
+			   :integer :long
+			   :string
+			   :callback))
 
-;; (defconstant +ffi-styles+ '(:input :input-value
-;; 			    :input-output :output))
+#+(or)
+(defconstant +ffi-styles+ '(:input :input-value
+			    :input-output :output))
 
 ;; Get the equivalent CFFI type.
 ;; If the type is an array, get the type of the array element type.
 (defun ->cffi-type (type)
   "Convert the given Fortran FFI type into a type understood by CFFI."
   (cond
-   ((and (listp type) (eq (first type) '*)) `(:pointer ,@(->cffi-type (second type))))
-   ((callback-type-p type) `(:pointer ,@(->cffi-type :callback)))
-   ((eq type :complex-single-float) `(:pointer ,@(->cffi-type :single-float)))
-   ((eq type :complex-double-float) `(:pointer ,@(->cffi-type :double-float)))
-   (t `(,(ecase type
-		(:void :void)
-		(:integer :int)
-		(:long :long)
-		(:single-float :float)
-		(:double-float :double)
-		(:string :string)
-		;; Pass a pointer to the function.
-		(:callback :void))))))
+    ((and (listp type) (eq (first type) '*))
+     `(:pointer ,@(->cffi-type (second type))))
+    ((callback-type-p type)
+     `(:pointer ,@(->cffi-type :callback)))
+    ((eq type :complex-single-float)
+     `(:pointer ,@(->cffi-type :single-float)))
+    ((eq type :complex-double-float)
+     `(:pointer ,@(->cffi-type :double-float)))
+    (t `(,(ecase type
+	    (:void :void)
+	    (:integer :int)
+	    (:long :long)
+	    (:single-float :float)
+	    (:double-float :double)
+	    (:string :string)
+	    ;; Pass a pointer to the function.
+	    (:callback :void))))))
 
 ;; Check if given type is a string
 (declaim (inline string-p))
@@ -99,18 +105,20 @@
 
     (let* ((aux-pars nil)
 	   (new-pars
-	    (mapcar #'(lambda (decl)
-			(destructuring-bind (name type &optional (style :input)) decl
-			  (case type
-			    (:string
-			     ;; String lengths are appended to the function arguments,
-			     ;; passed by value.
-			     (pushnew `(,(scat "LEN-" name) ,@(->cffi-type :integer)) aux-pars)
-			     `(,name ,@(->cffi-type :string)))
-			    (t
-			     `(,name ,@(get-read-in-type type style))))))
-		    pars)))
-      `(;; don't want documentation for direct interface, not useful
+	     (mapcar #'(lambda (decl)
+			 (destructuring-bind (name type &optional (style :input))
+			     decl
+			   (case type
+			     (:string
+			      ;; String lengths are appended to the function arguments,
+			      ;; passed by value.
+			      (pushnew `(,(scat "LEN-" name) ,@(->cffi-type :integer))
+				       aux-pars)
+			      `(,name ,@(->cffi-type :string)))
+			     (t
+			      `(,name ,@(get-read-in-type type style))))))
+		     pars)))
+      `( ;; don't want documentation for direct interface, not useful
 	;; ,@doc
 	,@new-pars ,@aux-pars))))
 
@@ -172,16 +180,19 @@
 	      (let ((ffi-var nil)
 		    (aux-var nil))
 		(cond
-		  ;; Callbacks are tricky because the data inside pointer arrays will need to
-		  ;; be copied without implicit knowledge of the size of the array.
-		  ;; This is usually taken care of by special data structure - ala GSL -
-		  ;; or by passing additional arguments to the callback to apprise it of the
-		  ;; bounds on the arrays. This *cannot* be automated within a macro and has to
-		  ;; be hand-tweaked.
+		  ;; Callbacks are tricky because the data inside
+		  ;; pointer arrays will need to be copied without
+		  ;; implicit knowledge of the size of the array.
+		  ;; This is usually taken care of by special data
+		  ;; structure - ala GSL - or by passing additional
+		  ;; arguments to the callback to apprise it of the
+		  ;; bounds on the arrays. This *cannot* be automated
+		  ;; within a macro and has to be hand-tweaked.
 		  ((callback-type-p type)
 		   (setq ffi-var var))
 		  ;; Can't really enforce "style" when given an array.
-		  ;; Complex numbers do not latch onto this case, they are passed by value.
+		  ;; Complex numbers do not latch onto this case, they
+		  ;; are passed by value.
 		  ((array-p type)
 		   (setq ffi-var (scat "ADDR-" var))
 		   (setq array-vars
@@ -198,8 +209,9 @@
 		  ;; Pass-by-reference variables
 		  (t
 		   (cond
-		     ;; Makes more sense to copy complex numbers into arrays,
-		     ;; rather than twiddling around with lisp memory internals.
+		     ;; Makes more sense to copy complex numbers into
+		     ;; arrays, rather than twiddling around with lisp
+		     ;; memory internals.
 		     ((member type '(:complex-single-float :complex-double-float))
 		      (setq ffi-var (scat "ADDR-REAL-CAST-" var))
 		      (setq ref-vars
@@ -228,7 +240,8 @@
       	(defun ,name ,defun-args
       	  ,@doc
 	  (let (,@(if (not (null hidden-var-name))
-		      `((,hidden-var-name ,@(if (eq (second (first pars)) :complex-single-float)
+		      `((,hidden-var-name ,@(if (eq (second (first pars))
+						    :complex-single-float)
 						`(#C(0e0 0e0))
 						`(#C(0d0 0d0)))))))
 	    (with-foreign-objects-stack-ed (,@ref-vars)
@@ -240,14 +253,17 @@
 		       )
 		  ,@(if (eq return-type :void)
 			`((,ffi-fn ,@ffi-args ,@aux-ffi-args)))
-		  ;; Copy values in reference pointers back to local variables.
-		  ;; Lisp has local scope; its safe to modify variables in parameter lists.
+		  ;; Copy values in reference pointers back to local
+		  ;; variables.  Lisp has local scope; its safe to
+		  ;; modify variables in parameter lists.
 		  ,@(mapcar #'(lambda (decl)
 				(destructuring-bind (ffi-var var type) decl
 				  (if (member type '(:complex-single-float :complex-double-float))
-				      `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 0) (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 1)))
+				      `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 0)
+							   (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 1)))
 				      `(setq ,var (cffi:mem-aref ,ffi-var ,@(->cffi-type type))))))
-			    (remove-if-not #'(lambda (x) (member (first x) ref-vars :key #'car))
+			    (remove-if-not #'(lambda (x)
+					       (member (first x) ref-vars :key #'car))
 					   return-vars))
 		  ,(if (not (eq return-type :void))
 		       `(values ret ,@(mapcar #'second return-vars))
@@ -268,26 +284,6 @@
        (simple-array (unsigned-byte 16) (*))
        (simple-array (unsigned-byte  8) (*))))
 
-(defun vector-sap (vec)
-  #+cmu (sys:vector-sap vec)
-  #+sbcl (sb-sys:vector-sap vec))
-
-(defun vector-data-address (vec)
-  (locally
-      (declare (optimize (speed 1) (safety 3)))
-    ;; It's quite important that the arrays have the write type.
-    ;; Otherwise, we will probably get the address of the data wrong,
-    ;; and then foreign function could be scribbling over who knows
-    ;; where!
-    ;;
-    (check-type vec matlisp-specialized-array))
-  (locally
-      (declare (type matlisp-specialized-array vec)
-	       (optimize (speed 3) (safety 0) (space 0)))
-    (if (typep vec '(simple-array * (*)))
-	(vector-sap vec)
-	(error "Unsupported type (!) : ~S" (type-of vec)))))
-
 (defmacro with-fortran-float-modes (&body body)
   "Execute the body with the IEEE FP modes appropriately set for Fortran"
   #+cmu
@@ -304,18 +300,6 @@
 	 (apply #'set-fpu-mode old-fpu-modes)))))
 
 
-#+nil
-(defmacro with-vector-data-addresses (vlist &body body)
-  `(with-fortran-float-modes
-     (#+cmu sys::without-gcing
-      #+sbcl sb-sys::without-gcing
-      #-(or cmu sbcl) progn
-      (let (,@(mapcar #'(lambda (pair)
-			  `(,(first pair)
-			    (vector-data-address ,(second pair))))
-		      vlist))
-	,@body))))
-
 (defmacro with-vector-data-addresses (vlist &body body)
   (labels ((frob (v body)
 	     (if (rest v)
@@ -327,14 +311,4 @@
        ,@(if (null vlist)
 	     `(,@body)
 	     `(,(frob vlist body))))))
-
-#+ccl
-(defmacro ccl-with-vector-data-addresses (vlist &body body)
-  (if (rest vlist)
-      `(with-fortran-float-modes
-	 (with-pointer-to-ivector (,(caar vlist) ,(cadar vlist))
-	   (ccl-with-vector-data-addresses ,(rest vlist) ,@body)))
-      `(with-pointer-to-ivectoor (,(caar vlist) ,(cdar vlist))
-	 ,@body)))
-
 
