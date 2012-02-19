@@ -233,7 +233,7 @@
 						`(#C(0d0 0d0)))))))
 	    (with-foreign-objects-stack-ed (,@ref-vars)
 	      (with-vector-data-addresses (,@array-vars)
-		(let* (,@aux-args		     
+		(let* (,@aux-args
 		       ;;Style warnings are annoying.
 		       ,@(if (not (eq return-type :void))
 			     `((ret (,ffi-fn ,@ffi-args ,@aux-ffi-args))))
@@ -318,15 +318,12 @@
 
 (defmacro with-vector-data-addresses (vlist &body body)
   (labels ((frob (v body)
-	     (if (rest v)
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
-		    ,(frob (rest v) body))
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
-		    ,@body))))
+	     (if (null v)
+		 `(,@body)
+		 `((cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
+		     ,@(frob (rest v) body))))))
     `(with-fortran-float-modes
-       ,@(if (null vlist)
-	     `(,@body)
-	     `(,(frob vlist body))))))
+	 ,@(frob vlist body))))
 
 #+ccl
 (defmacro ccl-with-vector-data-addresses (vlist &body body)
@@ -336,5 +333,3 @@
 	   (ccl-with-vector-data-addresses ,(rest vlist) ,@body)))
       `(with-pointer-to-ivectoor (,(caar vlist) ,(cdar vlist))
 	 ,@body)))
-
-

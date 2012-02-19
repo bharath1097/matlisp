@@ -47,7 +47,8 @@
 	  (cond
 	    ((not (symbolp var)) (error "Variable: ~S, is not a symbol." var))
 	    ((not (symbolp type)) (error "Type: ~S, is not a symbol." type))
-	    ((and initial-element initial-contents) (error "Cannot apply both :initial-element and :initial-contents at the same time")))
+	    ((and initial-element initial-contents) (error "Can't specify both initial-element and initial-contents.")))
+	  ;;
 	  `(let ((,decl-count ,count)
 		 (,decl-init ,(or initial-element initial-contents)))
 	     (cffi:with-foreign-object (,var ,type ,decl-count)
