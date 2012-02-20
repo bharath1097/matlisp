@@ -183,7 +183,10 @@
 
 #+ccl
 (defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP"))
+  (:use "COMMON-LISP")
+  (:export
+   "DEF-FORTRAN-ROUTINE"
+   "WITH-VECTOR-DATA-ADDRESS"))
 
 (defpackage "BLAS"
   #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
