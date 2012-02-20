@@ -122,14 +122,14 @@
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
                         #+:sbcl sb-kernel::complex-double-float
-			#+:allegro complex) (x real-matrix))
+			#+(or :ccl :allegro) complex) (x real-matrix))
   (let* ((nxm (number-of-elements x))
 	 (n (nrows x))
 	 (m (ncols x))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
     
-    #+:allegro (setq alpha (complex-coerce alpha))
+    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
 
     (copy! x result)
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
@@ -155,12 +155,12 @@
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
                         #+:sbcl sb-kernel::complex-double-float
-			#+:allegro complex) (x complex-matrix))
+			#+(or :ccl :allegro) complex) (x complex-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
  
-    #+:allegro (setq alpha (complex-coerce alpha))
+    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
 
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
@@ -203,11 +203,11 @@ how to coerce COMPLEX to REAL"))
 
 (defmethod scal! ((alpha #+:cmu kernel::complex-double-float
                          #+:sbcl sb-kernel::complex-double-float
-			 #+:allegro complex) (x complex-matrix))
+			 #+(or :ccl :allegro) complex) (x complex-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
 
-    #+:allegro (setq alpha (complex-coerce alpha))
+    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
 
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))

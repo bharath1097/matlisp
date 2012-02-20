@@ -177,10 +177,10 @@
 
 (defmethod m+ ((a real-matrix) (b #+:cmu kernel::complex-double-float
                                   #+:sbcl sb-kernel::complex-double-float
-				  #+:allegro complex))
+				  #+(or :ccl :allegro) complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
-	 #+:allegro (b (complex-coerce b))
+	 #+(or :ccl :allegro) (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -192,7 +192,7 @@
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
                   #+:sbcl sb-kernel::complex-double-float
-		  #+:allegro complex) (b real-matrix))
+		  #+(or :ccl :allegro) complex) (b real-matrix))
   (m+ b a))
 
 #+(or :cmu :sbcl)
@@ -221,10 +221,10 @@
 
 (defmethod m+ ((a complex-matrix) (b #+:cmu kernel::complex-double-float
                                      #+:sbcl sb-kernel::complex-double-float
-				     #+:allegro complex))
+				     #+(or :ccl :allegro) complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
-	 #+:allegro (b (complex-coerce b))
+	 #+(or :ccl :allegro) (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -236,7 +236,7 @@
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
                   #+:sbcl sb-kernel::complex-double-float
-		  #+:allegro complex) (b complex-matrix))
+		  #+(or :ccl :allegro) complex) (b complex-matrix))
   (m+ b a))
 
 #+(or :cmu :sbcl)
@@ -320,11 +320,11 @@ don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m+! ((a complex-matrix) (b #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+:allegro complex))
+				      #+(or :ccl :allegro) complex))
   (let* ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
 
-    #+:allegro (setq b (complex-coerce b))
+    #+(or :ccl :allegro) (setq b (complex-coerce b))
 
     (setf (aref *1x1-complex-array* 0) (realpart b))
     (setf (aref *1x1-complex-array* 1) (imagpart b))
@@ -337,7 +337,7 @@ don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m+! ((a #+:cmu kernel::complex-double-float
                    #+:sbcl sb-kernel::complex-double-float
-		   #+:allegro complex) (b complex-matrix))
+		   #+(or :ccl :allegro) complex) (b complex-matrix))
   (m+! b a))
 
 #+(or :cmu :sbcl)

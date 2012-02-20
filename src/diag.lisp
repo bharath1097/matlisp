@@ -215,13 +215,13 @@ don't know how to coerce COMPLEX to REAL"
 
 (defmethod (setf diag) ((new-diag #+:cmu kernel::complex-double-float
                                   #+:sbcl sb-kernel::complex-double-float
-				  #+:allegro complex) (mat complex-matrix))
+				  #+(or :ccl :allegro) complex) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
 	 (p (min n m)))
     (declare (type fixnum n m p))
 
-    #+:allegro (setf new-diag (complex-coerce new-diag))
+    #+(or :ccl allegro) (setf new-diag (complex-coerce new-diag))
 
     (zcopy p new-diag 0 (store mat) (1+ n))
     mat))

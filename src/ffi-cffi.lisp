@@ -327,10 +327,16 @@
      ,@body)
   #+ccl
   (let ((old-fpu-modes (gensym "OLD-FPU-MODES-")))
-    `(let ((,old-fpu-modes (get-fpu-mode)))
+    `(let ((,old-fpu-modes (ccl:get-fpu-mode)))
        (unwind-protect
-	    (progn ,@body)
-	 (apply #'set-fpu-mode ,old-fpu-modes)))))
+	    (progn
+	      (ccl:set-fpu-mode :overflow nil
+				:underflow nil
+				:division-by-zero nil
+				:invalid nil
+				:inexact nil)
+	      ,@body)
+	 (apply #'ccl:set-fpu-mode ,old-fpu-modes)))))
 
 
 (defmacro with-vector-data-addresses (vlist &body body)
