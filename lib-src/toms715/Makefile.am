@@ -1,7 +1,7 @@
 lib_LTLIBRARIES = libtoms715.la
 
 AM_FFLAGS = -ff2c
-if CMUCL
+if LIB32
 AM_FFLAGS += -m32
 endif
 
