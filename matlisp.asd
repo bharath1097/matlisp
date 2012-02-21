@@ -75,11 +75,7 @@
 	:components (#+:allegro
 		     (:file "ffi-acl")
 		     #+quicklisp
-		     (:file "ffi-cffi"
-			    :depends-on ("cffi-helpers"))
-		     #+quicklisp
-		     (:file
-		      "cffi-helpers")
+		     (:file "ffi-cffi")
 		     ))
        (:module "foreign-functions"
 	:pathname "src/"
@@ -94,8 +90,10 @@
 		     "foreign-functions")
 	:components ((:file "conditions")
 		     (:file "matrix")
-		     (:file "ref")
-		     (:file "print")
+		     (:file "ref"
+			    :depends-on ("matrix"))
+		     (:file "print"
+			    :depends-on ("ref"))
 		     (:file "copy")))
 
        (:module "matlisp-blas-wrappers"

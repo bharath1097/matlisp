@@ -837,7 +837,7 @@
 	 (store (store matrix))
 	 (new-store (store new)))
     
-    (declare (type fixnum m)
+    (declare (type fixnum n)
 	     (type (real-matrix-store-type (*)) store new-store))
     
     (setf (aref store (fortran-matrix-indexing i 0 n))
@@ -848,8 +848,7 @@
 	 (m (ncols matrix))
 	 (new-n (nrows new)))
     
-    (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) store new-store))
+    (declare (type fixnum n m new-n))
 
     (let ((p (length i)))
       (when (> p new-n)
@@ -868,8 +867,7 @@
 	 (new-n (nrows new))
 	 )
     
-    (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) store new-store))
+    (declare (type fixnum n m new-n))
     
   
     (let ((p (if (integerp i)
@@ -2495,7 +2493,7 @@
 #+nil
 (defmethod (setf matrix-ref) ((new #+:cmu kernel::complex-double-float
                                    #+:sbcl sb-kernel::complex-double-float
-				   #+:allegro complex) 
+				   #+(or :ccl :allegro) complex) 
 			      (matrix complex-matrix) i &optional (j nil j-p))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -2505,7 +2503,7 @@
     (declare (type fixnum n m)
 	     (type (complex-matrix-store-type (*)) store))
     
-    #+:allegro (setq new (complex-coerce new))    
+    #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -2584,7 +2582,7 @@
 
 (defmethod (setf matrix-ref-1d) ((new #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+:allegro complex) 
+				      #+(or :allegro :ccl) complex) 
 				 (matrix complex-matrix) i)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -2594,7 +2592,7 @@
     (declare (type fixnum n m)
 	     (type (complex-matrix-store-type (*)) store))
     
-    #+:allegro (setq new (complex-coerce new))    
+    #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -2627,7 +2625,7 @@
 
 (defmethod (setf matrix-ref-2d) ((new #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+:allegro complex) 
+				      #+(or :allegro :ccl) complex) 
 				 (matrix complex-matrix) i j)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -2637,7 +2635,7 @@
     (declare (type fixnum n m)
 	     (type (complex-matrix-store-type (*)) store))
     
-    #+:allegro (setq new (complex-coerce new))    
+    #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
     (labels ((consistent-i (i)
 	       (and (integerp i)

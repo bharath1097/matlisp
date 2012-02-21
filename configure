@@ -663,6 +663,10 @@ build_vendor
 build_cpu
 build
 LIBTOOL
+CCL_FALSE
+CCL_TRUE
+LIB32_FALSE
+LIB32_TRUE
 CMUCL_FALSE
 CMUCL_TRUE
 FLIBS
@@ -4659,6 +4663,14 @@ else
   CMUCL_FALSE=
 fi
 
+ if test x$cmucl = xtrue; then
+  LIB32_TRUE=
+  LIB32_FALSE='#'
+else
+  LIB32_TRUE='#'
+  LIB32_FALSE=
+fi
+
 
 # Enable sbcl
 # Check whether --enable-sbcl was given.
@@ -4709,6 +4721,22 @@ if test "${enable_ccl+set}" = set; then :
 
 else
   ccl=false
+fi
+
+ if test x$ccl = xtrue; then
+  CCL_TRUE=
+  CCL_FALSE='#'
+else
+  CCL_TRUE='#'
+  CCL_FALSE=
+fi
+
+ if test x$ccl = xtrue; then
+  LIB32_TRUE=
+  LIB32_FALSE='#'
+else
+  LIB32_TRUE='#'
+  LIB32_FALSE=
 fi
 
 
@@ -15358,6 +15386,18 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${CMUCL_TRUE}" && test -z "${CMUCL_FALSE}"; then
   as_fn_error $? "conditional \"CMUCL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
+  as_fn_error $? "conditional \"LIB32\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${CCL_TRUE}" && test -z "${CCL_FALSE}"; then
+  as_fn_error $? "conditional \"CCL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
+  as_fn_error $? "conditional \"LIB32\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ATLAS_TRUE}" && test -z "${ATLAS_FALSE}"; then

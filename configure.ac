@@ -115,6 +115,7 @@ AC_HELP_STRING([--enable-cmucl],
 ],
 [cmucl=false])
 AM_CONDITIONAL([CMUCL], [test x$cmucl = xtrue])
+AM_CONDITIONAL([LIB32], [test x$cmucl = xtrue])
 
 # Enable sbcl
 AC_ARG_ENABLE([sbcl],
@@ -161,7 +162,9 @@ AC_HELP_STRING([--enable-ccl],
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [ccl=false])
- 
+AM_CONDITIONAL([CCL], [test x$ccl = xtrue])
+AM_CONDITIONAL([LIB32], [test x$ccl = xtrue])
+
 # Only one lisp can be enabled at a time.
 if test $enabled_lisp_count -gt 1; then
   AC_MSG_ERROR([Only one Lisp can be enabled at a time.])
