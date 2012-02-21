@@ -255,18 +255,11 @@
 
 ;; Supporting multidimensional arrays is a pain.
 (deftype matlisp-specialized-array ()
-  `(or (complex double-float)
-       (complex single-float)
-       (simple-array (complex double-float) (*))
+  `(or (simple-array (complex double-float) (*))
        (simple-array (complex single-float) (*))
        (simple-array double-float (*))
        (simple-array single-float (*))
-       (simple-array (signed-byte 32) (*))
-       (simple-array (signed-byte 16) (*))
-       (simple-array (signed-byte  8) (*))
-       (simple-array (unsigned-byte 32) (*))
-       (simple-array (unsigned-byte 16) (*))
-       (simple-array (unsigned-byte  8) (*))))
+       cffi:foreign-pointer))
 
 (defun vector-sap (vec)
   #+cmu (sys:vector-sap vec)
@@ -275,7 +268,7 @@
 (defun vector-data-address (vec)
   (locally
       (declare (optimize (speed 1) (safety 3)))
-    ;; It's quite important that the arrays have the write type.
+    ;; It's quite important that the arrays have the right type.
     ;; Otherwise, we will probably get the address of the data wrong,
     ;; and then foreign function could be scribbling over who knows
     ;; where!
@@ -284,9 +277,9 @@
   (locally
       (declare (type matlisp-specialized-array vec)
 	       (optimize (speed 3) (safety 0) (space 0)))
-    (if (typep vec '(simple-array * (*)))
-	(vector-sap vec)
-	(error "Unsupported type (!) : ~S" (type-of vec)))))
+    (cond
+      ((typep vec 'cffi:foreign-pointer) vec)
+      (t (vector-sap vec)))))
 
 (defmacro with-fortran-float-modes (&body body)
   "Execute the body with the IEEE FP modes appropriately set for Fortran"
@@ -304,7 +297,7 @@
 	 (apply #'set-fpu-mode old-fpu-modes)))))
 
 
-#+nil
+
 (defmacro with-vector-data-addresses (vlist &body body)
   `(with-fortran-float-modes
      (#+cmu sys::without-gcing
@@ -316,6 +309,7 @@
 		      vlist))
 	,@body))))
 
+#+nil
 (defmacro with-vector-data-addresses (vlist &body body)
   (labels ((frob (v body)
 	     (if (null v)
