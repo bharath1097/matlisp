@@ -181,7 +181,7 @@
   (:export 
    "DEF-FORTRAN-ROUTINE"))
 
-#+ccl
+#+(or ccl ecl)
 (defpackage "FORTRAN-FFI-ACCESSORS"
   (:use "COMMON-LISP")
   (:export
@@ -192,7 +192,7 @@
   #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
   #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
   #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+ccl (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
+  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
   (:export
    "IDAMAX" "DASUM" "DDOT" "DNRM2"
    "DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"
@@ -208,7 +208,7 @@
   #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
   #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
   #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+ccl (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
+  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
   (:export
    "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
    "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
@@ -222,7 +222,7 @@
   #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
   #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
   #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+ccl (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
+  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
   (:export "ZFFTI" "ZFFTF" "ZFFTB")
   (:documentation "FFT routines"))
 
