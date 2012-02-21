@@ -165,6 +165,22 @@ AC_HELP_STRING([--enable-ccl],
 AM_CONDITIONAL([CCL], [test x$ccl = xtrue])
 AM_CONDITIONAL([LIB32], [test x$ccl = xtrue])
 
+# Enable ecl
+AC_ARG_ENABLE([ecl],
+AC_HELP_STRING([--enable-ecl],
+[Enable ecl]),
+[case "${enableval}" in
+  yes) ecl=true ;;
+  no) ecl=fasle ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-ecl]) ;;
+ esac
+ LISPEVAL='-eval'
+ LISPEXEC=ecl
+ enabled_lisp_count=`expr $enabled_lisp_count + 1`
+],
+[ecl=false])
+AM_CONDITIONAL([ECL], [test x$ecl = xtrue])
+
 # Only one lisp can be enabled at a time.
 if test $enabled_lisp_count -gt 1; then
   AC_MSG_ERROR([Only one Lisp can be enabled at a time.])
