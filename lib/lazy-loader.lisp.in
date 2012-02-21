@@ -172,43 +172,32 @@
     "matlisp:lib;libtoms715.@share_ext@"
     "matlisp:lib;libodepack.@share_ext@"))
 
-;; For CMUCL with linkage tables, we can just load up various shared
-;; libraries.
-#+(and cmu :linkage-table)
+;; Tell cffi where our libraries are.
+(push "lib/" cffi:*foreign-library-directories*)
+
+;; Define our libraries
+(cffi:define-foreign-library dfftpack
+  (t (:default "libdfftpack")))
+
+(cffi:define-foreign-library toms715
+  (t (:default "libtoms715")))
+
+(cffi:define-foreign-library odepack
+  (t (:default "libodepack")))
+
+(cffi:define-foreign-library blas
+  (t (:default "libblas")))
+
+(cffi:define-foreign-library lapack
+  (t (:default "liblapack")))
+
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
-  (dolist (lib *additional-libs*)
-    (ext::load-foreign lib))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(ext:load-foreign (concatenate 'string "@ATLAS_DIR@"
-				       lib
-				       ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(ext::load-foreign lib))))
-
-#+:sbcl
-(defun load-blas-&-lapack-libraries ()
-    ;; Load the additional matlisp libraries
-  (dolist (lib *additional-libs*)
-    (sb-alien::load-shared-object lib))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(sb-alien:load-shared-object (concatenate 'string "@ATLAS_DIR@"
-				       lib
-				       ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(sb-alien:load-shared-object lib))))
-
-;;(sb-alien:load-shared-object "matlisp:lib;libmatlisp.so")
-
-
+  (cffi:use-foreign-library dfftpack)
+  (cffi:use-foreign-library toms715)
+  ;;(cffi:use-foreign-library odepack)
+  (cffi:use-foreign-library blas)
+  (cffi:use-foreign-library lapack))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
@@ -247,22 +236,6 @@
       (excl:chdir old-dir))))
 
 )
-
-#+ccl
-(defun load-blas-&-lapack-libraries ()
-  (format t "FLIBS = ~S~%" "@FLIBS_LIBS@")
-  (dolist (lib *additional-libs*)
-    (ccl:open-shared-library (namestring (translate-logical-pathname lib))))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(ccl:open-shared-library (concatenate 'string "@ATLAS_DIR@"
-					  lib
-					  ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(ccl:open-shared-library (namestring (translate-logical-pathname lib))))))
 
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
