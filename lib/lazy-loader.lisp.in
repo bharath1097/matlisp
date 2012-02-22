@@ -112,68 +112,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package "MATLISP")
 
-#|
-;; example of an optimized BLAS/LAPACK load on a Solaris platform
-
-(eval-when (load eval compile)
-(defun load-blas-&-lapack-libraries ()
-  (ext::load-foreign "matlisp:lib;lazy-loader.o"
-		:libraries `("-R/home/eclair1/shift-uav/meta-shift/lib"
-			     "-L/home/eclair1/shift-uav/meta-shift/lib"
-			     "-R/usr/lib"
-			     "-L/usr/lib"
-			     "-R/usr/sww/lib"
-			     "-L/usr/sww/lib"
-			     "-R/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
-			     "-L/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
-			     "-latlas"
-			     "-llapack"
-			     "-lblas"
-			     "-lM77"
-			     "-lF77"
-			     "-lsunmath"
-			     "-lm"
-			     "-lc"))))
-|#
-
-
-(eval-when (load eval compile)
-#+(or :cmu :sbcl)
-(defun tokenize-ld-args (s)
-  (let ((token "")
-	(n (length s))
-	(tokens nil))
-
-    (dotimes (i n)
-       (declare (type fixnum i))
-       (let ((c (char s i)))
-	 (case c
-	  ((#\return #\linefeed 
-	    #\space #\tab #\newline)  (if (not (string= token ""))
-					  (progn
-					    (push token tokens)
-					    (setq token ""))))
-	  (t (setq token (concatenate 'string token (string c)))))))
-
-    (if (not (string= token ""))
-	(push token tokens))
-
-    (nreverse tokens)))
-
-(defvar *shared-library-extension*
-  "@share_ext@"
-  "Filename extension used for shared libraries.")
-
-(defvar *shared-library-pathname-extension*
-  (make-pathname :type "@share_ext@"))
-
-(defvar *additional-libs*
-  '("matlisp:lib;libdfftpack.@share_ext@"
-    "matlisp:lib;libtoms715.@share_ext@"
-    "matlisp:lib;libodepack.@share_ext@"))
-
 ;; Tell cffi where our libraries are.
-(push "lib/" cffi:*foreign-library-directories*))
+(push "lib/" cffi:*foreign-library-directories*)
 
 ;; Define our libraries
 (cffi:define-foreign-library dfftpack
@@ -186,6 +126,7 @@
   (t (:default "libodepack")))
 
 (when @ATLAS_P@
+  ;; Define the ATLAS libraries and their locations.
   (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
   (cffi:define-foreign-library atlas
     (t (:default "libatlas")))
@@ -197,6 +138,7 @@
     (t (:default "libf77blas"))))
 
 (unless @ATLAS_P@
+  ;; Use our blas and lapack libraries
   (cffi:define-foreign-library blas
     (t (:default "libblas"))))
 
@@ -254,8 +196,6 @@
       ;; Change back.
       (excl:chdir old-dir))))
 
-)
-
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
   (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
@@ -298,4 +238,3 @@
   (format t "Loading BLAS and LAPACK libraries~%")
   (load-blas-&-lapack-libraries)
   (format t "DONE~%"))
-
