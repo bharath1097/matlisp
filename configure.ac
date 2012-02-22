@@ -32,6 +32,9 @@ AC_INIT([matlisp], [2.0],
 AM_INIT_AUTOMAKE
 AC_CONFIG_MACRO_DIR([m4])
 
+dnl Get a nice grep command.
+AC_PROG_GREP
+
 dnl Determine which C compiler to use.  (Probably don't need this
 dnl because we no longer use a C compiler to compile anything.)
 AC_PROG_CC
@@ -198,8 +201,8 @@ dnl We need libtool to build the libraries
 AC_PROG_LIBTOOL
 
 # Extract the library part and options part out of FLIBS.
-FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
-FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
+FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -e -l | $GREP -v gfortranbegin | tr -s '\n' ' '`
+FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86_64 | $GREP -e -L | tr -s '\n' ' '`
 
 GIT_VERSION=`git describe --dirty`
 
