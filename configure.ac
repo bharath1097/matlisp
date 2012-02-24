@@ -223,8 +223,16 @@ else
   AC_MSG_RESULT([no])
 fi
 
+# Check to see if gfortran needs -ff2c.  If needed, this option forces
+# gfortran to be compatible with f2c.  This is needed by matlisp's FFI
+# so that it can correctly handle Fortran functions that return
+# complex numbers.  With f2c, complex numbers cause a hidden initial
+# parameter that is a pointer to a structure where the complex result
+# is stored.
+
 if test x"$F77" = x"gfortran"; then
   AC_MSG_CHECKING([if gfortran needs -ff2c for functions returning complex numbers])
+  # Just some silly Fortran function that returns a complex number.
   cat > conftest.f <<EOF
       complex*16 function f77_name(x)
       complex*16 x
@@ -234,6 +242,10 @@ if test x"$F77" = x"gfortran"; then
 EOF
   #echo $F77 $FFLAGS -c conftest.f
   $F77 $FFLAGS -c conftest.f
+  # A C main routine that calls the fortran routine.  This assumes the
+  # f2c calling convention of a hidden result structure.  If the real
+  # part of the result matches our expectations, then main returns 0
+  # (f2c compatible).  Any other exit code means incompatible.
   cat > ctest.c <<EOF
 #include <stdio.h>
 #include <math.h>
