@@ -633,6 +633,8 @@ ATLAS_DIR
 NO_ATLAS_LAPACK_OBJS
 BLAS_OBJS
 LISPEXEC
+LIB32_FALSE
+LIB32_TRUE
 CPP
 OTOOL64
 OTOOL
@@ -666,8 +668,6 @@ ECL_FALSE
 ECL_TRUE
 CCL_FALSE
 CCL_TRUE
-LIB32_FALSE
-LIB32_TRUE
 CMUCL_FALSE
 CMUCL_TRUE
 FLIBS
@@ -4717,6 +4717,7 @@ if test "${enable_cmucl+set}" = set; then :
  # Don't run the user's init function!
  LISPEVAL='-noinit -eval'
  LISPEXEC=lisp
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4731,14 +4732,6 @@ else
   CMUCL_FALSE=
 fi
 
- if test x$cmucl = xtrue; then
-  LIB32_TRUE=
-  LIB32_FALSE='#'
-else
-  LIB32_TRUE='#'
-  LIB32_FALSE=
-fi
-
 
 # Enable sbcl
 # Check whether --enable-sbcl was given.
@@ -4751,6 +4744,7 @@ if test "${enable_sbcl+set}" = set; then :
  # Don't run the user's init function!
  LISPEVAL='--sysinit /dev/null --userinit /dev/null --eval'
  LISPEXEC=sbcl
+ LISPQUIT='(sb-ext:quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4785,6 +4779,7 @@ if test "${enable_ccl+set}" = set; then :
  esac
  LISPEVAL='-e'
  LISPEXEC=ccl
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4797,14 +4792,6 @@ fi
 else
   CCL_TRUE='#'
   CCL_FALSE=
-fi
-
- if test x$ccl = xtrue; then
-  LIB32_TRUE=
-  LIB32_FALSE='#'
-else
-  LIB32_TRUE='#'
-  LIB32_FALSE=
 fi
 
 
@@ -15192,6 +15179,27 @@ else
 fi
 
 
+# Are we using a 32-bit lisp?  If so, define LIB32 so that we compile
+# the 32-bit libraries.
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for 32-bit lisp" >&5
+$as_echo_n "checking for 32-bit lisp... " >&6; }
+ if $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^T' >/dev/null; then
+  LIB32_TRUE=
+  LIB32_FALSE='#'
+else
+  LIB32_TRUE='#'
+  LIB32_FALSE=
+fi
+
+if test -z "${LIB32_TRUE}" ; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+fi
+
 
 
 
@@ -15418,20 +15426,16 @@ if test -z "${CMUCL_TRUE}" && test -z "${CMUCL_FALSE}"; then
   as_fn_error $? "conditional \"CMUCL\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
-  as_fn_error $? "conditional \"LIB32\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${CCL_TRUE}" && test -z "${CCL_FALSE}"; then
   as_fn_error $? "conditional \"CCL\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
-  as_fn_error $? "conditional \"LIB32\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${ECL_TRUE}" && test -z "${ECL_FALSE}"; then
   as_fn_error $? "conditional \"ECL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
+  as_fn_error $? "conditional \"LIB32\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ATLAS_TRUE}" && test -z "${ATLAS_FALSE}"; then
