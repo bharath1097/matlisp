@@ -114,11 +114,12 @@ AC_HELP_STRING([--enable-cmucl],
  # Don't run the user's init function!
  LISPEVAL='-noinit -eval'
  LISPEXEC=lisp
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [cmucl=false])
 AM_CONDITIONAL([CMUCL], [test x$cmucl = xtrue])
-AM_CONDITIONAL([LIB32], [test x$cmucl = xtrue])
+dnl AM_CONDITIONAL([LIB32], [test x$cmucl = xtrue])
 
 # Enable sbcl
 AC_ARG_ENABLE([sbcl],
@@ -132,6 +133,7 @@ AC_HELP_STRING([--enable-sbcl],
  # Don't run the user's init function!
  LISPEVAL='--sysinit /dev/null --userinit /dev/null --eval'
  LISPEXEC=sbcl
+ LISPQUIT='(sb-ext:quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [sbcl=false])
@@ -162,11 +164,11 @@ AC_HELP_STRING([--enable-ccl],
  esac
  LISPEVAL='-e'
  LISPEXEC=ccl
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [ccl=false])
 AM_CONDITIONAL([CCL], [test x$ccl = xtrue])
-AM_CONDITIONAL([LIB32], [test x$ccl = xtrue])
 
 # Enable ecl
 AC_ARG_ENABLE([ecl],
@@ -208,6 +210,18 @@ GIT_VERSION=`git describe --dirty`
 
 # Check that quicklisp exists.  We need that currently to get cffi.
 AC_CHECK_FILE($HOME/quicklisp/setup.lisp, HAVE_QL="(and)", HAVE_QL="(or)")
+
+# Are we using a 32-bit lisp?  If so, define LIB32 so that we compile
+# the 32-bit libraries.
+
+AC_MSG_CHECKING([for 32-bit lisp])
+AM_CONDITIONAL([LIB32], 
+  $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^T' >/dev/null)
+if test -z "${LIB32_TRUE}" ; then
+  AC_MSG_RESULT([no])
+else
+  AC_MSG_RESULT([yes])
+fi
 
 dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
