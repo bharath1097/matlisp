@@ -617,6 +617,7 @@ LTLIBOBJS
 LIBOBJS
 ATLAS_FALSE
 ATLAS_TRUE
+F2C
 HAVE_QL
 GIT_VERSION
 share_ext
@@ -15199,6 +15200,65 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
+
+if test x"$F77" = x"gfortran"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if gfortran needs -ff2c for functions returning complex numbers" >&5
+$as_echo_n "checking if gfortran needs -ff2c for functions returning complex numbers... " >&6; }
+  cat > conftest.f <<EOF
+      complex*16 function f77_name(x)
+      complex*16 x
+      f77_name = 3*x
+      return
+      end
+EOF
+  #echo $F77 $FFLAGS -c conftest.f
+  $F77 $FFLAGS -c conftest.f
+  cat > ctest.c <<EOF
+#include <stdio.h>
+#include <math.h>
+
+struct c16
+{
+  double real;
+  double imag;
+};
+
+
+extern void ${f77_name}(struct c16* result, struct c16* x);
+
+int main()
+{
+  int rc;
+
+  struct c16 x, y;
+
+  x.real = 1;
+  x.imag = 2;
+
+  ${f77_name}(&y, &x);
+
+  if (fabs(y.real - 3) < 1e-5) {
+    rc = 0;
+  } else {
+    rc = 1;
+  }
+
+  return rc;
+}
+EOF
+  #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  NEED_FF2C=yes
+  F2C="-ff2c"
+  if a.out; then
+    NEED_FF2c=no
+    F2C=""
+  fi
+  rm -f ctest.c a.out
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $NEED_FF2C" >&5
+$as_echo "$NEED_FF2C" >&6; }
+fi
+
 
 
 
