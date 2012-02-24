@@ -6,7 +6,7 @@ AM_FFLAGS += -m32
 endif
 
 liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS)
-liblapack_la_LDFLAGS = $(FLIBS) -version-info 3:3:0
+liblapack_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
 
 if !ATLAS
 liblapack_la_SOURCES = \
