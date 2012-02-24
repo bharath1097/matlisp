@@ -216,11 +216,11 @@ AC_CHECK_FILE($HOME/quicklisp/setup.lisp, HAVE_QL="(and)", HAVE_QL="(or)")
 
 AC_MSG_CHECKING([for 32-bit lisp])
 AM_CONDITIONAL([LIB32], 
-  $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^T' >/dev/null)
+  $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^NIL' >/dev/null)
 if test -z "${LIB32_TRUE}" ; then
-  AC_MSG_RESULT([no])
-else
   AC_MSG_RESULT([yes])
+else
+  AC_MSG_RESULT([no])
 fi
 
 dnl The following variables will be substituted into the .in files
