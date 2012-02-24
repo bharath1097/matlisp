@@ -15184,7 +15184,7 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for 32-bit lisp" >&5
 $as_echo_n "checking for 32-bit lisp... " >&6; }
- if $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^T' >/dev/null; then
+ if $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^NIL' >/dev/null; then
   LIB32_TRUE=
   LIB32_FALSE='#'
 else
@@ -15193,11 +15193,11 @@ else
 fi
 
 if test -z "${LIB32_TRUE}" ; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 
 
