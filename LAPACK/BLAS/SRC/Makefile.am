@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libblas.la
 
-AM_FFLAGS = -ff2c
+AM_FFLAGS = $(F2C)
 if LIB32
 AM_FFLAGS += -m32
 endif

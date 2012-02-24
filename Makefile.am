@@ -7,6 +7,8 @@ endif
 
 #AM_FFLAGS=
 
+F2C = @F2C@
+
 # This should build all the libraries we need.  Then we need to
 # install them before we can build the lisp code.
 all : 
