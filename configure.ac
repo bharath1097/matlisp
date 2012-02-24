@@ -26,7 +26,7 @@ dnl Process this file with autoreconf to produce the appropriate configure
 dnl script and Makefile.in's.  Then run configure to build.
 dnl
 
-AC_INIT([matlisp], [2.0],
+AC_INIT([matlisp], [2.9],
         [matlisp-users@lists.sourceforge.net],,
         [http://matlisp.sourceforge.net])
 AM_INIT_AUTOMAKE
