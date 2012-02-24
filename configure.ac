@@ -32,6 +32,9 @@ AC_INIT([matlisp], [2.0],
 AM_INIT_AUTOMAKE
 AC_CONFIG_MACRO_DIR([m4])
 
+dnl Get a nice grep command.
+AC_PROG_GREP
+
 dnl Determine which C compiler to use.  (Probably don't need this
 dnl because we no longer use a C compiler to compile anything.)
 AC_PROG_CC
@@ -111,11 +114,12 @@ AC_HELP_STRING([--enable-cmucl],
  # Don't run the user's init function!
  LISPEVAL='-noinit -eval'
  LISPEXEC=lisp
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [cmucl=false])
 AM_CONDITIONAL([CMUCL], [test x$cmucl = xtrue])
-AM_CONDITIONAL([LIB32], [test x$cmucl = xtrue])
+dnl AM_CONDITIONAL([LIB32], [test x$cmucl = xtrue])
 
 # Enable sbcl
 AC_ARG_ENABLE([sbcl],
@@ -129,6 +133,7 @@ AC_HELP_STRING([--enable-sbcl],
  # Don't run the user's init function!
  LISPEVAL='--sysinit /dev/null --userinit /dev/null --eval'
  LISPEXEC=sbcl
+ LISPQUIT='(sb-ext:quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [sbcl=false])
@@ -159,11 +164,27 @@ AC_HELP_STRING([--enable-ccl],
  esac
  LISPEVAL='-e'
  LISPEXEC=ccl
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 ],
 [ccl=false])
 AM_CONDITIONAL([CCL], [test x$ccl = xtrue])
-AM_CONDITIONAL([LIB32], [test x$ccl = xtrue])
+
+# Enable ecl
+AC_ARG_ENABLE([ecl],
+AC_HELP_STRING([--enable-ecl],
+[Enable ecl]),
+[case "${enableval}" in
+  yes) ecl=true ;;
+  no) ecl=fasle ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-ecl]) ;;
+ esac
+ LISPEVAL='-eval'
+ LISPEXEC=ecl
+ enabled_lisp_count=`expr $enabled_lisp_count + 1`
+],
+[ecl=false])
+AM_CONDITIONAL([ECL], [test x$ecl = xtrue])
 
 # Only one lisp can be enabled at a time.
 if test $enabled_lisp_count -gt 1; then
@@ -182,13 +203,81 @@ dnl We need libtool to build the libraries
 AC_PROG_LIBTOOL
 
 # Extract the library part and options part out of FLIBS.
-FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
-FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
+FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -e -l | $GREP -v gfortranbegin | tr -s '\n' ' '`
+FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86_64 | $GREP -e -L | tr -s '\n' ' '`
 
 GIT_VERSION=`git describe --dirty`
 
 # Check that quicklisp exists.  We need that currently to get cffi.
 AC_CHECK_FILE($HOME/quicklisp/setup.lisp, HAVE_QL="(and)", HAVE_QL="(or)")
+
+# Are we using a 32-bit lisp?  If so, define LIB32 so that we compile
+# the 32-bit libraries.
+
+AC_MSG_CHECKING([for 32-bit lisp])
+AM_CONDITIONAL([LIB32], 
+  $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^NIL' >/dev/null)
+if test -z "${LIB32_TRUE}" ; then
+  AC_MSG_RESULT([yes])
+else
+  AC_MSG_RESULT([no])
+fi
+
+if test x"$F77" = x"gfortran"; then
+  AC_MSG_CHECKING([if gfortran needs -ff2c for functions returning complex numbers])
+  cat > conftest.f <<EOF
+      complex*16 function f77_name(x)
+      complex*16 x
+      f77_name = 3*x
+      return
+      end
+EOF
+  #echo $F77 $FFLAGS -c conftest.f
+  $F77 $FFLAGS -c conftest.f
+  cat > ctest.c <<EOF
+#include <stdio.h>
+#include <math.h>
+
+struct c16 
+{
+  double real;
+  double imag;
+};
+
+  
+extern void ${f77_name}(struct c16* result, struct c16* x);
+
+int main()
+{
+  int rc;
+  
+  struct c16 x, y;
+  
+  x.real = 1;
+  x.imag = 2;
+
+  ${f77_name}(&y, &x);
+
+  if (fabs(y.real - 3) < 1e-5) {
+    rc = 0;
+  } else {
+    rc = 1;
+  }
+
+  return rc;
+}
+EOF
+  #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  NEED_FF2C=yes
+  F2C="-ff2c"
+  if a.out; then
+    NEED_FF2c=no
+    F2C=""
+  fi
+  rm -f ctest.c a.out
+  AC_MSG_RESULT([$NEED_FF2C])
+fi
 
 dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
@@ -208,6 +297,7 @@ AC_SUBST(FLIBS_OPTS)
 AC_SUBST(share_ext)
 AC_SUBST(GIT_VERSION)
 AC_SUBST(HAVE_QL)
+AC_SUBST(F2C)
 
 echo host = $host
 

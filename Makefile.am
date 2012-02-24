@@ -1,7 +1,13 @@
-SUBDIRS = LAPACK/BLAS/SRC LAPACK/SRC dfftpack lib-src/toms715 lib-src/odepack
+SUBDIRS = dfftpack lib-src/toms715 lib-src/odepack
+if !ATLAS
+SUBDIRS += LAPACK/BLAS/SRC LAPACK/SRC
+endif
+
 #ACLOCAL_AMFLAGS = -I m4
 
 #AM_FFLAGS=
+
+F2C = @F2C@
 
 # This should build all the libraries we need.  Then we need to
 # install them before we can build the lisp code.
@@ -10,8 +16,8 @@ all :
 	(cd lib-src/toms715; $(MAKE) install)
 	(cd lib-src/odepack; $(MAKE) install)
 if !ATLAS
-	(cd LAPACK/SRC; $(MAKE) install)
 	(cd LAPACK/BLAS/SRC; $(MAKE) install)
+	(cd LAPACK/SRC; $(MAKE) install)
 endif
 	$(MAKE) lisp
 

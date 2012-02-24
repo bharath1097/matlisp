@@ -174,6 +174,7 @@ test x\$exitcode = x0 || exit 1"
   as_lineno_2=";as_suggested=$as_suggested$LINENO;as_suggested=$as_suggested" as_lineno_2a=\$LINENO
   eval 'test \"x\$as_lineno_1'\$as_run'\" != \"x\$as_lineno_2'\$as_run'\" &&
   test \"x\`expr \$as_lineno_1'\$as_run' + 1\`\" = \"x\$as_lineno_2'\$as_run'\"' || exit 1
+test \$(( 1 + 1 )) = 2 || exit 1
 
   test -n \"\${ZSH_VERSION+set}\${BASH_VERSION+set}\" || (
     ECHO='\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'
@@ -181,8 +182,7 @@ test x\$exitcode = x0 || exit 1"
     ECHO=\$ECHO\$ECHO\$ECHO\$ECHO\$ECHO\$ECHO
     PATH=/empty FPATH=/empty; export PATH FPATH
     test \"X\`printf %s \$ECHO\`\" = \"X\$ECHO\" \\
-      || test \"X\`print -r -- \$ECHO\`\" = \"X\$ECHO\" ) || exit 1
-test \$(( 1 + 1 )) = 2 || exit 1"
+      || test \"X\`print -r -- \$ECHO\`\" = \"X\$ECHO\" ) || exit 1"
   if (eval "$as_required") 2>/dev/null; then :
   as_have_required=yes
 else
@@ -617,6 +617,7 @@ LTLIBOBJS
 LIBOBJS
 ATLAS_FALSE
 ATLAS_TRUE
+F2C
 HAVE_QL
 GIT_VERSION
 share_ext
@@ -633,6 +634,8 @@ ATLAS_DIR
 NO_ATLAS_LAPACK_OBJS
 BLAS_OBJS
 LISPEXEC
+LIB32_FALSE
+LIB32_TRUE
 CPP
 OTOOL64
 OTOOL
@@ -652,7 +655,6 @@ DUMPBIN
 LD
 FGREP
 EGREP
-GREP
 SED
 host_os
 host_vendor
@@ -663,10 +665,10 @@ build_vendor
 build_cpu
 build
 LIBTOOL
+ECL_FALSE
+ECL_TRUE
 CCL_FALSE
 CCL_TRUE
-LIB32_FALSE
-LIB32_TRUE
 CMUCL_FALSE
 CMUCL_TRUE
 FLIBS
@@ -689,6 +691,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+GREP
 am__untar
 am__tar
 AMTAR
@@ -758,6 +761,7 @@ enable_cmucl
 enable_sbcl
 enable_acl
 enable_ccl
+enable_ecl
 with_lisp_exec
 enable_shared
 enable_static
@@ -1405,6 +1409,7 @@ Optional Features:
   --enable-sbcl           Enable sbcl
   --enable-acl            Enable acl
   --enable-ccl            Enable ccl
+  --enable-ecl            Enable ecl
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -2725,6 +2730,70 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
+$as_echo_n "checking for grep that handles long lines and -e... " >&6; }
+if ${ac_cv_path_GREP+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -z "$GREP"; then
+  ac_path_GREP_found=false
+  # Loop through the user's path and test for each of PROGNAME-LIST
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/usr/xpg4/bin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_prog in grep ggrep; do
+    for ac_exec_ext in '' $ac_executable_extensions; do
+      ac_path_GREP="$as_dir/$ac_prog$ac_exec_ext"
+      { test -f "$ac_path_GREP" && $as_test_x "$ac_path_GREP"; } || continue
+# Check for GNU ac_path_GREP and select it if it is found.
+  # Check for GNU $ac_path_GREP
+case `"$ac_path_GREP" --version 2>&1` in
+*GNU*)
+  ac_cv_path_GREP="$ac_path_GREP" ac_path_GREP_found=:;;
+*)
+  ac_count=0
+  $as_echo_n 0123456789 >"conftest.in"
+  while :
+  do
+    cat "conftest.in" "conftest.in" >"conftest.tmp"
+    mv "conftest.tmp" "conftest.in"
+    cp "conftest.in" "conftest.nl"
+    $as_echo 'GREP' >> "conftest.nl"
+    "$ac_path_GREP" -e 'GREP$' -e '-(cannot match)-' < "conftest.nl" >"conftest.out" 2>/dev/null || break
+    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+    as_fn_arith $ac_count + 1 && ac_count=$as_val
+    if test $ac_count -gt ${ac_path_GREP_max-0}; then
+      # Best one so far, save it but keep looking for a better one
+      ac_cv_path_GREP="$ac_path_GREP"
+      ac_path_GREP_max=$ac_count
+    fi
+    # 10*(2^10) chars as input seems more than enough
+    test $ac_count -gt 10 && break
+  done
+  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
+esac
+
+      $ac_path_GREP_found && break 3
+    done
+  done
+  done
+IFS=$as_save_IFS
+  if test -z "$ac_cv_path_GREP"; then
+    as_fn_error $? "no acceptable grep could be found in $PATH$PATH_SEPARATOR/usr/xpg4/bin" "$LINENO" 5
+  fi
+else
+  ac_cv_path_GREP=$GREP
+fi
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_path_GREP" >&5
+$as_echo "$ac_cv_path_GREP" >&6; }
+ GREP="$ac_cv_path_GREP"
 
 
 
@@ -4649,6 +4718,7 @@ if test "${enable_cmucl+set}" = set; then :
  # Don't run the user's init function!
  LISPEVAL='-noinit -eval'
  LISPEXEC=lisp
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4663,14 +4733,6 @@ else
   CMUCL_FALSE=
 fi
 
- if test x$cmucl = xtrue; then
-  LIB32_TRUE=
-  LIB32_FALSE='#'
-else
-  LIB32_TRUE='#'
-  LIB32_FALSE=
-fi
-
 
 # Enable sbcl
 # Check whether --enable-sbcl was given.
@@ -4683,6 +4745,7 @@ if test "${enable_sbcl+set}" = set; then :
  # Don't run the user's init function!
  LISPEVAL='--sysinit /dev/null --userinit /dev/null --eval'
  LISPEXEC=sbcl
+ LISPQUIT='(sb-ext:quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4717,6 +4780,7 @@ if test "${enable_ccl+set}" = set; then :
  esac
  LISPEVAL='-e'
  LISPEXEC=ccl
+ LISPQUIT='(quit)'
  enabled_lisp_count=`expr $enabled_lisp_count + 1`
 
 else
@@ -4731,12 +4795,29 @@ else
   CCL_FALSE=
 fi
 
- if test x$ccl = xtrue; then
-  LIB32_TRUE=
-  LIB32_FALSE='#'
+
+# Enable ecl
+# Check whether --enable-ecl was given.
+if test "${enable_ecl+set}" = set; then :
+  enableval=$enable_ecl; case "${enableval}" in
+  yes) ecl=true ;;
+  no) ecl=fasle ;;
+  *) as_fn_error $? "bad value ${enableval} for --enable-ecl" "$LINENO" 5 ;;
+ esac
+ LISPEVAL='-eval'
+ LISPEXEC=ecl
+ enabled_lisp_count=`expr $enabled_lisp_count + 1`
+
 else
-  LIB32_TRUE='#'
-  LIB32_FALSE=
+  ecl=false
+fi
+
+ if test x$ecl = xtrue; then
+  ECL_TRUE=
+  ECL_FALSE='#'
+else
+  ECL_TRUE='#'
+  ECL_FALSE=
 fi
 
 
@@ -5001,69 +5082,6 @@ Xsed="$SED -e 1s/^X//"
 
 
 
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
-$as_echo_n "checking for grep that handles long lines and -e... " >&6; }
-if ${ac_cv_path_GREP+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  if test -z "$GREP"; then
-  ac_path_GREP_found=false
-  # Loop through the user's path and test for each of PROGNAME-LIST
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH$PATH_SEPARATOR/usr/xpg4/bin
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_prog in grep ggrep; do
-    for ac_exec_ext in '' $ac_executable_extensions; do
-      ac_path_GREP="$as_dir/$ac_prog$ac_exec_ext"
-      { test -f "$ac_path_GREP" && $as_test_x "$ac_path_GREP"; } || continue
-# Check for GNU ac_path_GREP and select it if it is found.
-  # Check for GNU $ac_path_GREP
-case `"$ac_path_GREP" --version 2>&1` in
-*GNU*)
-  ac_cv_path_GREP="$ac_path_GREP" ac_path_GREP_found=:;;
-*)
-  ac_count=0
-  $as_echo_n 0123456789 >"conftest.in"
-  while :
-  do
-    cat "conftest.in" "conftest.in" >"conftest.tmp"
-    mv "conftest.tmp" "conftest.in"
-    cp "conftest.in" "conftest.nl"
-    $as_echo 'GREP' >> "conftest.nl"
-    "$ac_path_GREP" -e 'GREP$' -e '-(cannot match)-' < "conftest.nl" >"conftest.out" 2>/dev/null || break
-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
-    as_fn_arith $ac_count + 1 && ac_count=$as_val
-    if test $ac_count -gt ${ac_path_GREP_max-0}; then
-      # Best one so far, save it but keep looking for a better one
-      ac_cv_path_GREP="$ac_path_GREP"
-      ac_path_GREP_max=$ac_count
-    fi
-    # 10*(2^10) chars as input seems more than enough
-    test $ac_count -gt 10 && break
-  done
-  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
-esac
-
-      $ac_path_GREP_found && break 3
-    done
-  done
-  done
-IFS=$as_save_IFS
-  if test -z "$ac_cv_path_GREP"; then
-    as_fn_error $? "no acceptable grep could be found in $PATH$PATH_SEPARATOR/usr/xpg4/bin" "$LINENO" 5
-  fi
-else
-  ac_cv_path_GREP=$GREP
-fi
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_path_GREP" >&5
-$as_echo "$ac_cv_path_GREP" >&6; }
- GREP="$ac_cv_path_GREP"
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for egrep" >&5
@@ -15132,8 +15150,8 @@ ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 
 
 # Extract the library part and options part out of FLIBS.
-FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | grep -e -l | grep -v gfortranbegin | tr -s '\n' ' '`
-FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | grep -v gfortranbegin | grep -v x86_64 | grep -e -L | tr -s '\n' ' '`
+FLIBS_LIBS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -e -l | $GREP -v gfortranbegin | tr -s '\n' ' '`
+FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86_64 | $GREP -e -L | tr -s '\n' ' '`
 
 GIT_VERSION=`git describe --dirty`
 
@@ -15159,6 +15177,86 @@ if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
   HAVE_QL="(and)"
 else
   HAVE_QL="(or)"
+fi
+
+
+# Are we using a 32-bit lisp?  If so, define LIB32 so that we compile
+# the 32-bit libraries.
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for 32-bit lisp" >&5
+$as_echo_n "checking for 32-bit lisp... " >&6; }
+ if $LISPEXEC $LISPEVAL "(progn (format t \"~S~%\" (> most-positive-fixnum (ash 1 32))) $LISPQUIT)" | grep '^NIL' >/dev/null; then
+  LIB32_TRUE=
+  LIB32_FALSE='#'
+else
+  LIB32_TRUE='#'
+  LIB32_FALSE=
+fi
+
+if test -z "${LIB32_TRUE}" ; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+if test x"$F77" = x"gfortran"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if gfortran needs -ff2c for functions returning complex numbers" >&5
+$as_echo_n "checking if gfortran needs -ff2c for functions returning complex numbers... " >&6; }
+  cat > conftest.f <<EOF
+      complex*16 function f77_name(x)
+      complex*16 x
+      f77_name = 3*x
+      return
+      end
+EOF
+  #echo $F77 $FFLAGS -c conftest.f
+  $F77 $FFLAGS -c conftest.f
+  cat > ctest.c <<EOF
+#include <stdio.h>
+#include <math.h>
+
+struct c16
+{
+  double real;
+  double imag;
+};
+
+
+extern void ${f77_name}(struct c16* result, struct c16* x);
+
+int main()
+{
+  int rc;
+
+  struct c16 x, y;
+
+  x.real = 1;
+  x.imag = 2;
+
+  ${f77_name}(&y, &x);
+
+  if (fabs(y.real - 3) < 1e-5) {
+    rc = 0;
+  } else {
+    rc = 1;
+  }
+
+  return rc;
+}
+EOF
+  #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+  NEED_FF2C=yes
+  F2C="-ff2c"
+  if a.out; then
+    NEED_FF2c=no
+    F2C=""
+  fi
+  rm -f ctest.c a.out
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $NEED_FF2C" >&5
+$as_echo "$NEED_FF2C" >&6; }
 fi
 
 
@@ -15388,12 +15486,12 @@ if test -z "${CMUCL_TRUE}" && test -z "${CMUCL_FALSE}"; then
   as_fn_error $? "conditional \"CMUCL\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
-  as_fn_error $? "conditional \"LIB32\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${CCL_TRUE}" && test -z "${CCL_FALSE}"; then
   as_fn_error $? "conditional \"CCL\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ECL_TRUE}" && test -z "${ECL_FALSE}"; then
+  as_fn_error $? "conditional \"ECL\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then

@@ -350,7 +350,10 @@
 				:invalid nil
 				:inexact nil)
 	      ,@body)
-	 (apply #'ccl:set-fpu-mode ,old-fpu-modes)))))
+	 (apply #'ccl:set-fpu-mode ,old-fpu-modes))))
+  #-(or cmu sbcl ccl)
+  `(progn
+     ,@body))
 
 (defmacro with-vector-data-addresses (vlist &body body)
   `(with-fortran-float-modes

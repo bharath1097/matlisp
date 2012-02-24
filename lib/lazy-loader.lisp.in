@@ -112,103 +112,53 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package "MATLISP")
 
-#|
-;; example of an optimized BLAS/LAPACK load on a Solaris platform
+;; Tell cffi where our libraries are.
+(push "lib/" cffi:*foreign-library-directories*)
 
-(eval-when (load eval compile)
-(defun load-blas-&-lapack-libraries ()
-  (ext::load-foreign "matlisp:lib;lazy-loader.o"
-		:libraries `("-R/home/eclair1/shift-uav/meta-shift/lib"
-			     "-L/home/eclair1/shift-uav/meta-shift/lib"
-			     "-R/usr/lib"
-			     "-L/usr/lib"
-			     "-R/usr/sww/lib"
-			     "-L/usr/sww/lib"
-			     "-R/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
-			     "-L/usr/sww/opt/SUNWspro-5.0/SC5.0/lib"				
-			     "-latlas"
-			     "-llapack"
-			     "-lblas"
-			     "-lM77"
-			     "-lF77"
-			     "-lsunmath"
-			     "-lm"
-			     "-lc"))))
-|#
+;; Define our libraries
+(cffi:define-foreign-library dfftpack
+  (t (:default "libdfftpack")))
 
+(cffi:define-foreign-library toms715
+  (t (:default "libtoms715")))
 
-(eval-when (load eval compile)
-#+(or :cmu :sbcl)
-(defun tokenize-ld-args (s)
-  (let ((token "")
-	(n (length s))
-	(tokens nil))
+(cffi:define-foreign-library odepack
+  (t (:default "libodepack")))
 
-    (dotimes (i n)
-       (declare (type fixnum i))
-       (let ((c (char s i)))
-	 (case c
-	  ((#\return #\linefeed 
-	    #\space #\tab #\newline)  (if (not (string= token ""))
-					  (progn
-					    (push token tokens)
-					    (setq token ""))))
-	  (t (setq token (concatenate 'string token (string c)))))))
+(when @ATLAS_P@
+  ;; Define the ATLAS libraries and their locations.
+  (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
+  (cffi:define-foreign-library atlas
+    (t (:default "libatlas")))
 
-    (if (not (string= token ""))
-	(push token tokens))
+  (cffi:define-foreign-library cblas
+    (t (:default "libcblas")))
 
-    (nreverse tokens)))
+  (cffi:define-foreign-library f77blas
+    (t (:default "libf77blas"))))
 
-(defvar *shared-library-extension*
-  "@share_ext@"
-  "Filename extension used for shared libraries.")
+(unless @ATLAS_P@
+  ;; Use our blas and lapack libraries
+  (cffi:define-foreign-library blas
+    (t (:default "libblas"))))
 
-(defvar *shared-library-pathname-extension*
-  (make-pathname :type "@share_ext@"))
+(cffi:define-foreign-library lapack
+  (t (:default "liblapack")))
 
-(defvar *additional-libs*
-  '("matlisp:lib;libdfftpack.@share_ext@"
-    "matlisp:lib;libtoms715.@share_ext@"
-    "matlisp:lib;libodepack.@share_ext@"))
-
-;; For CMUCL with linkage tables, we can just load up various shared
-;; libraries.
-#+(and cmu :linkage-table)
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
-  (dolist (lib *additional-libs*)
-    (ext::load-foreign lib))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(ext:load-foreign (concatenate 'string "@ATLAS_DIR@"
-				       lib
-				       ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(ext::load-foreign lib))))
-
-#+:sbcl
-(defun load-blas-&-lapack-libraries ()
-    ;; Load the additional matlisp libraries
-  (dolist (lib *additional-libs*)
-    (sb-alien::load-shared-object lib))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(sb-alien:load-shared-object (concatenate 'string "@ATLAS_DIR@"
-				       lib
-				       ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(sb-alien:load-shared-object lib))))
-
-;;(sb-alien:load-shared-object "matlisp:lib;libmatlisp.so")
-
-
+  (cffi:use-foreign-library dfftpack)
+  (cffi:use-foreign-library toms715)
+  ;;(cffi:use-foreign-library odepack)
+  (cond (@ATLAS_P@
+	 (cffi:use-foreign-library atlas)
+	 (cffi:use-foreign-library cblas)
+	 (cffi:use-foreign-library f77blas)
+	 (cffi:use-foreign-library lapack)
+	 )
+	(t
+	 (cffi:use-foreign-library blas)
+	 (cffi:use-foreign-library lapack))))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
@@ -245,24 +195,6 @@
       (load "./liblapack64.dll")
       ;; Change back.
       (excl:chdir old-dir))))
-
-)
-
-#+ccl
-(defun load-blas-&-lapack-libraries ()
-  (format t "FLIBS = ~S~%" "@FLIBS_LIBS@")
-  (dolist (lib *additional-libs*)
-    (ccl:open-shared-library (namestring (translate-logical-pathname lib))))
-  (if @ATLAS_P@
-      ;; Load the atlas libraries
-      (dolist (lib (tokenize-ld-args "@ATLAS_LIBS@"))
-	(ccl:open-shared-library (concatenate 'string "@ATLAS_DIR@"
-					  lib
-					  ".@share_ext@")))
-      ;; Not using atlas, so load our versions.
-      (dolist (lib '("matlisp:lib;libblas.@share_ext@"
-		     "matlisp:lib;liblapack.@share_ext@"))
-	(ccl:open-shared-library (namestring (translate-logical-pathname lib))))))
 
 (defun load-blas-&-lapack-binaries ()
   (load-blas-&-lapack-libraries)
@@ -306,4 +238,3 @@
   (format t "Loading BLAS and LAPACK libraries~%")
   (load-blas-&-lapack-libraries)
   (format t "DONE~%"))
-
