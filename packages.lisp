@@ -154,7 +154,7 @@
 ;;; Define the packages and symbols for Matlisp.
 
 (defpackage "FORTRAN-FFI-ACCESSORS"
-  #+:cmu (:use "COMMON-LISP" "ALIEN" "C-CALL" "CFFI")
+  #+:cmu (:use "COMMON-LISP" "C-CALL" "CFFI")
   #+:sbcl (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "CFFI")
   #+:allegro (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "CFFI")
   #+(not (or sbcl cmu allegro)) (:use "COMMON-LISP" "CFFI")
