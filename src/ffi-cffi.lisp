@@ -6,6 +6,7 @@
 
 ;; Written by Akshay Srinivasan
 
+
 ;; Callbacks : (:function <output-type> {(params)})
 
 (in-package "FORTRAN-FFI-ACCESSORS")
@@ -197,7 +198,6 @@
 (defun def-fortran-interface (name return-type body hidden-var-name)
   (multiple-value-bind (doc pars)
       (parse-doc-&-parameters body)
-    
     (let ((ffi-fn (make-fortran-ffi-name name))
 	  (return-vars nil)
 	  (array-vars nil)
@@ -208,114 +208,119 @@
 	  ;;
 	  (ffi-args nil)
 	  (aux-ffi-args nil))
-      (loop for decl in pars
-	 do (destructuring-bind (var type &optional style) decl
-	      (let ((ffi-var nil)
-		    (aux-var nil))
-		(cond
-		  ;; Callbacks are tricky because the data inside
-		  ;; pointer arrays will need to be copied without
-		  ;; implicit knowledge of the size of the array.
-		  ;; This is usually taken care of by special data
-		  ;; structure - ala GSL - or by passing additional
-		  ;; arguments to the callback to apprise it of the
-		  ;; bounds on the arrays. This *cannot* be automated
-		  ;; within a macro and has to be hand-tweaked.
-		  ((callback-type-p type)
-		   (setq ffi-var var))
-		  ;; Can't really enforce "style" when given an array.
-		  ;; Complex numbers do not latch onto this case, they
-		  ;; are passed by value.
-		  ((array-p type)
-		   (setq ffi-var (scat "ADDR-" var))
-		   (setq array-vars
-			 `(,@array-vars (,ffi-var ,var))))
-		  ;; Strings
-		  ((string-p type)
-		   (setq ffi-var var)
-		   (setq aux-var (scat "LEN-" var))
-		   (setq aux-args
-			 `(,@aux-args (,aux-var (length (the string ,var))))))
-		  ;; Pass-by-value variables
-		  ((eq style :input-value)
-		   (setq ffi-var var))
-		  ;; Pass-by-reference variables
-		  (t
-		   (cond
-		     ;; Makes more sense to copy complex numbers into
-		     ;; arrays, rather than twiddling around with lisp
-		     ;; memory internals.
-		     ((member type '(:complex-single-float :complex-double-float))
-		      (setq ffi-var (scat "ADDR-REAL-CAST-" var))
-		      (setq ref-vars
-			    `(,@ref-vars (,ffi-var ,(second (->cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
-		     (t
-		      (setq ffi-var (scat "REF-" var))
-		      (setq ref-vars
-			    `(,@ref-vars (,ffi-var ,@(->cffi-type type) :initial-element ,var)))))))
-		;; Output variables
-		(when (and (output-p style) (not (eq type :string)))
-		  (setq return-vars
-			`(,@return-vars (,ffi-var ,var ,type))))
-		;; Arguments for the lisp wrapper
-		(when (not (eq var hidden-var-name))
-		  (setq defun-args
-			`(,@defun-args ,var)))
-		;; Arguments for the FFI function
-		(setq ffi-args
-		      `(,@ffi-args ,ffi-var))
-		;; Auxillary arguments for FFI
-		(when (not (null aux-var))
-		  (setq aux-ffi-args
-			`(,@aux-ffi-args ,aux-var))))))
+      (macrolet ((nconsc (var &rest args)
+		   ;;Set variable to (car args) if its not a cons cell,
+		   ;;else call nconc
+		   (if (null args) var
+		       `(if (null ,var)
+			    (progn
+			      (setf ,var ,(car args))
+			      (nconc ,var ,@(cdr args)))
+			    (nconc ,var ,@args)))))
+	(loop for decl in pars
+	   do (destructuring-bind (var type &optional style) decl
+		(let ((ffi-var nil)
+		      (aux-var nil))
+		  (cond
+		    ;; Callbacks are tricky because the data inside
+		    ;; pointer arrays will need to be copied without
+		    ;; implicit knowledge of the size of the array.
+		    ;; This is usually taken care of by special data
+		    ;; structure - ala GSL - or by passing additional
+		    ;; arguments to the callback to apprise it of the
+		    ;; bounds on the arrays.
+		    ;; TODO: Add support for declaring array dimensions
+		    ;; in the callback declaration.
+		    ((callback-type-p type)
+		     (setq ffi-var var))
+		    ;; Can't really enforce "style" when given an array.
+		    ;; Complex numbers do not latch onto this case, they
+		    ;; are passed by value.
+		    ((array-p type)
+		     (setq ffi-var (scat "ADDR-" var))
+		     (nconsc array-vars `((,ffi-var ,var))))
+		    ;; Strings
+		    ((string-p type)
+		     (setq ffi-var var)
+		     (setq aux-var (scat "LEN-" var))
+		     (nconsc aux-args `((,aux-var (length (the string ,var))))))
+		    ;; Pass-by-value variables
+		    ((eq style :input-value)
+		     (setq ffi-var var))
+		    ;; Pass-by-reference variables
+		    (t
+		     (cond
+		       ;; Makes more sense to copy complex numbers into
+		       ;; arrays, rather than twiddling around with lisp
+		       ;; memory internals.
+		       ((member type '(:complex-single-float :complex-double-float))
+			(setq ffi-var (scat "ADDR-REAL-CAST-" var))
+			(nconsc ref-vars
+				`((,ffi-var ,(second (->cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
+		       (t
+			(setq ffi-var (scat "REF-" var))
+			(nconsc ref-vars
+				`((,ffi-var ,@(->cffi-type type) :initial-element ,var)))))))
+		  ;; Output variables
+		  (when (and (output-p style) (not (eq type :string)))
+		    (nconsc return-vars
+			    `((,ffi-var ,var ,type))))
+		  ;; Arguments for the lisp wrapper
+		  (when (not (eq var hidden-var-name))
+		    (nconsc defun-args
+			    `(,var)))
+		  ;; Arguments for the FFI function
+		  (nconsc ffi-args
+			  `(,ffi-var))
+		  ;; Auxillary arguments for FFI
+		  (when (not (null aux-var))
+		    (nconsc aux-ffi-args
+			    `(,aux-var)))))))
       ;;Return the function definition
-      `(
-      	(defun ,name ,defun-args
-      	  ,@doc
-	  (let (,@(if (not (null hidden-var-name))
-		      `((,hidden-var-name ,@(if (eq (second (first pars))
-						    :complex-single-float)
-						`(#C(0e0 0e0))
-						`(#C(0d0 0d0)))))))
-	    (with-foreign-objects-stack-ed (,@ref-vars)
-	      (with-vector-data-addresses (,@array-vars)
-		(let* (,@aux-args		     
-		       ;;Style warnings are annoying.
-		       ,@(if (not (eq return-type :void))
-			     `((ret (,ffi-fn ,@ffi-args ,@aux-ffi-args))))
-		       )
-		  ,@(if (eq return-type :void)
-			`((,ffi-fn ,@ffi-args ,@aux-ffi-args)))
-		  ;; Copy values in reference pointers back to local
-		  ;; variables.  Lisp has local scope; its safe to
-		  ;; modify variables in parameter lists.
-		  ,@(mapcar #'(lambda (decl)
-				(destructuring-bind (ffi-var var type) decl
-				  (if (member type '(:complex-single-float :complex-double-float))
-				      `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 0)
-							   (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 1)))
-				      `(setq ,var (cffi:mem-aref ,ffi-var ,@(->cffi-type type))))))
-			    (remove-if-not #'(lambda (x)
-					       (member (first x) ref-vars :key #'car))
-					   return-vars))
-		  ,(if (not (eq return-type :void))
-		       `(values ret ,@(mapcar #'second return-vars))
-		       `(values ,@(mapcar #'second return-vars))))))))))))
+      (let ((retvar (gensym)))
+	`(
+	  (defun ,name ,defun-args
+	    ,@doc
+	    (let (,@(if (not (null hidden-var-name))
+			`((,hidden-var-name ,@(if (eq (second (first pars))
+						      :complex-single-float)
+						  `(#C(0e0 0e0))
+						  `(#C(0d0 0d0)))))))
+	      (with-foreign-objects-stack-ed (,@ref-vars)
+		(with-vector-data-addresses (,@array-vars)
+		  (let* (,@aux-args		     
+			 ;;Style warnings are annoying.
+			 ,@(if (not (eq return-type :void))
+			       `((,retvar (,ffi-fn ,@ffi-args ,@aux-ffi-args))))
+			 )
+		    ,@(if (eq return-type :void)
+			  `((,ffi-fn ,@ffi-args ,@aux-ffi-args)))
+		    ;; Copy values in reference pointers back to local
+		    ;; variables.  Lisp has local scope; its safe to
+		    ;; modify variables in parameter lists.
+		    ,@(mapcar #'(lambda (decl)
+				  (destructuring-bind (ffi-var var type) decl
+				    (if (member type '(:complex-single-float :complex-double-float))
+					`(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 0)
+							     (cffi:mem-aref ,ffi-var ,(second (->cffi-type type)) 1)))
+					`(setq ,var (cffi:mem-aref ,ffi-var ,@(->cffi-type type))))))
+			      (remove-if-not #'(lambda (x)
+						 (member (first x) ref-vars :key #'car))
+					     return-vars))
+		    (values
+		     ,@(if (not (eq return-type :void))
+			   `(,retvar))
+		     ,@(mapcar #'second return-vars))))))))))))
 
-;; Supporting multidimensional arrays is a pain.
-(deftype matlisp-specialized-array ()
-  `(or (complex double-float)
-       (complex single-float)
-       (simple-array (complex double-float) (*))
-       (simple-array (complex single-float) (*))
-       (simple-array double-float (*))
-       (simple-array single-float (*))
-       (simple-array (signed-byte 32) (*))
-       (simple-array (signed-byte 16) (*))
-       (simple-array (signed-byte  8) (*))
-       (simple-array (unsigned-byte 32) (*))
-       (simple-array (unsigned-byte 16) (*))
-       (simple-array (unsigned-byte  8) (*))))
+;; Increment the pointer address.
+(defmacro incf-sap (type sap &optional (n 1))
+  `(setf ,sap
+	 (cffi:inc-pointer ,sap
+			   ,@(ecase type
+				    (:double-float  `((* ,n 8)))
+				    (:single-float `((* ,n 4)))
+				    (:complex-double-float  `((* ,n 16)))
+				    (:complex-single-float  `((* ,n 8)))))))
 
 (defmacro with-fortran-float-modes (&body body)
   "Execute the body with the IEEE FP modes appropriately set for Fortran"
@@ -341,16 +346,76 @@
   `(progn
      ,@body))
 
-
 (defmacro with-vector-data-addresses (vlist &body body)
   (labels ((frob (v body)
-	     (if (rest v)
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
-		    ,(frob (rest v) body))
-		 `(cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
-		    ,@body))))
+	     (if (null v)
+		 body
+		 #+nil
+		 `((cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
+		     ,@(frob (rest v) body)))
+    		 `((with-pointer-or-vector-data-address (,(caar v) ,(cadar v))
+		     ,@(frob (rest v) body))))))
     `(with-fortran-float-modes
-       ,@(if (null vlist)
-	     `(,@body)
-	     `(,(frob vlist body))))))
+       ,@(frob vlist body))))
 
+
+;; Very inefficient - compilation wise, not runtime wise- 
+;; (but portable!) way of supporting both SAPs and simple-arrays.
+#-(or sbcl cmu)
+(defmacro with-pointer-or-vector-data-address (vlist &rest body)
+  `(if (cffi:pointerp ,(cadr vlist))
+       (let (,vlist)
+	 ,@body)
+       (cffi-sys:with-pointer-to-vector-data ,vlist
+	 ,@body)))
+
+
+;; Supporting multidimensional arrays is a pain.
+;; Only support types that we use.
+(deftype matlisp-specialized-array ()
+  `(or (simple-array (complex double-float) (*))
+       (simple-array (complex single-float) (*))
+       (simple-array double-float (*))
+       (simple-array single-float (*))
+       cffi:foreign-pointer))
+
+;; Define specialised routines for CMUCL/SBCL
+;; Borrowed from ffi-sbcl/ffi-cmucl.lisp
+#+(or sbcl cmu) (declaim (inline vector-data-address))
+#+(or sbcl cmu)
+(defun vector-data-address (vec)
+  "Return the physical address of where the actual data of the object
+VEC is stored.
+
+  VEC - must be a either a (complex double-float), (complex single-float)
+        or a specialized array type in CMU Lisp.  This currently means
+        VEC is a simple-array of one dimension of one of the following types:
+
+                  double-float
+                  single-float
+        or a
+                  system-area-pointer
+
+Returns
+  1   - system area pointer to the actual data"
+  (locally
+      (declare (optimize (speed 1) (safety 3)))
+    ;; It's quite important that the arrays have the write type.
+    ;; Otherwise, we will probably get the address of the data wrong,
+    ;; and then foreign function could be scribbling over who knows
+    ;; where!
+    ;;
+    (check-type vec matlisp-specialized-array))
+  (locally
+      (declare (type matlisp-specialized-array vec)
+	       (optimize (speed 3) (safety 0) (space 0)))
+    ;;vec is either a simple-array or a system-area-pointer itself.
+    (if (typep vec '(simple-array * (*)))
+	#+sbcl (sb-sys:vector-sap vec)
+	#+cmu (system:vector-sap vec)
+	vec)))
+
+#+(or cmu sbcl)
+(defmacro with-pointer-or-vector-data-address (vlist &rest body)
+  `(let ((,(car vlist) (vector-data-address ,(cadr vlist))))
+     ,@body))

@@ -146,7 +146,7 @@ its element types are unknown"))
     (with-vector-data-addresses ((addr-store store)
 				 (addr-new-store new-store))
 	(incf-sap :double-float addr-store)
-	(blas::fortran-dcopy nxm addr-store 2 addr-new-store 1))
+	(dcopy nxm addr-store 2 addr-new-store 1))
     
     (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
 

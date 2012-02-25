@@ -321,8 +321,7 @@ don't know how to coerce COMPLEX to REAL"))
     (with-vector-data-addresses ((addr-y store-y)
 				 (addr-x store-x))
        (incf-sap :double-float addr-y)
-       (blas::fortran-daxpy nxm imagpart addr-x 1 addr-y 2))
-
+       (daxpy nxm imagpart addr-x 1 addr-y 2))
     y))
 
 #+(or :cmu :sbcl)
@@ -359,5 +358,3 @@ don't know how to coerce COMPLEX to REAL"))
 #+(or :cmu :sbcl)
 (defmethod axpy! ((alpha complex) (x complex-matrix) (y complex-matrix))
   (axpy! (complex-coerce alpha) x y))
-
-

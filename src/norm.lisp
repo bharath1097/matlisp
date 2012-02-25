@@ -121,7 +121,7 @@
   (declare (ignore p))
   (abs a))
 
-#+(or :cmu :sbcl)
+
 (defmethod norm ((a real-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))
@@ -159,7 +159,7 @@
 	       (setq nrm (max nrm 
 			      (with-vector-data-addresses ((addr-store store))
 				  (incf-sap :double-float addr-store (* j n))
-				  (blas::fortran-dasum n addr-store 1)))))
+				  (dasum n addr-store 1)))))
 	     nrm))
 	((2 :2) (multiple-value-bind (up sigma vp status)
 		    (svd a :a)
@@ -174,7 +174,7 @@
 		(setq nrm (max nrm
 			       (with-vector-data-addresses ((addr-store store))
 				  (incf-sap :double-float addr-store i)
-				  (blas::fortran-dasum m addr-store n)))))
+				  (dasum m addr-store n)))))
 	      nrm))
 	((:f :fro :frob :frobenius)
 	         (let ((nrm 0.0d0))
@@ -182,87 +182,10 @@
 		     (declare (type fixnum j))
 		     (incf nrm (with-vector-data-addresses ((addr-store store))
                                   (incf-sap :double-float addr-store (* j n))
-				  (blas::fortran-ddot m addr-store 1 addr-store 1))))
+				  (ddot m addr-store 1 addr-store 1))))
 		   (sqrt nrm)))
 	(t (error "don't know how to take a ~a-norm of a matrix" p))
 	))))
-
-
-
-#+:allegro
-(defmethod norm ((a real-matrix) &optional (p 2))
-  (let ((n (nrows a))
-	(m (ncols a))
-	(nxm (number-of-elements a))
-	(store (store a)))
-    (declare (type fixnum n m nxm)
-	     (type (real-matrix-store-type (*)) store))
-
-    (if (row-or-col-vector-p a)
-	(case p
-	 ((1 :1) (dasum nxm store 1))
-	 ((2 :2) (dnrm2 nxm store 1))
-	 ((:oo :inf :i :infinity)
-	                         (let ((k (idamax nxm store 1)))
-				    (abs (aref store (1- k)))))
-	 ((:-oo :-inf :-i :-infinity)
-	                           (let ((nrm 0.0d0))
-				     (dotimes (k nxm)
-				       (declare (type fixnum k))
-				       (setq nrm (min nrm (abs (aref store k)))))
-				     nrm))
-	 (t (if (and (integerp p)
-		     (> p 2))
-		(let ((nrm 0.0d0))
-		  (dotimes (i nxm)
-		    (declare (type fixnum i))
-		    (incf nrm (expt (abs (aref store i)) (the fixnum p))))
-		  (expt nrm (/ p)))
-	      (error "don't know how to take a ~a-norm of a vector" p))))
-      
-      (case p
-	((1 :1) (let ((nrm 0.0d0))
-	     (dotimes (j m)
-	       (declare (type fixnum j))
-	       (setq nrm (max nrm 
-			      (let ((colsum 0.0d0))
-				(dotimes (i n)
-				    (declare (type fixnum i))
-				    (incf colsum (abs (matrix-ref a i j))))
-				colsum))))
-	     nrm))
-	((2 :2) (multiple-value-bind (up sigma vp status)
-		    (svd a :a)
-		  (declare (ignore up vp))
-	      (if status
-		  (matrix-ref sigma 0)
-		(error "SVD did not converge, cannot compute 2-norm of matrix"))))
-	((:oo :inf :i :infinity)
-	    (let ((nrm 0.0d0))
-	      (dotimes (i n)
-		(declare (type fixnum i))
-		(setq nrm (max nrm
-			       (let ((rowsum 0.0d0))
-				 (dotimes (j m)
-				    (declare (type fixnum j))
-				    (incf rowsum (abs (matrix-ref a i j))))
-				 rowsum))))
-	      nrm))
-	((:f :fro :frob :frobenius)
-	         (let ((nrm 0.0d0))
-		   (dotimes (j m)
-		     (declare (type fixnum j))
-		     (incf nrm 
-			   (let ((colsqrtsum 0.0d0))
-				 (dotimes (i n)
-				    (declare (type fixnum i))
-				    (let ((abs (abs (matrix-ref a i j))))
-				      (incf colsqrtsum (* abs abs))))
-				 colsqrtsum)))
-		   (sqrt nrm)))
-	(t (error "don't know how to take a ~a-norm of a matrix" p))
-	))))
-
 
 
 ;; there may be a theoretical bug here, with the use of DZASUM for 
@@ -270,7 +193,6 @@
 ;;
 ;; in either case, the doc for this function should be better defined.
 
-#+(or :cmu :sbcl)
 (defmethod norm ((a complex-matrix) &optional (p 2))
   (let ((n (nrows a))
 	(m (ncols a))
@@ -307,7 +229,7 @@
 	       (setq nrm (max nrm 
 			      (with-vector-data-addresses ((addr-store store))
 				  (incf-sap :complex-double-float addr-store (* j n))
-				  (blas::fortran-dzasum n addr-store 1)))))
+				  (dzasum n addr-store 1)))))
 	     nrm))
 	((2 :2) (multiple-value-bind (up sigma vp status)
 		    (svd a :a)
@@ -322,113 +244,15 @@
 		(setq nrm (max nrm
 			       (with-vector-data-addresses ((addr-store store))
 				  (incf-sap :complex-double-float addr-store i)
-				  (blas::fortran-dzasum m addr-store n)))))
-	      nrm))
-	((:f :fro :frob :frobenius)
-	         (let ((nrm 0.0d0)
-		       (xxx (allocate-complex-store 1)))
-		   (dotimes (j m)
-		     (declare (type fixnum j))
-		     (incf nrm (progn
-				(with-vector-data-addresses ((addr-store store)
-							     (addr-xxx xxx))							    
-				  (incf-sap :double-float addr-store (* j n))
-				  (blas::fortran-zdotc addr-xxx m addr-store 1 addr-store 1))
-				(aref xxx 0))))
-		   (sqrt nrm)))
-	(t (error "don't know how to take a ~a-norm of a matrix" p))
-	))))
-
-
-
-
-#+:allegro
-(defmethod norm ((a complex-matrix) &optional (p 2))
-  (let ((n (nrows a))
-	(m (ncols a))
-	(nxm (number-of-elements a))
-	(store (store a)))
-    (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store))
-
-    (if (row-or-col-vector-p a)
-	(case p
-	 ((1 :1) (dzasum nxm store 1))
-	 ((2 :2) (dznrm2 nxm store 1))
-	 ((:oo :inf :i :infinity) (let ((k (izamax nxm store 1)))
-				    (abs (matrix-ref a (1- k)))))
-	 ((:-oo :-inf :-i :-infinity)
-	                           (let ((nrm 0.0d0))
-				     (dotimes (k nxm)
-				       (declare (type fixnum k))
-				       (setq nrm (min nrm (abs (matrix-ref a k)))))
-				     nrm))
-	 (t (if (and (integerp p)
-		     (> p 2))
-		(let ((nrm 0.0d0))
-		  (dotimes (i nxm)
-		    (declare (type fixnum i))
-		    (incf nrm (expt (abs (matrix-ref a i)) (the fixnum p))))
-		  (expt nrm (/ p)))
-	      (error "don't know how to take a ~a-norm of a vector" p))))
-      
-      (case p
-	((1 :1) (let ((nrm 0.0d0))
-	     (dotimes (j m)
-	       (declare (type fixnum j))
-	       (setq nrm (max nrm 
-			      (let ((colsum 0.0d0))
-				(dotimes (i n)
-				    (declare (type fixnum i))
-				    (incf colsum (abs (matrix-ref a i j))))
-				colsum))))
-	     nrm))
-	((2 :2) (multiple-value-bind (up sigma vp status)
-		    (svd a :a)
-		  (declare (ignore up vp))
-		  (if status
-		      (matrix-ref sigma 0 0)
-		(error "SVD did not converge, cannot compute 2-norm of matrix"))))
-	((:oo :inf :i :infinity)
-	    (let ((nrm 0.0d0))
-	      (dotimes (i n)
-		(declare (type fixnum i))
-		(setq nrm (max nrm
-			       (let ((rowsum 0.0d0))
-				 (dotimes (j m)
-				    (declare (type fixnum j))
-				    (incf rowsum (abs (matrix-ref a i j))))
-				 rowsum))))
+				  (dzasum m addr-store n)))))
 	      nrm))
 	((:f :fro :frob :frobenius)
 	         (let ((nrm 0.0d0))
 		   (dotimes (j m)
 		     (declare (type fixnum j))
-		     (incf nrm 
-			   (let ((colsqrtsum 0.0d0))
-				 (dotimes (i n)
-				    (declare (type fixnum i))
-				    (let ((abs (abs (matrix-ref a i j))))
-				      (incf colsqrtsum (* abs abs))))
-				 colsqrtsum)))
+		     (incf nrm (with-vector-data-addresses ((addr-store store))
+				  (incf-sap :double-float addr-store (* j n))
+				  (realpart (zdotc m addr-store 1 addr-store 1)))))
 		   (sqrt nrm)))
 	(t (error "don't know how to take a ~a-norm of a matrix" p))
 	))))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

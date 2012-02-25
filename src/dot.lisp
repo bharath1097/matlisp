@@ -140,7 +140,7 @@
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						 (addr-y store-y))
 			  (incf-sap :double-float addr-y)
-			  (blas::fortran-ddot nxm addr-x 1 addr-y 2))))
+			  (ddot nxm addr-x 1 addr-y 2))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
 
@@ -192,7 +192,7 @@
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						  (addr-y store-y))
 			  (incf-sap :double-float addr-x)
-			  (blas::fortran-ddot nxm addr-x 2 addr-y 1))))
+			  (ddot nxm addr-x 2 addr-y 1))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
 

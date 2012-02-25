@@ -153,40 +153,20 @@
 
 ;;; Define the packages and symbols for Matlisp.
 
-#+:cmu
 (defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP" "ALIEN" "C-CALL")
+  #+:cmu (:use "COMMON-LISP" "ALIEN" "C-CALL" "CFFI")
+  #+:sbcl (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "CFFI")
+  #+:allegro (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "CFFI")
+  #+(not (or sbcl cmu allegro)) (:use "COMMON-LISP" "CFFI")
   (:export
    ;; Interface functions
    "DEF-FORTRAN-ROUTINE"
-   "VECTOR-DATA-ADDRESS"
    "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES")
+   "WITH-VECTOR-DATA-ADDRESSES"
+   "WITH-POINTER-OR-VECTOR-DATA-ADDRESS"
+   #+(or sbcl cmu) "VECTOR-DATA-ADDRESS"
+   )
   (:documentation "Fortran foreign function interface"))
-
-#+:sbcl
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP" "SB-ALIEN" "SB-C")
-  (:export
-   ;; Interface functions
-   "DEF-FORTRAN-ROUTINE"
-   "VECTOR-DATA-ADDRESS"
-   "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES")
-  (:documentation "Fortran foreign function interface"))
-
-#+:allegro
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS")
-  (:export 
-   "DEF-FORTRAN-ROUTINE"))
-
-#+(or ccl ecl)
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:use "COMMON-LISP")
-  (:export
-   "DEF-FORTRAN-ROUTINE"
-   "WITH-VECTOR-DATA-ADDRESS"))
 
 (defpackage "BLAS"
   #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
