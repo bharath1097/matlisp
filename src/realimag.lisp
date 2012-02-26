@@ -132,7 +132,7 @@ its element types are unknown"))
     (declare (type fixnum n m))
     (make-real-matrix-dim n m)))
 
-#+(or :cmu :sbcl)
+;;#+(or :cmu :sbcl)
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
@@ -151,7 +151,8 @@ its element types are unknown"))
     (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
 
 
-#+:allegro
+;;#+:allegro
+#+nil
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))

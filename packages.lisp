@@ -156,15 +156,13 @@
 (defpackage "FORTRAN-FFI-ACCESSORS"
   #+:cmu (:use "COMMON-LISP" "C-CALL" "CFFI")
   #+:sbcl (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "CFFI")
-  #+:allegro (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "CFFI")
+  #+:allegro (:use "COMMON-LISP" "CFFI")
   #+(not (or sbcl cmu allegro)) (:use "COMMON-LISP" "CFFI")
   (:export
    ;; Interface functions
    "DEF-FORTRAN-ROUTINE"
    "INCF-SAP"
    "WITH-VECTOR-DATA-ADDRESSES"
-   "WITH-POINTER-OR-VECTOR-DATA-ADDRESS"
-   #+(or sbcl cmu) "VECTOR-DATA-ADDRESS"
    )
   (:documentation "Fortran foreign function interface"))
 

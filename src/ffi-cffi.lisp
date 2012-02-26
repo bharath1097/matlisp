@@ -22,6 +22,103 @@
 (defconstant +ffi-styles+ '(:input :input-value
 			    :input-output :output))
 
+
+(defmacro with-gensyms (symlist &body body)
+  `(let ,(mapcar #'(lambda (sym)
+		     `(,sym (gensym ,(symbol-name sym))))
+		 symlist)
+     ,@body))
+
+;; Helper macro to do setf and nconc
+;; for destructive list updates.
+(defmacro nconsc (var &rest args)
+  (if (null args) var
+      `(if (null ,var)
+	   (progn
+	     (setf ,var ,(car args))
+	     (nconc ,var ,@(cdr args)))
+	   (nconc ,var ,@args))))
+
+;; Create objects on the heap and run some stuff.
+(defmacro with-foreign-objects-heap-ed (declarations &rest body)
+    "
+Allocate \"objects\" on the heap and run the \"body\" of code.
+
+with-foreign-objects-heap-ed (declarations) &rest body
+binding := {(var type &optional count &key (initial-contents nil))}*
+
+Example:
+>> (with-foreign-objects-heap-ed ((x :int :count 10 :initial-element 2))
+     (+ (cffi:mem-aref x :int 2) 1))
+3
+>>
+  "
+  (let ((ret (gensym)))
+    ;; Allocate objects from the heap
+    `(let* (,@(mapcar (lambda (decl) (list (car decl) `(cffi:foreign-alloc ,@(cdr decl))))
+		      declarations)
+	    ;; Store result temporarily
+	    (,ret (progn ,@body)))
+       ;;Free C objects
+       ,@(mapcar (lambda (decl) `(cffi:foreign-free ,(car decl)))
+		 declarations)
+       ,ret)))
+
+;; Create objects on the stack and run the "body" of code.
+(defmacro with-foreign-objects-stack-ed (declarations &rest body)
+  "
+Allocate \"objects\" on the stack and run the \"body\" of code.
+
+with-foreign-objects-stack-ed (declarations) &rest body
+binding := {(var type &optional count &key (initial-contents nil))}*
+
+Example:
+>> (with-foreign-objects-stack-ed ((x :int :count 10 :initial-element 2))
+     (+ (cffi:mem-aref x :int 2) 1))
+3
+>>
+  "
+  (if (null declarations)
+      `(progn ,@body)
+      (let ((wfo-decl nil)
+	    (wfo-body nil)
+	    (wfo-before nil))
+	(loop for decl in declarations
+	   do (destructuring-bind (var type &key (count 1) initial-element initial-contents) decl
+		  ;;Make sure the var and type are symbols;;
+		(check-type var symbol)
+		(check-type type symbol)
+		(when (and initial-element initial-contents)
+		  (error "Cannot apply both :initial-element and :initial-contents at the same time."))
+		;;
+		(if (eq count 1)
+		    (progn
+		      ;; Count defaults to one in with-foreign-objects
+		      (nconsc wfo-decl `((,var ,type)))
+		      (if (or initial-element initial-contents)
+			  (nconsc wfo-body `((setf (cffi:mem-aref ,var ,type 0) ,@(cond
+										   (initial-element `(,initial-element))
+										   (initial-contents `((car ,initial-contents)))))))))
+		      ;;
+		      (let ((decl-count (gensym))
+			    (decl-init (gensym))
+			    (loop-var (gensym)))
+			;;
+			(nconsc wfo-before `((,decl-count ,count)))
+			(nconsc wfo-before `((,decl-init ,(or initial-element initial-contents))))
+			;;
+			(nconsc wfo-decl `((,var ,type ,decl-count)))
+			(if (or initial-element initial-contents)
+			    (nconsc wfo-body `((loop for ,loop-var from 0 below ,decl-count
+						  do (setf (cffi:mem-aref ,var ,type ,loop-var) ,@(cond
+												   (initial-element `(,decl-init))
+
+												   (initial-contents `((elt ,decl-init ,loop-var)))))))))))))
+	`(let (,@wfo-before)
+	   (cffi:with-foreign-objects (,@wfo-decl)
+	     ,@wfo-body
+	     ,@body)))))
+
 ;; Get the equivalent CFFI type.
 ;; If the type is an array, get the type of the array element type.
 (defun ->cffi-type (type)
@@ -123,39 +220,6 @@
 	;; ,@doc
 	,@new-pars ,@aux-pars))))
 
-;; Create objects on the stack and run the "body" of code.
-(defmacro with-foreign-objects-stack-ed (declarations &rest body)
-"with-foreign-objects-stack-ed (declarations) &rest body
-  binding := {(var type &optional count &key (initial-contents nil))}*
-"
-  (if (null declarations)
-      `(progn ,@body)
-      (let ((decl-count (gensym))
-	    (decl-init (gensym))
-	    (loop-var (gensym)))
-	(destructuring-bind (var type &key (count 1) initial-element initial-contents)
-	    (car declarations)
-	  ;;Make sure the var and type are symbols;;
-	  (cond
-	    ((not (symbolp var))
-	     (error "Variable: ~S, is not a symbol." var))
-	    ((not (symbolp type))
-	     (error "Type: ~S, is not a symbol." type))
-	    ((and initial-element initial-contents)
-	     (error "Cannot apply both :initial-element and :initial-contents at the same time")))
-	  `(let ((,decl-count ,count)
-		 (,decl-init ,(or initial-element initial-contents)))
-	     (cffi:with-foreign-object (,var ,type ,decl-count)
-	       ,@(if initial-element
-		     `((loop for ,loop-var from 0 below ,decl-count
-			     do (setf (cffi:mem-aref ,var ,type ,loop-var)
-				      ,decl-init))))
-	       ,@(if initial-contents
-		     `((loop for ,loop-var from 0 below ,decl-count
-			     do (setf (cffi:mem-aref ,var ,type ,loop-var)
-				      (elt ,decl-init ,loop-var)))))
-	       (with-foreign-objects-stack-ed ,(cdr declarations) ,@body)))))))
-
 ;; Call defcfun to define the foreign function.
 ;; Also creates a nice lisp helper function.
 (defmacro def-fortran-routine (name return-type &rest body)
@@ -208,75 +272,66 @@
 	  ;;
 	  (ffi-args nil)
 	  (aux-ffi-args nil))
-      (macrolet ((nconsc (var &rest args)
-		   ;;Set variable to (car args) if its not a cons cell,
-		   ;;else call nconc
-		   (if (null args) var
-		       `(if (null ,var)
-			    (progn
-			      (setf ,var ,(car args))
-			      (nconc ,var ,@(cdr args)))
-			    (nconc ,var ,@args)))))
-	(loop for decl in pars
-	   do (destructuring-bind (var type &optional style) decl
-		(let ((ffi-var nil)
-		      (aux-var nil))
-		  (cond
-		    ;; Callbacks are tricky because the data inside
-		    ;; pointer arrays will need to be copied without
-		    ;; implicit knowledge of the size of the array.
-		    ;; This is usually taken care of by special data
-		    ;; structure - ala GSL - or by passing additional
-		    ;; arguments to the callback to apprise it of the
-		    ;; bounds on the arrays.
-		    ;; TODO: Add support for declaring array dimensions
-		    ;; in the callback declaration.
-		    ((callback-type-p type)
-		     (setq ffi-var var))
-		    ;; Can't really enforce "style" when given an array.
-		    ;; Complex numbers do not latch onto this case, they
-		    ;; are passed by value.
-		    ((array-p type)
-		     (setq ffi-var (scat "ADDR-" var))
-		     (nconsc array-vars `((,ffi-var ,var))))
-		    ;; Strings
-		    ((string-p type)
-		     (setq ffi-var var)
-		     (setq aux-var (scat "LEN-" var))
-		     (nconsc aux-args `((,aux-var (length (the string ,var))))))
-		    ;; Pass-by-value variables
-		    ((eq style :input-value)
-		     (setq ffi-var var))
-		    ;; Pass-by-reference variables
-		    (t
-		     (cond
-		       ;; Makes more sense to copy complex numbers into
-		       ;; arrays, rather than twiddling around with lisp
-		       ;; memory internals.
-		       ((member type '(:complex-single-float :complex-double-float))
-			(setq ffi-var (scat "ADDR-REAL-CAST-" var))
-			(nconsc ref-vars
-				`((,ffi-var ,(second (->cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
-		       (t
-			(setq ffi-var (scat "REF-" var))
-			(nconsc ref-vars
-				`((,ffi-var ,@(->cffi-type type) :initial-element ,var)))))))
-		  ;; Output variables
-		  (when (and (output-p style) (not (eq type :string)))
-		    (nconsc return-vars
-			    `((,ffi-var ,var ,type))))
-		  ;; Arguments for the lisp wrapper
-		  (when (not (eq var hidden-var-name))
-		    (nconsc defun-args
-			    `(,var)))
-		  ;; Arguments for the FFI function
-		  (nconsc ffi-args
-			  `(,ffi-var))
-		  ;; Auxillary arguments for FFI
-		  (when (not (null aux-var))
-		    (nconsc aux-ffi-args
-			    `(,aux-var)))))))
-      ;;Return the function definition
+      (loop for decl in pars
+	 do (destructuring-bind (var type &optional style) decl
+	      (let ((ffi-var nil)
+		    (aux-var nil))
+		(cond
+		  ;; Callbacks are tricky because the data inside
+		  ;; pointer arrays will need to be copied without
+		  ;; implicit knowledge of the size of the array.
+		  ;; This is usually taken care of by special data
+		  ;; structure - ala GSL - or by passing additional
+		  ;; arguments to the callback to apprise it of the
+		  ;; bounds on the arrays.
+		  ;; TODO: Add support for declaring array dimensions
+		  ;; in the callback declaration.
+		  ((callback-type-p type)
+		   (setq ffi-var var))
+		  ;; Can't really enforce "style" when given an array.
+		  ;; Complex numbers do not latch onto this case, they
+		  ;; are passed by value.
+		  ((array-p type)
+		   (setq ffi-var (scat "ADDR-" var))
+		   (nconsc array-vars `((,ffi-var ,var))))
+		  ;; Strings
+		  ((string-p type)
+		   (setq ffi-var var)
+		   (setq aux-var (scat "LEN-" var))
+		   (nconsc aux-args `((,aux-var (length (the string ,var))))))
+		  ;; Pass-by-value variables
+		  ((eq style :input-value)
+		   (setq ffi-var var))
+		  ;; Pass-by-reference variables
+		  (t
+		   (cond
+		     ;; Makes more sense to copy complex numbers into
+		     ;; arrays, rather than twiddling around with lisp
+		     ;; memory internals.
+		     ((member type '(:complex-single-float :complex-double-float))
+		      (setq ffi-var (scat "ADDR-REAL-CAST-" var))
+		      (nconsc ref-vars
+			      `((,ffi-var ,(second (->cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
+		     (t
+		      (setq ffi-var (scat "REF-" var))
+		      (nconsc ref-vars
+			      `((,ffi-var ,@(->cffi-type type) :initial-element ,var)))))))
+		;; Output variables
+		(when (and (output-p style) (not (eq type :string)))
+		  (nconsc return-vars
+			  `((,ffi-var ,var ,type))))
+		;; Arguments for the lisp wrapper
+		(when (not (eq var hidden-var-name))
+		  (nconsc defun-args
+			  `(,var)))
+		;; Arguments for the FFI function
+		(nconsc ffi-args
+			`(,ffi-var))
+		;; Auxillary arguments for FFI
+		(when (not (null aux-var))
+		  (nconsc aux-ffi-args
+			  `(,aux-var))))))
+    ;;Return the function definition
       (let ((retvar (gensym)))
 	`(
 	  (defun ,name ,defun-args
@@ -312,8 +367,15 @@
 			   `(,retvar))
 		     ,@(mapcar #'second return-vars))))))))))))
 
-;; Increment the pointer address.
+;; Increment the pointer.
 (defmacro incf-sap (type sap &optional (n 1))
+  "Increment the pointer address by one \"slot\"
+   depending on the type:
+          :double-float  8 bytes
+          :single-float  4 bytes
+          :complex-double-float 8x2 bytes
+          :complex-single-float 4x2 bytes
+  "
   `(setf ,sap
 	 (cffi:inc-pointer ,sap
 			   ,@(ecase type
@@ -322,56 +384,8 @@
 				    (:complex-double-float  `((* ,n 16)))
 				    (:complex-single-float  `((* ,n 8)))))))
 
-(defmacro with-fortran-float-modes (&body body)
-  "Execute the body with the IEEE FP modes appropriately set for Fortran"
-  #+cmu
-  `(ext:with-float-traps-masked (:underflow :overflow :inexact :divide-by-zero :invalid)
-   ,@body)
-  #+sbcl
-  `(sb-int:with-float-traps-masked (:underflow :overflow :inexact :divide-by-zero :invalid)
-     ,@body)
-  #+ccl
-  (let ((old-fpu-modes (gensym "OLD-FPU-MODES-")))
-    `(let ((,old-fpu-modes (ccl:get-fpu-mode)))
-       (unwind-protect
-	    (progn
-	      (ccl:set-fpu-mode :overflow nil
-				:underflow nil
-				:division-by-zero nil
-				:invalid nil
-				:inexact nil)
-	      ,@body)
-	 (apply #'ccl:set-fpu-mode ,old-fpu-modes))))
-  #-(or cmu sbcl ccl)
-  `(progn
-     ,@body))
-
-(defmacro with-vector-data-addresses (vlist &body body)
-  (labels ((frob (v body)
-	     (if (null v)
-		 body
-		 #+nil
-		 `((cffi-sys:with-pointer-to-vector-data (,(caar v) ,(cadar v))
-		     ,@(frob (rest v) body)))
-    		 `((with-pointer-or-vector-data-address (,(caar v) ,(cadar v))
-		     ,@(frob (rest v) body))))))
-    `(with-fortran-float-modes
-       ,@(frob vlist body))))
-
-
-;; Very inefficient - compilation wise, not runtime wise- 
-;; (but portable!) way of supporting both SAPs and simple-arrays.
-#-(or sbcl cmu)
-(defmacro with-pointer-or-vector-data-address (vlist &rest body)
-  `(if (cffi:pointerp ,(cadr vlist))
-       (let (,vlist)
-	 ,@body)
-       (cffi-sys:with-pointer-to-vector-data ,vlist
-	 ,@body)))
-
-
 ;; Supporting multidimensional arrays is a pain.
-;; Only support types that we use.
+;; Only support types that we currently use.
 (deftype matlisp-specialized-array ()
   `(or (simple-array (complex double-float) (*))
        (simple-array (complex single-float) (*))
@@ -379,43 +393,33 @@
        (simple-array single-float (*))
        cffi:foreign-pointer))
 
-;; Define specialised routines for CMUCL/SBCL
-;; Borrowed from ffi-sbcl/ffi-cmucl.lisp
-#+(or sbcl cmu) (declaim (inline vector-data-address))
-#+(or sbcl cmu)
-(defun vector-data-address (vec)
-  "Return the physical address of where the actual data of the object
-VEC is stored.
+;; Very inefficient - compilation wise, not runtime wise- 
+;; (but portable!) way of supporting both SAPs and simple-arrays.
+;; 2^n branching within the macro.
+#-(or sbcl cmu ccl)
+(defmacro with-vector-data-addresses (vlist &rest body)
+  "
+with-vector-data-addresses vlist &rest body
+vlist:
+   binding := {(addr-var var)}
 
-  VEC - must be a either a (complex double-float), (complex single-float)
-        or a specialized array type in CMU Lisp.  This currently means
-        VEC is a simple-array of one dimension of one of the following types:
-
-                  double-float
-                  single-float
-        or a
-                  system-area-pointer
-
-Returns
-  1   - system area pointer to the actual data"
-  (locally
-      (declare (optimize (speed 1) (safety 3)))
-    ;; It's quite important that the arrays have the write type.
-    ;; Otherwise, we will probably get the address of the data wrong,
-    ;; and then foreign function could be scribbling over who knows
-    ;; where!
-    ;;
-    (check-type vec matlisp-specialized-array))
-  (locally
-      (declare (type matlisp-specialized-array vec)
-	       (optimize (speed 3) (safety 0) (space 0)))
-    ;;vec is either a simple-array or a system-area-pointer itself.
-    (if (typep vec '(simple-array * (*)))
-	#+sbcl (sb-sys:vector-sap vec)
-	#+cmu (system:vector-sap vec)
-	vec)))
-
-#+(or cmu sbcl)
-(defmacro with-pointer-or-vector-data-address (vlist &rest body)
-  `(let ((,(car vlist) (vector-data-address ,(cadr vlist))))
-     ,@body))
+Example:
+>> (let ((x (make-array 10 :element-type 'double-float :initial-element 1d0)))
+      (with-vector-data-addresses ((addrx x))
+         (+ (mem-aref addrx :double 0) pi)))
+4.141592653589793d0
+>>
+"  
+  (labels ((with-pointer-or-vector-data-address (vlist body)
+	     `(if (cffi:pointerp ,(cadr vlist))
+		   (let (,vlist)
+		     ,@body)
+		   (cffi-sys:with-pointer-to-vector-data ,vlist
+		     ,@body)))
+	   (frob (v body)
+	     (if (null v)
+		 body
+		 `(,(with-pointer-or-vector-data-address `(,(caar v) ,(cadar v))
+							 (frob (rest v) body))))))
+    `(with-fortran-float-modes
+	 ,@(frob vlist body))))
