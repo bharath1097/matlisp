@@ -132,7 +132,7 @@ its element types are unknown"))
     (declare (type fixnum n m))
     (make-real-matrix-dim n m)))
 
-#+(or :cmu :sbcl)
+;;#+(or :cmu :sbcl)
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
@@ -146,12 +146,13 @@ its element types are unknown"))
     (with-vector-data-addresses ((addr-store store)
 				 (addr-new-store new-store))
 	(incf-sap :double-float addr-store)
-	(blas::fortran-dcopy nxm addr-store 2 addr-new-store 1))
+	(dcopy nxm addr-store 2 addr-new-store 1))
     
     (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
 
 
-#+:allegro
+;;#+:allegro
+#+nil
 (defmethod imag ((mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))

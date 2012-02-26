@@ -126,7 +126,7 @@
     (declare (type fixnum nxm))
     (ddot nxm (store x) 1 (store y) 1)))
 
-#+(or :cmu :sbcl)
+;;#+(or :cmu :sbcl)
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
   (let ((nxm (number-of-elements x))
@@ -140,7 +140,7 @@
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						 (addr-y store-y))
 			  (incf-sap :double-float addr-y)
-			  (blas::fortran-ddot nxm addr-x 1 addr-y 2))))
+			  (ddot nxm addr-x 1 addr-y 2))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
 
@@ -153,7 +153,8 @@
       )))
 
 
-#+:allegro
+;;#+:allegro
+#+:nil
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
   (let ((nxm (number-of-elements x)))
@@ -179,7 +180,7 @@
 	(complex realpart imagpart))
       )))
 
-#+(or :cmu :sbcl)
+;;#+(or :cmu :sbcl)
 (defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
   (let ((nxm (number-of-elements x))
 	(store-x (store x))
@@ -192,7 +193,7 @@
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						  (addr-y store-y))
 			  (incf-sap :double-float addr-x)
-			  (blas::fortran-ddot nxm addr-x 2 addr-y 1))))
+			  (ddot nxm addr-x 2 addr-y 1))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
 
@@ -207,7 +208,7 @@
 	(complex realpart imagpart))
       )))
 
-#+:allegro
+#+nil
 (defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
