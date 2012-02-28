@@ -72,10 +72,8 @@
       :components
       ((:module "foreign-interface"
 	:pathname "src/"
-	:components (#+:allegro
-		     (:file "ffi-acl")
-		     #+quicklisp
-		     (:file "ffi-cffi")
+	:components ((:file "ffi-cffi")
+		     (:file "ffi-cffi-interpreter-specific")
 		     ))
        (:module "foreign-functions"
 	:pathname "src/"
@@ -156,7 +154,6 @@
 		:components
 		((:file "specfun")))))
 
-
 ;; Add-on packages
 (asdf:defsystem matlisp-quadpack
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
