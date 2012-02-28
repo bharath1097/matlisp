@@ -18,9 +18,10 @@
 			   :string
 			   :callback))
 
-#+(or)
-(defconstant +ffi-styles+ '(:input :input-value
-			    :input-output :output))
+
+(defconstant +ffi-styles+ '(:input :input-value :workspace
+			    ;;
+			    :input-output :output :workspace-output))
 
 
 (defmacro with-gensyms (symlist &body body)
@@ -173,10 +174,17 @@ Example:
 ;; If output
 (declaim (inline output-p))
 (defun output-p (style)
-  (member style '(:output :input-output)))
+  (member style '(:output :input-output :workspace-output)))
+
+;; If input
+(declaim (inline input-p))
+(defun input-p (style)
+  (member style '(:input :input-value :workspace)))
 
 ;; CFFI doesn't nearly have as nice an FFI as SBCL/CMUCL.
 (defun get-read-in-type (type &optional (style :input))
+  (unless (member style +ffi-styles+)
+    (error "Don't know how to handle style ~A." style))
   (cond
     ;; Can't do much else if type is an array/complex or input is passed-by-value.
     ((or (callback-type-p type) (cast-as-array-p type) (eq style :input-value))
@@ -391,6 +399,14 @@ Example:
        (simple-array (complex single-float) (*))
        (simple-array double-float (*))
        (simple-array single-float (*))
+       ;;
+       (simple-array (signed-byte 32) *)
+       (simple-array (signed-byte 16) *)
+       (simple-array (signed-byte  8) *)
+       (simple-array (unsigned-byte 32) *)
+       (simple-array (unsigned-byte 16) *)
+       (simple-array (unsigned-byte  8) *)
+       ;;
        cffi:foreign-pointer))
 
 ;; Very inefficient - compilation wise, not runtime wise- 
