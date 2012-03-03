@@ -24,21 +24,28 @@
   (setf (store-size matrix) (length (get-arg :store initargs)))
   (call-next-method))
 
+(defmethod initialize-instance :after ((matrix real-matrix) &rest initargs)
+  (declare (ignore initargs))
+  (let ((ss (store-size matrix)))
+    (declare (type fixnum ss))
+    (unless (>= ss (number-of-elements matrix))
+      (error "Store is not large enough to hold the matrix."))))
+
 ;;
-(defmethod matrix-ref-1d ((matrix real-matrix) (store-idx fixnum))
+(defmethod matrix-ref-1d ((matrix real-matrix) (idx fixnum))
   (let ((store (store matrix)))
     (declare (type (real-matrix-store-type (*)) store))
-    (aref store store-idx)))
+    (aref store idx)))
 
 
-(defmethod (setf matrix-ref-1d) ((value cl:real) (matrix real-matrix) (store-idx fixnum))
+(defmethod (setf matrix-ref-1d) ((value cl:real) (matrix real-matrix) (idx fixnum))
   (let ((store (store matrix)))
     (declare (type (real-matrix-store-type (*)) store))
-    (setf (aref store store-idx) value)))
+    (setf (aref store idx) value)))
 
 ;;
 (declaim (inline allocate-real-store))
-(defun allocate-real-store (size &optional (initial-element 0))
+(defun allocate-real-store (size &optional (initial-element 0d0))
   (make-array size :element-type 'real-matrix-element-type
 	      :initial-element (coerce initial-element 'real-matrix-element-type)))
 

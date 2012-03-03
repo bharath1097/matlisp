@@ -1,6 +1,6 @@
 ;;; Definitions of COMPLEX-MATRIX.
 
-(in-package "MATLISP")
+(in-package :expt)
 
 (eval-when (load eval compile)
 (deftype complex-matrix-element-type ()
@@ -13,20 +13,57 @@
 )
 
 ;;
+(declaim (inline complex-coerce)
+	 (ftype (function (number) (complex complex-matrix-element-type)) 
+		complex-coerce))
+(defun complex-coerce (val)
+  "
+ Syntax
+ ======
+ (COMPLEX-COERCE number)
+
+ Purpose
+ =======
+ Coerce NUMBER to a complex number.
+"
+  (declare (type number val))
+  (typecase val
+    ((complex complex-matrix-element-type) val)
+    (complex (complex (coerce (realpart val) 'complex-matrix-element-type)
+		      (coerce (imagpart val) 'complex-matrix-element-type)))
+    (t (complex (coerce val 'complex-matrix-element-type) 0.0d0))))
+
+;;
 (defclass complex-matrix (standard-matrix)
   ((store
+    :initform nil
     :type (simple-array complex-matrix-element-type (*))))
   (:documentation "A class of matrices with complex elements."))
 
 ;;
-(declaim (ftype (function (real-matrix) fixnum)
-		store-size))
-(declaim (ftype (function (real-matrix) (simple-array double-float (*)))
-		 store))
+(defmethod initialize-instance ((matrix complex-matrix) &rest initargs)
+  (setf (store-size matrix) (length (get-arg :store initargs)))
+  (call-next-method))
+
+(defmethod initialize-instance :after ((matrix complex-matrix) &rest initargs)
+  (declare (ignore initargs))
+  (let ((ss (store-size matrix)))
+    (declare (type fixnum ss))
+    (unless (>= ss (* 2 (number-of-elements matrix)))
+      (error "Store is not large enough to hold the matrix."))))
 
 ;;
-(defmethod fill-matrix ((matrix complex-matrix) (fill number))
-  (copy! fill matrix))
+(defmethod matrix-ref-1d ((matrix complex-matrix) (idx fixnum))
+  (let ((store (store matrix)))
+    (declare (type (complex-matrix-store-type (*)) store))
+    (complex (aref store (* 2 idx)) (aref store (+ 1 (* 2 idx))))))
+
+(defmethod (setf matrix-ref-1d) ((value number) (matrix real-matrix) (idx fixnum))
+  (let ((store (store matrix))
+	(coerced-value (complex-coerce value)))
+    (declare (type (complex-matrix-store-type (*)) store))
+    (setf (aref store (* 2 idx)) (realpart coerced-value)
+	  (aref store (+ 1 (* 2 idx))) (imagpart coerced-value))))
 
 ;;
 (declaim (inline allocate-complex-store))
@@ -35,37 +72,49 @@
 	      :initial-element (coerce 0 'complex-matrix-element-type)))
 
 ;;
-(defun make-complex-matrix-dim (n m &optional (fill #c(0.0d0 0.0d0)))
+(defmethod fill-matrix ((matrix complex-matrix) (fill number))
+  (copy! fill matrix))
+
+;;
+(defun make-complex-matrix-dim (n m &key (fill #c(0.0d0 0.0d0)) (order :row-major))
   "
   Syntax
   ======
-  (MAKE-COMPLEX-MATRIX-DIM n m [fill-element])
+  (MAKE-COMPLEX-MATRIX-DIM n m {fill-element #C(0d0 0d0)} {order :row-major})
 
   Purpose
   =======
   Creates an NxM COMPLEX-MATRIX with initial contents FILL-ELEMENT,
-  the default #c(0.0d0 0.0d0)
+  the default #c(0.0d0 0.0d0), in the row-major order by default.
 
   See MAKE-COMPLEX-MATRIX.
 "
   (declare (type fixnum n m))
   (let* ((size (* n m))
-	 (store (allocate-complex-store size))
-	 (matrix (make-instance 'complex-matrix :nrows n :ncols m :store store)))
-
-    (fill-matrix matrix fill)
-    matrix))
+	 (store (allocate-complex-store size)))
+    (multiple-value-bind (row-stride col-stride)
+	(ecase order
+	  (:row-major (values n 1))
+	  (:col-major (values 1 m)))
+      (let ((matrix
+	     (make-instance 'complex-matrix
+			    :nrows n :ncols m
+			    :row-stride row-stride :col-stride col-stride
+			    :store store)))
+	(fill-matrix matrix fill)
+	matrix))))
 
 ;;
-(defun make-complex-matrix-array (array)
+(defun make-complex-matrix-array (array &key (order :row-major))
   " 
   Syntax
   ======
-  (MAKE-COMPLEX-MATRIX-ARRAY array)
+  (MAKE-COMPLEX-MATRIX-ARRAY array {order :row-major})
 
   Purpose
   =======
-  Creates a COMPLEX-MATRIX with the same contents as ARRAY.
+  Creates a COMPLEX-MATRIX with the same contents as ARRAY,
+  in row-major order by default.
 "
   (let* ((n (array-dimension array 0))
 	 (m (array-dimension array 1))
@@ -73,57 +122,67 @@
 	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
 	     (type (complex-matrix-store-type (*)) store))
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (dotimes (j m)
-	(declare (type fixnum j))
-	(let* ((val (complex-coerce (aref array i j)))
-	       (realpart (realpart val))
-	       (imagpart (imagpart val))
-	       (index (fortran-complex-matrix-indexing i j n)))
+    (multiple-value-bind (row-stride col-stride)
+	(ecase order
+	  (:row-major (values m 1))
+	  (:col-major (values 1 n)))
+      (dotimes (i n)
+	(declare (type fixnum i))
+	(dotimes (j m)
+	  (declare (type fixnum j))
+	  (let* ((val (complex-coerce (aref array i j)))
+		 (realpart (realpart val))
+		 (imagpart (imagpart val))
+		 (index (* 2 (store-indexing i j 0 row-stride col-stride))))
 	    (declare (type complex-matrix-element-type realpart imagpart)
 		     (type (complex complex-matrix-element-type) val)
 		     (type fixnum index))
-	  (setf (aref store index) realpart)
-	  (setf (aref store (1+ index)) imagpart))))
-    
-    (make-instance 'complex-matrix :nrows n :ncols m :store store)))
+	    (setf (aref store index) realpart)
+	    (setf (aref store (1+ index)) imagpart))))
+      (make-instance 'complex-matrix
+		     :nrows n :ncols m
+		     :row-stride row-stride :col-stride col-stride
+		     :store store))))
 
 ;;
-(defun make-complex-matrix-seq-of-seq (seq)
+(defun make-complex-matrix-seq-of-seq (seq &key (order :row-major))
   (let* ((n (length seq))
 	 (m (length (elt seq 0)))
 	 (size (* n m))
 	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
 	     (type (complex-matrix-store-type (*)) store))
-    
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (let ((this-row (elt seq i)))
-	(unless (= (length this-row) m)
-	  (error "Number of columns is not the same for all rows!"))
-	(dotimes (j m)
-	  (declare (type fixnum j))
-	  (let* ((val (complex-coerce (elt this-row j)))
-		 (realpart (realpart val))
-		 (imagpart (imagpart val))
-		 (index (fortran-complex-matrix-indexing i j n)))
+    (multiple-value-bind (row-stride col-stride)
+	(ecase order
+	  (:row-major (values m 1))
+	  (:col-major (values 1 n)))
+      (dotimes (i n)
+	(declare (type fixnum i))
+	(let ((this-row (elt seq i)))
+	  (unless (= (length this-row) m)
+	    (error "Number of columns is not the same for all rows!"))
+	  (dotimes (j m)
+	    (declare (type fixnum j))
+	    (let* ((val (complex-coerce (elt this-row j)))
+		   (realpart (realpart val))
+		   (imagpart (imagpart val))
+		   (index (* 2 (store-indexing i j 0 row-stride col-stride))))
 	    (declare (type complex-matrix-element-type realpart imagpart)
 		     (type (complex complex-matrix-element-type) val)
 		     (type fixnum index))
 	    (setf (aref store index) realpart)
 	    (setf (aref store (1+ index)) imagpart)))))
-    
-    (make-instance 'complex-matrix :nrows n :ncols m :store store)))
+      (make-instance 'complex-matrix
+		     :nrows n :ncols m
+		     :row-stride row-stride :col-stride col-stride
+		     :store store))))
 
 ;;
-(defun make-complex-matrix-seq (seq)
+(defun make-complex-matrix-seq (seq &key (order :row-major))
   (let* ((n (length seq))
 	 (store (allocate-complex-store n)))
     (declare (type fixnum n)
 	     (type (complex-matrix-store-type (*)) store))
-    
     (dotimes (k n)
       (declare (type fixnum k))
       (let* ((val (complex-coerce (elt seq k)))
@@ -136,20 +195,46 @@
 	(setf (aref store index) realpart)
 	(setf (aref store (1+ index)) imagpart)))
     
-    (make-instance 'complex-matrix :nrows n :ncols 1 :store store)))
+    (ecase order
+      (:row-major (make-instance 'complex-matrix
+				 :nrows 1 :ncols n
+				 :row-stride n :col-stride 1
+				 :store store))
+      (:col-major (make-instance 'complex-matrix
+				 :nrows n :ncols 1
+				 :row-stride 1 :col-stride n
+				 :store store)))))
 
 ;;
-(defun make-complex-matrix-sequence (seq)
+(defun make-real-matrix-seq (seq &key (order :row-major))
+  (let* ((n (length seq))
+	 (store (allocate-real-store n)))
+    (declare (type fixnum n))
+    (dotimes (k n)
+      (declare (type fixnum k))
+      (setf (aref store k) (coerce (elt seq k) 'real-matrix-element-type)))
+    (ecase order
+      (:row-major (make-instance 'real-matrix
+				 :nrows 1 :ncols n
+				 :row-stride n :col-stride 1
+				 :store store))
+      (:col-major (make-instance 'real-matrix
+				 :nrows n :ncols 1
+				 :row-stride 1 :col-stride n
+				 :store store)))))
+
+;;
+(defun make-complex-matrix-sequence (seq &key (order :row-major))
   (cond ((or (listp seq) (vectorp seq))
 	 (let ((peek (elt seq 0)))
 	   (cond ((or (listp peek) (vectorp peek))
 		  ;; We have a seq of seqs
-		  (make-complex-matrix-seq-of-seq seq))
+		  (make-complex-matrix-seq-of-seq seq :order order))
 		 (t
 		  ;; Assume a simple sequence
-		  (make-complex-matrix-seq seq)))))
+		  (make-complex-matrix-seq seq :order order)))))
 	((arrayp seq)
-	 (make-complex-matrix-array seq))))
+	 (make-complex-matrix-array seq :order order))))
 
 ;;
 (defun make-complex-matrix (&rest args)

@@ -41,7 +41,7 @@ else run else-body"
 		(let ((keys (cdr lst)))
 		  (setf (cdr lst) nil)
 		  (values parent-lst keys)))
-	       (t (cut-cons-chain! (cdr lst) test parent-lst)))))
+	       (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
     (cut-cons-chain-tin lst test lst)))
 
 ;;
@@ -65,7 +65,6 @@ else run else-body"
     :type fixnum
     :documentation "Number of columns in the matrix")
    (number-of-elements
-    :initarg :nels
     :initform 0
     :accessor number-of-elements
     :type fixnum
@@ -112,17 +111,21 @@ that way."))
 	 (cs (col-stride matrix))
 	 (ss (store-size matrix))
 	 (nxm (* n m)))
-    (declare (type fixnum n m h rs cs ss nxm))
+    (declare (type fixnum n m h rs cs nxm))
     ;;Error checking is good if we use foreign-pointers as store types.
     (cond
       ((<= n 0) (error "Number of rows must be > 0. Initialized with ~A." n))
       ((<= m 0) (error "Number of columns must be > 0. Initialized with ~A." m))
       ;;
       ((< h 0) (error "Head of the store must be >= 0. Initialized with ~A." h))
-      ((< rs 0) (error "Row-stride of the store must be >= 0. Initialized with ~A." rs))
-      ((< cs 0) (error "Column-stride of the store must be >= 0. Initialized with ~A." cs))
-      ;;
-      ((>= (store-indexing (- n 1) (- m 1) h rs cs) ss) (error "Store is not large enough to accomodate the matrix.")))
+      ((< rs 0) (error "Row-stride of the store must be > 0. Initialized with ~A." rs))
+      ((< cs 0) (error "Column-stride of the store must be > 0. Initialized with ~A." cs))
+      ((<= ss 0) (error "Store-size must be > 0. Initialized with ~A." ss)))
+    ;;Row-ordered by default.
+    (when (or (= rs 0) (= cs 0))
+      (setf (row-stride matrix) m)
+      (setf (col-stride matrix) 1))
+    
     (setf (number-of-elements matrix) nxm)))
 
 ;;
@@ -136,18 +139,18 @@ that way."))
   =======
   Return the element store-idx of the matrix store."))
 
-(defmethod matrix-ref-1d :before ((matrix standard-matrix) (store-idx fixnum))
-  (when (> store-idx (store-size matrix))
+(defmethod matrix-ref-1d :before ((matrix standard-matrix) (idx fixnum))
+  (unless (< -1 idx (number-of-elements matrix))
     (error "Requested index ~A is out of bounds.
-Matrix store is only of size: ~A." store-idx (store-size matrix))))
+Matrix only has ~A elements." idx (number-of-elements matrix))))
 
 ;;
-(defgeneric (setf matrix-ref-1d) (value matrix store-idx))
+(defgeneric (setf matrix-ref-1d) (value matrix idx))
 
-(defmethod (setf matrix-ref-1d) :before ((value t) (matrix standard-matrix) (store-idx fixnum))
-	    (when (> store-idx (store-size matrix))
-	      (error "Requested index ~A is out of bounds.
-Matrix store is only of size: ~A." store-idx (store-size matrix))))
+(defmethod (setf matrix-ref-1d) :before ((value t) (matrix standard-matrix) (idx fixnum))
+  (unless (< -1 idx (number-of-elements matrix))
+    (error "Requested index ~A is out of bounds.
+Matrix only has ~A elements." idx (number-of-elements matrix))))
 
 ;;
 (defgeneric matrix-ref-2d (matrix rows cols)
@@ -253,6 +256,25 @@ Matrix store is only of size: ~A." store-idx (store-size matrix))))
   (list (nrows matrix) (ncols matrix)))
 
 ;;
+(defgeneric transpose! (matrix)
+  (:documentation
+   "
+   Syntax
+   ======
+   (transpose! matrix)
+
+   Purpose
+   =======
+   Exchange row and column strides so that effectively
+   the matrix is transposed in place (without much effort).
+"))
+
+(defmethod transpose! ((matrix standard-matrix))
+  (rotatef (nrows matrix) (ncols matrix))
+  (rotatef (row-stride matrix) (col-stride matrix))
+  matrix)
+
+;;
 (defgeneric fill-matrix (matrix fill-element)
   (:documentation 
    "
@@ -275,7 +297,7 @@ matrix and a number"))
    matrices, for example #.(make-matrix ...)"
   (make-load-form-saving-slots matrix :environment env))
 
-
+;;
 (defmethod print-object ((matrix standard-matrix) stream)
   (dotimes (i (nrows matrix))
     (dotimes (j (ncols matrix))
