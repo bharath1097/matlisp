@@ -1,38 +1,54 @@
-;;; Definitions of STANDARD-MATRIX
+;; Definitions of STANDARD-MATRIX
+;;(in-package "MATLISP")
 
-(in-package "MATLISP")
+(defpackage matlisp-experimental
+  (:nicknames :expt)
+  (:use "COMMON-LISP")
+;  (:shadowing-import-from "MATLISP" "REAL"))
+  )
 
-;;
-(declaim (inline complex-coerce)
-	 (ftype (function (number) (complex complex-matrix-element-type))
-		complex-coerce))
-(defun complex-coerce (val)
-  "
- Syntax
- ======
- (COMPLEX-COERCE number)
+(in-package :expt)
 
- Purpose
- =======
- Coerce NUMBER to a complex number.
-"
-  (declare (type number val))
-  (typecase val
-    ((complex complex-matrix-element-type) val)
-    (complex (complex (coerce (realpart val) 'complex-matrix-element-type)
-		      (coerce (imagpart val) 'complex-matrix-element-type)))
-    (t (complex (coerce val 'complex-matrix-element-type) 0.0d0))))
+(defun get-arg (sym arglist)
+  (check-type sym symbol)
+  (locally
+      (declare (optimize (speed 3) (safety 0)))
+    (labels ((get-sym (sym arglist)
+	       (cond	       
+		 ((null arglist) nil)
+		 ((eq (car arglist) sym) (cadr arglist))
+		 (t (get-sym sym (cddr arglist))))))
+      (get-sym sym arglist))))
 
 ;;
-(declaim (inline fortran-matrix-indexing))
-(defun fortran-matrix-indexing (row col nrows)
-  (declare (type (and fixnum (integer 0)) row col nrows))
-  (the fixnum (+ row (the fixnum (* col nrows)))))
+(defmacro if-ret (form &rest else-body)
+  "if-ret (form &rest else-body)
+Evaluate form, and if the form is not nil, then return it,
+else run else-body"
+  (let ((ret (gensym)))
+    `(let ((,ret ,form))
+       (or ,ret
+	   (progn
+	     ,@else-body)))))
 
-(declaim (inline fortran-complex-matrix-indexing))
-(defun fortran-complex-matrix-indexing (row col nrows)
-  (declare (type (and fixnum (integer 0)) row col nrows))
-  (the fixnum (* 2 (the fixnum (+ row (the fixnum (* col nrows)))))))
+;;
+(defun cut-cons-chain! (lst test)
+  (check-type lst cons)
+  (labels ((cut-cons-chain-tin (lst test parent-lst)
+	     (cond
+	       ((null lst) nil)
+	       ((funcall test (cadr lst))
+		(let ((keys (cdr lst)))
+		  (setf (cdr lst) nil)
+		  (values parent-lst keys)))
+	       (t (cut-cons-chain! (cdr lst) test parent-lst)))))
+    (cut-cons-chain-tin lst test lst)))
+
+;;
+(declaim (inline store-indexing))
+(defun store-indexing (row col head row-stride col-stride)
+  (declare (type (and fixnum (integer 0)) row col head row-stride col-stride))
+  (the fixnum (+ head (the fixnum (* row row-stride)) (the fixnum (* col col-stride)))))
 
 ;;
 (defclass standard-matrix ()
@@ -54,9 +70,24 @@
     :accessor number-of-elements
     :type fixnum
     :documentation "Total number of elements in the matrix (nrows * ncols)")
-   (store-size
-    :initarg :store-size
+   ;;
+   (head
+    :initarg :head
     :initform 0
+    :accessor head
+    :type fixnum
+    :documentation "Head for the store's accessor.")
+   (row-stride
+    :initarg :row-stride
+    :accessor row-stride
+    :type fixnum
+    :documentation "Row stride for the store's accessor.")
+   (col-stride
+    :initarg :col-stride
+    :accessor col-stride
+    :type fixnum
+    :documentation "Column stride for the store's accessor.")
+   (store-size
     :accessor store-size
     :type fixnum
     :documentation "Total number of elements needed to store the matrix.  (Usually
@@ -71,16 +102,83 @@ parts in successive elements of the matrix because Fortran stores them
 that way."))
   (:documentation "Basic matrix class."))
 
-(declaim (ftype (function (standard-matrix) fixnum)
-		store-size))
-
-#+(and (or cmu sbcl) gerds-pcl)
-(declaim (ext:slots (slot-boundp real-matrix complex-matrix)
-		    (inline standard-matrix real-matrix complex-matrix)))
+;;
+(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
+  (declare (ignore initargs))
+  (let* ((n (nrows matrix))
+	 (m (ncols matrix))
+	 (h (head matrix))
+	 (rs (row-stride matrix))
+	 (cs (col-stride matrix))
+	 (ss (store-size matrix))
+	 (nxm (* n m)))
+    (declare (type fixnum n m h rs cs ss nxm))
+    ;;Error checking is good if we use foreign-pointers as store types.
+    (cond
+      ((<= n 0) (error "Number of rows must be > 0. Initialized with ~A." n))
+      ((<= m 0) (error "Number of columns must be > 0. Initialized with ~A." m))
+      ;;
+      ((< h 0) (error "Head of the store must be >= 0. Initialized with ~A." h))
+      ((< rs 0) (error "Row-stride of the store must be >= 0. Initialized with ~A." rs))
+      ((< cs 0) (error "Column-stride of the store must be >= 0. Initialized with ~A." cs))
+      ;;
+      ((>= (store-indexing (- n 1) (- m 1) h rs cs) ss) (error "Store is not large enough to accomodate the matrix.")))
+    (setf (number-of-elements matrix) nxm)))
 
 ;;
-(declaim (ftype (function (standard-matrix) boolean)
-		row-vector-p))
+(defgeneric matrix-ref-1d (matrix store-idx)
+  (:documentation "
+  Syntax
+  ======
+  (matrix-REF-1d store store-idx)
+
+  Purpose
+  =======
+  Return the element store-idx of the matrix store."))
+
+(defmethod matrix-ref-1d :before ((matrix standard-matrix) (store-idx fixnum))
+  (when (> store-idx (store-size matrix))
+    (error "Requested index ~A is out of bounds.
+Matrix store is only of size: ~A." store-idx (store-size matrix))))
+
+;;
+(defgeneric (setf matrix-ref-1d) (value matrix store-idx))
+
+(defmethod (setf matrix-ref-1d) :before ((value t) (matrix standard-matrix) (store-idx fixnum))
+	    (when (> store-idx (store-size matrix))
+	      (error "Requested index ~A is out of bounds.
+Matrix store is only of size: ~A." store-idx (store-size matrix))))
+
+;;
+(defgeneric matrix-ref-2d (matrix rows cols)
+  (:documentation "
+  Syntax
+  ======
+  (MATRIX-REF-2d store i j)
+
+  Purpose
+  =======
+  Return the element
+  (+
+    (* (row-stride store) i)
+    (* (col-stride store) j))
+  of the store "))
+
+(defmethod matrix-ref-2d :before ((matrix standard-matrix) (rows fixnum) (cols fixnum))
+  (unless (and (< -1 rows (nrows matrix))
+	       (< -1 cols (ncols matrix)))
+    (error "Requested index (~A ~A) is out of bounds." rows cols)))
+
+(defmethod matrix-ref-2d ((matrix standard-matrix) (rows fixnum) (cols fixnum))
+  (matrix-ref-1d matrix (store-indexing rows cols (head matrix) (row-stride matrix) (col-stride matrix))))
+
+;;
+(defgeneric (setf matrix-ref-2d) (value matrix rows cols))
+
+(defmethod (setf matrix-ref-2d) ((value t) (matrix standard-matrix) (rows fixnum) (cols fixnum))
+  (setf (matrix-ref-1d matrix (store-indexing rows cols (head matrix) (row-stride matrix) (col-stride matrix))) value))
+
+;;
 (defgeneric row-vector-p (matrix)
   (:documentation "
   Syntax
@@ -96,8 +194,6 @@ that way."))
   (= (nrows matrix) 1))
 
 ;;
-(declaim (ftype (function (standard-matrix) boolean)
-		col-vector-p))
 (defgeneric col-vector-p (matrix)
   (:documentation "
   Syntax
@@ -113,8 +209,6 @@ that way."))
   (= (ncols matrix) 1))
 
 ;;
-(declaim (ftype (function (standard-matrix) boolean)
-		row-or-col-vector-p))
 (defgeneric row-or-col-vector-p (matrix)
   (:documentation "
   Syntax
@@ -130,8 +224,6 @@ that way."))
   (or (row-vector-p matrix) (col-vector-p matrix)))
 
 ;;
-(declaim (ftype (function (standard-matrix) boolean)
-		square-matrix-p))
 (defgeneric square-matrix-p (matrix)
   (:documentation "
   Syntax
@@ -183,46 +275,10 @@ matrix and a number"))
    matrices, for example #.(make-matrix ...)"
   (make-load-form-saving-slots matrix :environment env))
 
-;;
-(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (let* ((n (nrows matrix))
-	 (m (ncols matrix))
-	 (nxm (* n m)))
-    (declare (type fixnum n m nxm))
-    (setf (number-of-elements matrix) nxm)
-    (setf (store-size matrix) nxm)))
 
-;;
-(defgeneric matrix-ref-1d (matrix row)
-  (:documentation "
-  Syntax
-  ======
-  (MATRIX-REF matrix rows [cols])
-
-  Purpose
-  =======
-  Return the element(s) of the matrix MAT, specified by the ROWS and COLS.
-  If ROWS and/or COLS are matrices or sequences then the submatrix indexed
-  by them will be returned.
-
-  The indices are 0-based."))
-
-(defgeneric (setf matrix-ref-1d) (value matrix rows))
-
-;;
-(defgeneric matrix-ref-2d (matrix row cols)
-  (:documentation "
-  Syntax
-  ======
-  (MATRIX-REF matrix rows cols)
-
-  Purpose
-  =======
-  Return the element(s) of the matrix MAT, specified by the ROWS and COLS.
-  If ROWS and/or COLS are matrices or sequences then the submatrix indexed
-  by them will be returned.
-
-  The indices are 0-based."))
-
-(defgeneric (setf matrix-ref-2d) (value matrix rows cols))
+(defmethod print-object ((matrix standard-matrix) stream)
+  (dotimes (i (nrows matrix))
+    (dotimes (j (ncols matrix))
+      (format stream "~A    " (matrix-ref-2d matrix i j)))
+    (format stream "~%")))
+      
