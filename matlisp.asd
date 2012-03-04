@@ -87,11 +87,15 @@
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
 	:components ((:file "conditions")
-		     (:file "matrix")
-		     (:file "ref"
-			    :depends-on ("matrix"))
+		     (:file "standard-matrix")
+		     (:file "real-matrix"
+			    :depends-on ("standard-matrix"))
+		     (:file "complex-matrix"
+			    :depends-on ("standard-matrix"))
+		     ;; (:file "ref"
+		     ;; 	    :depends-on ("matrix"))
 		     (:file "print"
-			    :depends-on ("ref"))
+		     	    :depends-on ("standard-matrix"))
 		     (:file "copy")))
 
        (:module "matlisp-blas-wrappers"
@@ -293,4 +297,3 @@
   ((:module "src"
     :components
     ((:file "dlsode")))))
-

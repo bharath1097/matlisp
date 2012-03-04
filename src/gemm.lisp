@@ -125,6 +125,38 @@
   from BLAS, ATLAS or LIBCRUFT.
 "))
 
+;;
+
+(defmacro lcase (keyform &rest body)
+  (let ((key-eval (gensym)))
+    (labels ((app-equal (lst)
+	       (if (null lst)
+		   nil
+		   `(((equal ,key-eval ,(caar lst)) ,@(cdar lst))
+		     ,@(app-equal (cdr lst))))))
+      `(let ((,key-eval ,keyform))
+	 (cond
+	   ,@(app-equal body))))))	 
+
+(defun change-job (a-order b-order job)
+  (multiple-value-bind (a-job b-job) (case job
+				       (:nn (values nil nil))
+				       (:tn (values t nil))
+				       (:nt (values nil t))
+				       (:tt (values t t)))
+    (let* ((a-colp (eq a-order :col-major))
+	   (b-colp (eq b-order :col-major))
+	   (a-job-mod (or (and a-colp a-job)
+			  (not (or a-colp a-job))))
+	   (b-job-mod (or (and b-colp b-job)
+			  (not (or b-colp b-job)))))
+      (lcase `(,a-job-mod ,b-job-mod)
+	     ('(nil nil) :nn)
+	     ('(t nil) :tn)
+	     ('(nil t) :nt)
+	     ('(t t) :tt)))))
+
+;;
 (defgeneric gemm (alpha a b beta c &optional job)
   (:documentation
 "
@@ -153,20 +185,21 @@
 
 "))
 
-(defmethod gemm! :before ((alpha number) 
-			  (a standard-matrix) 
+(defmethod gemm! :before ((alpha number)
+			  (a standard-matrix)
 			  (b standard-matrix)
-			  (beta number) 
-			  (c standard-matrix) 
-			  &optional (job :NN))
+			  (beta number)
+			  (c standard-matrix)
+			  &optional (job :nn))
   (let ((n-a (nrows a))
 	(m-a (ncols a))
 	(n-b (nrows b))
 	(m-b (ncols b))
 	(n-c (nrows c))
 	(m-c (ncols c)))
-    (declare (type fixnum n-a m-a n-b m-b n-c m-c))
-
+    (declare (type fixnum n-a m-a n-b m-b n-c m-c)
+             (type symbol a-order b-order))
+            
     (case job
       (:nn t)
       (:tn (rotatef n-a m-a))
@@ -184,8 +217,7 @@
 		  (b real-matrix)
 		  (beta double-float) 
 		  (c real-matrix) 
-		  &optional (job :nn))
-
+		  &optional (job :nn))  
   (let ((n (nrows c))
 	(m (ncols c))
 	(k (if (member job '(:NN NN :NT NT))

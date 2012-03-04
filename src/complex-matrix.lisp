@@ -1,6 +1,6 @@
 ;;; Definitions of COMPLEX-MATRIX.
 
-(in-package :expt)
+(in-package :matlisp)
 
 (eval-when (load eval compile)
 (deftype complex-matrix-element-type ()
@@ -201,24 +201,6 @@
 				 :row-stride n :col-stride 1
 				 :store store))
       (:col-major (make-instance 'complex-matrix
-				 :nrows n :ncols 1
-				 :row-stride 1 :col-stride n
-				 :store store)))))
-
-;;
-(defun make-real-matrix-seq (seq &key (order :row-major))
-  (let* ((n (length seq))
-	 (store (allocate-real-store n)))
-    (declare (type fixnum n))
-    (dotimes (k n)
-      (declare (type fixnum k))
-      (setf (aref store k) (coerce (elt seq k) 'real-matrix-element-type)))
-    (ecase order
-      (:row-major (make-instance 'real-matrix
-				 :nrows 1 :ncols n
-				 :row-stride n :col-stride 1
-				 :store store))
-      (:col-major (make-instance 'real-matrix
 				 :nrows n :ncols 1
 				 :row-stride 1 :col-stride n
 				 :store store)))))

@@ -1,6 +1,6 @@
 ;;; Definitions of REAL-MATRIX.
 
-(in-package :expt)
+(in-package :matlisp)
 
 (eval-when (load eval compile)
   (deftype real-matrix-element-type ()
