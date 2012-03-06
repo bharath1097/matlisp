@@ -1,48 +1,14 @@
 ;; Definitions of STANDARD-MATRIX
-;;(in-package "MATLISP")
-
-(defpackage matlisp-experimental
-  (:nicknames :expt)
-  (:use "COMMON-LISP")
-;  (:shadowing-import-from "MATLISP" "REAL"))
-  )
-
-(in-package :expt)
-
-(defun get-arg (sym arglist)
-  (check-type sym symbol)
-  (locally
-      (declare (optimize (speed 3) (safety 0)))
-    (labels ((get-sym (sym arglist)
-	       (cond	       
-		 ((null arglist) nil)
-		 ((eq (car arglist) sym) (cadr arglist))
-		 (t (get-sym sym (cddr arglist))))))
-      (get-sym sym arglist))))
+(in-package :matlisp)
 
 ;;
-(defmacro if-ret (form &rest else-body)
-  "if-ret (form &rest else-body)
-Evaluate form, and if the form is not nil, then return it,
-else run else-body"
-  (let ((ret (gensym)))
-    `(let ((,ret ,form))
-       (or ,ret
-	   (progn
-	     ,@else-body)))))
-
-;;
-(defun cut-cons-chain! (lst test)
-  (check-type lst cons)
-  (labels ((cut-cons-chain-tin (lst test parent-lst)
-	     (cond
-	       ((null lst) nil)
-	       ((funcall test (cadr lst))
-		(let ((keys (cdr lst)))
-		  (setf (cdr lst) nil)
-		  (values parent-lst keys)))
-	       (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
-    (cut-cons-chain-tin lst test lst)))
+(declaim (inline allocate-integer4-store))
+(defun allocate-integer4-store (size &optional (initial-element 0))
+  "(ALLOCATE-INTEGER-STORE SIZE [INITIAL-ELEMENT]).  Allocates
+integer storage.  Default INITIAL-ELEMENT = 0."
+  (make-array size
+	      :element-type 'integer4-matrix-element-type
+	      :initial-element initial-element))
 
 ;;
 (declaim (inline store-indexing))
@@ -129,6 +95,12 @@ that way."))
     (setf (number-of-elements matrix) nxm)))
 
 ;;
+(defmacro matrix-ref (matrix row &optional col)
+  (if col
+      `(matrix-ref-2d ,matrix ,row ,col)
+      `(matrix-ref-1d ,matrix ,row)))
+
+;;
 (defgeneric matrix-ref-1d (matrix store-idx)
   (:documentation "
   Syntax
@@ -139,8 +111,8 @@ that way."))
   =======
   Return the element store-idx of the matrix store."))
 
-(defmethod matrix-ref-1d :before ((matrix standard-matrix) (idx fixnum))
-  (unless (< -1 idx (number-of-elements matrix))
+#+nil(defmethod matrix-ref-1d :before ((matrix standard-matrix) (idx fixnum))
+  (unless (< -1 (- idx (head matrix)) (number-of-elements matrix))
     (error "Requested index ~A is out of bounds.
 Matrix only has ~A elements." idx (number-of-elements matrix))))
 
@@ -298,9 +270,24 @@ matrix and a number"))
   (make-load-form-saving-slots matrix :environment env))
 
 ;;
-(defmethod print-object ((matrix standard-matrix) stream)
+#+nil(defmethod print-object ((matrix standard-matrix) stream)
   (dotimes (i (nrows matrix))
     (dotimes (j (ncols matrix))
       (format stream "~A    " (matrix-ref-2d matrix i j)))
     (format stream "~%")))
-      
+
+;;
+
+(defun get-order-stride (matrix &optional (fortran-op "N"))
+  (check-type matrix standard-matrix)
+  (let ((rs (row-stride matrix))
+	(cs (col-stride matrix)))
+    (declare (type fixnum rs cs))
+    (cond
+      ((= cs 1) (values :row-major rs (cond
+					((string= fortran-op "N" ) "T")
+					((string= fortran-op "T" ) "N"))))
+      ((= rs 1) (values :col-major cs (cond
+					((string= fortran-op "N" ) "N")
+					((string= fortran-op "T" ) "T"))))
+      (t nil))))

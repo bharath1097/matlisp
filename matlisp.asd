@@ -33,6 +33,12 @@
       :components
       ((:file "packages")))
 
+(asdf:defsystem matlisp-utilities
+      :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+      :components ((:module "utilities"
+			    :pathname "src/"
+			    :components ((:file "utilities")))))
+
 (asdf:defsystem lazy-loader
       :pathname #.(translate-logical-pathname "matlisp:lib;")
       :depends-on ("matlisp-packages")
@@ -67,6 +73,7 @@
       :pathname #.(translate-logical-pathname "matlisp:srcdir;")
       :depends-on ("lazy-loader"
                    "matlisp-packages"
+		   "matlisp-utilities"
 		   "fortran-names"
 		   "matlisp-f2cl-macros")
       :components
@@ -87,11 +94,15 @@
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
 	:components ((:file "conditions")
-		     (:file "matrix")
-		     (:file "ref"
-			    :depends-on ("matrix"))
+		     (:file "standard-matrix")
+		     (:file "real-matrix"
+			    :depends-on ("standard-matrix"))
+		     (:file "complex-matrix"
+			    :depends-on ("standard-matrix"))
+		     ;; (:file "ref"
+		     ;; 	    :depends-on ("matrix"))
 		     (:file "print"
-			    :depends-on ("ref"))
+		     	    :depends-on ("standard-matrix"))
 		     (:file "copy")))
 
        (:module "matlisp-blas-wrappers"
@@ -293,4 +304,3 @@
   ((:module "src"
     :components
     ((:file "dlsode")))))
-

@@ -153,16 +153,26 @@
 
 ;;; Define the packages and symbols for Matlisp.
 
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  #+:cmu (:use "COMMON-LISP" "C-CALL" "CFFI")
-  #+:sbcl (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "CFFI")
-  #+:allegro (:use "COMMON-LISP" "CFFI")
-  #+(not (or sbcl cmu allegro)) (:use "COMMON-LISP" "CFFI")
+(defpackage :utilities
+  (:use :common-lisp)
+  (:export #:lcase
+	   #:cut-cons-chain!
+	   #:when-let
+	   #:if-ret
+	   #:get-arg
+	   #:nconsc
+	   #:with-gensyms))
+
+(defpackage :fortran-ffi-accessors
+  #+:cmu (:use :common-lisp :c-call :cffi :utilities)
+  #+:sbcl (:use :common-lisp :sb-alien :sb-c :cffi :utilities)
+  #+:allegro (:use :common-lisp :cffi :utilities)
+  #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
-   ;; Interface functions
-   "DEF-FORTRAN-ROUTINE"
-   "INCF-SAP"
-   "WITH-VECTOR-DATA-ADDRESSES"
+   ;; interface functions
+   #:def-fortran-routine
+   #:incf-sap
+   #:with-vector-data-addresses
    )
   (:documentation "Fortran foreign function interface"))
 
@@ -279,8 +289,8 @@
    "ZEROIN")
   (:documentation "Other useful routines"))
 
-(defpackage "MATLISP"
-  (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS" "BLAS" "LAPACK" "DFFTPACK" "QUADPACK" "MATLISP-LIB")
+(defpackage :matlisp
+  (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
   (:shadow "REAL")
   (:export
    "*PRINT-MATRIX*"

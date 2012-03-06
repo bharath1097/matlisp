@@ -84,6 +84,8 @@
 #+nil (export '(gemm!
 		gemm))
 
+;;
+
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation
 "
@@ -125,6 +127,7 @@
   from BLAS, ATLAS or LIBCRUFT.
 "))
 
+;;
 (defgeneric gemm (alpha a b beta c &optional job)
   (:documentation
 "
@@ -153,20 +156,20 @@
 
 "))
 
-(defmethod gemm! :before ((alpha number) 
-			  (a standard-matrix) 
+(defmethod gemm! :before ((alpha number)
+			  (a standard-matrix)
 			  (b standard-matrix)
-			  (beta number) 
-			  (c standard-matrix) 
-			  &optional (job :NN))
+			  (beta number)
+			  (c standard-matrix)
+			  &optional (job :nn))
   (let ((n-a (nrows a))
 	(m-a (ncols a))
 	(n-b (nrows b))
 	(m-b (ncols b))
 	(n-c (nrows c))
 	(m-c (ncols c)))
-    (declare (type fixnum n-a m-a n-b m-b n-c m-c))
-
+    (declare (type fixnum n-a m-a n-b m-b n-c m-c)
+             (type symbol a-order b-order))
     (case job
       (:nn t)
       (:tn (rotatef n-a m-a))
@@ -179,50 +182,66 @@
 		  (= m-b m-c)))
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
-(defmethod gemm! ((alpha double-float) 
-		  (a real-matrix) 
+(defmethod gemm! ((alpha double-float)
+		  (a real-matrix)
 		  (b real-matrix)
 		  (beta double-float) 
 		  (c real-matrix) 
 		  &optional (job :nn))
-
   (let ((n (nrows c))
 	(m (ncols c))
-	(k (if (member job '(:NN NN :NT NT))
+	(k (if (member job '(:nn :nt))
 	       (ncols a)
-	     (nrows a))))
+	       (nrows a))))
     (declare (type fixnum n m k))
-    (multiple-value-bind (job-a job-b lda ldb)
-	 (ecase job
-          (:NN (values "N" "N"  n k))
-	  (:NT (values "N" "T"  n m))
-	  (:TN (values "T" "N"  k k))
-	  (:TT (values "T" "T"  k m)))
 
-	 (declare (type fixnum lda ldb)
-		  (type (string 1) job-a job-b))
+    (mlet ((order-a lda job-a (ecase job
+				((:nn :nt) (get-order-stride a "N"))
+				((:tn :tt) (get-order-stride a "T"))))
+	   (order-b ldb job-b (ecase job
+				((:nn :tn) (get-order-stride b "N"))
+				((:nt :tt) (get-order-stride b "T"))))
+	   (order-c ldc job-c (get-order-stride c)))
+	  (declare ;;(ignore order-a order-b job-c)
+		   (type fixnum lda ldb ldc)
+		   (type (string 1) job-a job-b))
 
-	 (dgemm job-a     ; TRANSA
-		job-b     ; TRANSB
-		n         ; M
-		m         ; N (LAPACK takes N,M opposite our convention)
-		k         ; K
-		alpha     ; ALPHA
-		(store a) ; A
-		lda       ; LDA
-		(store b) ; B
-		ldb       ; LDB
-		beta      ; BETA
-		(store c) ; C
-		n )       ; LDC
- 
-	 c)))
+	  (when (eq order-c :row-major)
+	    (rotatef a b)
+	    (rotatef lda ldb)
+	    (rotatef n m)
+	    (rotatef job-a job-b)
+	    ;;
+	    (setf job-a (cond
+			  ((string= "N" job-a) "T")
+			  ((string= "T" job-a) "N")
+			  (t "N")))
+	    (setf job-b (cond
+			  ((string= "N" job-b) "T")
+			  ((string= "T" job-b) "N")
+			  (t "N"))))
+	
+	  (dgemm job-a     ; TRANSA
+		 job-b     ; TRANSB
+		 n         ; M
+		 m         ; N (LAPACK takes N,M opposite our convention)
+		 k         ; K
+		 alpha     ; ALPHA
+		 (store a) ; A
+		 lda       ; LDA
+		 (store b) ; B
+		 ldb       ; LDB
+		 beta      ; BETA
+		 (store c) ; C
+		 ldc         ; LDC
+		 :inc-a (head a) :inc-b (head b) :inc-c (head c))
+	  c)))
 
-(defmethod gemm! ((alpha cl:real) 
-		  (a real-matrix) 
+(defmethod gemm! ((alpha cl:real)
+		  (a real-matrix)
 		  (b real-matrix)
-		  (beta cl:real) 
-		  (c real-matrix) 
+		  (beta cl:real)
+		  (c real-matrix)
 		  &optional (job :nn))
   (gemm! (coerce alpha 'real-matrix-element-type)
 	 a
@@ -237,7 +256,6 @@
 		  (beta number)
 		  (c complex-matrix)
 		  &optional (job :nn))
-
   (let ((n (nrows c))
 	(m (ncols c))
 	(k (if (member job '(:NN NN :NT NT))
