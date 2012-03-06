@@ -33,6 +33,12 @@
       :components
       ((:file "packages")))
 
+(asdf:defsystem matlisp-utilities
+      :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+      :components ((:module "utilities"
+			    :pathname "src/"
+			    :components ((:file "utilities")))))
+
 (asdf:defsystem lazy-loader
       :pathname #.(translate-logical-pathname "matlisp:lib;")
       :depends-on ("matlisp-packages")
@@ -67,6 +73,7 @@
       :pathname #.(translate-logical-pathname "matlisp:srcdir;")
       :depends-on ("lazy-loader"
                    "matlisp-packages"
+		   "matlisp-utilities"
 		   "fortran-names"
 		   "matlisp-f2cl-macros")
       :components

@@ -84,6 +84,8 @@
 #+nil (export '(gemm!
 		gemm))
 
+;;
+
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation
 "
@@ -124,37 +126,6 @@
   on the underlying DGEMM, ZGEMM routines
   from BLAS, ATLAS or LIBCRUFT.
 "))
-
-;;
-
-(defmacro lcase (keyform &rest body)
-  (let ((key-eval (gensym)))
-    (labels ((app-equal (lst)
-	       (if (null lst)
-		   nil
-		   `(((equal ,key-eval ,(caar lst)) ,@(cdar lst))
-		     ,@(app-equal (cdr lst))))))
-      `(let ((,key-eval ,keyform))
-	 (cond
-	   ,@(app-equal body))))))	 
-
-(defun change-job (a-order b-order job)
-  (multiple-value-bind (a-job b-job) (case job
-				       (:nn (values nil nil))
-				       (:tn (values t nil))
-				       (:nt (values nil t))
-				       (:tt (values t t)))
-    (let* ((a-colp (eq a-order :col-major))
-	   (b-colp (eq b-order :col-major))
-	   (a-job-mod (or (and a-colp a-job)
-			  (not (or a-colp a-job))))
-	   (b-job-mod (or (and b-colp b-job)
-			  (not (or b-colp b-job)))))
-      (lcase `(,a-job-mod ,b-job-mod)
-	     ('(nil nil) :nn)
-	     ('(t nil) :tn)
-	     ('(nil t) :nt)
-	     ('(t t) :tt)))))
 
 ;;
 (defgeneric gemm (alpha a b beta c &optional job)
@@ -199,7 +170,6 @@
 	(m-c (ncols c)))
     (declare (type fixnum n-a m-a n-b m-b n-c m-c)
              (type symbol a-order b-order))
-            
     (case job
       (:nn t)
       (:tn (rotatef n-a m-a))
@@ -212,49 +182,66 @@
 		  (= m-b m-c)))
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
-(defmethod gemm! ((alpha double-float) 
-		  (a real-matrix) 
+(defmethod gemm! ((alpha double-float)
+		  (a real-matrix)
 		  (b real-matrix)
 		  (beta double-float) 
 		  (c real-matrix) 
-		  &optional (job :nn))  
+		  &optional (job :nn))
   (let ((n (nrows c))
 	(m (ncols c))
-	(k (if (member job '(:NN NN :NT NT))
+	(k (if (member job '(:nn :nt))
 	       (ncols a)
-	     (nrows a))))
+	       (nrows a))))
     (declare (type fixnum n m k))
-    (multiple-value-bind (job-a job-b lda ldb)
-	 (ecase job
-          (:NN (values "N" "N"  n k))
-	  (:NT (values "N" "T"  n m))
-	  (:TN (values "T" "N"  k k))
-	  (:TT (values "T" "T"  k m)))
 
-	 (declare (type fixnum lda ldb)
-		  (type (string 1) job-a job-b))
+    (mlet ((order-a lda job-a (ecase job
+				((:nn :nt) (get-order-stride a "N"))
+				((:tn :tt) (get-order-stride a "T"))))
+	   (order-b ldb job-b (ecase job
+				((:nn :tn) (get-order-stride b "N"))
+				((:nt :tt) (get-order-stride b "T"))))
+	   (order-c ldc job-c (get-order-stride c)))
+	  (declare ;;(ignore order-a order-b job-c)
+		   (type fixnum lda ldb ldc)
+		   (type (string 1) job-a job-b))
 
-	 (dgemm job-a     ; TRANSA
-		job-b     ; TRANSB
-		n         ; M
-		m         ; N (LAPACK takes N,M opposite our convention)
-		k         ; K
-		alpha     ; ALPHA
-		(store a) ; A
-		lda       ; LDA
-		(store b) ; B
-		ldb       ; LDB
-		beta      ; BETA
-		(store c) ; C
-		n )       ; LDC
- 
-	 c)))
+	  (when (eq order-c :row-major)
+	    (rotatef a b)
+	    (rotatef lda ldb)
+	    (rotatef n m)
+	    (rotatef job-a job-b)
+	    ;;
+	    (setf job-a (cond
+			  ((string= "N" job-a) "T")
+			  ((string= "T" job-a) "N")
+			  (t "N")))
+	    (setf job-b (cond
+			  ((string= "N" job-b) "T")
+			  ((string= "T" job-b) "N")
+			  (t "N"))))
+	
+	  (dgemm job-a     ; TRANSA
+		 job-b     ; TRANSB
+		 n         ; M
+		 m         ; N (LAPACK takes N,M opposite our convention)
+		 k         ; K
+		 alpha     ; ALPHA
+		 (store a) ; A
+		 lda       ; LDA
+		 (store b) ; B
+		 ldb       ; LDB
+		 beta      ; BETA
+		 (store c) ; C
+		 ldc         ; LDC
+		 :inc-a (head a) :inc-b (head b) :inc-c (head c))
+	  c)))
 
-(defmethod gemm! ((alpha cl:real) 
-		  (a real-matrix) 
+(defmethod gemm! ((alpha cl:real)
+		  (a real-matrix)
 		  (b real-matrix)
-		  (beta cl:real) 
-		  (c real-matrix) 
+		  (beta cl:real)
+		  (c real-matrix)
 		  &optional (job :nn))
   (gemm! (coerce alpha 'real-matrix-element-type)
 	 a
@@ -269,7 +256,6 @@
 		  (beta number)
 		  (c complex-matrix)
 		  &optional (job :nn))
-
   (let ((n (nrows c))
 	(m (ncols c))
 	(k (if (member job '(:NN NN :NT NT))

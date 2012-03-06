@@ -93,9 +93,17 @@ Returns
   ;; the alien object but before the alien function is called.  Let's
   ;; be safe rather than sorry.
   `(with-fortran-float-modes
-       (without-gcing
-	 (let (,@(mapcar #'(lambda (pair)
-			     `(,(first pair)
-				(vector-data-address ,(second pair))))
-			 vlist))
-	   ,@body))))
+     (without-gcing
+       (let (,@(mapcar #'(lambda (lst)
+			   (destructuring-bind (addr-var var &key inc-type inc) lst
+			     `(,addr-var ,@(if inc
+					       `((cffi:inc-pointer (vector-data-address ,var)
+								   ,@(case inc-type
+									   (:double-float  `((* ,inc 8)))
+									   (:single-float `((* ,inc 4)))
+									   (:complex-double-float  `((* ,inc 16)))
+									   (:complex-single-float  `((* ,inc 8)))
+									   (t `(,inc)))))
+					       `((vector-data-address ,var))))))
+		       vlist))
+	 ,@body))))

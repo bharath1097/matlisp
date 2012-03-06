@@ -1,41 +1,6 @@
 ;; Definitions of STANDARD-MATRIX
 (in-package :matlisp)
 
-(defun get-arg (sym arglist)
-  (check-type sym symbol)
-  (locally
-      (declare (optimize (speed 3) (safety 0)))
-    (labels ((get-sym (sym arglist)
-	       (cond	       
-		 ((null arglist) nil)
-		 ((eq (car arglist) sym) (cadr arglist))
-		 (t (get-sym sym (cddr arglist))))))
-      (get-sym sym arglist))))
-
-;;
-(defmacro if-ret (form &rest else-body)
-  "if-ret (form &rest else-body)
-Evaluate form, and if the form is not nil, then return it,
-else run else-body"
-  (let ((ret (gensym)))
-    `(let ((,ret ,form))
-       (or ,ret
-	   (progn
-	     ,@else-body)))))
-
-;;
-(defun cut-cons-chain! (lst test)
-  (check-type lst cons)
-  (labels ((cut-cons-chain-tin (lst test parent-lst)
-	     (cond
-	       ((null lst) nil)
-	       ((funcall test (cadr lst))
-		(let ((keys (cdr lst)))
-		  (setf (cdr lst) nil)
-		  (values parent-lst keys)))
-	       (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
-    (cut-cons-chain-tin lst test lst)))
-
 ;;
 (declaim (inline allocate-integer4-store))
 (defun allocate-integer4-store (size &optional (initial-element 0))
@@ -312,23 +277,17 @@ matrix and a number"))
     (format stream "~%")))
 
 ;;
-(defgeneric get-order (matrix)
-  (:documentation 
-   "
-   Syntax
-   ======
-   (GET-ORDER matrix fill-element)
-  
-   Purpose
-   =======
-   Get the store order of the matrix.
-"))
 
-(defmethod get-order-stride ((matrix standard-matrix))
+(defun get-order-stride (matrix &optional (fortran-op "N"))
+  (check-type matrix standard-matrix)
   (let ((rs (row-stride matrix))
 	(cs (col-stride matrix)))
     (declare (type fixnum rs cs))
     (cond
-      ((= cs 1) (values :row-major rs))
-      ((= rs 1) (values :col-major cs))
+      ((= cs 1) (values :row-major rs (cond
+					((string= fortran-op "N" ) "T")
+					((string= fortran-op "T" ) "N"))))
+      ((= rs 1) (values :col-major cs (cond
+					((string= fortran-op "N" ) "N")
+					((string= fortran-op "T" ) "T"))))
       (t nil))))

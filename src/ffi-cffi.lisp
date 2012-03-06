@@ -23,23 +23,6 @@
 			    ;;
 			    :input-output :output :workspace-output))
 
-
-(defmacro with-gensyms (symlist &body body)
-  `(let ,(mapcar #'(lambda (sym)
-		     `(,sym (gensym ,(symbol-name sym))))
-		 symlist)
-     ,@body))
-
-;; Helper macro to do setf and nconc
-;; for destructive list updates.
-(defmacro nconsc (var &rest args)
-  (if (null args) var
-      `(if (null ,var)
-	   (progn
-	     (setf ,var ,(car args))
-	     (nconc ,var ,@(cdr args)))
-	   (nconc ,var ,@args))))
-
 ;; Create objects on the heap and run some stuff.
 (defmacro with-foreign-objects-heap-ed (declarations &rest body)
     "
@@ -276,6 +259,8 @@ Example:
 	  (ref-vars nil)
 	  ;;
 	  (defun-args nil)
+	  (defun-keyword-args nil)
+	  ;;
 	  (aux-args nil)
 	  ;;
 	  (ffi-args nil)
@@ -301,7 +286,12 @@ Example:
 		  ;; are passed by value.
 		  ((array-p type)
 		   (setq ffi-var (scat "ADDR-" var))
-		   (nconsc array-vars `((,ffi-var ,var))))
+		   (nconsc array-vars `((,ffi-var ,var)))
+		   ;;
+		   (when-let (arg (get-arg :inc type))
+		     (nconsc defun-keyword-args
+			     `((,arg 0)))
+		     (nconc (car (last array-vars)) `(:inc-type ,(cadr type) :inc ,arg))))
 		  ;; Strings
 		  ((string-p type)
 		   (setq ffi-var var)
@@ -339,10 +329,13 @@ Example:
 		(when (not (null aux-var))
 		  (nconsc aux-ffi-args
 			  `(,aux-var))))))
-    ;;Return the function definition
+      ;;Return the function definition
+      (unless (null defun-keyword-args)
+	(setq defun-keyword-args (append '(&key) defun-keyword-args)))
+      
       (let ((retvar (gensym)))
 	`(
-	  (defun ,name ,defun-args
+	  (defun ,name ,(append defun-args defun-keyword-args)
 	    ,@doc
 	    (let (,@(if (not (null hidden-var-name))
 			`((,hidden-var-name ,@(if (eq (second (first pars))
@@ -351,7 +344,7 @@ Example:
 						  `(#C(0d0 0d0)))))))
 	      (with-foreign-objects-stack-ed (,@ref-vars)
 		(with-vector-data-addresses (,@array-vars)
-		  (let* (,@aux-args		     
+		  (let* (,@aux-args
 			 ;;Style warnings are annoying.
 			 ,@(if (not (eq return-type :void))
 			       `((,retvar (,ffi-fn ,@ffi-args ,@aux-ffi-args))))
@@ -384,6 +377,7 @@ Example:
           :complex-double-float 8x2 bytes
           :complex-single-float 4x2 bytes
   "
+  (check-type type symbol)
   `(setf ,sap
 	 (cffi:inc-pointer ,sap
 			   ,@(ecase type
@@ -428,15 +422,20 @@ Example:
 >>
 "  
   (labels ((with-pointer-or-vector-data-address (vlist body)
-	     `(if (cffi:pointerp ,(cadr vlist))
-		   (let (,vlist)
-		     ,@body)
-		   (cffi-sys:with-pointer-to-vector-data ,vlist
-		     ,@body)))
-	   (frob (v body)
-	     (if (null v)
-		 body
-		 `(,(with-pointer-or-vector-data-address `(,(caar v) ,(cadar v))
-							 (frob (rest v) body))))))
-    `(with-fortran-float-modes
-	 ,@(frob vlist body))))
+	     (let ((inc-body (ecase (length vlist)
+			       (2 nil)
+			       (4 `((incf-sap ,(nth 2 vlist) ,(nth 0 vlist) ,(nth 3 vlist)))))))
+	       `(if (cffi:pointerp ,(cadr vlist))
+		    (let (,(car vlist) ,(cadr vlist))
+		      ,@inc-body
+		      ,@body)
+		    (cffi-sys:with-pointer-to-vector-data (,(car vlist) ,(cadr vlist))
+		      ,@inc-body
+		      ,@body))))
+	     (frob (v body)
+		   (if (null v)
+		       body
+		       `(,(with-pointer-or-vector-data-address (car v)
+							       (frob (rest v) body))))))
+	   `(with-fortran-float-modes
+	      ,@(frob vlist body))))
