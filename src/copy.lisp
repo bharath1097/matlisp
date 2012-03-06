@@ -202,7 +202,7 @@ don't know how to coerce a COMPLEX to a REAL"))
 
     y))
 
-(defmethod copy! ((x double-float) (y real-matrix))
+(defmethod copy! ((x #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (y real-matrix))
   (let ((nxm (number-of-elements y)))
     (setf (aref *1x1-real-array* 0) x)
     (dcopy nxm *1x1-real-array* 0 (store y) 1)
@@ -221,10 +221,10 @@ don't know how to coerce a COMPLEX to a REAL"))
 
 (defmethod copy! ((x #+:cmu kernel::complex-double-float
                      #+:sbcl sb-kernel::complex-double-float
-		     #+(or :allegro :ccl) complex) (y complex-matrix))
+		     #-(or cmu sbcl) complex) (y complex-matrix))
   (let ((nxm (number-of-elements y)))
 
-    #+(or :ccl :allegro) (setq x (complex-coerce x))
+    #-(or cmu sbcl) (setq x (complex-coerce x))
 
     (setf (aref *1x1-complex-array* 0) (realpart x))
     (setf (aref *1x1-complex-array* 1) (imagpart x))

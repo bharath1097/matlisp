@@ -124,7 +124,7 @@
       result)))
 
 (let ((diag-element (make-array 1 :element-type 'real-matrix-element-type)))
-  (defmethod (setf diag) ((new-diag double-float) (mat real-matrix))
+  (defmethod (setf diag) ((new-diag #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (mat real-matrix))
     (let* ((n (nrows mat))
 	   (m (ncols mat))
 	   (p (min m n)))
@@ -215,13 +215,13 @@ don't know how to coerce COMPLEX to REAL"
 
 (defmethod (setf diag) ((new-diag #+:cmu kernel::complex-double-float
                                   #+:sbcl sb-kernel::complex-double-float
-				  #+(or :ccl :allegro) complex) (mat complex-matrix))
+				  #-(or cmu sbcl) complex) (mat complex-matrix))
   (let* ((n (nrows mat))
 	 (m (ncols mat))
 	 (p (min n m)))
     (declare (type fixnum n m p))
 
-    #+(or :ccl allegro) (setf new-diag (complex-coerce new-diag))
+    #-(or cmu sbcl) (setf new-diag (complex-coerce new-diag))
 
     (zcopy p new-diag 0 (store mat) (1+ n))
     mat))

@@ -179,10 +179,10 @@
 		  (= m-b m-c)))
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
-(defmethod gemm! ((alpha double-float) 
+(defmethod gemm! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) 
 		  (a real-matrix) 
 		  (b real-matrix)
-		  (beta double-float) 
+		  (beta #+(or cmu sbcl) double-float #-(or cmu sbcl) float) 
 		  (c real-matrix) 
 		  &optional (job :nn))
 
