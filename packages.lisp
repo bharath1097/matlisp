@@ -162,8 +162,7 @@
 	   #:get-arg
 	   #:nconsc
 	   #:with-gensyms
-	   #:pop-arg!
-	   #:mlet))
+	   #:mlet*))
 
 (defpackage :fortran-ffi-accessors
   #+:cmu (:use :common-lisp :c-call :cffi :utilities)
