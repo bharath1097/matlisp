@@ -35,6 +35,7 @@
 
 (asdf:defsystem matlisp-utilities
       :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+      :depends-on ("matlisp-packages")
       :components ((:module "utilities"
 			    :pathname "src/"
 			    :components ((:file "utilities")))))

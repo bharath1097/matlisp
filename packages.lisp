@@ -162,6 +162,7 @@
 	   #:get-arg
 	   #:nconsc
 	   #:with-gensyms
+	   #:pop-arg!
 	   #:mlet))
 
 (defpackage :fortran-ffi-accessors

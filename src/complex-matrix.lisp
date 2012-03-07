@@ -58,7 +58,7 @@
     (declare (type (complex-matrix-store-type (*)) store))
     (complex (aref store (* 2 idx)) (aref store (+ 1 (* 2 idx))))))
 
-(defmethod (setf matrix-ref-1d) ((value number) (matrix real-matrix) (idx fixnum))
+(defmethod (setf matrix-ref-1d) ((value number) (matrix complex-matrix) (idx fixnum))
   (let ((store (store matrix))
 	(coerced-value (complex-coerce value)))
     (declare (type (complex-matrix-store-type (*)) store))

@@ -77,15 +77,69 @@
 
 (in-package "MATLISP")
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-#+nil (export '(gemm!
-		gemm))
+;; Why write things again and again, when Lisp will gladly do it for you :)
+(defmacro generate-typed-gemm!-func (func element-type matrix-type blas-func)
+  `(defun ,func (alpha a b beta c job)
+     (declare (type ,element-type alpha beta)
+	      (type ,matrix-type a b c)
+	      (type symbol job))
+     (mlet ((n (nrows c)
+	       :declare ((type fixnum n)))
+	    (m (ncols c)
+	       :declare ((type fixnum m)))
+	    (k (if (member job '(:nn :nt))
+		   (ncols a)
+		   (nrows a))
+	       :declare ((type fixnum k)))
+	    (order-a lda job-a (ecase job
+				 ((:nn :nt) (get-order-stride a "N"))
+				 ((:tn :tt) (get-order-stride a "T")))
+		     :declare ((ignore order-a)
+			       (type fixnum lda)
+			       (type (string 1) job-a)))
+	    (order-b ldb job-b (ecase job
+				 ((:nn :tn) (get-order-stride b "N"))
+				 ((:nt :tt) (get-order-stride b "T")))
+		     :declare ((ignore order-b)
+			       (type fixnum ldb)
+			       (type (string 1) job-b)))
+	    (order-c ldc job-c (get-order-stride c "N")
+		     :declare ((ignore order-c)
+			       (type fixnum ldc)
+			       (type (string 1) job-c))))
+	   
+	   (when (string= job-c "T")
+	     (rotatef a b)
+	     (rotatef lda ldb)
+	     (rotatef n m)
+	     (rotatef job-a job-b)
+	     ;;
+	     (setf job-a (cond
+			   ((string= "N" job-a) "T")
+			   ((string= "T" job-a) "N")
+			   (t "N")))
+	     (setf job-b (cond
+			   ((string= "N" job-b) "T")
+			   ((string= "T" job-b) "N")
+			   (t "N"))))
+	   
+	   (,blas-func job-a     ; TRANSA
+		       job-b     ; TRANSB
+		       n         ; M
+		       m         ; N (LAPACK takes N M opposite our convention)
+		       k         ; K
+		       alpha     ; ALPHA
+		       (store a) ; A
+		       lda       ; LDA
+		       (store b) ; B
+		       ldb       ; LDB
+		       beta      ; BETA
+		       (store c) ; C
+		       ldc       ; LDC
+		       :inc-a (head a) :inc-b (head b) :inc-c (head c))
+	   c)))
 
 ;;
-
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation
 "
@@ -127,7 +181,75 @@
   from BLAS, ATLAS or LIBCRUFT.
 "))
 
+(defmethod gemm! :before ((alpha number)
+			  (a standard-matrix)
+			  (b standard-matrix)
+			  (beta number)
+			  (c standard-matrix)
+			  &optional (job :nn))
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b))
+	(m-b (ncols b))
+	(n-c (nrows c))
+	(m-c (ncols c)))
+    (declare (type fixnum n-a m-a n-b m-b n-c m-c))
+    (case job
+      (:nn t)
+      (:tn (rotatef n-a m-a))
+      (:nt (rotatef n-b m-b))
+      (:tt (rotatef n-a m-a) (rotatef n-b m-b))
+      (t (error "argument JOB to GEMM! is not recognized")))
+
+    (if (not (and (= m-a n-b)
+		  (= n-a n-c)
+		  (= m-b m-c)))
+	(error "dimensions of A,B,C given to GEMM! do not match"))))
+
 ;;
+(generate-typed-gemm!-func real-double-gemm!-typed real-matrix-element-type real-matrix dgemm)
+
+(defmethod gemm! ((alpha cl:real) (a real-matrix) (b real-matrix)
+		  (beta cl:real) (c real-matrix) &optional (job :nn))
+  (real-double-gemm!-typed (coerce alpha 'real-matrix-element-type) a b
+			   (coerce beta 'real-matrix-element-type) c
+			   job))
+
+;;
+
+(generate-typed-gemm!-func complex-double-gemm!-typed (complex (double-float * *)) complex-matrix zgemm)
+
+(defmethod gemm! ((alpha number) (a complex-matrix) (b complex-matrix)
+		  (beta number) (c complex-matrix) &optional (job :nn))
+  (complex-double-gemm!-typed (complex-coerce alpha) a b
+			      (complex-coerce beta) c job))
+
+;;
+(defmethod gemm! ((alpha number) 
+		  (a standard-matrix)
+		  (b standard-matrix)
+		  (beta number) 
+		  (c complex-matrix) 
+		  &optional (job :NN))
+
+  (let ((a (typecase a
+	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
+	     (complex-matrix a)
+	     (t (error "argument A given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
+	(b (typecase b
+	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
+	     (complex-matrix b)
+	     (t (error "argument B given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
+
+    (gemm! (complex-coerce alpha)
+	   a
+	   b
+	   (complex-coerce beta)
+	   c
+	   job)))
+
+
+;;;;;
 (defgeneric gemm (alpha a b beta c &optional job)
   (:documentation
 "
@@ -156,167 +278,6 @@
 
 "))
 
-(defmethod gemm! :before ((alpha number)
-			  (a standard-matrix)
-			  (b standard-matrix)
-			  (beta number)
-			  (c standard-matrix)
-			  &optional (job :nn))
-  (let ((n-a (nrows a))
-	(m-a (ncols a))
-	(n-b (nrows b))
-	(m-b (ncols b))
-	(n-c (nrows c))
-	(m-c (ncols c)))
-    (declare (type fixnum n-a m-a n-b m-b n-c m-c)
-             (type symbol a-order b-order))
-    (case job
-      (:nn t)
-      (:tn (rotatef n-a m-a))
-      (:nt (rotatef n-b m-b))
-      (:tt (rotatef n-a m-a) (rotatef n-b m-b))
-      (t (error "argument JOB to GEMM! is not recognized")))
-
-    (if (not (and (= m-a n-b)
-		  (= n-a n-c)
-		  (= m-b m-c)))
-	(error "dimensions of A,B,C given to GEMM! do not match"))))
-
-(defmethod gemm! ((alpha double-float)
-		  (a real-matrix)
-		  (b real-matrix)
-		  (beta double-float) 
-		  (c real-matrix) 
-		  &optional (job :nn))
-  (let ((n (nrows c))
-	(m (ncols c))
-	(k (if (member job '(:nn :nt))
-	       (ncols a)
-	       (nrows a))))
-    (declare (type fixnum n m k))
-
-    (mlet ((order-a lda job-a (ecase job
-				((:nn :nt) (get-order-stride a "N"))
-				((:tn :tt) (get-order-stride a "T"))))
-	   (order-b ldb job-b (ecase job
-				((:nn :tn) (get-order-stride b "N"))
-				((:nt :tt) (get-order-stride b "T"))))
-	   (order-c ldc job-c (get-order-stride c)))
-	  (declare ;;(ignore order-a order-b job-c)
-		   (type fixnum lda ldb ldc)
-		   (type (string 1) job-a job-b))
-
-	  (when (eq order-c :row-major)
-	    (rotatef a b)
-	    (rotatef lda ldb)
-	    (rotatef n m)
-	    (rotatef job-a job-b)
-	    ;;
-	    (setf job-a (cond
-			  ((string= "N" job-a) "T")
-			  ((string= "T" job-a) "N")
-			  (t "N")))
-	    (setf job-b (cond
-			  ((string= "N" job-b) "T")
-			  ((string= "T" job-b) "N")
-			  (t "N"))))
-	
-	  (dgemm job-a     ; TRANSA
-		 job-b     ; TRANSB
-		 n         ; M
-		 m         ; N (LAPACK takes N,M opposite our convention)
-		 k         ; K
-		 alpha     ; ALPHA
-		 (store a) ; A
-		 lda       ; LDA
-		 (store b) ; B
-		 ldb       ; LDB
-		 beta      ; BETA
-		 (store c) ; C
-		 ldc         ; LDC
-		 :inc-a (head a) :inc-b (head b) :inc-c (head c))
-	  c)))
-
-(defmethod gemm! ((alpha cl:real)
-		  (a real-matrix)
-		  (b real-matrix)
-		  (beta cl:real)
-		  (c real-matrix)
-		  &optional (job :nn))
-  (gemm! (coerce alpha 'real-matrix-element-type)
-	 a
-	 b
-	 (coerce beta 'real-matrix-element-type)
-	 c
-	 job))
-
-(defmethod gemm! ((alpha number)
-		  (a complex-matrix)
-		  (b complex-matrix)
-		  (beta number)
-		  (c complex-matrix)
-		  &optional (job :nn))
-  (let ((n (nrows c))
-	(m (ncols c))
-	(k (if (member job '(:NN NN :NT NT))
-	       (ncols a)
-	     (nrows a))))
-    (declare (type fixnum n m k))
-    (multiple-value-bind (job-a job-b lda ldb)
-	 (ecase job
-          (:NN (values "N" "N"  n k))
-	  (:NT (values "N" "T"  n m))
-	  (:TN (values "T" "N"  k k))
-	  (:TT (values "T" "T"  k m)))
-
-	 (declare (type fixnum lda ldb)
-		  (type (string 1) job-a job-b))
-
-	 (setq alpha (complex-coerce alpha))
-	 (setq beta (complex-coerce beta))
-
-	 (zgemm job-a     ; TRANSA
-		job-b     ; TRANSB
-		n         ; M
-		m         ; N (LAPACK takes N,M opposite our convention)
-		k         ; K
-		alpha  ; ALPHA
-		(store a) ; A
-		lda       ; LDA
-		(store b) ; B
-		ldb       ; LDB
-		beta      ; BETA
-		(store c) ; C
-		n)       ; LDC
- 
-	 c)))
-
-
-(defmethod gemm! ((alpha number) 
-		  (a standard-matrix) 
-		  (b standard-matrix)
-		  (beta number) 
-		  (c complex-matrix) 
-		  &optional (job :NN))
-
-  (let ((a (typecase a
-	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
-	     (complex-matrix a)
-	     (t (error "argument A given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
-	(b (typecase b
-	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
-	     (complex-matrix b)
-	     (t (error "argument B given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
-
-    (gemm! (complex-coerce alpha)
-	   a
-	   b
-	   (complex-coerce beta)
-	   c
-	   job)))
-
-
-;;;;;
 
 (defmethod gemm :before ((alpha number) 
 			 (a standard-matrix) 

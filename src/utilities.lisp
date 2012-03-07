@@ -23,29 +23,64 @@
   (locally
       (declare (optimize (speed 3) (safety 0)))
     (labels ((get-sym (sym arglist)
-	       (cond	       
+	       (cond
 		 ((null arglist) nil)
 		 ((eq (car arglist) sym) (cadr arglist))
 		 (t (get-sym sym (cddr arglist))))))
       (get-sym sym arglist))))
 
 ;;
+(defun pop-arg! (sym arglist)
+  (check-type sym symbol)
+  (locally
+      (declare (optimize (speed 3) (safety 0)))
+    (labels ((get-sym (sym arglist prev)
+	       (cond
+		 ((null arglist) nil)
+		 ((eq (car arglist) sym) (prog1
+					   (cadr arglist)
+					   (if prev
+					       (rplacd prev (cddr arglist)))))
+		 (t (get-sym sym (cdr arglist) arglist)))))
+      (get-sym sym arglist nil))))
+
+;;
 (defmacro mlet (decls &rest body)
-  (labels ((mlet-parse (decl &optional (ret nil))
-	     (check-type (car decl) symbol)
-	     (if (null (cddr decl))
-		 (values (nconsc ret `(,(car decl))) (cadr decl))
-		 (mlet-parse (cdr decl) (nconsc ret `(,(car decl))))))
-	   (mlet-walk (elst body)
-	     (if (null elst)
-		 `(,@body)
-		 (multiple-value-bind (vars form) (mlet-parse (car elst))
-		   `((multiple-value-bind (,@vars) ,form
-		       ,@(mlet-walk (cdr elst) body)))))))
-    (if decls
-	(car (mlet-walk decls body))
-	`(progn
-	   ,@body))))
+  (let ((let-defns nil)
+	(let-decls nil))
+    (labels ((mlet-parse! (decl)
+	       (check-type (car decl) symbol)
+	       (if (null (cddr decl))
+		   (prog1
+		       (cadr decl)
+		     (setf (cdr decl) nil))
+		   (mlet-parse! (cdr decl))))
+	     (mlet-walk (elst body)
+	       (let* ((decl (car elst))
+		      (elst-decl (pop-arg! :declare decl)))
+		 (cond
+		   ((null decl)
+		    `(,@body))
+		   ((null (cddr decl))
+		    (nconsc let-defns `((,(caar elst) ,(cadar elst))))
+		    (nconsc let-decls `(,@elst-decl))
+		    (mlet-walk (cdr elst) body))
+		   (t
+		    (let ((form (mlet-parse! decl)))
+		      `((multiple-value-bind (,@decl) ,form
+			  ,@(when elst-decl
+				  `((declare ,@elst-decl)))
+			  ,@(mlet-walk (cdr elst) body)))))))))
+      (if decls
+	  (let ((tc (mlet-walk decls body)))
+	    (if let-defns
+		`(let (,@let-defns)
+		   ,@(when let-decls
+			   `((declare ,@let-decls)))
+		   ,@tc)
+		(car tc)))
+      `(progn
+	 ,@body)))))
 ;;
 (defmacro if-ret (form &rest else-body)
   "if-ret (form &rest else-body)
