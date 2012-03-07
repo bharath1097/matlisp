@@ -119,9 +119,9 @@ Matrix only has ~A elements." idx (number-of-elements matrix))))
 ;;
 (defgeneric (setf matrix-ref-1d) (value matrix idx))
 
-(defmethod (setf matrix-ref-1d) :before ((value t) (matrix standard-matrix) (idx fixnum))
-  (unless (< -1 idx (number-of-elements matrix))
-    (error "Requested index ~A is out of bounds.
+#+nil(defmethod (setf matrix-ref-1d) :before ((value t) (matrix standard-matrix) (idx fixnum))
+       (unless (< -1 idx (number-of-elements matrix))
+	 (error "Requested index ~A is out of bounds.
 Matrix only has ~A elements." idx (number-of-elements matrix))))
 
 ;;
@@ -277,7 +277,6 @@ matrix and a number"))
     (format stream "~%")))
 
 ;;
-
 (defun get-order-stride (matrix &optional (fortran-op "N"))
   (check-type matrix standard-matrix)
   (let ((rs (row-stride matrix))
@@ -291,3 +290,21 @@ matrix and a number"))
 					((string= fortran-op "N" ) "N")
 					((string= fortran-op "T" ) "T"))))
       (t nil))))
+
+;;
+(defun make-sub-matrix (matrix i j nrows ncols)
+  (declare (type standard-matrix matrix)
+	   (type fixnum i j nrows ncols))
+  (let ((hd (head matrix))
+	(nr (nrows matrix))
+	(nc (ncols matrix))
+	(rs (row-stride matrix))
+	(cs (col-stride matrix)))
+    (declare (type fixnum hd nr nc rs cs))
+    (when (or (> i (- nr nrows)) (> j (- nc ncols)))
+      (error "Parent matrix is not big enough to create sub-matrix."))
+    (make-instance (class-of matrix)
+		   :nrows nrows :ncols ncols
+		   :store (store matrix)
+		   :head (store-indexing i j hd rs cs)
+		   :row-stride rs :col-stride cs)))
