@@ -117,7 +117,3 @@ m/
 	divide two matrices.  (m/ a b) means the same as inv(B)*A.
 	(m/ a) is the same as inv(A).
 
---------------------
-Testing for commit emails.
-Test 2
-Test 3
