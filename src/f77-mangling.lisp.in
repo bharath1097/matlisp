@@ -38,6 +38,7 @@
 			   (if +f77-underscore+ "_" "")
 			   (if (and +f77-extra-underscore+ internal-underscore-p)
 			       "_" ""))))
+    (declare (ignorable internal-underscore-p))
     (if +f77-lower-case+
 	(string-downcase name)
 	name)))

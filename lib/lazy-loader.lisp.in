@@ -113,7 +113,7 @@
 (in-package "MATLISP")
 
 ;; Tell cffi where our libraries are.
-(push "lib/" cffi:*foreign-library-directories*)
+(push "@libdir@/" cffi:*foreign-library-directories*)
 
 ;; Define our libraries
 (cffi:define-foreign-library dfftpack

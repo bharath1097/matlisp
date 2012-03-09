@@ -157,7 +157,7 @@
   (axpy 1.0d0 a b))
 
 (let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
-  (defmethod m+ ((a real-matrix) (b double-float))
+  (defmethod m+ ((a real-matrix) (b #+(or cmu sbcl) double-float #-(or cmu sbcl) float))
     (let ((nxm (number-of-elements a))
 	  (result (copy a)))
       (declare (type fixnum nxm))
@@ -169,7 +169,7 @@
 (defmethod m+ ((a real-matrix) (b cl:real))
   (m+ a (coerce b 'real-matrix-element-type)))
 
-(defmethod m+ ((a double-float) (b real-matrix))
+(defmethod m+ ((a #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (b real-matrix))
   (m+ b a))
 
 (defmethod m+ ((a cl:real) (b real-matrix))
@@ -177,10 +177,10 @@
 
 (defmethod m+ ((a real-matrix) (b #+:cmu kernel::complex-double-float
                                   #+:sbcl sb-kernel::complex-double-float
-				  #+(or :ccl :allegro) complex))
+				  #-(or cmu sbcl) complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
-	 #+(or :ccl :allegro) (b (complex-coerce b))
+	 #-(or cmu sbcl) (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -192,7 +192,7 @@
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
                   #+:sbcl sb-kernel::complex-double-float
-		  #+(or :ccl :allegro) complex) (b real-matrix))
+		  #-(or cmu sbcl) complex) (b real-matrix))
   (m+ b a))
 
 #+(or :cmu :sbcl)
@@ -201,7 +201,7 @@
 
 ;;;
 (let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
-  (defmethod m+ ((a complex-matrix) (b double-float))
+  (defmethod m+ ((a complex-matrix) (b #+(or cmu sbcl) double-float #-(or cmu sbcl) float))
     (let ((nxm (number-of-elements a))
 	  (result (copy a)))
       (declare (type fixnum nxm))
@@ -213,7 +213,7 @@
 (defmethod m+ ((a complex-matrix) (b cl:real))
   (m+ a (coerce b 'complex-matrix-element-type)))
 
-(defmethod m+ ((a double-float) (b complex-matrix))
+(defmethod m+ ((a #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (b complex-matrix))
   (m+ b a))
 
 (defmethod m+ ((a cl:real) (b complex-matrix))
@@ -221,10 +221,10 @@
 
 (defmethod m+ ((a complex-matrix) (b #+:cmu kernel::complex-double-float
                                      #+:sbcl sb-kernel::complex-double-float
-				     #+(or :ccl :allegro) complex))
+				     #-(or cmu sbcl) complex))
   (let* ((n (nrows a))
 	 (m (ncols a))
-	 #+(or :ccl :allegro) (b (complex-coerce b))
+	 #-(or cmu sbcl) (b (complex-coerce b))
 	 (result (make-complex-matrix-dim n m b)))
     (declare (type fixnum n m))
 
@@ -236,7 +236,7 @@
 
 (defmethod m+ ((a #+:cmu kernel::complex-double-float
                   #+:sbcl sb-kernel::complex-double-float
-		  #+(or :ccl :allegro) complex) (b complex-matrix))
+		  #-(or cmu sbcl) complex) (b complex-matrix))
   (m+ b a))
 
 #+(or :cmu :sbcl)
@@ -265,7 +265,7 @@ don't know how to coerce COMPLEX to REAL."))
 
 ;;;
 (let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
-  (defmethod m+! ((a real-matrix) (b double-float))
+  (defmethod m+! ((a real-matrix) (b #+(or cmu sbcl) double-float #-(or cmu sbcl) float))
     (let ((nxm (number-of-elements a)))
       (declare (type fixnum nxm))
 
@@ -276,7 +276,7 @@ don't know how to coerce COMPLEX to REAL."))
 (defmethod m+! ((a real-matrix) (b cl:real))
   (m+! a (coerce b 'real-matrix-element-type)))
 
-(defmethod m+! ((a double-float) (b real-matrix))
+(defmethod m+! ((a #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (b real-matrix))
   (m+! b a))
 
 (defmethod m+! ((a cl:real) (b real-matrix))
@@ -291,7 +291,7 @@ don't know how to coerce COMPLEX to REAL"))
 don't know how to coerce COMPLEX to REAL"))
 
 (let ((b-array (make-array 1 :element-type 'real-matrix-element-type)))
-  (defmethod m+! ((a complex-matrix) (b double-float))
+  (defmethod m+! ((a complex-matrix) (b #+(or cmu sbcl) double-float #-(or cmu sbcl) float))
     (let ((nxm (number-of-elements a)))
       (declare (type fixnum nxm))
 
@@ -302,7 +302,7 @@ don't know how to coerce COMPLEX to REAL"))
 (defmethod m+! ((a complex-matrix) (b cl:real))
   (m+! a (coerce b 'complex-matrix-element-type)))
 
-(defmethod m+! ((a double-float) (b complex-matrix))
+(defmethod m+! ((a #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (b complex-matrix))
   (m+! b a))
 
 (defmethod m+! ((a cl:real) (b complex-matrix))
@@ -320,11 +320,11 @@ don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m+! ((a complex-matrix) (b #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+(or :ccl :allegro) complex))
+				      #-(or cmu sbcl) complex))
   (let* ((nxm (number-of-elements a)))
     (declare (type fixnum nxm))
 
-    #+(or :ccl :allegro) (setq b (complex-coerce b))
+    #-(or cmu sbcl) (setq b (complex-coerce b))
 
     (setf (aref *1x1-complex-array* 0) (realpart b))
     (setf (aref *1x1-complex-array* 1) (imagpart b))
@@ -337,7 +337,7 @@ don't know how to coerce COMPLEX to REAL"))
 
 (defmethod m+! ((a #+:cmu kernel::complex-double-float
                    #+:sbcl sb-kernel::complex-double-float
-		   #+(or :ccl :allegro) complex) (b complex-matrix))
+		   #-(or cmu sbcl) complex) (b complex-matrix))
   (m+! b a))
 
 #+(or :cmu :sbcl)

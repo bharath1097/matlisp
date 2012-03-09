@@ -28,6 +28,11 @@
 
 (in-package #:common-lisp-user)
 
+(defpackage #:matlisp-system
+  (:use #:cl :asdf))
+
+(in-package #:matlisp-system)
+
 (asdf:defsystem matlisp-packages
       :pathname #.(translate-logical-pathname "matlisp:srcdir;")
       :components
@@ -305,3 +310,19 @@
   ((:module "src"
     :components
     ((:file "dlsode")))))
+
+(defmethod perform ((op asdf:test-op) (c (eql (asdf:find-system :matlisp))))
+  (oos 'asdf:test-op 'matlisp-tests))
+
+(asdf:defsystem matlisp-tests
+  :depends-on (matlisp)
+  :in-order-to ((compile-op (load-op :rt))
+		(test-op (load-op :rt :matlisp)))
+  :components
+  ((:module "tests"
+	    :components
+	    ((:file "blas")))))
+
+(defmethod perform ((op test-op) (c (eql (asdf:find-system :matlisp-tests))))
+  (or (funcall (intern "DO-TESTS" (find-package "RT")))
+      (error "TEST-OP failed for MATLISP-TESTS")))
