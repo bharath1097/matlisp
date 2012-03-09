@@ -1,4 +1,4 @@
-;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
+t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -151,9 +151,9 @@
             Y(0),Y(INCY), ... , Y((N-1)*INCY)
 "      
   (n :integer :input)
-  (dx (* :double-float))
+  (dx (* :double-float :inc head-dx))
   (incx :integer :input)
-  (dy (* :double-float) :output)
+  (dy (* :double-float :inc head-dy) :output)
   (incy :integer :input)
 )
 
@@ -204,7 +204,7 @@
 "   
   (n :integer :input)
   (da :double-float :input)
-  (dx (* :double-float) :output)
+  (dx (* :double-float :inc head-dx) :output)
   (incx :integer :input)
 )
 
@@ -328,9 +328,9 @@
             Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
 "    
   (n :integer :input)
-  (zx (* :complex-double-float))
+  (zx (* :complex-double-float :inc head-zx))
   (incx :integer :input)
-  (zy (* :complex-double-float) :output)
+  (zy (* :complex-double-float :inc head-zy) :output)
   (incy :integer :input)
   )
 
@@ -363,7 +363,7 @@
 "      
   (n :integer :input)
   (da :double-float :input)
-  (zx (* :complex-double-float) :output)
+  (zx (* :complex-double-float :inc head-zx) :output)
   (incx :integer :input)
   )
 
@@ -403,7 +403,7 @@
 
             X(0),X(2*INCX), ... , X(2*(N-1)*INCX)
 "  
- (n :integer :input)
+  (n :integer :input)
   (za :complex-double-float)
   (zx (* :complex-double-float) :output)
   (incx :integer :input)
@@ -537,505 +537,6 @@
   (incy :integer :input)
   )
 
-#|
-(declaim (inline fortran-daxpy))
-(def-alien-routine ("daxpy_" fortran-daxpy) void
-  (n int :in-out)
-  (da double-float :in-out)
-  (dx (* double-float))
-  (incx int :in-out)
-  (dy (* double-float))
-  (incy int :in-out)
-)
-(defun daxpy (
-               n
-               da
-               dx
-               incx
-               dy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type double-float da)
-     (type (simple-array double-float (*)) dx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) dy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-dx dx)
-                                   (addr-dy dy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-daxpy
-                                n
-                                da
-                                addr-dx
-                                incx
-                                addr-dy
-                                incy
-                                                   )
-	    (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                  dy
-		      ))))
-
-(declaim (inline fortran-dcopy))
-(def-alien-routine ("dcopy_" fortran-dcopy) void
-  (n int :in-out)
-  (dx (* double-float))
-  (incx int :in-out)
-  (dy (* double-float))
-  (incy int :in-out)
-)
-(defun dcopy (
-               n
-               dx
-               incx
-               dy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) dx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) dy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-dx dx)
-                                   (addr-dy dy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-dcopy
-                                n
-                                addr-dx
-                                incx
-                                addr-dy
-                                incy
-                                                   )
-            (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                 dy
-		     ))))
-
-
-(declaim (inline fortran-drot))
-(def-alien-routine ("drot_" fortran-drot) void
-  (n int :in-out)
-  (dx (* double-float))
-  (incx int :in-out)
-  (dy (* double-float))
-  (incy int :in-out)
-  (c double-float :in-out)
-  (s double-float :in-out)
-)
-(defun drot (
-               n
-               dx
-               incx
-               dy
-               incy
-               c
-               s
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) dx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) dy)
-     (type fixnum incy)
-     (type double-float c)
-     (type double-float s)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-dx dx)
-                                   (addr-dy dy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-				      new-c
-				      new-s
-                                                     )
-
-            (fortran-drot
-                                n
-                                addr-dx
-                                incx
-                                addr-dy
-                                incy
-                                c
-                                s
-                                                   )
-            (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                 dx dy new-c new-s   ))))
-
-(declaim (inline fortran-drotg))
-(def-alien-routine ("drotg_" fortran-drotg) void
-  (da double-float :in-out)
-  (db double-float :in-out)
-  (c double-float :in-out)
-  (s double-float :in-out)
-)
-(defun drotg (
-               da
-               db
-               c
-               s
-                    )
-  (declare
-     (type double-float da)
-     (type double-float db)
-     (type double-float c)
-     (type double-float s)
-                                          )
-      (with-vector-data-addresses (
-                                               )
-         (multiple-value-bind ( return-value new-da new-db new-c new-s
-                                                     )
-            (fortran-drotg
-                                da
-                                db
-                                c
-                                s
-                                                   )
-	   (declare (ignore return-value))
-	   (values
-               new-da new-db new-c new-s     ))))
-
-(declaim (inline fortran-dscal))
-(def-alien-routine ("dscal_" fortran-dscal) void
-  (n int :in-out)
-  (da double-float :in-out)
-  (dx (* double-float))
-  (incx int :in-out)
-)
-(defun dscal (
-               n
-               da
-               dx
-               incx
-                    )
-  (declare
-     (type fixnum n)
-     (type double-float da)
-     (type (simple-array double-float (*)) dx)
-     (type fixnum incx)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-dx dx)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                                     )
-            (fortran-dscal
-                                n
-                                da
-                                addr-dx
-                                incx
-                                                   )
-            (declare (ignore return-value new-n new-incx))
-         (values
-               dx     ))))
-
-(declaim (inline fortran-dswap))
-(def-alien-routine ("dswap_" fortran-dswap) void
-  (n int :in-out)
-  (dx (* double-float))
-  (incx int :in-out)
-  (dy (* double-float))
-  (incy int :in-out)
-)
-(defun dswap (
-               n
-               dx
-               incx
-               dy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) dx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) dy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-dx dx)
-                                   (addr-dy dy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-dswap
-                                n
-                                addr-dx
-                                incx
-                                addr-dy
-                                incy
-                                                   )
-	    (declare (ignore return-value new-n new-incx new-incy))
-         (values
-               dx     ))))
-
-
-(declaim (inline fortran-zaxpy))
-(def-alien-routine ("zaxpy_" fortran-zaxpy) void
-  (n int :in-out)
-  (za (* double-float))
-  (zx (* double-float))
-  (incx int :in-out)
-  (zy (* double-float))
-  (incy int :in-out)
-)
-(defun zaxpy (
-               n
-               za
-               zx
-               incx
-               zy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) za)
-     (type (simple-array double-float (*)) zx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) zy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-za za)
-				   (addr-zx zx)
-                                   (addr-zy zy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-zaxpy
-                                n
-                                addr-za
-                                addr-zx
-                                incx
-                                addr-zy
-                                incy
-                                                   )
-            (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                zy    ))))
-
-(declaim (inline fortran-zcopy))
-(def-alien-routine ("zcopy_" fortran-zcopy) void
-  (n int :in-out)
-  (zx (* double-float))
-  (incx int :in-out)
-  (zy (* double-float))
-  (incy int :in-out)
-)
-(defun zcopy (
-               n
-               zx
-               incx
-               zy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) zx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) zy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-zx zx)
-                                   (addr-zy zy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-zcopy
-                                n
-                                addr-zx
-                                incx
-                                addr-zy
-                                incy
-                                                   )
-            (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                zy    ))))
-
-
-(declaim (inline fortran-zdscal))
-(def-alien-routine ("zdscal_" fortran-zdscal) void
-  (n int :in-out)
-  (da double-float :in-out)
-  (zx (* double-float))
-  (incx int :in-out)
-)
-(defun zdscal (
-               n
-               da
-               zx
-               incx
-                    )
-  (declare
-     (type fixnum n)
-     (type double-float da)
-     (type (simple-array double-float (*)) zx)
-     (type fixnum incx)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-zx zx)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                                     )
-            (fortran-zdscal
-                                n
-                                da
-                                addr-zx
-                                incx
-                                                   )
-            (declare (ignore return-value new-n new-incx))
-         (values
-                zx    ))))
-
-(declaim (inline fortran-zrotg))
-(def-alien-routine ("zrotg_" fortran-zrotg) void
-  (ca (* double-float))
-  (cb (* double-float))
-  (c double-float :in-out)
-  (s (* double-float))
-)
-(defun zrotg (
-               ca
-               cb
-               c
-               s
-                    )
-  (declare
-     (type (simple-array double-float (*)) ca)
-     (type (simple-array double-float (*)) cb)
-     (type double-float c)
-     (type (simple-array double-float (*)) s)
-                                          )
-  (with-vector-data-addresses (
-			       (addr-ca ca)
-			       (addr-cb cb)
-			       (addr-s s)
-                                               )
-         (multiple-value-bind ( return-value  new-c
-                                                     )
-            (fortran-zrotg
-                                addr-ca
-                                addr-cb
-                                c
-                                addr-s
-                                                   )
-	   (declare (ignore return-value))
-	   (values
-              ca cb new-c s      ))))
-
-(declaim (inline fortran-zscal))
-(def-alien-routine ("zscal_" fortran-zscal) void
-  (n int :in-out)
-  (za (* double-float))
-  (zx (* double-float))
-  (incx int :in-out)
-)
-(defun zscal (
-               n
-               za
-               zx
-               incx
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) za)
-     (type (simple-array double-float (*)) zx)
-     (type fixnum incx)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-za za)
-				   (addr-zx zx)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                                     )
-            (fortran-zscal
-                                n
-                                addr-za
-                                addr-zx
-                                incx
-                                                   )
-            (declare (ignore return-value new-n new-incx))
-         (values
-                zx    ))))
-
-(declaim (inline fortran-zswap))
-(def-alien-routine ("zswap_" fortran-zswap) void
-  (n int :in-out)
-  (zx (* double-float))
-  (incx int :in-out)
-  (zy (* double-float))
-  (incy int :in-out)
-)
-(defun zswap (
-               n
-               zx
-               incx
-               zy
-               incy
-                    )
-  (declare
-     (type fixnum n)
-     (type (simple-array double-float (*)) zx)
-     (type fixnum incx)
-     (type (simple-array double-float (*)) zy)
-     (type fixnum incy)
-                                          )
-      (with-vector-data-addresses (
-                                   (addr-zx zx)
-                                   (addr-zy zy)
-                                               )
-         (multiple-value-bind ( return-value
-                                      new-n
-                                      new-incx
-                                      new-incy
-                                                     )
-            (fortran-zswap
-                                n
-                                addr-zx
-                                incx
-                                addr-zy
-                                incy
-                                                   )
-            (declare (ignore return-value new-n new-incx new-incy))
-         (values
-                 zx   ))))
-
-|#
 (def-fortran-routine idamax :integer
 "
 "
@@ -1927,12 +1428,12 @@
   (n :integer )
   (k :integer )
   (alpha :double-float )
-  (a (* :double-float :inc inc-a) )
+  (a (* :double-float :inc head-a) )
   (lda :integer )
-  (b (* :double-float :inc inc-b) )
+  (b (* :double-float :inc head-b) )
   (ldb :integer )
   (beta :double-float )
-  (c (* :double-float :inc inc-c) :output)
+  (c (* :double-float :inc head-c) :output)
   (ldc :integer )
 )
 
@@ -3327,12 +2828,12 @@
   (n :integer )
   (k :integer )
   (alpha :complex-double-float )
-  (a (* :complex-double-float) )
+  (a (* :complex-double-float :inc head-a) )
   (lda :integer )
-  (b (* :complex-double-float) )
+  (b (* :complex-double-float :inc head-b) )
   (ldb :integer )
   (beta :complex-double-float )
-  (c (* :complex-double-float) :output)
+  (c (* :complex-double-float :inc head-c) :output)
   (ldc :integer )
 )
 

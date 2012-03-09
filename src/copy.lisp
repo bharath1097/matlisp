@@ -78,13 +78,29 @@
 
 (in-package "MATLISP")
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
+(defun blas-copyable-p (matrix)
+  (declare (optimize (safety 0) (speed 3))
+	   (type (or real-matrix complex-matrix) matrix))
+  (mlet* ((nr (nrows matrix) :type fixnum)
+	  (nc (ncols matrix) :type fixnum)
+	  (rs (row-stride matrix) :type fixnum)
+	  (cs (col-stride matrix) :type fixnum)
+	  (ne (number-of-elements matrix) :type fixnum))
+	 (cond
+	   ((= nc 1) (values t rs ne))
+	   ((= nr 1) (values t cs ne))
+	   ((= rs (* nc cs)) (values t cs ne))
+	   ((= cs (* nr rs)) (values t rs ne))
+	   (t nil))))
 
-#+nil (export '(copy!
-		copy))
 
+
+(defmacro generate-typed-copy!-func (func)
+  `(defun ,func (matrix-a matrix-b)
+     (declare (optimize (safety 0) (speed 3))
+	      (type (or ,matrix-type matrix-a matrix-b)))))
+
+;;
 (defvar *1x1-real-array* (make-array 1 :element-type 'double-float))
 (defvar *1x1-complex-array* (make-array 2 :element-type 'double-float))
 
@@ -98,31 +114,6 @@
   Purpose
   =======
   Return a copy of the matrix X"))
-
-(defgeneric copy! (matrix new-matrix)
-  (:documentation
-   "
-  Syntax
-  ======
-  (COPY! x y)
-
-  Purpose
-  =======
-  Copies the contents of the matrix X to
-  matrix Y, returns Y.
-
-  X,Y need not have the same dimensions,
-  nor the same number of elements.
-
-  Furthermore, x may be a scalar, in which
-  case Y is filled with X.
-
-  The contents of X must be coercable to
-  the type of Y.  For example,
-  a COMPLEX-MATRIX cannot be copied to a
-  REAL-MATRIX but the converse is possible.
-"))
-
 
 (defmethod copy ((matrix standard-matrix))
   (make-instance 'standard-matrix :nrows (nrows matrix) :ncols (ncols matrix) :store (copy-seq (store matrix))))
@@ -148,14 +139,38 @@
 (defmethod copy ((matrix number))
   matrix)
 
-#|
+;;
+(defgeneric copy! (matrix new-matrix)
+  (:documentation
+   "
+  Syntax
+  ======
+  (COPY! x y)
+
+  Purpose
+  =======
+  Copies the contents of the matrix X to
+  matrix Y, returns Y.
+
+  X,Y need not have the same dimensions,
+  nor the same number of elements.
+
+  Furthermore, x may be a scalar, in which
+  case Y is filled with X.
+
+  The contents of X must be coercable to
+  the type of Y.  For example,
+  a COMPLEX-MATRIX cannot be copied to a
+  REAL-MATRIX but the converse is possible.
+"))
+
+
 (defmethod copy! :before ((x standard-matrix) (y standard-matrix))
   (let ((nxm-x (number-of-elements x))
 	(nxm-y (number-of-elements y)))
     (declare (type fixnum nxm-x nxm-y))
     (if (not (= nxm-x nxm-y))
-	(error "arguments X,Y to COPY! are of different size"))))
-|#
+	(warn "arguments X,Y to COPY! are of different sizes"))))
 
 (defmethod copy! ((x real-matrix) (y real-matrix))
   (let* ((nxm-x (number-of-elements x))
@@ -172,7 +187,7 @@
     (declare (type fixnum nxm-x nxm-y nxm))
 
     ;; Set the imaginary parts of Y to zero.
-    (zdscal nxm 0.0d0 (store y) 1)    
+    (zdscal nxm 0.0d0 (store y) 1)
 
     ;; Copy the elements of X to the real parts of Y.
     (dcopy nxm (store x) 1 (store y) 2)
