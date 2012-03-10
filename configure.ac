@@ -353,6 +353,73 @@ AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
 ])
 AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
+# Check to see if the ATLAS libraries are compatible with matlisp's
+# ffi.  Basically the same test as above that checks to see if -ff2c
+# is needed.
+
+if test x"$atlas" = xtrue; then
+  AC_MSG_CHECKING([if ATLAS is compatible with matlisp's FFI])
+  # From the value of f77_name, figure out the actual name for
+  # Fortran's zdotu.
+  case $f77_name in
+    F77*) case $f77_name in
+	    F77_NAME) ZDOTU="ZDOTU" ;;
+	    F77_NAME_) ZDOTU="ZDOTU_" ;;
+	    F77_NAME__) ZDOTU="ZDOTU__" ;;
+	  esac
+	  ;;
+    f77*) case $f77_name in
+	    f77_name) ZDOTU="zdotu" ;;
+	    f77_name_) ZDOTU="zdotu_" ;;
+	    f77_name__) ZDOTU="zdotu__" ;;
+	  esac
+	  ;;
+  esac
+
+  cat > conftest.c <<EOF
+[
+#include <stdio.h>
+#include <math.h>
+  
+extern void ${ZDOTU}(double *, int *, double *, int *, double *, int *);
+
+int main()
+{
+  int rc;
+  
+  int n = 2;
+  int incx = 1;
+  double x[4];
+  double out[2];
+  x[0] = 1;
+  x[1] = 0;
+  x[2] = 2;
+  x[3] = 0;
+  out[0] = 0;
+  out[1] = 0;
+
+  ${ZDOTU}(out, &n, x, &incx, x, &incx);
+
+  if (fabs(out[0] - 5) < 1e-10) {
+    rc = 0;
+  } else {
+    rc = 1;
+  }
+
+  return rc;
+}
+]
+EOF
+  $CC $CFLAGS -c conftest.c
+  $F77 $FFLAGS -o a.out conftest.o -L${ATLAS_DIR} -latlas -lcblas -lf77blas -llapack
+  if a.out; then
+    AC_MSG_RESULT([yes])
+  else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([ATLAS libraries are not compatible with matlisp.])
+  fi
+fi
+
 echo FLIBS = $FLIBS
 echo HAVE_QL = $HAVE_QL
 AC_OUTPUT
