@@ -365,13 +365,13 @@ if test x"$atlas" = xtrue; then
     F77*) case $f77_name in
 	    F77_NAME) ZDOTU="ZDOTU" ;;
 	    F77_NAME_) ZDOTU="ZDOTU_" ;;
-	    F77_NAME__) ZDOTU="ZDOTU__" ;;
+	    F77_NAME__) ZDOTU="ZDOTU_" ;;
 	  esac
 	  ;;
     f77*) case $f77_name in
 	    f77_name) ZDOTU="zdotu" ;;
 	    f77_name_) ZDOTU="zdotu_" ;;
-	    f77_name__) ZDOTU="zdotu__" ;;
+	    f77_name__) ZDOTU="zdotu_" ;;
 	  esac
 	  ;;
   esac
@@ -403,6 +403,7 @@ int main()
   if (fabs(out[0] - 5) < 1e-10) {
     rc = 0;
   } else {
+    printf("Actual output = %lg, %lg, instead of 5, 0\n", out[0], out[1]);
     rc = 1;
   }
 
