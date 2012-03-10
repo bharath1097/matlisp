@@ -140,7 +140,7 @@
 (unless @ATLAS_P@
   ;; Use our blas and lapack libraries
   (cffi:define-foreign-library blas
-    (t (:default "libblas"))))
+    (t (:default "@libdir@/libblas"))))
 
 (cffi:define-foreign-library lapack
   (t (:default "liblapack")))
