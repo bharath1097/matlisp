@@ -125,6 +125,35 @@
 
 (in-package "MATLISP")
 
+#+nil (export '(real-matrix
+	  complex-matrix
+	  standard-matrix
+	  real-matrix-element-type
+	  real-matrix-store-type
+	  complex-matrix-element-type
+	  complex-matrix-store-type
+	  #|
+	  n
+	  m
+	  nxm
+	  |#
+	  nrows
+	  ncols
+	  number-of-elements
+	  row-vector-p
+	  col-vector-p
+	  row-or-col-vector-p
+	  square-matrix-p
+	  size
+	  fortran-matrix-indexing
+	  fortran-complex-matrix-indexing
+	  complex-coerce
+	  fill-matrix
+	  make-real-matrix-dim
+	  make-real-matrix
+	  make-complex-matrix-dim
+	  make-complex-matrix))
+
 (eval-when (load eval compile)
 (deftype integer4-matrix-element-type ()
   '(signed-byte 32))
@@ -166,6 +195,45 @@
 	 (ftype (function (complex-matrix) (simple-array double-float (*)))
 		 store))
 
+
+#|
+(defgeneric n (matrix)
+  (:documentation 
+"
+  Syntax
+  ======
+  (N matrix)
+
+  Purpose
+  =======
+  Returns the number of rows of MATRIX.
+"))
+
+(defgeneric m (matrix)
+  (:documentation
+"
+  Syntax
+  ======
+  (M matrix)
+
+  Purpose
+  =======
+  Returns the number of columns of MATRIX.
+"))
+
+(defgeneric nxm (matrix)
+  (:documentation
+"
+  Syntax
+  ======
+  (NxM matrix)
+
+  Purpose
+  =======
+  Returns the number of elements of MATRIX;
+  which is number of rows * number of columns. 
+"))
+|#
 
 (defgeneric store-size (matrix)
   (:documentation
@@ -224,6 +292,40 @@ that way.
     :initform 0
     :accessor store-size
     :type fixnum
+    :documentation "Total number of elements needed to store the matrix.  (Usually
+the same as nels, but not necessarily so!")
+   (store
+    :initarg :store
+    :accessor store
+    :documentation "The actual storage for the matrix.  It is typically a one dimensional
+array but not necessarily so.  The float and complex matrices do use
+1-D arrays.  The complex matrix actually stores the real and imaginary
+parts in successive elements of the matrix because Fortran stores them
+that way."))
+  (:documentation "Basic matrix class."))
+
+
+#+(and nil :allegro)
+(defclass standard-matrix ()
+  ((number-of-rows
+    :initarg :nrows
+    :initform 0
+    :accessor nrows
+    :documentation "Number of rows in the matrix")
+   (number-of-cols
+    :initarg :ncols
+    :initform 0
+    :accessor ncols
+    :documentation "Number of columns in the matrix")
+   (number-of-elements
+    :initarg :nels
+    :initform 0
+    :accessor number-of-elements
+    :documentation "Total number of elements in the matrix (nrows * ncols)")
+   (store-size
+    :initarg :store-size
+    :initform 0
+    :accessor store-size
     :documentation "Total number of elements needed to store the matrix.  (Usually
 the same as nels, but not necessarily so!")
    (store

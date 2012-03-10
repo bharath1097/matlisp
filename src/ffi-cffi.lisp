@@ -403,7 +403,6 @@ Example:
        ;;
        cffi:foreign-pointer))
 
-
 ;; Very inefficient - compilation wise, not runtime wise- 
 ;; (but portable!) way of supporting both SAPs and simple-arrays.
 ;; 2^n branching within the macro.

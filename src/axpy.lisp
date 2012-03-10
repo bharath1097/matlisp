@@ -129,7 +129,7 @@
 (defmethod axpy ((alpha cl:real) (x real-matrix) (y real-matrix))
   (axpy (coerce alpha 'real-matrix-element-type) x y))
 
-(defmethod axpy ((alpha double-float) (x real-matrix) (y real-matrix))
+(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y real-matrix))
   (let* ((nxm (number-of-elements y))
 	 (result (copy y)))
     (declare (type fixnum nxm))
@@ -141,7 +141,7 @@
 (defmethod axpy ((alpha cl:real) (x complex-matrix) (y real-matrix))
   (axpy (coerce alpha 'real-matrix-element-type) x y))
 
-(defmethod axpy ((alpha double-float) (x complex-matrix) (y real-matrix))
+(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix) (y real-matrix))
   (let* ((nxm (number-of-elements y))
 	 (n (nrows y))
 	 (m (ncols y))
@@ -162,7 +162,7 @@
 (defmethod axpy ((alpha cl:real) (x real-matrix) (y complex-matrix))
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
-(defmethod axpy ((alpha double-float) (x real-matrix) (y complex-matrix))
+(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y complex-matrix))
   (let* ((nxm (number-of-elements y))
 	 (result (copy y)))
     (declare (type fixnum nxm))
@@ -173,7 +173,7 @@
 (defmethod axpy ((alpha cl:real) (x complex-matrix) (y complex-matrix))
   (axpy (coerce alpha 'complex-matrix-element-type) x y))
 
-(defmethod axpy ((alpha double-float) (x complex-matrix) (y complex-matrix))
+(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix) (y complex-matrix))
   (let ((nxm (number-of-elements y))
 	(result (copy y)))
     (declare (type fixnum nxm))
@@ -258,7 +258,7 @@ don't know how to coerce COMPLEX to REAL"))
 (defmethod axpy! ((alpha cl:real) (x real-matrix) (y real-matrix))
   (axpy! (coerce alpha 'real-matrix-element-type) x y))
 
-(defmethod axpy! ((alpha double-float) (x real-matrix) (y real-matrix))
+(defmethod axpy! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y real-matrix))
   (let* ((nxm (number-of-elements y)))
     (declare (type fixnum nxm))
 

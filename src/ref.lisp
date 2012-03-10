@@ -373,16 +373,16 @@
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
 #+(and cmu gerds-pcl)
-(declaim (inline (method matrix-ref-1d :before (real-matrix fixnum))
-		 (method matrix-ref-1d (real-matrix fixnum))))
+(declaim (inline (method matrix-ref-1d :before (real-matrix integer))
+		 (method matrix-ref-1d (real-matrix integer))))
 
-(defmethod matrix-ref-1d :before ((matrix real-matrix) (i fixnum))
+(defmethod matrix-ref-1d :before ((matrix real-matrix) (i integer))
   (declare (optimize (speed 3)))
   (unless (and (>= i 0)
 	       (< i (number-of-elements matrix)))
     (error "out of bounds indexing")))
 
-(defmethod matrix-ref-1d ((matrix real-matrix) (i fixnum))
+(defmethod matrix-ref-1d ((matrix real-matrix) (i integer))
   (declare (optimize (speed 3)))
   (aref (store matrix) (fortran-matrix-indexing i 0 (nrows matrix))))
 
@@ -407,40 +407,40 @@
   (get-real-matrix-slice-1d matrix i))
   
 #+(and cmu gerds-pcl)
-(declaim (inline (method matrix-ref-2d :before (real-matrix fixnum fixnum))
-		 (method matrix-ref-2d (real-matrix fixnum fixnum))))
+(declaim (inline (method matrix-ref-2d :before (real-matrix integer integer))
+		 (method matrix-ref-2d (real-matrix integer fixnum))))
 
-(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j fixnum))
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i integer) (j integer))
   (unless (and (<= 0 i) (< i (nrows matrix))
 	       (<= 0 j) (< j (ncols matrix)))
     (error 'matrix-index-error :row-index i :col-index j :matrix matrix)))
 
-(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j fixnum))
+(defmethod matrix-ref-2d ((matrix real-matrix) (i integer) (j integer))
   (aref (store matrix) (fortran-matrix-indexing i j (nrows matrix))))
 
 #+(and cmu gerds-pcl)
-(declaim (inline (method matrix-ref-2d :before (real-matrix fixnum list))))
+(declaim (inline (method matrix-ref-2d :before (real-matrix integer list))))
 
-(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j list))
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i integer) (j list))
   (let ((m (ncols matrix)))
     (dolist (index j)
       (unless (and (<= 0 index) (< index m))
 	(error 'matrix-index-error :row-index i :col-index index :matrix matrix)))))
 
-(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j list))
+(defmethod matrix-ref-2d ((matrix real-matrix) (i integer) (j list))
   (get-real-matrix-slice-2d-seq matrix (list i) j))
 
-(defmethod matrix-ref-2d :before ((matrix real-matrix) (i fixnum) (j real-matrix))
+(defmethod matrix-ref-2d :before ((matrix real-matrix) (i integer) (j real-matrix))
   (let ((m (ncols matrix)))
     (unless (every #'(lambda (k)
 		       (<= 0 k m))
 		   (store j))
       (error "out of bounds indexing"))))
 
-(defmethod matrix-ref-2d ((matrix real-matrix) (i fixnum) (j real-matrix))
+(defmethod matrix-ref-2d ((matrix real-matrix) (i integer) (j real-matrix))
   (get-real-matrix-slice-2d-seq matrix (make-real-matrix (list i)) j))
 
-(defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j fixnum))
+(defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j integer))
   (get-real-matrix-slice-2d-seq matrix i (list j)))
 
 (defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j list))
@@ -449,7 +449,7 @@
 (defmethod matrix-ref-2d ((matrix real-matrix) (i list) (j real-matrix))
   (get-real-matrix-slice-2d matrix (make-real-matrix i) j))
 
-(defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j fixnum))
+(defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j integer))
   (get-real-matrix-slice-2d matrix i (make-real-matrix (list j))))
 
 (defmethod matrix-ref-2d ((matrix real-matrix) (i real-matrix) (j list))
@@ -824,15 +824,15 @@
 
 
 #+(and cmu gerds-pcl)
-(declaim (inline (method (setf matrix-ref-1d) :before (real-matrix real-matrix fixnum fixnum))
-		 (method (setf matrix-ref-1d) (real-matrix real-matrix fixnum fixnum))))
+(declaim (inline (method (setf matrix-ref-1d) :before (real-matrix real-matrix fixnum integer))
+		 (method (setf matrix-ref-1d) (real-matrix real-matrix fixnum integer))))
 
 
-(defmethod (setf matrix-ref-1d) :before ((new real-matrix) (matrix real-matrix) (i fixnum))
+(defmethod (setf matrix-ref-1d) :before ((new real-matrix) (matrix real-matrix) (i integer))
   (unless (and (>= i 0) (< i (number-of-elements matrix)))
     (error "out of bounds indexing")))
 
-(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i fixnum))
+(defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i integer))
   (let* ((n (nrows matrix))
 	 (store (store matrix))
 	 (new-store (store new)))
@@ -844,11 +844,8 @@
 	  (aref new-store 0))))
 
 (defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i list))
-  (let* ((n (nrows matrix))
-	 (m (ncols matrix))
-	 (new-n (nrows new)))
-    
-    (declare (type fixnum n m new-n))
+  (let ((new-n (nrows new)))
+    (declare (type fixnum new-n))
 
     (let ((p (length i)))
       (when (> p new-n)
@@ -862,12 +859,8 @@
 	(error "out of bounds indexing"))))
 
 (defmethod (setf matrix-ref-1d) ((new real-matrix) (matrix real-matrix) (i real-matrix))
-  (let* ((n (nrows matrix))
-	 (m (ncols matrix))
-	 (new-n (nrows new))
-	 )
-    
-    (declare (type fixnum n m new-n))
+  (let ((new-n (nrows new)))
+    (declare (type fixnum new-n))
     
   
     (let ((p (if (integerp i)
@@ -967,30 +960,30 @@
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
 #+gerds-pcl
-(declaim (inline (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum fixnum))
+(declaim (inline (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum integer))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum list))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix fixnum real-matrix))
-		 (method (setf matrix-ref-2d) (real-matrix real-matrix list fixnum))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix list integer))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix list list))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix list real-matrix))
-		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix fixnum))
+		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix integer))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix list))
 		 (method (setf matrix-ref-2d) (real-matrix real-matrix real-matrix real-matrix))))
 
-(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i integer) (j integer))
   (let ((n (nrows matrix))
 	(store (store matrix))
 	(new-store (store new)))
     (setf (aref store (fortran-matrix-indexing i j n))
 	  (aref new-store 0))))
 
-(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j list))
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i integer) (j list))
   (set-real-matrix-slice-2d-seq new matrix (list i) j))
 
-(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i fixnum) (j real-matrix))
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i integer) (j real-matrix))
   (set-real-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
 
-(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j integer))
   (set-real-matrix-slice-2d-seq new matrix i (list j)))
 
 (defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j list))
@@ -999,7 +992,7 @@
 (defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i list) (j real-matrix))
   (set-real-matrix-slice-2d new matrix (make-real-matrix i) j))
 
-(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j integer))
   (set-real-matrix-slice-2d new matrix i (make-real-matrix (list j))))
 
 (defmethod (setf matrix-ref-2d) ((new real-matrix) (matrix real-matrix) (i real-matrix) (j list))
@@ -1101,7 +1094,7 @@
 			 (error "out of bounds indexing")))
 	  (t (error "don't know how to access element ~a of matrix" i)))))))
 
-(defmethod (setf matrix-ref-1d) ((new double-float) (matrix real-matrix) i)
+(defmethod (setf matrix-ref-1d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) i)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
 	 (store (store matrix)))
@@ -1135,7 +1128,7 @@
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
 #+nil
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) i j)
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) i j)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
 	 (store (store matrix)))
@@ -1193,38 +1186,38 @@
 			 (error "out of bounds indexing")))
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
-(defmethod (setf matrix-ref-2d) :before ((new double-float) (matrix real-matrix) (i fixnum) (j fixnum))
+(defmethod (setf matrix-ref-2d) :before ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i integer) (j integer))
   (unless (and (>= i 0) (< i (nrows matrix))
 	       (>= j 0) (< j (ncols matrix)))
     (error 'matrix-index-error :row-index i :col-index j :matrix matrix)))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i integer) (j integer))
   (let ((n (nrows matrix))
 	(store (store matrix)))
     (setf (aref store (fortran-matrix-indexing i j n)) new)))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j list))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i integer) (j list))
   (set-real-from-scalar-matrix-slice-2d-seq new matrix (list i) j))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i fixnum) (j real-matrix))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i integer) (j real-matrix))
   (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i list) (j integer))
   (set-real-from-scalar-matrix-slice-2d-seq new matrix i (list j)))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j list))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i list) (j list))
   (set-real-from-scalar-matrix-slice-2d-seq new matrix i j))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i list) (j real-matrix))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i list) (j real-matrix))
   (set-real-from-scalar-matrix-slice-2d new matrix (make-real-matrix i) j))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i real-matrix) (j integer))
   (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix (list j))))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j list))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i real-matrix) (j list))
   (set-real-from-scalar-matrix-slice-2d new matrix i (make-real-matrix j)))
 
-(defmethod (setf matrix-ref-2d) ((new double-float) (matrix real-matrix) (i real-matrix) (j real-matrix))
+(defmethod (setf matrix-ref-2d) ((new #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (matrix real-matrix) (i real-matrix) (j real-matrix))
   (set-real-from-scalar-matrix-slice-2d new matrix i j))
 
 
@@ -1487,7 +1480,7 @@
 			 (error "out of bounds indexing")))
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
-(defmethod matrix-ref-1d ((matrix complex-matrix) (i fixnum))
+(defmethod matrix-ref-1d ((matrix complex-matrix) (i integer))
   (let ((n (nrows matrix))
 	(store (store matrix)))
     (complex (aref store (fortran-complex-matrix-indexing i 0 n))
@@ -1558,20 +1551,20 @@
 			 (error "out of bounds indexing")))
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
-(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j fixnum))
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i integer) (j integer))
   (let ((n (nrows matrix))
 	(store (store matrix)))
     (complex (aref store (fortran-complex-matrix-indexing i j n))
 	     (aref store (1+ (fortran-complex-matrix-indexing i j n))))))
 
 
-(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j list))
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i integer) (j list))
   (get-complex-matrix-slice-2d-seq matrix (list i) j))
 
-(defmethod matrix-ref-2d ((matrix complex-matrix) (i fixnum) (j real-matrix))
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i integer) (j real-matrix))
   (get-complex-matrix-slice-2d matrix (make-real-matrix (list i)) j))
 
-(defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j fixnum))
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j integer))
   (get-complex-matrix-slice-2d-seq matrix i (list j)))
 
 (defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j list))
@@ -1580,7 +1573,7 @@
 (defmethod matrix-ref-2d ((matrix complex-matrix) (i list) (j real-matrix))
   (get-complex-matrix-slice-2d matrix (make-real-matrix i) j))
 
-(defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j fixnum))
+(defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j integer))
   (get-complex-matrix-slice-2d matrix i (make-real-matrix (list j))))
 
 (defmethod matrix-ref-2d ((matrix complex-matrix) (i real-matrix) (j list))
@@ -2107,7 +2100,7 @@
 			 (error "out of bounds indexing")))
 	(t (error "don't know how to access element ~a of matrix" i))))))
 
-(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i fixnum))
+(defmethod (setf matrix-ref-1d) ((new complex-matrix) (matrix complex-matrix) (i integer))
   (let ((n (nrows matrix))
 	(new-store (store new))
 	(store (store matrix)))
@@ -2207,7 +2200,7 @@
 			 (error "out of bounds indexing")))
 	(t (error "don't know how to access elements ~a of matrix" (list i j)))))))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i integer) (j integer))
   (let ((new-store (store new))
 	(n (nrows matrix))
 	(store (store matrix)))
@@ -2217,22 +2210,22 @@
       (setf (aref store (1+ (fortran-complex-matrix-indexing i j n))) imagpart)
       (complex realpart imagpart))))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j list))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i integer) (j list))
   (set-complex-from-complex-matrix-slice-2d-seq new matrix (list i) j))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i fixnum) (j real-matrix))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i integer) (j real-matrix))
   (set-complex-from-complex-matrix-slice-2d new matrix (make-real-matrix (list i)) j))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i list) (j integer))
   (set-complex-from-complex-matrix-slice-2d-seq new matrix i (list j)))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j integer))
   (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix (list j))))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j integer))
   (set-complex-from-complex-matrix-slice-2d new matrix i (make-real-matrix j)))
 
-(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j fixnum))
+(defmethod (setf matrix-ref-2d) ((new complex-matrix) (matrix complex-matrix) (i real-matrix) (j integer))
   (set-complex-from-complex-matrix-slice-2d new matrix i j))
 
 
@@ -2582,7 +2575,7 @@
 
 (defmethod (setf matrix-ref-1d) ((new #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+(or :allegro :ccl) complex) 
+				      #-(or cmu sbcl) complex) 
 				 (matrix complex-matrix) i)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
@@ -2625,7 +2618,7 @@
 
 (defmethod (setf matrix-ref-2d) ((new #+:cmu kernel::complex-double-float
                                       #+:sbcl sb-kernel::complex-double-float
-				      #+(or :allegro :ccl) complex) 
+				      #-(or cmu sbcl) complex) 
 				 (matrix complex-matrix) i j)
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))

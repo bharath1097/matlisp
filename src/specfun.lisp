@@ -961,14 +961,14 @@ Compute the function exp(-x)*Ei(x), x real.
 (macrolet
     ((frob (name)
        `(progn
-	 (defmethod ,name ((x double-float) (alpha double-float) (n fixnum)
+	 (defmethod ,name ((x #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (n integer)
 			   &key (scale-p t))
 	   (declare (ignore scale-p))
 	   (assert (>= x 0))
 	   (assert (<= 0 alpha 1))
 	   (assert (plusp n)))
 
-	 (defmethod ,name ((x double-float) (alpha double-float) (n fixnum)
+	 (defmethod ,name ((x #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (n integer)
 			   &key (scale-p t))
 	   (let ((result (make-real-matrix n 1)))
 	     (multiple-value-bind (t-result ncalc)

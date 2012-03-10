@@ -23,7 +23,13 @@
 				:inexact nil)
 	      ,@body)
 	 (apply #'ccl:set-fpu-mode ,old-fpu-modes))))
-  #-(or cmu sbcl ccl)
+  #+ecl
+  (let ((%trap-bits (gensym "%TRAP-BITS-")))
+    `(let ((,%trap-bits (si::trap-fpe 'cl:last t)))
+       (unwind-protect
+	    (progn (si::trap-fpe ,%trap-bits nil) ,@body)
+	 (si::trap-fpe ,%trap-bits t))))
+  #-(or cmu sbcl ccl ecl)
   `(progn
      ,@body))
 

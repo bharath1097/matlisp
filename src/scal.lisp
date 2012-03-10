@@ -109,7 +109,7 @@
 (defmethod scal ((alpha number) (x number))
   (* alpha x))
 
-(defmethod scal ((alpha double-float) (x real-matrix))
+(defmethod scal ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
@@ -122,14 +122,14 @@
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
                         #+:sbcl sb-kernel::complex-double-float
-			#+(or :ccl :allegro) complex) (x real-matrix))
+			#-(or cmu sbcl) complex) (x real-matrix))
   (let* ((nxm (number-of-elements x))
 	 (n (nrows x))
 	 (m (ncols x))
 	 (result (make-complex-matrix-dim n m)))
     (declare (type fixnum n m nxm))
     
-    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
+    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
 
     (copy! x result)
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
@@ -142,7 +142,7 @@
 (defmethod scal ((alpha complex) (x real-matrix))
   (scal (complex-coerce alpha) x))
 
-(defmethod scal ((alpha double-float) (x complex-matrix))
+(defmethod scal ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
@@ -155,12 +155,12 @@
 
 (defmethod scal ((alpha #+:cmu kernel::complex-double-float
                         #+:sbcl sb-kernel::complex-double-float
-			#+(or :ccl :allegro) complex) (x complex-matrix))
+			#-(or cmu sbcl) complex) (x complex-matrix))
   (let ((nxm (number-of-elements x))
 	(result (copy x)))
     (declare (type fixnum nxm))
  
-    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
+    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
 
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))
@@ -177,7 +177,7 @@
   (error "cannot SCAL! two scalars, arg X must 
 be a matrix to SCAL!"))
 
-(defmethod scal! ((alpha double-float) (x real-matrix))
+(defmethod scal! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     
@@ -191,7 +191,7 @@ be a matrix to SCAL!"))
   (error "cannot SCAL! a REAL-MATRIX by a COMPLEX, don't know
 how to coerce COMPLEX to REAL"))
 
-(defmethod scal! ((alpha double-float) (x complex-matrix))
+(defmethod scal! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
     (zdscal nxm alpha (store x) 1)
@@ -203,11 +203,11 @@ how to coerce COMPLEX to REAL"))
 
 (defmethod scal! ((alpha #+:cmu kernel::complex-double-float
                          #+:sbcl sb-kernel::complex-double-float
-			 #+(or :ccl :allegro) complex) (x complex-matrix))
+			 #-(or cmu sbcl) complex) (x complex-matrix))
   (let ((nxm (number-of-elements x)))
     (declare (type fixnum nxm))
 
-    #+(or :ccl :allegro) (setq alpha (complex-coerce alpha))
+    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
 
     (setf (aref *1x1-complex-array* 0) (realpart alpha))
     (setf (aref *1x1-complex-array* 1) (imagpart alpha))

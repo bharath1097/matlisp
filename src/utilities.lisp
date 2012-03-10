@@ -23,25 +23,56 @@
   (locally
       (declare (optimize (speed 3) (safety 0)))
     (labels ((get-sym (sym arglist)
-	       (cond	       
+	       (cond
 		 ((null arglist) nil)
 		 ((eq (car arglist) sym) (cadr arglist))
 		 (t (get-sym sym (cddr arglist))))))
       (get-sym sym arglist))))
 
 ;;
-(defmacro mlet (decls &rest body)
-  (labels ((mlet-parse (decl &optional (ret nil))
-	     (check-type (car decl) symbol)
-	     (if (null (cddr decl))
-		 (values (nconsc ret `(,(car decl))) (cadr decl))
-		 (mlet-parse (cdr decl) (nconsc ret `(,(car decl))))))
-	   (mlet-walk (elst body)
+(defun pop-arg! (sym arglist)
+  (check-type sym symbol)
+  (locally
+      (declare (optimize (speed 3) (safety 0)))
+    (labels ((get-sym (sym arglist prev)
+	       (cond
+		 ((null arglist) nil)
+		 ((eq (car arglist) sym) (prog1
+					   (cadr arglist)
+					   (if prev
+					       (rplacd prev (cddr arglist)))))
+		 (t (get-sym sym (cdr arglist) arglist)))))
+      (get-sym sym arglist nil))))
+
+;;
+(defmacro mlet* (decls &rest body)
+  (labels ((mlet-walk (elst body)
 	     (if (null elst)
 		 `(,@body)
-		 (multiple-value-bind (vars form) (mlet-parse (car elst))
-		   `((multiple-value-bind (,@vars) ,form
-		       ,@(mlet-walk (cdr elst) body)))))))
+		 (destructuring-bind (vars form &key declare type) (car elst)
+		   (cond
+		     ;;If there is only one element use let instead of multiple-value-bind
+		     ((symbolp vars)
+		      `((let ((,vars ,form))
+			  ,@(when (or declare type)
+				  `((declare ,@declare
+					     (type ,type ,vars))))
+			  ,@(mlet-walk (cdr elst) body))))
+		     ((null (cdr vars))
+		      `((let ((,(car vars) ,form))
+			  ,@(when (or declare type)
+				  `((declare ,@declare
+					     (type ,(car type) ,(car vars)))))
+			  ,@(mlet-walk (cdr elst) body))))
+		     (t
+		      `((multiple-value-bind (,@vars) ,form
+			  ,@(when (or declare type)
+				  `((declare ,@declare
+					     ,@(mapcar #'(lambda (tv) (if (null (first tv))
+									  `(ignore ,(second tv))
+									  `(type ,(first tv) ,(second tv))))
+						       (map 'list #'list type vars)))))
+			  ,@(mlet-walk (cdr elst) body)))))))))
     (if decls
 	(car (mlet-walk decls body))
 	`(progn

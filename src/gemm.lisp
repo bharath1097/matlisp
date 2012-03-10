@@ -174,7 +174,6 @@
   from BLAS, ATLAS or LIBCRUFT.
 "))
 
-
 (defmethod gemm! :before ((alpha number) (a standard-matrix) (b standard-matrix)
 			  (beta number) (c standard-matrix)
 			  &optional (job :nn))
@@ -184,8 +183,7 @@
 	(m-b (ncols b))
 	(n-c (nrows c))
 	(m-c (ncols c)))
-    (declare (type fixnum n-a m-a n-b m-b n-c m-c)
-             (type symbol a-order b-order))
+    (declare (type fixnum n-a m-a n-b m-b n-c m-c))
     (case job
       (:nn t)
       (:tn (rotatef n-a m-a))
@@ -197,7 +195,6 @@
 		  (= n-a n-c)
 		  (= m-b m-c)))
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
-
 
 ;;
 (generate-typed-gemm!-func real-double-gemm!-typed real-matrix-element-type real-matrix dgemm)
@@ -259,8 +256,7 @@
      :NN (default)      alpha * A * B + beta * C
      :TN                alpha * A'* B + beta * C
      :NT                alpha * A * B'+ beta * C
-     :TT                alpha * A'* B'+ beta * C     
-
+     :TT                alpha * A'* B'+ beta * C
 "))
 
 ;;
