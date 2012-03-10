@@ -117,33 +117,36 @@
 
 ;; Define our libraries
 (cffi:define-foreign-library dfftpack
-  (t (:default "libdfftpack")))
+  (t (:default "@libdir@/libdfftpack")))
 
 (cffi:define-foreign-library toms715
-  (t (:default "libtoms715")))
+  (t (:default "@libdir@/libtoms715")))
 
 (cffi:define-foreign-library odepack
-  (t (:default "libodepack")))
+  (t (:default "@libdir@/libodepack")))
 
-(when @ATLAS_P@
-  ;; Define the ATLAS libraries and their locations.
-  (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
-  (cffi:define-foreign-library atlas
-    (t (:default "libatlas")))
+(if @ATLAS_P@
+    (progn
+      ;; Define the ATLAS libraries and their locations.
+      (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
+      (cffi:define-foreign-library atlas
+	(t (:default "libatlas")))
 
-  (cffi:define-foreign-library cblas
-    (t (:default "libcblas")))
+      (cffi:define-foreign-library cblas
+	(t (:default "libcblas")))
 
-  (cffi:define-foreign-library f77blas
-    (t (:default "libf77blas"))))
+      (cffi:define-foreign-library f77blas
+	(t (:default "libf77blas")))
 
-(unless @ATLAS_P@
-  ;; Use our blas and lapack libraries
-  (cffi:define-foreign-library blas
-    (t (:default "@libdir@/libblas"))))
+      (cffi:define-foreign-library lapack
+	(t (:default "liblapack"))))
+    (progn
+      ;; Use our blas and lapack libraries
+      (cffi:define-foreign-library blas
+	(t (:default "@libdir@/libblas")))
+      (cffi:define-foreign-library lapack
+	(t (:default "@libdir@/liblapack")))))
 
-(cffi:define-foreign-library lapack
-  (t (:default "liblapack")))
 
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
