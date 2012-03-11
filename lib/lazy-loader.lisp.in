@@ -115,14 +115,26 @@
 ;; Tell cffi where our libraries are.
 (push "@libdir@/" cffi:*foreign-library-directories*)
 
-;; Define our libraries
+;; Define our libraries.
+
+;; For some reason, on Darwin (OSX), we can't load the libraries if we
+;; specify the full path.  Loading the library fails because there are
+;; undefined symbols (__gfortran_stop_numeric) referenced from the
+;; library.  However, everything works if the full path is not given.
+;; This could be a bug in how automake generates libraries on Darwin.
+;; Not really sure.
+;;
+;; This isn't a problem on linux or sparc.
 (cffi:define-foreign-library dfftpack
+  (:darwin "libdfftpack.dylib")
   (t (:default "@libdir@/libdfftpack")))
 
 (cffi:define-foreign-library toms715
+  (:darwin "libtoms715.dylib")
   (t (:default "@libdir@/libtoms715")))
 
 (cffi:define-foreign-library odepack
+  (:darwin "libodepack.dylib")
   (t (:default "@libdir@/libodepack")))
 
 (if @ATLAS_P@
@@ -143,8 +155,10 @@
     (progn
       ;; Use our blas and lapack libraries
       (cffi:define-foreign-library blas
+	(:darwin "libblas.dylib")
 	(t (:default "@libdir@/libblas")))
       (cffi:define-foreign-library lapack
+	(:darwin "liblapack.dylib")
 	(t (:default "@libdir@/liblapack")))))
 
 
