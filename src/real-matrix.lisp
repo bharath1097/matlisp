@@ -80,8 +80,8 @@ don't know how to coerce COMPLEX to REAL"))
     (declare (type real-matrix-element-type casted-fill))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
-	  (:row-major (values n 1))
-	  (:col-major (values 1 m)))
+	  (:row-major (values m 1))
+	  (:col-major (values 1 n)))
       (make-instance 'real-matrix
 		     :nrows n :ncols m
 		     :row-stride row-stride :col-stride col-stride

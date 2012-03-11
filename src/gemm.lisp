@@ -197,7 +197,7 @@
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
 ;;
-(generate-typed-gemm!-func real-double-gemm!-typed real-matrix-element-type real-matrix dgemm)
+(generate-typed-gemm!-func real-double-gemm!-typed real-matrix-element-type real-matrix blas:dgemm)
 
 (defmethod gemm! ((alpha cl:real) (a real-matrix) (b real-matrix)
 		  (beta cl:real) (c real-matrix)
@@ -207,7 +207,7 @@
 			   job))
 
 ;;
-(generate-typed-gemm!-func complex-double-gemm!-typed (complex (double-float * *)) complex-matrix zgemm)
+(generate-typed-gemm!-func complex-double-gemm!-typed (complex (double-float * *)) complex-matrix blas:zgemm)
 
 (defmethod gemm! ((alpha number) (a complex-matrix) (b complex-matrix)
 		  (beta number) (c complex-matrix)

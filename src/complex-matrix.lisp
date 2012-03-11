@@ -285,3 +285,20 @@
 	 (make-complex-matrix-dim n m)))
       (t
        (error "require 1 or 2 arguments to make a matrix")))))
+
+;;
+
+(defun realpart! (mat)
+  (cond
+    ((typep mat 'real-matrix) mat)
+    ((typep mat 'complex-matrix) (make-instance 'real-matrix :store (store mat)
+						:nrows (nrows mat) :ncols (ncols mat)
+						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+						:head (* 2 (head mat))))))
+
+(defun imagpart! (mat)
+  (cond
+    ((typep mat 'complex-matrix) (make-instance 'real-matrix :store (store mat)
+						:nrows (nrows mat) :ncols (ncols mat)
+						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+						:head (+ 1 (* 2 (head mat)))))))

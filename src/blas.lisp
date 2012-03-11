@@ -151,9 +151,9 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
             Y(0),Y(INCY), ... , Y((N-1)*INCY)
 "      
   (n :integer :input)
-  (dx (* :double-float :inc head-dx))
+  (dx (* :double-float :inc head-x))
   (incx :integer :input)
-  (dy (* :double-float :inc head-dy) :output)
+  (dy (* :double-float :inc head-y) :output)
   (incy :integer :input)
 )
 
@@ -328,9 +328,9 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
             Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
 "    
   (n :integer :input)
-  (zx (* :complex-double-float :inc head-zx))
+  (zx (* :complex-double-float :inc head-x))
   (incx :integer :input)
-  (zy (* :complex-double-float :inc head-zy) :output)
+  (zy (* :complex-double-float :inc head-y) :output)
   (incy :integer :input)
   )
 
