@@ -615,8 +615,6 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-ATLAS_FALSE
-ATLAS_TRUE
 F2C
 HAVE_QL
 GIT_VERSION
@@ -634,6 +632,8 @@ ATLAS_DIR
 NO_ATLAS_LAPACK_OBJS
 BLAS_OBJS
 LISPEXEC
+ATLAS_FALSE
+ATLAS_TRUE
 LIB32_FALSE
 LIB32_TRUE
 CPP
@@ -4664,7 +4664,10 @@ ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 
 
-# Setup our environment variables based on the value of f77_name
+# Setup our environment variables based on the value of f77_name.  For
+# the record, F77_EXTRA_UNDERSCORE means that any embedded underscores
+# in the Fortran name are converted to two underscores for the C
+# equivalent name.
 F77_LOWER_CASE=t
 F77_UNDERSCORE=t
 F77_EXTRA_UNDERSCORE=nil
@@ -15155,7 +15158,8 @@ FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86
 
 GIT_VERSION=`git describe --dirty`
 
-# Check that quicklisp exists.  We need that currently to get cffi.
+# Check that quicklisp exists.  We need that currently to get cffi if
+# it's not already available.
 as_ac_File=`$as_echo "ac_cv_file_$HOME/quicklisp/setup.lisp" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $HOME/quicklisp/setup.lisp" >&5
 $as_echo_n "checking for $HOME/quicklisp/setup.lisp... " >&6; }
@@ -15271,37 +15275,6 @@ EOF
 $as_echo "$NEED_FF2C" >&6; }
 fi
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-echo host = $host
-
-# Set the extension for shared libraries.  This is not very robust.
-case $host in
-  *darwin*) share_ext=dylib ;;
-  *) share_ext=so ;;
-esac
-
-ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/odepack/Makefile src/f77-mangling.lisp"
-
-
 # Allow user to use ATLAS if available.
 # We assume the standard names for the ATLAS libraries.
 
@@ -15334,7 +15307,10 @@ fi
 
 # Check to see if the ATLAS libraries are compatible with matlisp's
 # ffi.  Basically the same test as above that checks to see if -ff2c
-# is needed.
+# is needed.  We call zdotu which is a Fortran function returning a
+# complex number.  Matlisp assumes such functions return the result by
+# storing the answer at address given by a hidden first parameter to
+# the function.
 
 if test x"$atlas" = xtrue; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ATLAS is compatible with matlisp's FFI" >&5
@@ -15345,13 +15321,13 @@ $as_echo_n "checking if ATLAS is compatible with matlisp's FFI... " >&6; }
     F77*) case $f77_name in
 	    F77_NAME) ZDOTU="ZDOTU" ;;
 	    F77_NAME_) ZDOTU="ZDOTU_" ;;
-	    F77_NAME__) ZDOTU="ZDOTU__" ;;
+	    F77_NAME__) ZDOTU="ZDOTU_" ;;
 	  esac
 	  ;;
     f77*) case $f77_name in
 	    f77_name) ZDOTU="zdotu" ;;
 	    f77_name_) ZDOTU="zdotu_" ;;
-	    f77_name__) ZDOTU="zdotu__" ;;
+	    f77_name__) ZDOTU="zdotu_" ;;
 	  esac
 	  ;;
   esac
@@ -15383,6 +15359,7 @@ int main()
   if (fabs(out[0] - 5) < 1e-10) {
     rc = 0;
   } else {
+    printf("Actual output = %lg, %lg, instead of 5, 0\n", out[0], out[1]);
     rc = 1;
   }
 
@@ -15401,6 +15378,37 @@ $as_echo "no" >&6; }
     as_fn_error $? "ATLAS libraries are not compatible with matlisp." "$LINENO" 5
   fi
 fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+echo host = $host
+
+# Set the extension for shared libraries.  This is not very robust.
+case $host in
+  *darwin*) share_ext=dylib ;;
+  *) share_ext=so ;;
+esac
+
+ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/odepack/Makefile src/f77-mangling.lisp"
+
 
 echo FLIBS = $FLIBS
 echo HAVE_QL = $HAVE_QL
