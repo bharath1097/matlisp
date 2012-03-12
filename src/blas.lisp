@@ -1,4 +1,4 @@
-t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -204,7 +204,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 "   
   (n :integer :input)
   (da :double-float :input)
-  (dx (* :double-float :inc head-dx) :output)
+  (dx (* :double-float :inc head-x) :output)
   (incx :integer :input)
 )
 
@@ -363,7 +363,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 "      
   (n :integer :input)
   (da :double-float :input)
-  (zx (* :complex-double-float :inc head-zx) :output)
+  (zx (* :complex-double-float :inc head-x) :output)
   (incx :integer :input)
   )
 
@@ -405,7 +405,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 "  
   (n :integer :input)
   (za :complex-double-float)
-  (zx (* :complex-double-float) :output)
+  (zx (* :complex-double-float :inc head-x) :output)
   (incx :integer :input)
   )
 
@@ -530,7 +530,8 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
         considered in the operations are:
 
             Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
-"  (n :integer :input)
+"
+  (n :integer :input)
   (zx (* :complex-double-float) :input)
   (incx :integer :input)
   (zy (* :complex-double-float) :input)
@@ -547,6 +548,11 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :blas; Base: 10 -*-
 
 (def-fortran-routine dasum :double-float
 "
+  Purpose
+  =======
+
+     Takes the sum of the absolute values.
+
 "
   (n :integer :input)
   (dx (* :double-float) :input)

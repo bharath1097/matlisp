@@ -141,7 +141,7 @@
 	 (new-store (allocate-real-store nxm)))
 
     (declare (type fixnum n m nxm)
-	     (type (real-matrix-store-type (*)) store new-store))
+	     (type (real-matrix-store-type *) store new-store))
 
     (dotimes (i n)
       (declare (type fixnum i))
@@ -160,7 +160,7 @@
 	 (new-store (allocate-complex-store nxm)))
 
     (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store new-store))
+	     (type (complex-matrix-store-type *) store new-store))
 
     (dotimes (i n)
       (declare (type fixnum i))
@@ -201,7 +201,7 @@ a STANDARD-MATRIX, element types are not known"))
 	 (new-store (allocate-complex-store nxm)))
 
     (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store new-store))
+	     (type (complex-matrix-store-type *) store new-store))
 
     (dotimes (i n)
       (declare (type fixnum i))

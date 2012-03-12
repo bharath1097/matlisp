@@ -93,11 +93,11 @@
 
 (deftype float-matrix-array-type (size) 
   "Defines the same type as (REAL-MATRIX-STORE-TYPE (*))"
-  `(simple-array double-float ,size))
+  `(simple-array double-float (,size)))
 
 (deftype complex-matrix-array-type (size) 
   "Defines the same type as (COMPLEX-MATRIX-STORE-TYPE (*))"
-  `(simple-array double-float ,size))
+  `(simple-array double-float (,size)))
 
 (deftype float-matrix ()
   "Defines the same type as REAL-MATRIX"

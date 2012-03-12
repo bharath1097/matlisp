@@ -308,3 +308,26 @@ matrix and a number"))
 		   :store (store matrix)
 		   :head (store-indexing i j hd rs cs)
 		   :row-stride rs :col-stride cs)))
+
+;;
+(defmacro with-transpose! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
+
+;;
+(defun blas-copyable-p (matrix)
+  (declare (optimize (safety 0) (speed 3))
+	   (type (or real-matrix complex-matrix) matrix))
+  (mlet* ((nr (nrows matrix) :type fixnum)
+	  (nc (ncols matrix) :type fixnum)
+	  (rs (row-stride matrix) :type fixnum)
+	  (cs (col-stride matrix) :type fixnum)
+	  (ne (number-of-elements matrix) :type fixnum))
+	 (cond
+	   ((= nc 1) (values t rs ne))
+	   ((= nr 1) (values t cs ne))
+	   ((= rs (* nc cs)) (values t cs ne))
+	   ((= cs (* nr rs)) (values t rs ne))
+	   (t (values  nil -1 -1)))))

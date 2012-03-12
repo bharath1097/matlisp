@@ -1,6 +1,63 @@
 (in-package :utilities)
 
 ;;
+(defmacro mlet* (decls &rest body)
+" mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
+
+  o var is just one symbol -> expands into let
+  o var is a list -> expands into multiple-value-bind
+
+  This macro also handles type declarations.
+
+  Example:
+  (mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
+  	((a b) (floor 3) :type (nil fixnum)))
+         (+ x b))
+
+  expands into:
+
+  (let ((x 2))
+    (declare (optimize (safety 0) (speed 3))
+             (type fixnum x))
+    (multiple-value-bind (a b)
+        (floor 3)
+      (declare (ignore a)
+               (type fixnum b))
+      (+ x b)))
+"
+  (labels ((mlet-decl (vars type decls)
+	     (when (or type decls)
+	       `((declare ,@decls
+			  ,@(when type
+				  (mapcar #'(lambda (tv) (if (null (first tv))
+							     `(ignore ,(second tv))
+							     `(type ,(first tv) ,(second tv))))
+					  (map 'list #'list type vars)))))))
+	   ;;
+	   (mlet-transform (elst nest-code)
+	     (destructuring-bind (vars form &key declare type) elst
+	       `(,(append (cond
+			    ;;If there is only one element use let
+			    ;;instead of multiple-value-bind
+			    ((or (symbolp vars) (null (cdr vars)))
+			     `(let ((,(car (ensure-list vars)) ,form))))
+                            ;;
+			    (t
+			     `(multiple-value-bind (,@vars) ,form)))
+			  (mlet-decl (ensure-list vars) (ensure-list type) declare)
+			  nest-code))))
+	   ;;
+	   (mlet-walk (elst body)
+	     (if (null elst)
+		 `(,@body)
+		 (mlet-transform (car elst) (mlet-walk (cdr elst) body)))))
+    ;;
+    (if decls
+	(car (mlet-walk decls body))
+	`(progn
+	   ,@body))))
+
+;;
 (defmacro with-gensyms (symlist &body body)
   `(let ,(mapcar #'(lambda (sym)
 		     `(,sym (gensym ,(symbol-name sym))))
@@ -55,64 +112,6 @@
       lst
       `(,lst)))
 
-(defmacro mlet* (decls &rest body)
-"
-mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
-
-o var is just one symbol -> expands into let
-o var is a list -> expands into multiple-value-bind
-
-This macro also handles type declarations.
-
-Example:
-(mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
-	((a b) (floor 3) :type (nil fixnum)))
-       (+ x b))
-
-expands into:
-
-(let ((x 2))
-  (declare (optimize (safety 0) (speed 3))
-           (type fixnum x))
-  (multiple-value-bind (a b)
-      (floor 3)
-    (declare (ignore a)
-             (type fixnum b))
-    (+ x b)))
-"
-  (labels ((mlet-decl (vars type decls)
-	     (when (or type decls)
-	       `((declare ,@decls
-			  ,@(when type
-				  (mapcar #'(lambda (tv) (if (null (first tv))
-							     `(ignore ,(second tv))
-							     `(type ,(first tv) ,(second tv))))
-					  (map 'list #'list type vars)))))))
-	   ;;
-	   (mlet-transform (elst nest-code)
-	     (destructuring-bind (vars form &key declare type) elst
-	       `(,(append (cond
-			    ;;If there is only one element use let
-			    ;;instead of multiple-value-bind
-			    ((or (symbolp vars) (null (cdr vars)))
-			     `(let ((,(car (ensure-list vars)) ,form))))
-                            ;;
-			    (t
-			     `(multiple-value-bind (,@vars) ,form)))
-			  (mlet-decl (ensure-list vars) (ensure-list type) declare)
-			  nest-code))))
-	   ;;
-	   (mlet-walk (elst body)
-	     (if (null elst)
-		 `(,@body)
-		 (mlet-transform (car elst) (mlet-walk (cdr elst) body)))))
-    ;;
-    (if decls
-	(car (mlet-walk decls body))
-	`(progn
-	   ,@body))))
-
-;;
 (defmacro if-ret (form &rest else-body)
   "if-ret (form &rest else-body)
 Evaluate form, and if the form is not nil, then return it,
@@ -156,3 +155,5 @@ else run else-body"
       `(let ((,key-eval ,keyform))
 	 (cond
 	   ,@(app-equal body))))))
+
+;;

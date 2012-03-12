@@ -153,7 +153,7 @@
 	   (unity #.(coerce 1 'real-matrix-element-type)))
 	     
       (declare (fixnum size)
-	       (type (real-matrix-store-type (*)) store))
+	       (type (real-matrix-store-type *) store))
       (dotimes (k size)
 	(declare (fixnum k))
 	(setf (aref store k) (random unity state)))

@@ -115,7 +115,7 @@
 	 (new-size (* new-nrows new-ncols))
 	 (new-store (allocate-real-store new-size)))
     (declare (fixnum old-size new-size)
-	     (type (real-matrix-store-type (*)) new-store))
+	     (type (real-matrix-store-type *) new-store))
 
     (dcopy (min old-size new-size) (store mat) 1 new-store 1)
 
@@ -132,7 +132,7 @@
       ;; it's bigger than the old size.  Allocate it and copy the
       ;; elements over.
       (let ((new-store (allocate-real-store new-size)))
-	(declare (type (real-matrix-store-type (*)) new-store))
+	(declare (type (real-matrix-store-type *) new-store))
 
 	(dcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))
@@ -148,7 +148,7 @@
 	 (new-size (* new-nrows new-ncols))
 	 (new-store (allocate-complex-store new-size)))
     (declare (fixnum old-size new-size)
-	     (type (complex-matrix-store-type (*)) new-store))
+	     (type (complex-matrix-store-type *) new-store))
 
     (zcopy (min old-size new-size) (store mat) 1 new-store 1)
     (make-instance 'complex-matrix :nrows new-nrows :ncols new-ncols :store new-store)))
@@ -164,7 +164,7 @@
       ;; it's bigger than the old size.  Allocate it and copy the
       ;; elements over.
       (let ((new-store (allocate-complex-store new-size)))
-	(declare (type (complex-matrix-store-type (*)) new-store))
+	(declare (type (complex-matrix-store-type *) new-store))
 
 	(zcopy new-size (store mat) 1 new-store 1)
 	(setf (slot-value mat 'store) new-store)))

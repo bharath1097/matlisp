@@ -112,8 +112,8 @@
 	 (store (store mat))
 	 (new-store (allocate-real-store nxm)))
     (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store)
-	     (type (real-matrix-store-type (*)) new-store))
+	     (type (complex-matrix-store-type *) store)
+	     (type (real-matrix-store-type *) new-store))
 
     (dcopy nxm store 2 new-store 1)
 
@@ -140,8 +140,8 @@ its element types are unknown"))
 	 (store (store mat))
 	 (new-store (allocate-real-store nxm)))
     (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store)
-	     (type (real-matrix-store-type (*)) new-store))
+	     (type (complex-matrix-store-type *) store)
+	     (type (real-matrix-store-type *) new-store))
 
     (with-vector-data-addresses ((addr-store store)
 				 (addr-new-store new-store))

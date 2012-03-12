@@ -133,8 +133,8 @@
 	(store-x (store x))
 	(store-y (store y)))
     (declare (type fixnum nxm)
-	     (type (real-matrix-store-type (*)) store-x)
-	     (type (complex-matrix-store-type (*)) store-y))
+	     (type (real-matrix-store-type *) store-x)
+	     (type (complex-matrix-store-type *) store-y))
 
     (let ((realpart (ddot nxm store-x 1 store-y 2))
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
@@ -186,8 +186,8 @@
 	(store-x (store x))
 	(store-y (store y)))
     (declare (type fixnum nxm)
-	     (type (real-matrix-store-type (*)) store-y)
-	     (type (complex-matrix-store-type (*)) store-x))
+	     (type (real-matrix-store-type *) store-y)
+	     (type (complex-matrix-store-type *) store-x))
 
     (let ((realpart (ddot nxm store-x 2 store-y 1))
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)

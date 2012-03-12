@@ -9,7 +9,7 @@
 
 (deftype complex-matrix-store-type (size)
   "The type of the storage structure for a COMPLEX-MATRIX"
-  `(simple-array double-float ,size))
+  `(simple-array double-float (,size)))
 )
 
 ;;
@@ -37,7 +37,7 @@
 (defclass complex-matrix (standard-matrix)
   ((store
     :initform nil
-    :type (simple-array complex-matrix-element-type (*))))
+    :type (complex-matrix-store-type *)))
   (:documentation "A class of matrices with complex elements."))
 
 ;;
@@ -55,13 +55,13 @@
 ;;
 (defmethod matrix-ref-1d ((matrix complex-matrix) (idx fixnum))
   (let ((store (store matrix)))
-    (declare (type (complex-matrix-store-type (*)) store))
+    (declare (type (complex-matrix-store-type *) store))
     (complex (aref store (* 2 idx)) (aref store (+ 1 (* 2 idx))))))
 
 (defmethod (setf matrix-ref-1d) ((value number) (matrix complex-matrix) (idx fixnum))
   (let ((store (store matrix))
 	(coerced-value (complex-coerce value)))
-    (declare (type (complex-matrix-store-type (*)) store))
+    (declare (type (complex-matrix-store-type *) store))
     (setf (aref store (* 2 idx)) (realpart coerced-value)
 	  (aref store (+ 1 (* 2 idx))) (imagpart coerced-value))))
 
@@ -121,7 +121,7 @@
 	 (size (* n m))
 	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
 	  (:row-major (values m 1))
@@ -151,7 +151,7 @@
 	 (size (* n m))
 	 (store (allocate-complex-store size)))
     (declare (type fixnum n m size)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
 	  (:row-major (values m 1))
@@ -182,7 +182,7 @@
   (let* ((n (length seq))
 	 (store (allocate-complex-store n)))
     (declare (type fixnum n)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     (dotimes (k n)
       (declare (type fixnum k))
       (let* ((val (complex-coerce (elt seq k)))

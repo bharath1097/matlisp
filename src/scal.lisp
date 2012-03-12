@@ -69,17 +69,73 @@
 
 (in-package "MATLISP")
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
+(defmacro generate-typed-scal!-func (func element-type store-type matrix-type blas-func)
+  `(defun ,func (alpha mat-x)
+     (declare (type ,matrix-type mat-x)
+	      (type ,element-type alpha)
+	      (optimize (safety 0) (speed 3)))
+     (mlet* (((cp-x inc-x sz-x) (blas-copyable-p mat-x)
+	      :type (boolean fixnum fixnum))
+	     ((hd-x st-x) (slot-values mat-x '(head store))
+	      :type (fixnum (,store-type *))))
+	    (if cp-x
+		(,blas-func sz-x alpha st-x inc-x :head-x hd-x)
+		(symbol-macrolet
+		    ((common-code
+		      (mlet* (((nr-x nc-x rs-x cs-x) (slot-values mat-x '(number-of-rows number-of-cols row-stride col-stride))
+			       :type (fixnum fixnum fixnum fixnum)))
+			     (loop for i from 0 below nr-x
+				do (,blas-func nc-x alpha st-x cs-x :head-x (+ hd-x (* i rs-x)))))))
+		  (if (> (nrows mat-x) (ncols mat-x))
+		      (with-transpose! (mat-x)
+			common-code)
+		      common-code)))
+	    mat-x)))
 
-#+nil (export '(scal!
-	  scal))
+;;
+(defgeneric scal! (alpha x)
+  (:documentation
+"
+  Syntax
+  ======
+  (SCAL! alpha x)
 
+  Purpose
+  =======
+  Same as SCAL except that the result is
+  stored in X.
+"))
+
+;;
+(generate-typed-scal!-func real-double-dscal!-typed double-float real-matrix-store-type real-matrix blas:dscal)
+
+(defmethod scal! ((alpha number) (x number))
+  (error "Cannot SCAL! two scalars, arg X must 
+be a matrix to SCAL!"))
+
+(defmethod scal! ((alpha complex) (x real-matrix))
+  (error "Cannot SCAL! a REAL-MATRIX by a COMPLEX, don't know
+how to coerce COMPLEX to REAL"))
+
+(defmethod scal! ((alpha cl:real) (x real-matrix))
+  (real-double-dscal!-typed (coerce alpha 'double-float) x))
+
+;;
+(generate-typed-scal!-func complex-double-dscal!-typed double-float complex-matrix-store-type complex-matrix blas:zdscal)
+
+(generate-typed-scal!-func complex-double-zscal!-typed (complex (double-float * *)) complex-matrix-store-type complex-matrix blas:zscal)
+
+(defmethod scal! ((alpha cl:real) (x complex-matrix))
+  (complex-double-dscal!-typed (coerce alpha 'double-float) x))
+
+(defmethod scal! ((alpha complex) (x complex-matrix))
+  (complex-double-zscal!-typed (complex-coerce alpha) x))
+
+;;;;
 (defgeneric scal (alpha x)
   (:documentation
 "
-  Sytnax
+  Syntax
   ======
   (SCAL alpha x)
 
@@ -93,130 +149,23 @@
 
 "))
 
-(defgeneric scal! (alpha x)
-  (:documentation
-"
-  Sytnax
-  ======
-  (SCAL! alpha x)
-
-  Purpose
-  =======
-  Same as SCAL except that the result is
-  stored in X.
-"))
-
 (defmethod scal ((alpha number) (x number))
   (* alpha x))
 
-(defmethod scal ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix))
-  (let ((nxm (number-of-elements x))
-	(result (copy x)))
-    (declare (type fixnum nxm))
-    
-    (dscal nxm alpha (store result) 1)
-    result))
-
+;;
 (defmethod scal ((alpha cl:real) (x real-matrix))
-  (scal (coerce alpha 'real-matrix-element-type) x))
+  (let ((result (copy x)))
+    (scal! alpha result)))
 
-(defmethod scal ((alpha #+:cmu kernel::complex-double-float
-                        #+:sbcl sb-kernel::complex-double-float
-			#-(or cmu sbcl) complex) (x real-matrix))
-  (let* ((nxm (number-of-elements x))
-	 (n (nrows x))
+(defmethod scal ((alpha complex) (x real-matrix))
+  (let* ((n (nrows x))
 	 (m (ncols x))
 	 (result (make-complex-matrix-dim n m)))
-    (declare (type fixnum n m nxm))
-    
-    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
-
+    (declare (type fixnum n m))
     (copy! x result)
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zscal nxm *1x1-complex-array* (store result) 1)
+    (scal! alpha result)))
 
-    result))
-
-#+(or :cmu :sbcl)
-(defmethod scal ((alpha complex) (x real-matrix))
-  (scal (complex-coerce alpha) x))
-
-(defmethod scal ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix))
-  (let ((nxm (number-of-elements x))
-	(result (copy x)))
-    (declare (type fixnum nxm))
-    (zdscal nxm alpha (store result) 1)
-    
-    result))
-
-(defmethod scal ((alpha cl:real) (x complex-matrix))
-  (scal (coerce alpha 'real-matrix-element-type) x))
-
-(defmethod scal ((alpha #+:cmu kernel::complex-double-float
-                        #+:sbcl sb-kernel::complex-double-float
-			#-(or cmu sbcl) complex) (x complex-matrix))
-  (let ((nxm (number-of-elements x))
-	(result (copy x)))
-    (declare (type fixnum nxm))
- 
-    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
-
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zscal nxm *1x1-complex-array* (store result) 1)
-
-    result))
-
-#+(or :cmu :sbcl)
-(defmethod scal ((alpha complex) (x complex-matrix))
-  (scal (complex-coerce alpha) x))
-
-
-(defmethod scal! ((alpha number) (x number))
-  (error "cannot SCAL! two scalars, arg X must 
-be a matrix to SCAL!"))
-
-(defmethod scal! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-    
-    (dscal nxm alpha (store x) 1)
-    x))
-
-(defmethod scal! ((alpha cl:real) (x real-matrix))
-  (scal! (coerce alpha 'real-matrix-element-type) x))
-
-(defmethod scal! ((alpha complex) (x real-matrix))
-  (error "cannot SCAL! a REAL-MATRIX by a COMPLEX, don't know
-how to coerce COMPLEX to REAL"))
-
-(defmethod scal! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-    (zdscal nxm alpha (store x) 1)
-    
-    x))
-
-(defmethod scal! ((alpha cl:real) (x complex-matrix))
-  (scal! (coerce alpha 'real-matrix-element-type) x))
-
-(defmethod scal! ((alpha #+:cmu kernel::complex-double-float
-                         #+:sbcl sb-kernel::complex-double-float
-			 #-(or cmu sbcl) complex) (x complex-matrix))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-
-    #-(or cmu sbcl) (setq alpha (complex-coerce alpha))
-
-    (setf (aref *1x1-complex-array* 0) (realpart alpha))
-    (setf (aref *1x1-complex-array* 1) (imagpart alpha))
-    (zscal nxm *1x1-complex-array* (store x) 1)
-
-    x))
-
-#+(or :cmu :sbcl)
-(defmethod scal! ((alpha complex) (x complex-matrix))
-  (scal! (complex-coerce alpha) x))
-
-
+;;
+(defmethod scal ((alpha number) (x complex-matrix))
+  (let ((result (copy x)))
+    (scal! alpha result)))

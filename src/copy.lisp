@@ -79,29 +79,6 @@
 (in-package "MATLISP")
 
 ;;
-(defun blas-copyable-p (matrix)
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
-  (mlet* ((nr (nrows matrix) :type fixnum)
-	  (nc (ncols matrix) :type fixnum)
-	  (rs (row-stride matrix) :type fixnum)
-	  (cs (col-stride matrix) :type fixnum)
-	  (ne (number-of-elements matrix) :type fixnum))
-	 (cond
-	   ((= nc 1) (values t rs ne))
-	   ((= nr 1) (values t cs ne))
-	   ((= rs (* nc cs)) (values t cs ne))
-	   ((= cs (* nr rs)) (values t rs ne))
-	   (t (values  nil -1 -1)))))
-
-;;
-(defmacro with-transpose! (matlst &rest body)
-  `(progn
-     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
-     ,@body
-     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
-
-;;
 (defmacro generate-typed-copy!-func (func store-type matrix-type blas-func)
   `(defun ,func (mat-a mat-b)
      (declare (type ,matrix-type mat-a mat-b)
@@ -111,7 +88,7 @@
 	     ((hd-a st-a sz) (slot-values mat-a '(head store number-of-elements)) :type (fixnum (,store-type *) fixnum))
 	     ((hd-b st-b) (slot-values mat-b '(head store)) :type (fixnum (,store-type *))))
 	    (if (and cp-a cp-b)
-		(,blas-func sz (store mat-a) inc-a (store mat-b) inc-b :head-x hd-a :head-y hd-b)
+		(,blas-func sz st-a inc-a st-b inc-b :head-x hd-a :head-y hd-b)
 		(symbol-macrolet
 		    ((common-code
 		      (mlet* (((nr-a nc-a rs-a cs-a) (slot-values mat-a '(number-of-rows number-of-cols row-stride col-stride))
@@ -128,8 +105,33 @@
 	    mat-b)))
 
 ;;
-(defvar *1x1-real-array* (make-array 1 :element-type 'double-float))
-(defvar *1x1-complex-array* (make-array 2 :element-type 'double-float))
+(defmacro generate-typed-num-copy!-func (func element-type store-type matrix-type blas-func
+					 array-decl)
+  (let ((num-arg (car array-decl)))
+    (destructuring-bind (var var-maker-form var-setf-form &key type) (cadr array-decl)
+      `(mlet* (((,var) (,@var-maker-form) ,@(if type
+						`(:type (,type)))))
+	      (defun ,func (,num-arg mat-x)
+		(declare (type ,element-type ,num-arg)
+			 (type ,matrix-type mat-x)
+			 (optimize (safety 0) (speed 3)))
+		(,@var-setf-form)
+		(mlet* (((cp-x inc-x sz-x) (blas-copyable-p mat-x) :type (boolean fixnum nil))
+			((hd-x st-x sz) (slot-values mat-x '(head store number-of-elements)) :type (fixnum (,store-type *) fixnum)))
+		       (if cp-x
+			   (,blas-func sz ,var 0 st-x inc-x :head-y hd-x)
+			   (symbol-macrolet
+			       ((common-code
+				 (mlet* (((nr-x nc-x rs-x cs-x) (slot-values mat-x '(number-of-rows number-of-cols row-stride col-stride))
+					  :type (fixnum fixnum fixnum fixnum)))
+					(loop for i from 0 below nr-x
+					   do (,blas-func nc-x ,var 0 st-x cs-x :head-y (+ hd-x (* i rs-x)))))))
+			     ;;Choose the smaller of the loops
+			     (if (> (nrows mat-x) (ncols mat-x))
+				 (with-transpose! (mat-x)
+				   common-code)
+				 common-code)))
+		       mat-x))))))
 
 ;;
 (defgeneric copy! (matrix new-matrix)
@@ -157,102 +159,72 @@
 "))
 
 (defmethod copy! :before ((x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (number-of-elements x))
-	(nxm-y (number-of-elements y)))
-    (declare (type fixnum nxm-x nxm-y))
-    (if (not (= nxm-x nxm-y))
-	(warn "arguments X,Y to COPY! are of different sizes"))))
+  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols)) :type (fixnum fixnum))
+	  ((nr-y nc-y) (slot-values y '(number-of-rows number-of-cols)) :type (fixnum fixnum)))
+	 (unless (and (= nr-x nr-y) (= nc-x nc-y))
+	   (error "Arguments X,Y to COPY! are of different dimensions."))))
+
+;;
+(defmethod copy! ((x standard-matrix) (y standard-matrix))
+  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols))
+	   :type (fixnum fixnum)))
+	 (dotimes (i nr-x)
+	   (dotimes (j nc-x)
+	     (declare (type fixnum i j))
+	     (setf (matrix-ref-2d y i j) (matrix-ref-2d x i j))))
+    y))
 
 ;;
 (generate-typed-copy!-func real-double-copy!-typed real-matrix-store-type real-matrix blas:dcopy)
 
-(defmethod copy! ((x real-matrix) (y real-matrix))
-  (let* ((nxm-x (number-of-elements x))
-	 (nxm-y (number-of-elements y))
-	 (nxm (min nxm-x nxm-y)))
-    (declare (type fixnum nxm-x nxm-y nxm))
-    (dcopy nxm (store x) 1 (store y) 1)
-    y))
+(generate-typed-num-copy!-func real-double-num-copy!-typed
+			       double-float real-matrix-store-type real-matrix
+			       blas:dcopy
+			       (num
+				(1x1-array
+				 (allocate-real-store 1)
+				 (setf (aref 1x1-array 0) num)
+				 :type (real-matrix-store-type 1))))
 
-(defmethod copy! ((x real-matrix) (y complex-matrix))
-  (let* ((nxm-x (number-of-elements x))
-	 (nxm-y (number-of-elements y))
-	 (nxm (min nxm-x nxm-y)))
-    (declare (type fixnum nxm-x nxm-y nxm))
-
-    ;; Set the imaginary parts of Y to zero.
-    (zdscal nxm 0.0d0 (store y) 1)
-
-    ;; Copy the elements of X to the real parts of Y.
-    (dcopy nxm (store x) 1 (store y) 2)
-    y))
-  
 (defmethod copy! ((x complex-matrix) (y real-matrix))
-  (error "cannot copy a COMPLEX-MATRIX into a REAL-MATRIX,
+  (error "Cannot copy a COMPLEX-MATRIX into a REAL-MATRIX,
 don't know how to coerce a COMPLEX to a REAL"))
 
+(defmethod copy! ((x complex) (y real-matrix))
+  (error "Cannot copy ~a to ~a, don't know how to coerce COMPLEX to REAL"
+	 x y))
+
+(defmethod copy! ((x real-matrix) (y real-matrix))
+  (real-double-copy!-typed x y))
+
+(defmethod copy! ((x cl:real) (y real-matrix))
+  (real-double-num-copy!-typed (coerce x 'double-float) y))
 
 ;;
 (generate-typed-copy!-func complex-double-copy!-typed complex-matrix-store-type complex-matrix blas:zcopy)
 
+(generate-typed-num-copy!-func complex-double-num-copy!-typed
+			       (complex (double-float * *)) complex-matrix-store-type complex-matrix
+			       blas:zcopy
+			       (num
+				(1x1-z-array
+				 (allocate-complex-store 1)
+				 (setf (aref 1x1-z-array 0) (realpart num)
+				       (aref 1x1-z-array 1) (imagpart num))
+				 :type (complex-matrix-store-type 2))))
+
 (defmethod copy! ((x complex-matrix) (y complex-matrix))
-  (let* ((nxm-x (number-of-elements x))
-	 (nxm-y (number-of-elements y))
-	 (nxm (min nxm-x nxm-y)))
-    (declare (type fixnum nxm-x nxm-y nxm))
-    (dcopy (* 2 nxm) (store x) 1 (store y) 1)
-    y))
+  (complex-double-copy!-typed x y))
 
-(defmethod copy! ((x standard-matrix) (y standard-matrix))
-  (let* ((nxm-x (number-of-elements x))
-	 (nxm-y (number-of-elements y))
-	 (nxm (min nxm-x nxm-y)))
-    (declare (type fixnum nxm-x nxm-y nxm))
-
-    (dotimes (i nxm)
-      (declare (type fixnum i))
-      (setf (matrix-ref y i) (matrix-ref x i)))
-
-    y))
-
-(defmethod copy! ((x #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (y real-matrix))
-  (let ((nxm (number-of-elements y)))
-    (setf (aref *1x1-real-array* 0) x)
-    (dcopy nxm *1x1-real-array* 0 (store y) 1)
-    y))
-
-(defmethod copy! ((x cl:real) (y real-matrix))
-  (let ((nxm (number-of-elements y)))
-    (setf (aref *1x1-real-array* 0) (coerce x 'real-matrix-element-type))
-    (dcopy nxm *1x1-real-array* 0 (store y) 1)
-    y))
-
-(defmethod copy! ((x complex) (y real-matrix))
-  (error "cannot copy ~a to ~a, don't know how to coerce COMPLEX to REAL"
-	 x
-	 y))
-
-(defmethod copy! ((x #+:cmu kernel::complex-double-float
-                     #+:sbcl sb-kernel::complex-double-float
-		     #-(or cmu sbcl) complex) (y complex-matrix))
-  (let ((nxm (number-of-elements y)))
-
-    #-(or cmu sbcl) (setq x (complex-coerce x))
-
-    (setf (aref *1x1-complex-array* 0) (realpart x))
-    (setf (aref *1x1-complex-array* 1) (imagpart x))
-    (zcopy nxm *1x1-complex-array* 0 (store y) 1)
-    y))
+(defmethod copy! ((x real-matrix) (y complex-matrix))
+  (real-double-copy!-typed x (realpart! y))
+  (scal! 0d0 (imagpart! y))
+  y)
 
 (defmethod copy! ((x number) (y complex-matrix))
-  (let ((nxm (number-of-elements y)))
-    (setq x (complex-coerce x))
-    (setf (aref *1x1-complex-array* 0) (realpart x))
-    (setf (aref *1x1-complex-array* 1) (imagpart x))
-    (zcopy nxm *1x1-complex-array* 0 (store y) 1)
-    y))
+  (complex-double-num-copy!-typed (complex-coerce x) y))
 
-;;
+;;;;
 (defgeneric copy (matrix)
   (:documentation 
    "
@@ -264,32 +236,23 @@ don't know how to coerce a COMPLEX to a REAL"))
   =======
   Return a copy of the matrix X"))
 
-(defmethod copy ((matrix standard-matrix))
-  (make-instance 'standard-matrix :nrows (nrows matrix) :ncols (ncols matrix) :store (copy-seq (store matrix))))
-
 (defmethod copy ((matrix real-matrix))
-  (let* ((size (number-of-elements matrix))
-	 (n (nrows matrix))
-	 (m (ncols matrix))
+  (let* ((n (nrows matrix))
+	 (m (nrows matrix))
 	 (result (make-real-matrix-dim n m)))
-    (declare (type fixnum size n m))
-    (blas:dcopy size (store matrix) 1 (store result) 1)
-    result))
+    (declare (type fixnum n m))
+    (copy! matrix result)))
 
 (defmethod copy ((matrix complex-matrix))
-  (let* ((size (number-of-elements matrix))
-	 (n (nrows matrix))
+  (let* ((n (nrows matrix))
 	 (m (ncols matrix))
 	 (result (make-complex-matrix-dim n m)))
-    (declare (type fixnum size n m))
-    (blas:zcopy size (store matrix) 1 (store result) 1)
-    result))
+    (declare (type fixnum n m))
+    (copy! matrix result)))
 
 (defmethod copy ((matrix number))
   matrix)
 
-
-    
 ;;
 (defgeneric convert-to-lisp-array (matrix)
   (:documentation

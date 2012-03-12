@@ -152,7 +152,7 @@
 	 (store (allocate-real-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store mat-store store))
+	     (type (real-matrix-store-type *) idx-store mat-store store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -183,7 +183,7 @@
 	 (store (allocate-real-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) mat-store store))
+	     (type (real-matrix-store-type *) mat-store store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -216,7 +216,7 @@
 	 (mat-store (store mat))
 	 (store (store slice)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*)) 
+	     (type (real-matrix-store-type *) 
 		   row-idx-store
 		   col-idx-store
 		   mat-store
@@ -247,7 +247,7 @@
 	 (store (store slice)))
     
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   mat-store
 		   store))
     
@@ -269,7 +269,7 @@
 	 (store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     
     (dotimes (i n)
       (declare (type fixnum i))
@@ -303,7 +303,7 @@
 	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -472,7 +472,7 @@
     
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store new-store mat-store))
+	     (type (real-matrix-store-type *) idx-store new-store mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -496,7 +496,7 @@
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m)
-	     (type (real-matrix-store-type (*)) new-store mat-store))
+	     (type (real-matrix-store-type *) new-store mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -519,7 +519,7 @@
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*)) 
+	     (type (real-matrix-store-type *) 
 		   row-idx-store
 		   col-idx-store
 		   new-store
@@ -545,7 +545,7 @@
 	 (mat-store (store mat)))
     
     (declare (type fixnum l n)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   new-store
 		   mat-store))
     
@@ -572,7 +572,7 @@
     
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store mat-store))
+	     (type (real-matrix-store-type *) idx-store mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -594,7 +594,7 @@
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m)
-	     (type (real-matrix-store-type (*)) mat-store))
+	     (type (real-matrix-store-type *) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -618,7 +618,7 @@
 	 (col-idx-store (store col-idx))
 	 (mat-store (store mat)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*)) 
+	     (type (real-matrix-store-type *) 
 		   row-idx-store
 		   col-idx-store
 		   mat-store))
@@ -642,7 +642,7 @@
 	 (mat-store (store mat)))
     
     (declare (type fixnum l)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   mat-store))
     
 
@@ -676,7 +676,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) store new-store))
+	     (type (real-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -775,7 +775,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) store new-store))
+	     (type (real-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -838,7 +838,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n)
-	     (type (real-matrix-store-type (*)) store new-store))
+	     (type (real-matrix-store-type *) store new-store))
     
     (setf (aref store (fortran-matrix-indexing i 0 n))
 	  (aref new-store 0))))
@@ -888,7 +888,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) store new-store))
+	     (type (real-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -1025,7 +1025,7 @@
 	 (store (store matrix)))
     
     (declare (type fixnum n m)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1100,7 +1100,7 @@
 	 (store (store matrix)))
     
     (declare (type fixnum n m)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1134,7 +1134,7 @@
 	 (store (store matrix)))
     
     (declare (type fixnum n m)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1235,8 +1235,8 @@
 	 (store (allocate-complex-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store)
-	     (type (complex-matrix-store-type (*))  mat-store store))
+	     (type (real-matrix-store-type *) idx-store)
+	     (type (complex-matrix-store-type *)  mat-store store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1272,7 +1272,7 @@
 	 (store (allocate-complex-store k)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (complex-matrix-store-type (*)) mat-store store))
+	     (type (complex-matrix-store-type *) mat-store store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1311,10 +1311,10 @@
 	 (mat-store (store mat))
 	 (store (store slice)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   row-idx-store
 		   col-idx-store)
-	     (type (complex-matrix-store-type (*)) 
+	     (type (complex-matrix-store-type *) 
 		   mat-store
 		   store))
     
@@ -1347,7 +1347,7 @@
 	 (store (store slice)))
     
     (declare (type fixnum l n m)
-	     (type (complex-matrix-store-type (*))
+	     (type (complex-matrix-store-type *)
 		   mat-store
 		   store))
     
@@ -1375,7 +1375,7 @@
 	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1452,7 +1452,7 @@
 	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1498,7 +1498,7 @@
 	 (m (ncols matrix))
 	 (store (store matrix)))
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     (labels ((consistent-i (i)
 	       (and (integerp i)
@@ -1595,8 +1595,8 @@
     
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store)
-	     (type (complex-matrix-store-type (*)) new-store mat-store))
+	     (type (real-matrix-store-type *) idx-store)
+	     (type (complex-matrix-store-type *) new-store mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1624,7 +1624,7 @@
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m) ;; k)
-	     (type (complex-matrix-store-type (*)) new-store mat-store))
+	     (type (complex-matrix-store-type *) new-store mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1651,10 +1651,10 @@
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   row-idx-store
 		   col-idx-store)
-	     (type (complex-matrix-store-type (*)) 
+	     (type (complex-matrix-store-type *) 
 		   new-store
 		   mat-store))
     
@@ -1683,7 +1683,7 @@
 	 (mat-store (store mat)))
     
     (declare (type fixnum l n) ;;m)
-	     (type (complex-matrix-store-type (*))
+	     (type (complex-matrix-store-type *)
 		   new-store
 		   mat-store))
     
@@ -1715,8 +1715,8 @@
     
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store new-store)
-	     (type (complex-matrix-store-type (*)) mat-store))
+	     (type (real-matrix-store-type *) idx-store new-store)
+	     (type (complex-matrix-store-type *) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1744,8 +1744,8 @@
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m) ;; k)
-	     (type (real-matrix-store-type (*)) new-store)
-	     (type (complex-matrix-store-type (*)) mat-store))
+	     (type (real-matrix-store-type *) new-store)
+	     (type (complex-matrix-store-type *) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1772,11 +1772,11 @@
 	 (new-store (store new))
 	 (mat-store (store mat)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   new-store
 		   row-idx-store
 		   col-idx-store)
-	     (type (complex-matrix-store-type (*)) 
+	     (type (complex-matrix-store-type *) 
 		   mat-store))
     
     (dotimes (i n)
@@ -1804,9 +1804,9 @@
 	 (mat-store (store mat)))
     
     (declare (type fixnum l n) ;; m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   new-store)
-	     (type (complex-matrix-store-type (*))
+	     (type (complex-matrix-store-type *)
 		   mat-store))
     
     (let ((i -1))
@@ -1836,8 +1836,8 @@
     
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m k)
-	     (type (real-matrix-store-type (*)) idx-store)
-	     (type (complex-matrix-store-type (*)) mat-store))
+	     (type (real-matrix-store-type *) idx-store)
+	     (type (complex-matrix-store-type *) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1864,7 +1864,7 @@
 	 (mat-store (store mat)))
     (declare (optimize (speed 3) (safety 0))
 	     (type fixnum n m) ;; k)
-	     (type (complex-matrix-store-type (*)) mat-store))
+	     (type (complex-matrix-store-type *) mat-store))
     
     (if (and (> n 1)
 	     (> m 1))
@@ -1892,10 +1892,10 @@
 	 (col-idx-store (store col-idx))
 	 (mat-store (store mat)))
     (declare (type fixnum l n m)
-	     (type (real-matrix-store-type (*))
+	     (type (real-matrix-store-type *)
 		   row-idx-store
 		   col-idx-store)
-	     (type (complex-matrix-store-type (*)) 
+	     (type (complex-matrix-store-type *) 
 		   mat-store))
     
     (dotimes (i n)
@@ -1922,7 +1922,7 @@
 	 (mat-store (store mat)))
     
     (declare (type fixnum l) ;; n m)
-	     (type (complex-matrix-store-type (*))
+	     (type (complex-matrix-store-type *)
 		   mat-store))
     
    ;; Hmm, another redundant i,j (see above)
@@ -1954,7 +1954,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (complex-matrix-store-type (*)) store new-store))
+	     (type (complex-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -2059,7 +2059,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (complex-matrix-store-type (*)) store new-store))
+	     (type (complex-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -2126,7 +2126,7 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (complex-matrix-store-type (*)) store new-store))
+	     (type (complex-matrix-store-type *) store new-store))
     
   
     (let ((p (if (integerp i)
@@ -2239,8 +2239,8 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) new-store)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) new-store)
+	     (type (complex-matrix-store-type *) store))
     
   
     (let ((p (if (integerp i)
@@ -2344,8 +2344,8 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) new-store)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) new-store)
+	     (type (complex-matrix-store-type *) store))
     
   
     (let ((p (if (integerp i)
@@ -2395,8 +2395,8 @@
 	 (new-store (store new)))
     
     (declare (type fixnum n m new-n new-m)
-	     (type (real-matrix-store-type (*)) new-store)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) new-store)
+	     (type (complex-matrix-store-type *) store))
     
   
     (let ((p (if (integerp i)
@@ -2494,7 +2494,7 @@
 
     
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
@@ -2583,7 +2583,7 @@
 
     
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
@@ -2626,7 +2626,7 @@
 
     
     (declare (type fixnum n m)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
     
     #+(or :ccl :allegro) (setq new (complex-coerce new))    
 
@@ -2811,7 +2811,7 @@
 	    (m (ncols item))
 	    (store (store item)))
 	(declare (type fixnum n m)
-		 (type (real-matrix-store-type (*)) store))
+		 (type (real-matrix-store-type *) store))
 	(dotimes (i n)
 	   (declare (type fixnum i))
 	   (dotimes (j m)

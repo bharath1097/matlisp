@@ -128,7 +128,7 @@
 	(nxm (number-of-elements a))
 	(store (store a)))
     (declare (type fixnum n m nxm)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
 
     (if (row-or-col-vector-p a)
 	(case p
@@ -199,7 +199,7 @@
 	(nxm (number-of-elements a))
 	(store (store a)))
     (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type (*)) store))
+	     (type (complex-matrix-store-type *) store))
 
     (if (row-or-col-vector-p a)
 	(case p

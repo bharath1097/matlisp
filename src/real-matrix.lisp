@@ -9,14 +9,13 @@
   
   (deftype real-matrix-store-type (size)
     "The type of the storage structure for a REAL-MATRIX"
-    `(simple-array double-float ,size))
+    `(simple-array double-float (,size)))
   )
-
 ;;
 (defclass real-matrix (standard-matrix)
   ((store
     :initform nil
-    :type (simple-array real-matrix-element-type (*))))
+    :type (real-matrix-store-type *)))
   (:documentation "A class of matrices with real elements."))
 
 ;;
@@ -34,13 +33,13 @@
 ;;
 (defmethod matrix-ref-1d ((matrix real-matrix) (idx fixnum))
   (let ((store (store matrix)))
-    (declare (type (real-matrix-store-type (*)) store))
+    (declare (type (real-matrix-store-type *) store))
     (aref store idx)))
 
 
 (defmethod (setf matrix-ref-1d) ((value cl:real) (matrix real-matrix) (idx fixnum))
   (let ((store (store matrix)))
-    (declare (type (real-matrix-store-type (*)) store))
+    (declare (type (real-matrix-store-type *) store))
     (setf (aref store idx) value)))
 
 ;;
@@ -103,7 +102,7 @@ don't know how to coerce COMPLEX to REAL"))
 	 (size (* n m))
 	 (store (allocate-real-store size)))
     (declare (type fixnum n m size)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
 	  (:row-major (values m 1))
@@ -126,7 +125,7 @@ don't know how to coerce COMPLEX to REAL"))
 	 (size (* n m))
 	 (store (allocate-real-store size)))
     (declare (type fixnum n m size)
-	     (type (real-matrix-store-type (*)) store))
+	     (type (real-matrix-store-type *) store))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
 	  (:row-major (values m 1))
