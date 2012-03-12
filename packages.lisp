@@ -162,6 +162,7 @@
 	   #:get-arg
 	   #:nconsc
 	   #:with-gensyms
+	   #:slot-values
 	   #:mlet*))
 
 (defpackage :fortran-ffi-accessors
