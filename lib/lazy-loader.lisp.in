@@ -137,6 +137,10 @@
   (:darwin "libodepack.dylib")
   (t (:default "@libdir@/libodepack")))
 
+(cffi:define-foreign-library matlisp
+  (:darwin "libmatlisp.dylib")
+  (t (:default "@libdir@/libmatlisp")))
+
 (if @ATLAS_P@
     (progn
       ;; Define the ATLAS libraries and their locations.
@@ -172,9 +176,11 @@
 	 (cffi:use-foreign-library cblas)
 	 (cffi:use-foreign-library f77blas)
 	 (cffi:use-foreign-library lapack)
+	 (cffi:use-foreign-library matlisp)
 	 )
 	(t
 	 (cffi:use-foreign-library blas)
+	 (cffi:use-foreign-library matlisp)
 	 (cffi:use-foreign-library lapack))))
 
 #+:allegro
