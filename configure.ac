@@ -59,7 +59,10 @@ AC_F77_LIBRARY_LDFLAGS
 # This is only for autoconf 2.49d or later!
 AC_F77_FUNC(f77_name)
 
-# Setup our environment variables based on the value of f77_name
+# Setup our environment variables based on the value of f77_name.  For
+# the record, F77_EXTRA_UNDERSCORE means that any embedded underscores
+# in the Fortran name are converted to two underscores for the C
+# equivalent name.
 F77_LOWER_CASE=t
 F77_UNDERSCORE=t
 F77_EXTRA_UNDERSCORE=nil
@@ -208,7 +211,8 @@ FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86
 
 GIT_VERSION=`git describe --dirty`
 
-# Check that quicklisp exists.  We need that currently to get cffi.
+# Check that quicklisp exists.  We need that currently to get cffi if
+# it's not already available.
 AC_CHECK_FILE($HOME/quicklisp/setup.lisp, HAVE_QL="(and)", HAVE_QL="(or)")
 
 # Are we using a 32-bit lisp?  If so, define LIB32 so that we compile
@@ -223,74 +227,164 @@ else
   AC_MSG_RESULT([no])
 fi
 
-# Check to see if gfortran needs -ff2c.  If needed, this option forces
-# gfortran to be compatible with f2c.  This is needed by matlisp's FFI
-# so that it can correctly handle Fortran functions that return
-# complex numbers.  With f2c, complex numbers cause a hidden initial
-# parameter that is a pointer to a structure where the complex result
-# is stored.
+dnl # Check to see if gfortran needs -ff2c.  If needed, this option forces
+dnl # gfortran to be compatible with f2c.  This is needed by matlisp's FFI
+dnl # so that it can correctly handle Fortran functions that return
+dnl # complex numbers.  With f2c, complex numbers cause a hidden initial
+dnl # parameter that is a pointer to a structure where the complex result
+dnl # is stored.
 
-if test x"$F77" = x"gfortran"; then
-  AC_MSG_CHECKING([if gfortran needs -ff2c for functions returning complex numbers])
-  # Just some silly Fortran function that returns a complex number.
-  cat > conftest.f <<EOF
-      complex*16 function f77_name(x)
-      complex*16 x
-      f77_name = 3*x
-      return
-      end
-EOF
-  #echo $F77 $FFLAGS -c conftest.f
-  $F77 $FFLAGS -c conftest.f
-  # A C main routine that calls the fortran routine.  This assumes the
-  # f2c calling convention of a hidden result structure.  If the real
-  # part of the result matches our expectations, then main returns 0
-  # (f2c compatible).  Any other exit code means incompatible.
-  cat > ctest.c <<EOF
-#include <stdio.h>
-#include <math.h>
+dnl if test x"$F77" = x"gfortran"; then
+dnl   AC_MSG_CHECKING([if gfortran needs -ff2c for functions returning complex numbers])
+dnl   # Just some silly Fortran function that returns a complex number.
+dnl   cat > conftest.f <<EOF
+dnl       complex*16 function f77_name(x)
+dnl       complex*16 x
+dnl       f77_name = 3*x
+dnl       return
+dnl       end
+dnl EOF
+dnl   #echo $F77 $FFLAGS -c conftest.f
+dnl   $F77 $FFLAGS -c conftest.f
+dnl   # A C main routine that calls the fortran routine.  This assumes the
+dnl   # f2c calling convention of a hidden result structure.  If the real
+dnl   # part of the result matches our expectations, then main returns 0
+dnl   # (f2c compatible).  Any other exit code means incompatible.
+dnl   cat > ctest.c <<EOF
+dnl #include <stdio.h>
+dnl #include <math.h>
+dnl 
+dnl struct c16 
+dnl {
+dnl   double real;
+dnl   double imag;
+dnl };
+dnl 
+dnl   
+dnl extern void ${f77_name}(struct c16* result, struct c16* x);
+dnl 
+dnl int main()
+dnl {
+dnl   int rc;
+dnl   
+dnl   struct c16 x, y;
+dnl   
+dnl   x.real = 1;
+dnl   x.imag = 2;
+dnl 
+dnl   ${f77_name}(&y, &x);
+dnl 
+dnl   if (fabs(y.real - 3) < 1e-5) {
+dnl     rc = 0;
+dnl   } else {
+dnl     rc = 1;
+dnl   }
+dnl 
+dnl   return rc;
+dnl }
+dnl EOF
+dnl   #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+dnl   $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
+dnl   NEED_FF2C=yes
+dnl   F2C="-ff2c"
+dnl   if a.out; then
+dnl     NEED_FF2c=no
+dnl     F2C=""
+dnl   fi
+dnl   rm -f ctest.c a.out
+dnl   AC_MSG_RESULT([$NEED_FF2C])
+dnl fi
+dnl 
+# Allow user to use ATLAS if available.
+# We assume the standard names for the ATLAS libraries.
+AC_ARG_WITH([atlas],
+AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
+[
+  # Building with ATLAS
+  ATLAS_DIR="$withval/"
+  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
+  atlas=true
+  ATLAS_P=t
+],
+[
+  # Building without ATLAS.  Need these objects from our own copy of 
+  # LAPACK.
+  atlas=false
+  ATLAS_P=nil
+])
+AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
-struct c16 
-{
-  double real;
-  double imag;
-};
-
-  
-extern void ${f77_name}(struct c16* result, struct c16* x);
-
-int main()
-{
-  int rc;
-  
-  struct c16 x, y;
-  
-  x.real = 1;
-  x.imag = 2;
-
-  ${f77_name}(&y, &x);
-
-  if (fabs(y.real - 3) < 1e-5) {
-    rc = 0;
-  } else {
-    rc = 1;
-  }
-
-  return rc;
-}
-EOF
-  #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
-  $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
-  NEED_FF2C=yes
-  F2C="-ff2c"
-  if a.out; then
-    NEED_FF2c=no
-    F2C=""
-  fi
-  rm -f ctest.c a.out
-  AC_MSG_RESULT([$NEED_FF2C])
-fi
-
+dnl # Check to see if the ATLAS libraries are compatible with matlisp's
+dnl # ffi.  Basically the same test as above that checks to see if -ff2c
+dnl # is needed.  We call zdotu which is a Fortran function returning a
+dnl # complex number.  Matlisp assumes such functions return the result by
+dnl # storing the answer at address given by a hidden first parameter to
+dnl # the function.
+dnl 
+dnl if test x"$atlas" = xtrue; then
+dnl   AC_MSG_CHECKING([if ATLAS is compatible with matlisp's FFI])
+dnl   # From the value of f77_name, figure out the actual name for
+dnl   # Fortran's zdotu.
+dnl   case $f77_name in
+dnl     F77*) case $f77_name in
+dnl 	    F77_NAME) ZDOTU="ZDOTU" ;;
+dnl 	    F77_NAME_) ZDOTU="ZDOTU_" ;;
+dnl 	    F77_NAME__) ZDOTU="ZDOTU_" ;;
+dnl 	  esac
+dnl 	  ;;
+dnl     f77*) case $f77_name in
+dnl 	    f77_name) ZDOTU="zdotu" ;;
+dnl 	    f77_name_) ZDOTU="zdotu_" ;;
+dnl 	    f77_name__) ZDOTU="zdotu_" ;;
+dnl 	  esac
+dnl 	  ;;
+dnl   esac
+dnl 
+dnl   cat > conftest.c <<EOF
+dnl [
+dnl #include <stdio.h>
+dnl #include <math.h>
+dnl   
+dnl extern void ${ZDOTU}(double *, int *, double *, int *, double *, int *);
+dnl 
+dnl int main()
+dnl {
+dnl   int rc;
+dnl   
+dnl   int n = 2;
+dnl   int incx = 1;
+dnl   double x[4];
+dnl   double out[2];
+dnl   x[0] = 1;
+dnl   x[1] = 0;
+dnl   x[2] = 2;
+dnl   x[3] = 0;
+dnl   out[0] = 0;
+dnl   out[1] = 0;
+dnl 
+dnl   ${ZDOTU}(out, &n, x, &incx, x, &incx);
+dnl 
+dnl   if (fabs(out[0] - 5) < 1e-10) {
+dnl     rc = 0;
+dnl   } else {
+dnl     printf("Actual output = %lg, %lg, instead of 5, 0\n", out[0], out[1]);
+dnl     rc = 1;
+dnl   }
+dnl 
+dnl   return rc;
+dnl }
+dnl ]
+dnl EOF
+dnl   $CC $CFLAGS -c conftest.c
+dnl   $F77 $FFLAGS -o a.out conftest.o -L${ATLAS_DIR} -latlas -lcblas -lf77blas -llapack
+dnl   if a.out; then
+dnl     AC_MSG_RESULT([yes])
+dnl   else
+dnl     AC_MSG_RESULT([no])
+dnl     AC_MSG_ERROR([ATLAS libraries are not compatible with matlisp.])
+dnl   fi
+dnl fi
+dnl 
 dnl The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
 AC_SUBST(BLAS_OBJS)
@@ -310,7 +404,7 @@ AC_SUBST(FLIBS_OPTS)
 AC_SUBST(share_ext)
 AC_SUBST(GIT_VERSION)
 AC_SUBST(HAVE_QL)
-AC_SUBST(F2C)
+dnl AC_SUBST(F2C)
 
 echo host = $host
 
@@ -331,27 +425,9 @@ AC_CONFIG_FILES([
   dfftpack/Makefile
   lib-src/toms715/Makefile
   lib-src/odepack/Makefile
+  lib-src/compat/Makefile
   src/f77-mangling.lisp
 ])
-
-# Allow user to use ATLAS if available.
-# We assume the standard names for the ATLAS libraries.
-AC_ARG_WITH([atlas],
-AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
-[
-  # Building with ATLAS
-  ATLAS_DIR="$withval/"
-  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
-  atlas=true
-  ATLAS_P=t
-],
-[
-  # Building without ATLAS.  Need these objects from our own copy of 
-  # LAPACK.
-  atlas=false
-  ATLAS_P=nil
-])
-AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
 
 echo FLIBS = $FLIBS
 echo HAVE_QL = $HAVE_QL

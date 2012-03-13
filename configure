@@ -615,8 +615,6 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-ATLAS_FALSE
-ATLAS_TRUE
 F2C
 HAVE_QL
 GIT_VERSION
@@ -634,6 +632,8 @@ ATLAS_DIR
 NO_ATLAS_LAPACK_OBJS
 BLAS_OBJS
 LISPEXEC
+ATLAS_FALSE
+ATLAS_TRUE
 LIB32_FALSE
 LIB32_TRUE
 CPP
@@ -4664,7 +4664,10 @@ ac_link='$F77 -o conftest$ac_exeext $FFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_f77_compiler_gnu
 
 
-# Setup our environment variables based on the value of f77_name
+# Setup our environment variables based on the value of f77_name.  For
+# the record, F77_EXTRA_UNDERSCORE means that any embedded underscores
+# in the Fortran name are converted to two underscores for the C
+# equivalent name.
 F77_LOWER_CASE=t
 F77_UNDERSCORE=t
 F77_EXTRA_UNDERSCORE=nil
@@ -15155,7 +15158,8 @@ FLIBS_OPTS=`echo $FLIBS | tr -s ' ' '\n' | $GREP -v gfortranbegin | $GREP -v x86
 
 GIT_VERSION=`git describe --dirty`
 
-# Check that quicklisp exists.  We need that currently to get cffi.
+# Check that quicklisp exists.  We need that currently to get cffi if
+# it's not already available.
 as_ac_File=`$as_echo "ac_cv_file_$HOME/quicklisp/setup.lisp" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $HOME/quicklisp/setup.lisp" >&5
 $as_echo_n "checking for $HOME/quicklisp/setup.lisp... " >&6; }
@@ -15201,106 +15205,6 @@ else
 $as_echo "no" >&6; }
 fi
 
-# Check to see if gfortran needs -ff2c.  If needed, this option forces
-# gfortran to be compatible with f2c.  This is needed by matlisp's FFI
-# so that it can correctly handle Fortran functions that return
-# complex numbers.  With f2c, complex numbers cause a hidden initial
-# parameter that is a pointer to a structure where the complex result
-# is stored.
-
-if test x"$F77" = x"gfortran"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if gfortran needs -ff2c for functions returning complex numbers" >&5
-$as_echo_n "checking if gfortran needs -ff2c for functions returning complex numbers... " >&6; }
-  # Just some silly Fortran function that returns a complex number.
-  cat > conftest.f <<EOF
-      complex*16 function f77_name(x)
-      complex*16 x
-      f77_name = 3*x
-      return
-      end
-EOF
-  #echo $F77 $FFLAGS -c conftest.f
-  $F77 $FFLAGS -c conftest.f
-  # A C main routine that calls the fortran routine.  This assumes the
-  # f2c calling convention of a hidden result structure.  If the real
-  # part of the result matches our expectations, then main returns 0
-  # (f2c compatible).  Any other exit code means incompatible.
-  cat > ctest.c <<EOF
-#include <stdio.h>
-#include <math.h>
-
-struct c16
-{
-  double real;
-  double imag;
-};
-
-
-extern void ${f77_name}(struct c16* result, struct c16* x);
-
-int main()
-{
-  int rc;
-
-  struct c16 x, y;
-
-  x.real = 1;
-  x.imag = 2;
-
-  ${f77_name}(&y, &x);
-
-  if (fabs(y.real - 3) < 1e-5) {
-    rc = 0;
-  } else {
-    rc = 1;
-  }
-
-  return rc;
-}
-EOF
-  #echo $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
-  $CC $CFLAGS -o a.out ctest.c conftest.o $LIBS
-  NEED_FF2C=yes
-  F2C="-ff2c"
-  if a.out; then
-    NEED_FF2c=no
-    F2C=""
-  fi
-  rm -f ctest.c a.out
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $NEED_FF2C" >&5
-$as_echo "$NEED_FF2C" >&6; }
-fi
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-echo host = $host
-
-# Set the extension for shared libraries.  This is not very robust.
-case $host in
-  *darwin*) share_ext=dylib ;;
-  *) share_ext=so ;;
-esac
-
-ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/odepack/Makefile src/f77-mangling.lisp"
-
 
 # Allow user to use ATLAS if available.
 # We assume the standard names for the ATLAS libraries.
@@ -15330,6 +15234,37 @@ else
   ATLAS_TRUE='#'
   ATLAS_FALSE=
 fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+echo host = $host
+
+# Set the extension for shared libraries.  This is not very robust.
+case $host in
+  *darwin*) share_ext=dylib ;;
+  *) share_ext=so ;;
+esac
+
+ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/odepack/Makefile lib-src/compat/Makefile src/f77-mangling.lisp"
 
 
 echo FLIBS = $FLIBS
@@ -16463,6 +16398,7 @@ do
     "dfftpack/Makefile") CONFIG_FILES="$CONFIG_FILES dfftpack/Makefile" ;;
     "lib-src/toms715/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/toms715/Makefile" ;;
     "lib-src/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/odepack/Makefile" ;;
+    "lib-src/compat/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/compat/Makefile" ;;
     "src/f77-mangling.lisp") CONFIG_FILES="$CONFIG_FILES src/f77-mangling.lisp" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

@@ -14,22 +14,22 @@
 	(list max-error actual expected))))
 
 (rt:deftest blas.zdotu.1.1
-    (let ((x (make-array 3 :element-type '(complex double-float) :initial-contents '(#c(1d0 0) #c(2d0 0) #c(3d0 0)))))
+    (let ((x (matlisp::store [#c(1d0 0) #c(2d0 0) #c(3d0 0)])))
       (blas:zdotu 2 x 1 x 1))
   #c(5d0 0d0))
 
 (rt:deftest blas.zdotu.1.2
-    (let ((x (make-array 3 :element-type '(complex double-float) :initial-contents '(#c(1d0 1d0) #c(2d0 2d0) #c(3d0 3d0)))))
+    (let ((x (matlisp::store [#c(1d0 1d0) #c(2d0 2d0) #c(3d0 3d0)])))
       (blas:zdotu 2 x 1 x 1))
   #c(0d0 10d0))
 
 (rt:deftest blas.zdotc.1.1
-    (let ((x (make-array 3 :element-type '(complex double-float) :initial-contents '(#c(1d0 0) #c(2d0 0) #c(3d0 0)))))
+    (let ((x (matlisp::store [#c(1d0 0) #c(2d0 0) #c(3d0 0)])))
       (blas:zdotc 2 x 1 x 1))
   #c(5d0 0d0))
 
 (rt:deftest blas.zdotc.1.2
-    (let ((x (make-array 3 :element-type '(complex double-float) :initial-contents '(#c(1d0 1d0) #c(2d0 2d0) #c(3d0 3d0)))))
+    (let ((x (matlisp::store [#c(1d0 1d0) #c(2d0 2d0) #c(3d0 3d0)])))
       (blas:zdotc 2 x 1 x 1))
   #c(10d0 0d0))
 

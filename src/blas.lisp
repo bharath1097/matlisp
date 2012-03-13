@@ -451,6 +451,7 @@
   (incy :integer :input)
   )
 
+#-(and)
 (def-fortran-routine zdotu :complex-double-float
   "
   Syntax
@@ -494,7 +495,24 @@
   (incy :integer :input)
   )
 
+(def-fortran-routine mzdotu :void
+  (result (* :complex-double-float) :output)
+  (n :integer :input)
+  (zx (* :complex-double-float) :input)
+  (incx :integer :input)
+  (zy (* :complex-double-float) :input)
+  (incy :integer :input)
+  )
 
+(let ((result (make-array 2 :element-type 'double-float)))
+  (defun zdotu (n zx incx zy incy)
+    (with-vector-data-addresses ((addr-result result)
+				 (addr-zx zx)
+				 (addr-zy zy))
+      (mzdotu addr-result n addr-zx incx addr-zy incy)
+      (complex (aref result 0) (aref result 1)))))
+
+#-(and)
 (def-fortran-routine zdotc :complex-double-float
  "
   Syntax
@@ -537,6 +555,24 @@
   (zy (* :complex-double-float) :input)
   (incy :integer :input)
   )
+
+(def-fortran-routine mzdotc :void
+  (result (* :complex-double-float) :output)
+  (n :integer :input)
+  (zx (* :complex-double-float) :input)
+  (incx :integer :input)
+  (zy (* :complex-double-float) :input)
+  (incy :integer :input)
+  )
+
+(let ((result (make-array 2 :element-type 'double-float)))
+  (defun zdotc (n zx incx zy incy)
+    (with-vector-data-addresses ((addr-result result)
+				 (addr-zx zx)
+				 (addr-zy zy))
+      (mzdotc addr-result n addr-zx incx addr-zy incy)
+      (complex (aref result 0) (aref result 1)))))
+
 
 (def-fortran-routine idamax :integer
 "

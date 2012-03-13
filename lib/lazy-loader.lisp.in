@@ -115,35 +115,56 @@
 ;; Tell cffi where our libraries are.
 (push "@libdir@/" cffi:*foreign-library-directories*)
 
-;; Define our libraries
+;; Define our libraries.
+
+;; For some reason, on Darwin (OSX), we can't load the libraries if we
+;; specify the full path.  Loading the library fails because there are
+;; undefined symbols (__gfortran_stop_numeric) referenced from the
+;; library.  However, everything works if the full path is not given.
+;; This could be a bug in how automake generates libraries on Darwin.
+;; Not really sure.
+;;
+;; This isn't a problem on linux or sparc.
 (cffi:define-foreign-library dfftpack
-  (t (:default "libdfftpack")))
+  (:darwin "libdfftpack.dylib")
+  (t (:default "@libdir@/libdfftpack")))
 
 (cffi:define-foreign-library toms715
-  (t (:default "libtoms715")))
+  (:darwin "libtoms715.dylib")
+  (t (:default "@libdir@/libtoms715")))
 
 (cffi:define-foreign-library odepack
-  (t (:default "libodepack")))
+  (:darwin "libodepack.dylib")
+  (t (:default "@libdir@/libodepack")))
 
-(when @ATLAS_P@
-  ;; Define the ATLAS libraries and their locations.
-  (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
-  (cffi:define-foreign-library atlas
-    (t (:default "libatlas")))
+(cffi:define-foreign-library matlisp
+  (:darwin "libmatlisp.dylib")
+  (t (:default "@libdir@/libmatlisp")))
 
-  (cffi:define-foreign-library cblas
-    (t (:default "libcblas")))
+(if @ATLAS_P@
+    (progn
+      ;; Define the ATLAS libraries and their locations.
+      (push "@ATLAS_DIR@" cffi:*foreign-library-directories*)
+      (cffi:define-foreign-library atlas
+	(t (:default "libatlas")))
 
-  (cffi:define-foreign-library f77blas
-    (t (:default "libf77blas"))))
+      (cffi:define-foreign-library cblas
+	(t (:default "libcblas")))
 
-(unless @ATLAS_P@
-  ;; Use our blas and lapack libraries
-  (cffi:define-foreign-library blas
-    (t (:default "@libdir@/libblas"))))
+      (cffi:define-foreign-library f77blas
+	(t (:default "libf77blas")))
 
-(cffi:define-foreign-library lapack
-  (t (:default "liblapack")))
+      (cffi:define-foreign-library lapack
+	(t (:default "liblapack"))))
+    (progn
+      ;; Use our blas and lapack libraries
+      (cffi:define-foreign-library blas
+	(:darwin "libblas.dylib")
+	(t (:default "@libdir@/libblas")))
+      (cffi:define-foreign-library lapack
+	(:darwin "liblapack.dylib")
+	(t (:default "@libdir@/liblapack")))))
+
 
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
@@ -155,9 +176,11 @@
 	 (cffi:use-foreign-library cblas)
 	 (cffi:use-foreign-library f77blas)
 	 (cffi:use-foreign-library lapack)
+	 (cffi:use-foreign-library matlisp)
 	 )
 	(t
 	 (cffi:use-foreign-library blas)
+	 (cffi:use-foreign-library matlisp)
 	 (cffi:use-foreign-library lapack))))
 
 #+:allegro
