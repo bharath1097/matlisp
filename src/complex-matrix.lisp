@@ -10,6 +10,9 @@
 (deftype complex-matrix-store-type (size)
   "The type of the storage structure for a COMPLEX-MATRIX"
   `(simple-array double-float (,size)))
+
+(deftype complex-double-float ()
+  '(cl:complex (double-float * *)))
 )
 
 ;;
@@ -298,6 +301,7 @@
 
 (defun imagpart! (mat)
   (cond
+    ((typep mat 'real-matrix) nil)
     ((typep mat 'complex-matrix) (make-instance 'real-matrix :store (store mat)
 						:nrows (nrows mat) :ncols (ncols mat)
 						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))

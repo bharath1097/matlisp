@@ -110,9 +110,9 @@
 "        
   (n :integer :input)
   (da :double-float :input)
-  (dx (* :double-float))
+  (dx (* :double-float :inc head-x))
   (incx :integer :input)
-  (dy (* :double-float) :output)
+  (dy (* :double-float :inc head-y) :output)
   (incy :integer :input)
 )
 
@@ -286,11 +286,11 @@
 "        
   (n :integer :input)
   (za :complex-double-float)
-  (zx (* :complex-double-float))
+  (zx (* :complex-double-float :inc head-x))
   (incx :integer :input)
-  (zy (* :complex-double-float) :output)
+  (zy (* :complex-double-float :inc head-y) :output)
   (incy :integer :input)
-  )
+)
 
 (def-fortran-routine zcopy :void
   "
@@ -632,9 +632,9 @@
             Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
  "        
   (n :integer :input)
-  (dx (* :double-float) :input)
+  (dx (* :double-float :inc head-x) :input)
   (incx :integer :input)
-  (dy (* :double-float) :input)
+  (dy (* :double-float :inc head-y) :input)
   (incy :integer :input)
 )
 
@@ -744,12 +744,12 @@
   (m :integer )
   (n :integer )
   (alpha :double-float )
-  (a (* :double-float) )
+  (a (* :double-float :inc head-a) )
   (lda :integer )
-  (x (* :double-float) )
+  (x (* :double-float :inc head-x) )
   (incx :integer )
   (beta :double-float )
-  (y (* :double-float) :output)
+  (y (* :double-float :inc head-y) :output)
   (incy :integer )
 )
 

@@ -123,7 +123,7 @@ how to coerce COMPLEX to REAL"))
 ;;
 (generate-typed-scal!-func complex-double-dscal!-typed double-float complex-matrix-store-type complex-matrix blas:zdscal)
 
-(generate-typed-scal!-func complex-double-zscal!-typed (complex (double-float * *)) complex-matrix-store-type complex-matrix blas:zscal)
+(generate-typed-scal!-func complex-double-zscal!-typed complex-double-float complex-matrix-store-type complex-matrix blas:zscal)
 
 (defmethod scal! ((alpha cl:real) (x complex-matrix))
   (complex-double-dscal!-typed (coerce alpha 'double-float) x))

@@ -277,21 +277,6 @@ matrix and a number"))
     (format stream "~%")))
 
 ;;
-(defun get-order-stride (matrix &optional (fortran-op "N"))
-  (check-type matrix standard-matrix)
-  (let ((rs (row-stride matrix))
-	(cs (col-stride matrix)))
-    (declare (type fixnum rs cs))
-    (cond
-      ((= cs 1) (values :row-major rs (cond
-					((string= fortran-op "N" ) "T")
-					((string= fortran-op "T" ) "N"))))
-      ((= rs 1) (values :col-major cs (cond
-					((string= fortran-op "N" ) "N")
-					((string= fortran-op "T" ) "T"))))
-      (t nil))))
-
-;;
 (defun make-sub-matrix (matrix i j nrows ncols)
   (declare (type standard-matrix matrix)
 	   (type fixnum i j nrows ncols))
@@ -326,8 +311,20 @@ matrix and a number"))
 	  (cs (col-stride matrix) :type fixnum)
 	  (ne (number-of-elements matrix) :type fixnum))
 	 (cond
-	   ((= nc 1) (values t rs ne))
-	   ((= nr 1) (values t cs ne))
-	   ((= rs (* nc cs)) (values t cs ne))
-	   ((= cs (* nr rs)) (values t rs ne))
+	   ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
+	   ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
 	   (t (values  nil -1 -1)))))
+
+;;
+(defun blas-matrix-compatible-p (matrix &optional (fortran-op "N"))
+  (declare (optimize (safety 0) (speed 3))
+	   (type (or real-matrix complex-matrix) mat))
+  (mlet* (((rs cs) (slot-values mat '(row-stride col-stride))
+	   :type (fixnum fixnum)))
+	 (cond
+	   ((= cs 1) (values :row-major rs (cond
+					     ((string= fortran-op "N" ) "T")
+					     ((string= fortran-op "T" ) "N"))))
+	   ((= rs 1) (values :col-major cs fortran-op))
+	   ;;Lets not confound lisp's type declaration.
+	   (t (values nil -1 "?")))))

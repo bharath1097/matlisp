@@ -74,23 +74,78 @@
 
 (in-package "MATLISP")
 
-#+nil (use-package "LAPACK")
-#+nil (use-package "BLAS")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
+(defmacro generate-typed-axpy!-func (func element-type store-type matrix-type blas-func)
+  `(defun ,func (alpha mat-a mat-b)
+     (declare (type ,element-type alpha)
+	      (type ,matrix-type mat-a mat-b)
+	      (optimize (safety 0) (speed 3)))
+     (mlet* (((cp-a inc-a sz-a) (blas-copyable-p mat-a) :type (boolean fixnum nil))
+	     ((cp-b inc-b sz-b) (blas-copyable-p mat-b) :type (boolean fixnum nil))
+	     ((hd-a st-a sz) (slot-values mat-a '(head store number-of-elements)) :type (fixnum (,store-type *) fixnum))
+	     ((hd-b st-b) (slot-values mat-b '(head store)) :type (fixnum (,store-type *))))
+	    (if (and cp-a cp-b)
+		(,blas-func sz alpha st-a inc-a st-b inc-b :head-x hd-a :head-y hd-b)
+		(symbol-macrolet
+		    ((common-code
+		      (mlet* (((nr-a nc-a rs-a cs-a) (slot-values mat-a '(number-of-rows number-of-cols row-stride col-stride))
+			       :type (fixnum fixnum fixnum fixnum))
+			      ((rs-b cs-b) (slot-values mat-b '(row-stride col-stride))
+			       :type (fixnum fixnum)))
+			     (loop for i from 0 below nr-a
+				do (,blas-func nc-a alpha st-a cs-a st-b cs-b :head-x (+ hd-a (* i rs-a)) :head-y (+ hd-b (* i rs-b)))))))
+		  ;;Choose the smaller of the loops
+		  (if (> (nrows mat-a) (ncols mat-a))
+		      (with-transpose! (mat-a mat-b)
+			common-code)
+		      common-code)))
+	    mat-b)))
 
-#+nil (export '(axpy!
-		axpy))
-
-;; note: we should optimize the calls to axpy from other axpy's since
-;; we know exactly which one we are calling.
 ;;
-;; also, the most common type of bug is with ! operators, e.g. when
-;; you say (axpy! s a a)
+(defgeneric axpy! (alpha x y)
+  (:documentation
+ " 
+ Syntax
+ ======
+ (AXPY! alpha x y)
 
-(deftype complex-double-float ()
-  '(cl:complex (double-float * *)))
+ Y <- alpha * x + y
+
+ Purpose
+ =======
+  Same as AXPY except that the result
+  is stored in Y and Y is returned.
+"))
+
+(defmethod axpy! :before ((alpha number) (x standard-matrix) (y standard-matrix))
+  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols)) :type (fixnum fixnum))
+	  ((nr-y nc-y) (slot-values y '(number-of-rows number-of-cols)) :type (fixnum fixnum)))
+	 (unless (and (= nr-x nr-y) (= nc-x nc-y))
+	   (error "Arguments X,Y to AXPY! are of different dimensions."))))
 
 ;;
+(generate-typed-axpy!-func real-double-axpy!-typed double-float real-matrix-store-type real-matrix blas:daxpy)
+
+(defmethod axpy! ((alpha number) (x complex-matrix) (y real-matrix))
+  (error "cannot AXPY! a complex X to a real Y,
+don't know how to coerce COMPLEX to REAL"))
+
+(defmethod axpy! ((alpha cl:real) (x real-matrix) (y real-matrix))
+  (real-double-axpy!-typed (coerce alpha 'double-float) x y))
+
+;;
+(generate-typed-axpy!-func complex-double-axpy!-typed complex-double-float complex-matrix-store-type complex-matrix blas:zaxpy)
+
+(defmethod axpy! ((alpha cl:real) (x real-matrix) (y complex-matrix))
+  (real-double-axpy!-typed (coerce alpha 'double-float) x (realpart! y)))
+
+(defmethod axpy! ((alpha complex) (x real-matrix) (y complex-matrix))
+  (real-double-axpy!-typed (coerce (realpart alpha) 'double-float) x (realpart! y))
+  (real-double-axpy!-typed (coerce (imagpart alpha) 'double-float) x (imagpart! y)))
+
+(defmethod axpy! ((alpha number) (x complex-matrix) (y complex-matrix))
+  (complex-double-axpy!-typed (complex-coerce alpha) x y))
+
+;;;;
 (defgeneric axpy (alpha x y)
   (:documentation
  "
@@ -118,187 +173,29 @@
 "))
 
 (defmethod axpy :before ((alpha number) (x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (number-of-elements x))
-	(nxm-y (number-of-elements y)))
-    (declare (type fixnum nxm-x nxm-y))
-
-    (if (not (= nxm-x nxm-y))
-	(error "arguments X and Y to AXPY not of the same size"))))
+  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols)) :type (fixnum fixnum))
+	  ((nr-y nc-y) (slot-values y '(number-of-rows number-of-cols)) :type (fixnum fixnum)))
+	 (unless (and (= nr-x nr-y) (= nc-x nc-y))
+	   (error "Arguments X,Y to AXPY are of different dimensions."))))
 
 ;;
 (defmethod axpy ((alpha cl:real) (x real-matrix) (y real-matrix))
-  (axpy (coerce alpha 'real-matrix-element-type) x y))
+  (let ((result (copy y)))
+    (axpy! alpha x result)))
 
-(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y real-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (result (copy y)))
-    (declare (type fixnum nxm))
+(defmethod axpy ((alpha complex) (x real-matrix) (y real-matrix))
+  (let ((result (scal alpha x)))
+    (axpy! 1d0 y result)))
 
-    (daxpy nxm alpha (store x) 1 (store result) 1)
-    result))
-
-;;
-(defmethod axpy ((alpha cl:real) (x complex-matrix) (y real-matrix))
-  (axpy (coerce alpha 'real-matrix-element-type) x y))
-
-(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix) (y real-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (n (nrows y))
-	 (m (ncols y))
-	 (result (make-complex-matrix-dim n m))
-	 (store-x (store x))
-	 (store-y (store y))
-	 (store-result (store result)))
-    (declare (type fixnum n m nxm)
-	     (type (real-matrix-store-type *) store-y)
-	     (type (complex-matrix-store-type *) store-x store-result))
-
-    (zcopy nxm store-x 1 store-result 1) ;; same as (COPY! x result)
-    (zdscal nxm alpha store-result 1)   ;; same as (SCAL! alpha result)
-    (daxpy nxm 1.0d0 store-y 1 store-result 2) ;; same as (AXPY! 1d0 y result)
-    result))
-
-;;
-(defmethod axpy ((alpha cl:real) (x real-matrix) (y complex-matrix))
-  (axpy (coerce alpha 'complex-matrix-element-type) x y))
-
-(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (result (copy y)))
-    (declare (type fixnum nxm))
-    (daxpy nxm alpha (store x) 1 (store result) 2)
-    result))
-
-;;
-(defmethod axpy ((alpha cl:real) (x complex-matrix) (y complex-matrix))
-  (axpy (coerce alpha 'complex-matrix-element-type) x y))
-
-(defmethod axpy ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x complex-matrix) (y complex-matrix))
-  (let ((nxm (number-of-elements y))
-	(result (copy y)))
-    (declare (type fixnum nxm))
-    (daxpy (* 2 nxm) alpha (store x) 1 (store result) 1)
-    result))
+(defmethod axpy ((alpha number) (x complex-matrix) (y real-matrix))
+  (let ((result (scal alpha x)))
+    (axpy! 1d0 y result)))
 
 ;;
 (defmethod axpy ((alpha number) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (n (nrows y))
-	 (m (ncols y))
-	 (result (make-complex-matrix-dim n m))
-	 (store-x (store x))
-	 (store-y (store y))
-	 (store-result (store result))
-	 (c-alpha (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum n m nxm)
-	     (type (real-matrix-store-type *) store-x)
-	     (type (complex-matrix-store-type *) store-y store-result))
-    
-    (dcopy nxm store-x 1 store-result 2)
-    (zscal nxm c-alpha store-result 1)
-    (daxpy (* 2 nxm) 1.0d0 store-y 1 store-result 1)
-    
-    result))
+  (let ((result (copy y)))
+    (axpy! alpha x result)))
 
-;;
-(defmethod axpy ((alpha number) (x complex-matrix) (y real-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (result (copy x))
-	 (store-result (store result))
-	 (c-alpha (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum nxm)
-	     (type (complex-matrix-store-type *) store-result))
-    
-    (zscal nxm c-alpha store-result 1)
-    (daxpy nxm 1.0d0 (store y) 1 store-result 2)
-    
-    result))
-
-;;
-(defmethod axpy ((alpha number) (x complex-matrix) (y complex-matrix))  
-  (let ((nxm (number-of-elements y))
-	(result (copy y))
-	(c-alpha  (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum nxm))
-
-    (zaxpy nxm c-alpha (store x) 1 (store result) 1)
-    
-    result))
-
-;;
-(defgeneric axpy! (alpha x y)
-  (:documentation
- " 
- Syntax
- ======
- (AXPY! alpha x y)
-
- Purpose
- =======
-  Same as AXPY except that the result
-  is stored in Y and Y is returned.
-"))
-
-(defmethod axpy! :before ((alpha number) (x standard-matrix) (y standard-matrix))
-  (let ((nxm-x (number-of-elements x))
-	(nxm-y (number-of-elements y)))
-    (declare (type fixnum nxm-x nxm-y))
-
-    (if (not (= nxm-x nxm-y))
-	(error "arguments X and Y to AXPY! not of the same size"))))
-
-(defmethod axpy! ((alpha number) (x complex-matrix) (y real-matrix))
-  (error "cannot AXPY! a complex X to a real Y,
-don't know how to coerce COMPLEX to REAL"))
-
-;;
-(defmethod axpy! ((alpha cl:real) (x real-matrix) (y real-matrix))
-  (axpy! (coerce alpha 'real-matrix-element-type) x y))
-
-(defmethod axpy! ((alpha #+(or cmu sbcl) double-float #-(or cmu sbcl) float) (x real-matrix) (y real-matrix))
-  (let* ((nxm (number-of-elements y)))
-    (declare (type fixnum nxm))
-
-    (daxpy nxm alpha (store x) 1 (store y) 1)
-    y))
-
-;;
-(defmethod axpy! ((alpha number) (x complex-matrix) (y complex-matrix)) 
-  (let ((nxm (number-of-elements y))
-	(c-alpha (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum nxm))
-    
-    (daxpy (* 2 nxm) c-alpha (store x) 1 (store y) 1)
-    y))
-
-;;
-(defmethod axpy! ((alpha number) (x real-matrix) (y complex-matrix))
-  (let* ((nxm (number-of-elements y))
-	 (store-x (store x))
-	 (store-y (store y))
-	 (c-alpha (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum nxm)
-	     (type (real-matrix-store-type *) store-x)
-	     (type (complex-matrix-store-type *) store-y))
-
-    (daxpy nxm (realpart c-alpha) store-x 1 store-y 2)
-    (with-vector-data-addresses ((addr-y store-y)
-				 (addr-x store-x))
-       (incf-sap :double-float addr-y)
-       (daxpy nxm (imagpart c-alpha) addr-x 1 addr-y 2))
-    y))
-
-;;
-(defmethod axpy! ((alpha number) (x complex-matrix) (y complex-matrix))  
-  (let ((nxm (number-of-elements y))
-	(c-alpha (complex-coerce alpha)))
-    (declare (type complex-double-float c-alpha)
-	     (type fixnum nxm))
-    
-    (zaxpy nxm c-alpha (store x) 1 (store y) 1)
-    y))
+(defmethod axpy ((alpha number) (x complex-matrix) (y complex-matrix))
+  (let ((result (copy y)))
+    (axpy! alpha x result)))

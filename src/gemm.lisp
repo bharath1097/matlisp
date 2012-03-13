@@ -202,8 +202,8 @@
 (defmethod gemm! ((alpha cl:real) (a real-matrix) (b real-matrix)
 		  (beta cl:real) (c real-matrix)
 		  &optional (job :nn))
-  (real-double-gemm!-typed (coerce alpha 'real-matrix-element-type) a b
-			   (coerce beta 'real-matrix-element-type) c
+  (real-double-gemm!-typed (coerce alpha 'double-float) a b
+			   (coerce beta 'double-float) c
 			   job))
 
 ;;
@@ -214,6 +214,26 @@
 		  &optional (job :nn))
   (complex-double-gemm!-typed (complex-coerce alpha) a b
 			      (complex-coerce beta) c job))
+
+
+(defmethod gemm! ((alpha cl:real) (a real-matrix) (b complex-matrix)
+		  (beta number) (c complex-matrix)
+		  &optional (job :nn))
+  (scal! beta c)
+  (real-double-gemm!-typed (coerce alpha 'double-float) a (realpart! b)
+			   1d0 (realpart! c) job)
+  (real-double-gemm!-typed (coerce alpha 'double-float) a (imagpart! b)
+			   1d0 (imagpart! c) job))
+
+(defmethod gemm! ((alpha complex) (a real-matrix) (b complex-matrix)
+		  (beta number) (c complex-matrix)
+		  &optional (job :nn))
+  (scal! beta c)
+  (real-double-gemm!-typed (coerce alpha 'double-float) a (realpart! b)
+			   1d0 (realpart! c) job)
+  (real-double-gemm!-typed (coerce alpha 'double-float) a (imagpart! b)
+			   1d0 (imagpart! c) job))
+
 
 ;;
 (defmethod gemm! ((alpha number) (a standard-matrix) (b standard-matrix)

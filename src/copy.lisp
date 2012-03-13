@@ -204,7 +204,7 @@ don't know how to coerce a COMPLEX to a REAL"))
 (generate-typed-copy!-func complex-double-copy!-typed complex-matrix-store-type complex-matrix blas:zcopy)
 
 (generate-typed-num-copy!-func complex-double-num-copy!-typed
-			       (complex (double-float * *)) complex-matrix-store-type complex-matrix
+			       complex-double-float complex-matrix-store-type complex-matrix
 			       blas:zcopy
 			       (num
 				(1x1-z-array
