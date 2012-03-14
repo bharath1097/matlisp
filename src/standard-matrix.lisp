@@ -318,8 +318,8 @@ matrix and a number"))
 ;;
 (defun blas-matrix-compatible-p (matrix &optional (fortran-op "N"))
   (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) mat))
-  (mlet* (((rs cs) (slot-values mat '(row-stride col-stride))
+	   (type (or real-matrix complex-matrix) matrix))
+  (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
 	   :type (fixnum fixnum)))
 	 (cond
 	   ((= cs 1) (values :row-major rs (cond
