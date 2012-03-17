@@ -100,17 +100,18 @@
 	:depends-on ("foreign-interface" 
 		     "foreign-functions")
 	:components ((:file "conditions")
-		     (:file "copy")
 		     (:file "standard-matrix")
 		     (:file "real-matrix"
-			    :depends-on ("standard-matrix" "copy"))
+			    :depends-on ("standard-matrix"))
 		     (:file "complex-matrix"
-			    :depends-on ("standard-matrix" "copy"))
+			    :depends-on ("standard-matrix"))
 		     ;; (:file "ref"
 		     ;; 	    :depends-on ("matrix"))
+		     (:file "copy"
+			    :depends-on ("standard-matrix"))
 		     (:file "print"
 		     	    :depends-on ("standard-matrix"))))
-
+       
        (:module "matlisp-blas-wrappers"
 	:pathname "src/"
 	:depends-on ("foreign-interface" 

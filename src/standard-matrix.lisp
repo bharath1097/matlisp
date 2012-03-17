@@ -396,8 +396,7 @@ Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nrows ncols i j)
 (defun fortran-nop (op)
   (ecase op (:t "N") (:n "T")))
 
-(declaim (inline (fortran-string-nop)))
-(defun fortran-string-nop (sop)
+(defun fortran-snop (sop)
   (cond
     ((string= sop "N") "T")
     ((string= sop "T") "N")

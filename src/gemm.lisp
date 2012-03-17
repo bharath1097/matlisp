@@ -112,8 +112,8 @@
 		    (rotatef st-a st-b)
 		    (rotatef nr-c nc-c)
 		    ;;
-		    (setf fort-job-a (fortran-string-nop fort-job-a))
-		    (setf fort-job-b (fortran-string-nop fort-job-b)))
+		    (setf fort-job-a (fortran-snop fort-job-a))
+		    (setf fort-job-b (fortran-snop fort-job-b)))
 		  (,blas-gemm-func fort-job-a fort-job-b
 				   nr-c nc-c k
 				   alpha
@@ -386,4 +386,4 @@
 			  (complex-coerce beta)
 			  beta)
 		      c)))
-    (gemm! alpha a b 1d0 c job)))
+    (gemm! alpha a b 1d0 result job)))
