@@ -39,12 +39,14 @@
 	       `(,(append (cond
 			    ;;If there is only one element use let
 			    ;;instead of multiple-value-bind
-			    ((or (symbolp vars) (null (cdr vars)))
-			     `(let ((,(car (ensure-list vars)) ,form))))
+			    ((or (symbolp vars))
+			     `(let ((,vars ,form))))
                             ;;
 			    (t
 			     `(multiple-value-bind (,@vars) ,form)))
-			  (mlet-decl (ensure-list vars) (ensure-list type) declare)
+			  (if (symbolp vars)
+			      (mlet-decl (list vars) (list type) declare)
+			      (mlet-decl vars type declare))
 			  nest-code))))
 	   ;;
 	   (mlet-walk (elst body)

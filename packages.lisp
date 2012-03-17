@@ -326,6 +326,8 @@
    "GEEV"
    "GELSY!"
    "GELSY"
+   #:gemv!
+   #:gemv
    "GEMM!"
    "GEMM"
    "GESV!"

@@ -171,8 +171,10 @@ don't know how to coerce COMPLEX to REAL"))
 "))
 
 (defmethod axpy :before ((alpha number) (x standard-matrix) (y standard-matrix))
-  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols)) :type (fixnum fixnum))
-	  ((nr-y nc-y) (slot-values y '(number-of-rows number-of-cols)) :type (fixnum fixnum)))
+  (mlet* (((nr-x nc-x) (slot-values x '(number-of-rows number-of-cols))
+	   :type (fixnum fixnum))
+	  ((nr-y nc-y) (slot-values y '(number-of-rows number-of-cols))
+	   :type (fixnum fixnum)))
 	 (unless (and (= nr-x nr-y) (= nc-x nc-y))
 	   (error "Arguments X,Y to AXPY are of different dimensions."))))
 

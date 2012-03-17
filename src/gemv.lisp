@@ -10,14 +10,13 @@
     (declare (type ,element-type alpha beta)
 	     (type ,matrix-type A x y)
 	     (type symbol job))
-    (mlet* ((fort-op (ecase job (:n "N") (:t "T")) :type ((string 1)))
-	    ((st-a hd-a nr-a nc-a rs-a cs-a) (slot-values A '(store head number-of-rows number-of-cols row-stride col-stride))
+    (mlet* (((st-a hd-a nr-a nc-a rs-a cs-a) (slot-values A '(store head number-of-rows number-of-cols row-stride col-stride))
 	     :type ((,store-type *) fixnum fixnum fixnum fixnum fixnum))
 	    ((st-x hd-x rs-x) (slot-values x '(store head row-stride))
 	     :type ((,store-type *) fixnum fixnum))
 	    ((st-y hd-y rs-y) (slot-values y '(store head row-stride))
 	     :type ((,store-type *) fixnum fixnum))
-	    ((sym lda tf-op) (blas-matrix-compatible-p A fort-op) :type (symbol fixnum (string 1))))
+	    ((sym lda tf-op) (blas-matrix-compatible-p A job) :type (symbol fixnum (string 1))))
 	   (if (not (string= tf-op "?"))
 	       (progn
 		 (when (eq sym :row-major)
@@ -25,7 +24,7 @@
 		   (rotatef rs-a cs-a))
 		 (,blas-gemv-func tf-op nr-a nc-a alpha st-a lda st-x rs-x beta st-y rs-y :head-a hd-a :head-x hd-x :head-y hd-y))
 	       (progn
-		 (when (string= fort-op "T")
+		 (when (eq job :t)
 		   (rotatef nr-a nc-a)
 		   (rotatef rs-a cs-a))
 		 ;;Use the smaller of the loops.
@@ -232,3 +231,38 @@
     (real-double-gemv!-typed i-al r-A x r-be i-y job)
     (real-double-gemv!-typed r-al i-A x 1d0 i-y job))
   y)
+
+;;;;
+(defgeneric gemv (alpha A x beta y &optional job)
+  (:documentation
+"
+  Syntax
+  ======
+  (GEMV alpha A x beta y [job])
+
+  Purpose
+  =======
+  Returns the GEneral Matrix Vector operation given by
+
+            alpha * op(A) * x + beta * y
+
+  alpha,beta are scalars,
+  A is a matrix, and x,y are vectors.
+
+  op(A) means either A or A'.
+
+     JOB                    Operation
+  ---------------------------------------------------
+     :N (default)      alpha * A * x + beta * y
+     :T                alpha * A'* x + beta * y
+"))
+
+(defmethod gemv ((alpha number) (A standard-matrix) (x standard-matrix)
+		 (beta number) (y standard-matrix) &optional (job :n))
+  (let ((result (scal (if (or (typep alpha 'complex) (typep beta 'complex)
+			      (typep A 'complex-matrix) (typep x 'complex-matrix))
+			  (complex-coerce beta)
+			  beta)
+		      y)))
+    (declare (type standard-matrix y))
+    (gemv! alpha A x 1d0 result job)))

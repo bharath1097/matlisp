@@ -377,17 +377,28 @@ Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nrows ncols i j)
 	   (t (values  nil -1 -1)))))
 
 ;;
-(defun blas-matrix-compatible-p (matrix &optional (fortran-op "N"))
+(defun blas-matrix-compatible-p (matrix &optional (op :n))
   (declare (optimize (safety 0) (speed 3))
 	   (type (or real-matrix complex-matrix) matrix))
   (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
 	   :type (fixnum fixnum)))
 	 (cond
-	   ((= cs 1) (values :row-major rs (cond
-					     ((string= fortran-op "N" ) "T")
-					     ((string= fortran-op "T" ) "N"))))
-	   ((= rs 1) (values :col-major cs (cond
-					     ((string= fortran-op "N" ) "N")
-					     ((string= fortran-op "N" ) "T"))))
+	   ((= cs 1) (values :row-major rs (fortran-nop op)))
+	   ((= rs 1) (values :col-major cs (fortran-op op)))
 	   ;;Lets not confound lisp's type declaration.
 	   (t (values nil -1 "?")))))
+;;
+(declaim (inline fortran-op))
+(defun fortran-op (op)
+  (ecase op (:n "N") (:t "T")))
+
+(declaim (inline fortran-nop))
+(defun fortran-nop (op)
+  (ecase op (:t "N") (:n "T")))
+
+(declaim (inline (fortran-string-nop)))
+(defun fortran-string-nop (sop)
+  (cond
+    ((string= sop "N") "T")
+    ((string= sop "T") "N")
+    (t (error "Unrecognised fortran-op."))))

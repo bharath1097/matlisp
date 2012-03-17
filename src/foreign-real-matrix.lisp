@@ -3,16 +3,22 @@
 
 (defclass foreign-real-matrix (real-matrix)
   ((store
-    :type foreign-pointer))
+    :type cffi:foreign-pointer))
   (:documentation "A class of matrices with real elements."))
 
-(defclass foreign-complex-matrix (complex-matrix)
-  ((store
-    :type foreign-pointer))
-  (:documentation "A class of matrices with complex elements."))
+;;
+(defmethod matrix-ref-1d ((matrix foreign-real-matrix) (idx fixnum))
+  (let ((store (store matrix)))
+    (declare (type cffi:foreign-pointer store))
+    (cffi:mem-aref store :double idx)))
+
+(defmethod (setf matrix-ref-1d) ((value cl:real) (matrix foreign-real-matrix) (idx fixnum))
+  (let ((store (store matrix)))
+    (declare (type cffi:foreign-pointer store))
+    (setf (cffi:mem-aref store :double idx) (coerce value 'double-float))))
 
 
-(defun make-foreign-real-matrix (n m store)
+(defun make-foreign-real-matrix (n m store store-size)
   "
   Syntax
   ======

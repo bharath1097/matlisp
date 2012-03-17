@@ -36,11 +36,10 @@
     (declare (type (real-matrix-store-type *) store))
     (aref store idx)))
 
-
 (defmethod (setf matrix-ref-1d) ((value cl:real) (matrix real-matrix) (idx fixnum))
   (let ((store (store matrix)))
     (declare (type (real-matrix-store-type *) store))
-    (setf (aref store idx) value)))
+    (setf (aref store idx) (coerce value 'double-float))))
 
 ;;
 (declaim (inline allocate-real-store))

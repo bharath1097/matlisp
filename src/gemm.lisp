@@ -77,61 +77,86 @@
 
 (in-package "MATLISP")
 
-;; Why write things again and again, when Lisp will gladly do it for you :)
-(defmacro generate-typed-gemm!-func (func element-type matrix-type blas-func)
+(defmacro generate-typed-gemm!-func (func element-type store-type matrix-type blas-gemm-func lisp-gemv-func)
   `(defun ,func (alpha a b beta c job)
      (declare (optimize (safety 0) (speed 3))
 	      (type ,element-type alpha beta)
 	      (type ,matrix-type a b c)
 	      (type symbol job))
-     (mlet* ((n (nrows c) :type fixnum)
-	     (m (ncols c) :type fixnum)
-	     (k (if (member job '(:nn :nt))
-		   (ncols a)
-		   (nrows a)) 
-	       :type fixnum)
-	     ((order-a lda job-a) (ecase job
-				    ((:nn :nt) (get-order-stride a "N"))
-				    ((:tn :tt) (get-order-stride a "T")))
-	      :type (nil fixnum (string 1)))
-	     ((order-b ldb job-b) (ecase job
-				    ((:nn :tn) (get-order-stride b "N"))
-				    ((:nt :tt) (get-order-stride b "T")))
-	      :type (nil fixnum (string 1)))
-	     ((order-c ldc job-c) (get-order-stride c "N")
+     (mlet* ((job-a (ecase job ((:nn :nt) :n) ((:tn :tt) :t)) :type symbol)
+	     (job-b (ecase job ((:nn :tn) :n) ((:nt :tt) :t)) :type symbol)
+	     ((hd-c nr-c nc-c st-c) (slot-values c '(head number-of-rows number-of-cols store))
+	      :type (fixnum fixnum fixnum (,store-type *)))
+	     ((hd-a st-a) (slot-values a '(head store))
+	      :type (fixnum (,store-type *)))
+	     ((hd-b st-b) (slot-values b '(head store))
+	      :type (fixnum (,store-type *)))
+	     (k (if (eq job-a :n)
+		    (ncols a)
+		    (nrows a))
+		:type fixnum)
+	     ((order-a lda fort-job-a) (blas-matrix-compatible-p a job-a)
+	      :type (symbol fixnum (string 1)))
+	     ((order-b ldb fort-job-b) (blas-matrix-compatible-p b job-b)
+	      :type (symbol fixnum (string 1)))
+	     ((order-c ldc fort-job-c) (blas-matrix-compatible-p c :n)
 	      :type (nil fixnum (string 1))))
-	   
-	   (when (string= job-c "T")
-	     (rotatef a b)
-	     (rotatef lda ldb)
-	     (rotatef n m)
-	     (rotatef job-a job-b)
-	     ;;
-	     (setf job-a (cond
-			   ((string= "N" job-a) "T")
-			   ((string= "T" job-a) "N")
-			   (t "N")))
-	     (setf job-b (cond
-			   ((string= "N" job-b) "T")
-			   ((string= "T" job-b) "N")
-			   (t "N"))))
-	   
-	   (,blas-func job-a     ; TRANSA
-		       job-b     ; TRANSB
-		       n         ; M
-		       m         ; N (LAPACK takes N M opposite our convention)
-		       k         ; K
-		       alpha     ; ALPHA
-		       (store a) ; A
-		       lda       ; LDA
-		       (store b) ; B
-		       ldb       ; LDB
-		       beta      ; BETA
-		       (store c) ; C
-		       ldc       ; LDC
-		       :head-a (head a) :head-b (head b) :head-c (head c))
-	   c)))
-
+	    ;;
+	    (if (and (> lda 0) (> ldb 0) (> ldc 0))
+		(progn
+		  (when (string= fort-job-c "T")
+		    (rotatef a b)
+		    (rotatef lda ldb)
+		    (rotatef fort-job-a fort-job-b)
+		    (rotatef hd-a hd-b)
+		    (rotatef st-a st-b)
+		    (rotatef nr-c nc-c)
+		    ;;
+		    (setf fort-job-a (fortran-string-nop fort-job-a))
+		    (setf fort-job-b (fortran-string-nop fort-job-b)))
+		  (,blas-gemm-func fort-job-a fort-job-b
+				   nr-c nc-c k
+				   alpha
+				   st-a lda
+				   st-b ldb
+				   beta
+				   st-c ldc
+				   :head-a hd-a :head-b hd-b :head-c hd-c))
+	     (progn
+	       (when (eq job-a :t) (transpose-i! a))
+	       (when (eq job-b :t) (transpose-i! b))
+	       ;;
+	       (symbol-macrolet
+		   ((loop-col
+		       (mlet* ((cs-b (col-stride b) :type fixnum)
+			       (cs-c (col-stride c) :type fixnum)
+			       (col-b (col! b 0) :type ,matrix-type)
+			       (col-c (col! c 0) :type ,matrix-type))
+			      (dotimes (j nc-c)
+				(when (> j 0)
+				  (setf (head col-b) (+ (head col-b) cs-b))
+				  (setf (head col-c) (+ (head col-c) cs-c)))
+				(,lisp-gemv-func alpha a col-b beta col-c :n))))
+		    (loop-row
+		       (mlet* ((rs-a (row-stride a) :type fixnum)
+			       (rs-c (row-stride c) :type fixnum)
+			       (row-a (transpose-i! (row! a 0)) :type ,matrix-type)
+			       (row-c (transpose-i! (row! c 0)) :type ,matrix-type))
+			 (dotimes (i nr-c)
+			   (when (> i 0)
+			     (setf (head row-a) (+ (head row-a) rs-a))
+			     (setf (head row-c) (+ (head row-c) rs-c)))
+			   (,lisp-gemv-func alpha b row-a beta row-c :t)))))
+		 (cond
+		   (order-a loop-col)
+		   (order-b loop-row)
+		   ((< nr-c nc-c) loop-row)
+		   (t loop-col)))
+	       ;;
+	       (when (eq job-a :t) (transpose-i! a))
+	       (when (eq job-b :t) (transpose-i! b))
+	       )))
+     c))
 ;;;;
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation
@@ -197,7 +222,9 @@
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
 ;;
-(generate-typed-gemm!-func real-double-gemm!-typed real-matrix-element-type real-matrix blas:dgemm)
+(generate-typed-gemm!-func real-double-gemm!-typed
+			   double-float real-matrix-store-type real-matrix
+			   blas:dgemm real-double-gemv!-typed)
 
 (defmethod gemm! ((alpha cl:real) (a real-matrix) (b real-matrix)
 		  (beta cl:real) (c real-matrix)
@@ -207,7 +234,9 @@
 			   job))
 
 ;;
-(generate-typed-gemm!-func complex-double-gemm!-typed (complex (double-float * *)) complex-matrix blas:zgemm)
+(generate-typed-gemm!-func complex-double-gemm!-typed
+			   complex-double-float complex-matrix-store-type complex-matrix
+			   blas:zgemm complex-double-gemv!-typed)
 
 (defmethod gemm! ((alpha number) (a complex-matrix) (b complex-matrix)
 		  (beta number) (c complex-matrix)
@@ -215,41 +244,85 @@
   (complex-double-gemm!-typed (complex-coerce alpha) a b
 			      (complex-coerce beta) c job))
 
+;
+(defmethod gemm! ((alpha number) (a real-matrix) (b complex-matrix)
+		  (beta complex) (c complex-matrix)
+		  &optional (job :nn))
+  (scal! (complex-coerce beta) c)
+  (gemm! alpha a b 1d0 c))
 
 (defmethod gemm! ((alpha cl:real) (a real-matrix) (b complex-matrix)
-		  (beta number) (c complex-matrix)
+		  (beta cl:real) (c complex-matrix)
 		  &optional (job :nn))
-  (scal! beta c)
-  (real-double-gemm!-typed (coerce alpha 'double-float) a (realpart! b)
-			   1d0 (realpart! c) job)
-  (real-double-gemm!-typed (coerce alpha 'double-float) a (imagpart! b)
-			   1d0 (imagpart! c) job))
+  (let ((r-b (realpart! b))
+	(i-b (imagpart! b))
+	(r-c (realpart! c))
+	(i-c (imagpart! c))
+	(r-al (coerce alpha 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type real-matrix r-b i-b r-c i-c)
+	     (type double-float r-al r-be))
+    (real-double-gemm!-typed r-al a r-b r-be r-c job)
+    (real-double-gemm!-typed r-al a i-b r-be i-c job)))
 
 (defmethod gemm! ((alpha complex) (a real-matrix) (b complex-matrix)
-		  (beta number) (c complex-matrix)
+		  (beta cl:real) (c complex-matrix)
 		  &optional (job :nn))
-  (scal! beta c)
-  (real-double-gemm!-typed (coerce alpha 'double-float) a (realpart! b)
-			   1d0 (realpart! c) job)
-  (real-double-gemm!-typed (coerce alpha 'double-float) a (imagpart! b)
-			   1d0 (imagpart! c) job))
+  (let ((r-b (realpart! b))
+	(i-b (imagpart! b))
+	(r-c (realpart! c))
+	(i-c (imagpart! c))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(i-al (coerce (imagpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type real-matrix r-b i-b r-c i-c)
+	     (type double-float r-al r-be))
+    ;;
+    (real-double-gemm!-typed r-al a r-b r-be r-c job)
+    (real-double-gemm!-typed (- i-al) a i-b 1d0 r-c job)
+    ;;
+    (real-double-gemm!-typed r-al a i-b r-be i-c job)
+    (real-double-gemm!-typed i-al a r-b 1d0 i-c job)))
 
-
-;;
-(defmethod gemm! ((alpha number) (a standard-matrix) (b standard-matrix)
-		  (beta number) (c complex-matrix)
+;
+(defmethod gemm! ((alpha number) (a complex-matrix) (b real-matrix)
+		  (beta complex) (c complex-matrix)
 		  &optional (job :nn))
-  (let ((a (typecase a
-	     (real-matrix (copy! a (make-complex-matrix-dim (nrows a) (ncols a))))
-	     (complex-matrix a)
-	     (t (error "argument A given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX"))))
-	(b (typecase b
-	     (real-matrix (copy! b (make-complex-matrix-dim (nrows b) (ncols b))))
-	     (complex-matrix b)
-	     (t (error "argument B given to GEMM! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
+  (scal! (complex-coerce beta) c)
+  (gemm! alpha a b 1d0 c))
 
-    (gemm! (complex-coerce alpha) a b
-	   (complex-coerce beta) c job)))
+(defmethod gemm! ((alpha cl:real) (a complex-matrix) (b real-matrix)
+		  (beta cl:real) (c complex-matrix)
+		  &optional (job :nn))
+  (let ((r-a (realpart! a))
+	(i-a (imagpart! a))
+	(r-c (realpart! c))
+	(i-c (imagpart! c))
+	(r-al (coerce alpha 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type real-matrix r-a i-a r-c i-c)
+	     (type double-float r-al r-be))
+    (real-double-gemm!-typed r-al r-a r-b r-be r-c job)
+    (real-double-gemm!-typed r-al i-a r-b r-be i-c job)))
+
+(defmethod gemm! ((alpha complex) (a complex-matrix) (b real-matrix)
+		  (beta cl:real) (c complex-matrix)
+		  &optional (job :nn))
+  (let ((r-a (realpart! a))
+	(i-a (imagpart! a))
+	(r-c (realpart! c))
+	(i-c (imagpart! c))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(i-al (coerce (imagpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type real-matrix r-a i-a r-c i-c)
+	     (type double-float r-al r-be))
+    ;;
+    (real-double-gemm!-typed r-al r-a b r-be r-c job)
+    (real-double-gemm!-typed (- i-al) i-a b 1d0 r-c job)
+    ;;
+    (real-double-gemm!-typed r-al i-a b r-be i-c job)
+    (real-double-gemm!-typed i-al r-a b 1d0 i-c job)))
 
 ;;;;
 (defgeneric gemm (alpha a b beta c &optional job)
@@ -303,27 +376,14 @@
 		  (= m-b m-c)))
 	(error "dimensions of A,B,C given to GEMM! do not match"))))
 
-;;
-(defmethod gemm ((alpha cl:real) (a real-matrix) (b real-matrix)
-		 (beta cl:real) (c real-matrix)
-		 &optional (job :nn))
-
-  (gemm! (coerce alpha 'real-matrix-element-type) a b
-	 (coerce beta 'real-matrix-element-type) (copy c)
-	 job))
-
-
 ;; if all args are not real then at least one of them
 ;; is complex, so we need to call GEMM! with a complex C
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
 		 (beta number) (c standard-matrix)
 		 &optional (job :nn))
-
-  (let	((c (typecase c
-	     (real-matrix (copy! c (make-complex-matrix-dim (nrows c) (ncols c))))
-	     (complex-matrix (copy c))
-	     (t (error "argument C given to GEMM is not a REAL-MATRIX or COMPLEX-MATRIX")))))
-
-    (gemm! (complex-coerce alpha) a b
-	   (complex-coerce beta) c
-	   job)))
+  (let ((result (scal (if (or (typep alpha 'complex) (typep a 'complex-matrix)
+			      (typep b 'complex-matrix) (typep beta 'complex))
+			  (complex-coerce beta)
+			  beta)
+		      c)))
+    (gemm! alpha a b 1d0 c job)))
