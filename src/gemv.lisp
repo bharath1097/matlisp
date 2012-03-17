@@ -39,8 +39,6 @@
 						      (* beta (matrix-ref-2d y i 0)))))))))
     y))
 
-
-
 ;;
 (defgeneric gemv! (alpha A x beta y &optional job)
   (:documentation
@@ -100,6 +98,7 @@
 
 (defmethod gemv! ((alpha cl:real) (A real-matrix) (x real-matrix)
 		  (beta cl:real) (y real-matrix) &optional (job :n))
+  ;; y <- \beta . y + \alpha . A o x
   (real-double-gemv!-typed (coerce alpha 'double-float) A x
 			   (coerce beta 'double-float) y job))
 
@@ -110,57 +109,126 @@
 
 (defmethod gemv! ((alpha number) (A complex-matrix) (x complex-matrix)
 		  (beta number) (y complex-matrix) &optional (job :n))
+  ;; y <- \beta . y + \alpha . A o x
   (complex-double-gemv!-typed (complex-coerce alpha) A x
 			      (complex-coerce beta) y job))
 
 ;
+(defmethod gemv! ((alpha number) (A real-matrix) (x real-matrix)
+		  (beta complex) (y complex-matrix) &optional (job :n))
+  ;; y <- \beta * y  
+  (scal! (complex-coerce beta) y)
+  ;; y <- y + \alpha * A o x
+  (gemv! alpha A x 1d0 y job))
+
 (defmethod gemv! ((alpha cl:real) (A real-matrix) (x real-matrix)
 		  (beta cl:real) (y complex-matrix) &optional (job :n))
-  (real-double-gemv!-typed (coerce alpha 'double-float) A x
-			   (coerce beta 'double-float) (realpart! y) job))
-
-(defmethod gemv! ((alpha cl:real) (A real-matrix) (x real-matrix)
-		  (beta complex) (y complex-matrix) &optional (job :n))
-  (scal! (complex-coerce beta) y)
-  (real-double-gemv!-typed (coerce alpha 'double-float) A x
-			   1d0 (realpart! y) job))
-
-;
+  (let ((r-be (coerce beta 'double-float))
+	(r-al (coerce alpha 'double-float))
+	(r-y (realpart! y)))
+    (declare (type double-float r-be r-al)
+	     (type real-matrix r-y))
+    ;; y <- \beta * y
+    (scal! r-be y)
+    ;; (realpart! y) <- (realpart! y) + \alpha * A o x
+    (real-double-gemv!-typed r-al A x 1d0 r-y job))
+  y)
 
 (defmethod gemv! ((alpha complex) (A real-matrix) (x real-matrix)
 		  (beta cl:real) (y complex-matrix) &optional (job :n))
-  (real-double-gemv!-typed (coerce (realpart alpha) 'double-float) A x
-			   (coerce beta 'double-float) (realpart! y) job)
-  (real-double-gemv!-typed (coerce (imagpart alpha) 'double-float) A x
-			   (coerce beta 'double-float) (imagpart! y) job))
+  (let ((r-al (coerce (realpart alpha) 'double-float))
+	(i-al (coerce (imagpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float))
+	(r-y (realpart! y))
+	(i-y (imagpart! y)))
+    (declare (type double-float r-al i-al r-be)
+	     (type real-matrix r-y i-y))
+    ;; (realpart! y) <- \beta * (realpart! y) + (realpart \alpha) . A o x
+    (real-double-gemv!-typed r-al A x r-be r-y job)
+    ;; (imagpart! y) <- \beta * (imagpart! y) + (imagpart \alpha) . A o x
+    (real-double-gemv!-typed i-al A x r-be i-y job)) 
+  y)
 
-(defmethod gemv! ((alpha complex) (A real-matrix) (x real-matrix)
-		  (beta complex) (y complex-matrix) &optional (job :n))
-  (scal! (complex-coerce beta) y)
-  (real-double-gemv!-typed (coerce (realpart alpha) 'double-float) A x
-			   1d0 (realpart! y) job)
-  (real-double-gemv!-typed (coerce (imagpart alpha) 'double-float) A x
-			   1d0 (imagpart! y) job))
 ;
-
 (defmethod gemv! ((alpha number) (A real-matrix) (x complex-matrix)
-		  (beta number) (y complex-matrix) &optional (job :n))
-  (gemv! alpha A (realpart! x)
-	 beta y job)
-  (gemv! (* #c(0d0 1d0) alpha) A (imagpart! x)
-	 beta y job))
+		  (beta complex) (y complex-matrix) &optional (job :n))
+  ;; y <- \beta y
+  (scal! beta y)
+  ;; y <- y + \alpha . A o x
+  (gemv! alpha A x 1d0 y job))
+
+(defmethod gemv! ((alpha cl:real) (A real-matrix) (x complex-matrix)
+		  (beta cl:real) (y complex-matrix) &optional (job :n))
+  (let ((r-x (realpart! x))
+	(i-x (imagpart! x))
+	(r-y (realpart! y))
+	(i-y (imagpart! y))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type double-float r-al r-be)
+	     (type real-matrix r-x i-x r-y i-y))
+    ;; (realpart! y) <- \beta * (realpart! y) + \alpha . A o (realpart! x)
+    (real-double-gemv!-typed r-al A r-x r-be r-y job)
+    ;; (imagpart! y) <- \beta * (imagpart! y) + \alpha . A o (realpart! x)
+    (real-double-gemv!-typed r-al A i-x r-be i-y job))
+  y)
+
+(defmethod gemv! ((alpha complex) (A real-matrix) (x complex-matrix)
+		  (beta cl:real) (y complex-matrix) &optional (job :n))
+  (let ((r-x (realpart! x))
+	(i-x (imagpart! x))
+	(r-y (realpart! y))
+	(i-y (imagpart! y))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(i-al (coerce (imagpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type double-float r-al r-be i-al)
+	     (type real-matrix r-x i-x r-y i-y))
+    (real-double-gemv!-typed r-al A r-x r-be r-y job)
+    (real-double-gemv!-typed (- i-al) A i-x 1d0 r-y job)
+    ;;
+    (real-double-gemv!-typed i-al A r-x r-be i-y job)
+    (real-double-gemv!-typed r-al A i-x 1d0 i-y job))
+  y)
+
 ;
 (defmethod gemv! ((alpha number) (A complex-matrix) (x real-matrix)
-		  (beta number) (y complex-matrix) &optional (job :n))
-  (gemv! alpha (realpart! A) x
-	 beta y job)
-  (gemv! (* #c(0d0 1d0) alpha) (imagpart! A) x
-	 beta y job))
+		  (beta complex) (y complex-matrix) &optional (job :n))
+  ;; y <- \beta y
+  (scal! beta y)
+  ;; y <- y + \alpha . A o x
+  (gemv! alpha A x 1d0 y job))
 
- 
-;
-(defun gemv! ((alpha number) (A complex-matrix) (x real-matrix)
-	      (beta number) (y complex-matrix))
-  )
+(defmethod gemv! ((alpha cl:real) (A complex-matrix) (x real-matrix)
+		  (beta cl:real) (y complex-matrix) &optional (job :n))
+  (let ((r-A (realpart! A))
+	(i-A (imagpart! A))
+	(r-y (realpart! y))
+	(i-y (imagpart! y))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type double-float r-al r-be)
+	     (type real-matrix r-A i-A r-y i-y))
+    ;; (realpart! y) <- \beta * (realpart! y) + \alpha . A o (realpart! x)
+    (real-double-gemv!-typed r-al r-A x r-be r-y job)
+    ;; (imagpart! y) <- \beta * (imagpart! y) + \alpha . A o (realpart! x)
+    (real-double-gemv!-typed r-al i-A x r-be i-y job))
+  y)
 
-;;
+(defmethod gemv! ((alpha complex) (A complex-matrix) (x real-matrix)
+		  (beta cl:real) (y complex-matrix) &optional (job :n))
+  (let ((r-A (realpart! A))
+	(i-A (imagpart! A))
+	(r-y (realpart! y))
+	(i-y (imagpart! y))
+	(r-al (coerce (realpart alpha) 'double-float))
+	(i-al (coerce (imagpart alpha) 'double-float))
+	(r-be (coerce beta 'double-float)))
+    (declare (type double-float r-al r-be i-al)
+	     (type real-matrix r-A i-A r-y i-y))
+    (real-double-gemv!-typed r-al r-A x r-be r-y job)
+    (real-double-gemv!-typed (- i-al) i-A x 1d0 r-y job)
+    ;;
+    (real-double-gemv!-typed i-al r-A x r-be i-y job)
+    (real-double-gemv!-typed r-al i-A x 1d0 i-y job))
+  y)

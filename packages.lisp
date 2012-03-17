@@ -154,8 +154,10 @@
 ;;; Define the packages and symbols for Matlisp.
 
 (defpackage :utilities
-  (:use :common-lisp)
-  (:export #:lcase
+  (:use :common-lisp)  
+  (:export #:ensure-list
+	   #:zip
+	   #:zip-eq
 	   #:cut-cons-chain!
 	   #:when-let
 	   #:if-ret

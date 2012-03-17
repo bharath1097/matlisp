@@ -145,15 +145,23 @@ else run else-body"
     (cut-cons-chain-tin lst test lst)))
 
 ;;
-(defmacro lcase (keyform &rest body)
-  (let ((key-eval (gensym)))
-    (labels ((app-equal (lst)
-	       (if (null lst)
-		   nil
-		   `(((equal ,key-eval ,(caar lst)) ,@(cdar lst))
-		     ,@(app-equal (cdr lst))))))
-      `(let ((,key-eval ,keyform))
-	 (cond
-	   ,@(app-equal body))))))
+(defun zip (&rest args)  
+  (apply #'map 'list #'list args))
+
+;;
+(defmacro mcase (keyform &rest body)
+  (labels ((app-equal (lst)
+	     (if (null lst)
+		 nil
+		 `(((and ,@(mapcar (lambda (pair) (cons 'eq pair))
+				   (zip keyform (caar lst))))
+		    ,@(cdar lst))
+		   ,@(app-equal (cdr lst))))))
+    `(cond
+       ,@(app-equal body))))
+
+(defmacro zip-eq (a b)
+  `(and ,@(mapcar (lambda (pair) (cons 'eq pair))
+		  (zip (ensure-list a) (ensure-list b)))))
 
 ;;
