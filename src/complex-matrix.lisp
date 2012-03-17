@@ -97,8 +97,8 @@
 	 (store (allocate-complex-store size)))
     (multiple-value-bind (row-stride col-stride)
 	(ecase order
-	  (:row-major (values n 1))
-	  (:col-major (values 1 m)))
+	  (:row-major (values m 1))
+	  (:col-major (values 1 n)))
       (let ((matrix
 	     (make-instance 'complex-matrix
 			    :nrows n :ncols m
@@ -306,3 +306,17 @@
 						:nrows (nrows mat) :ncols (ncols mat)
 						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
 						:head (+ 1 (* 2 (head mat)))))))
+
+
+(defun conjugate! (mat)
+  (cond
+    ((typep mat 'real-matrix) nil)
+    ((typep mat 'complex-matrix) (progn
+				   (transpose! (scal! -1d0 (imagpart! mat)))
+				   mat))))
+
+(defmacro with-conjugate! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(conjugate! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(conjugate! ,mat)) matlst)))

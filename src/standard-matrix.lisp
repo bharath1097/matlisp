@@ -228,25 +228,6 @@ Matrix only has ~A elements." idx (number-of-elements matrix))))
   (list (nrows matrix) (ncols matrix)))
 
 ;;
-(defgeneric transpose! (matrix)
-  (:documentation
-   "
-   Syntax
-   ======
-   (transpose! matrix)
-
-   Purpose
-   =======
-   Exchange row and column strides so that effectively
-   the matrix is transposed in place (without much effort).
-"))
-
-(defmethod transpose! ((matrix standard-matrix))
-  (rotatef (nrows matrix) (ncols matrix))
-  (rotatef (row-stride matrix) (col-stride matrix))
-  matrix)
-
-;;
 (defgeneric fill-matrix (matrix fill-element)
   (:documentation 
    "
@@ -277,7 +258,58 @@ matrix and a number"))
     (format stream "~%")))
 
 ;;
-(defun make-sub-matrix (matrix i j nrows ncols)
+(defun transpose-i! (matrix)
+"
+   Syntax
+   ======
+   (transpose-i! matrix)
+
+   Purpose
+   =======
+   Exchange row and column strides so that effectively
+   the matrix is transposed in place (without much effort).
+"
+  (cond
+    ((typep matrix 'standard-matrix)
+     (progn
+       (rotatef (nrows matrix) (ncols matrix))
+       (rotatef (row-stride matrix) (col-stride matrix))
+       matrix))
+    ((typep matrix 'number) matrix)
+    (t (error "Don't know how to take the transpose of ~A." matrix))))
+
+;;
+(defun transpose! (matrix)
+"
+   Syntax
+   ======
+   (transpose! matrix)
+
+   Purpose
+   =======
+   Create a new matrix object which represents the transpose of the
+   the given matrix, but shares the store with matrix.
+"
+  (cond
+    ((typep matrix 'standard-matrix)
+     (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
+	     (make-instance (class-of matrix)
+			    :nrows nc :ncols nr
+			    :store (store matrix)
+			    :head hd
+			    :row-stride cs :col-stride rs)))
+    ((typep matrix 'number) matrix)
+    (t (error "Don't know how to take the transpose of ~A." matrix))))
+
+;;
+(defmacro with-transpose! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(transpose-i! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(transpose-i! ,mat)) matlst)))
+
+;;
+(defun sub! (matrix i j nrows ncols)
   (declare (type standard-matrix matrix)
 	   (type fixnum i j nrows ncols))
   (let ((hd (head matrix))
@@ -286,20 +318,49 @@ matrix and a number"))
 	(rs (row-stride matrix))
 	(cs (col-stride matrix)))
     (declare (type fixnum hd nr nc rs cs))
-    (when (or (> i (- nr nrows)) (> j (- nc ncols)))
-      (error "Parent matrix is not big enough to create sub-matrix."))
+    (unless (and (< -1 i (+ i nrows) nr) (< -1 j (+ j ncols) nc))
+      (error "Bad index and/or size.
+Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nrows ncols i j))
     (make-instance (class-of matrix)
 		   :nrows nrows :ncols ncols
 		   :store (store matrix)
 		   :head (store-indexing i j hd rs cs)
 		   :row-stride rs :col-stride cs)))
 
+(defun (setf sub!) (mat-b mat-a i j nrows ncols)
+  (copy! mat-b (sub! mat-a i j nrows ncols)))
+
 ;;
-(defmacro with-transpose! (matlst &rest body)
-  `(progn
-     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
-     ,@body
-     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
+(defun row! (matrix i)
+  (declare (type standard-matrix matrix)
+	   (type fixnum i))
+  (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
+	 (unless (< -1 i nr)
+	   (error "Index ~a is outside the valid range for the given matrix." i))
+	 (make-instance (class-of matrix)
+			:nrows 1 :ncols nc
+			:store (store matrix)
+			:head (store-indexing i 0 hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+(defun (setf row!) (mat-b mat-a i)
+  (copy! mat-b (row! mat-a i)))
+
+;;
+(defun col! (matrix j)
+  (declare (type standard-matrix matrix)
+	   (type fixnum j))
+  (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
+	 (unless (< -1 j nc)
+	   (error "Index ~a is outside the valid range for the given matrix." j))
+	 (make-instance (class-of matrix)
+			:nrows nr :ncols 1
+			:store (store matrix)
+			:head (store-indexing 0 j hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+(defun (setf col!) (mat-b mat-a j)
+  (copy! mat-b (col! mat-a j)))
 
 ;;
 (defun blas-copyable-p (matrix)
@@ -325,6 +386,8 @@ matrix and a number"))
 	   ((= cs 1) (values :row-major rs (cond
 					     ((string= fortran-op "N" ) "T")
 					     ((string= fortran-op "T" ) "N"))))
-	   ((= rs 1) (values :col-major cs fortran-op))
+	   ((= rs 1) (values :col-major cs (cond
+					     ((string= fortran-op "N" ) "N")
+					     ((string= fortran-op "N" ) "T"))))
 	   ;;Lets not confound lisp's type declaration.
 	   (t (values nil -1 "?")))))

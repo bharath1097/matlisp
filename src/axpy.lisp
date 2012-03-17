@@ -85,20 +85,18 @@
 	     ((hd-b st-b) (slot-values mat-b '(head store)) :type (fixnum (,store-type *))))
 	    (if (and cp-a cp-b)
 		(,blas-func sz alpha st-a inc-a st-b inc-b :head-x hd-a :head-y hd-b)
-		(symbol-macrolet
-		    ((common-code
-		      (mlet* (((nr-a nc-a rs-a cs-a) (slot-values mat-a '(number-of-rows number-of-cols row-stride col-stride))
-			       :type (fixnum fixnum fixnum fixnum))
-			      ((rs-b cs-b) (slot-values mat-b '(row-stride col-stride))
-			       :type (fixnum fixnum)))
-			     (loop for i from 0 below nr-a
-				do (,blas-func nc-a alpha st-a cs-a st-b cs-b :head-x (+ hd-a (* i rs-a)) :head-y (+ hd-b (* i rs-b)))))))
-		  ;;Choose the smaller of the loops
-		  (if (> (nrows mat-a) (ncols mat-a))
-		      (with-transpose! (mat-a mat-b)
-			common-code)
-		      common-code)))
-	    mat-b)))
+		(mlet* (((nr-a nc-a rs-a cs-a) (slot-values mat-a '(number-of-rows number-of-cols row-stride col-stride))
+			 :type (fixnum fixnum fixnum fixnum))
+			((rs-b cs-b) (slot-values mat-b '(row-stride col-stride))
+			 :type (fixnum fixnum)))
+		       ;;Choose the smaller of the loops
+		       (when (> nr-a nc-a)
+			 (rotatef nr-a nc-a)
+			 (rotatef rs-a cs-a)
+			 (rotatef rs-b cs-b))
+		       (loop for i from 0 below nr-a
+			  do (,blas-func nc-a alpha st-a cs-a st-b cs-b :head-x (+ hd-a (* i rs-a)) :head-y (+ hd-b (* i rs-b)))))))
+     mat-b))
 
 ;;
 (defgeneric axpy! (alpha x y)

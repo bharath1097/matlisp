@@ -498,19 +498,16 @@
 (def-fortran-routine mzdotu :void
   (result (* :complex-double-float) :output)
   (n :integer :input)
-  (zx (* :complex-double-float) :input)
+  (zx (* :complex-double-float :inc head-x) :input)
   (incx :integer :input)
-  (zy (* :complex-double-float) :input)
+  (zy (* :complex-double-float :inc head-y) :input)
   (incy :integer :input)
   )
 
 (let ((result (make-array 2 :element-type 'double-float)))
-  (defun zdotu (n zx incx zy incy)
-    (with-vector-data-addresses ((addr-result result)
-				 (addr-zx zx)
-				 (addr-zy zy))
-      (mzdotu addr-result n addr-zx incx addr-zy incy)
-      (complex (aref result 0) (aref result 1)))))
+  (defun zdotu (n zx incx zy incy &key (head-x 0) (head-y 0))
+    (mzdotu result n zx incx zy incy :head-x head-x :head-y head-y)
+    (complex (aref result 0) (aref result 1))))
 
 #-(and)
 (def-fortran-routine zdotc :complex-double-float
@@ -559,19 +556,16 @@
 (def-fortran-routine mzdotc :void
   (result (* :complex-double-float) :output)
   (n :integer :input)
-  (zx (* :complex-double-float) :input)
+  (zx (* :complex-double-float :inc head-x) :input)
   (incx :integer :input)
-  (zy (* :complex-double-float) :input)
+  (zy (* :complex-double-float :inc head-y) :input)
   (incy :integer :input)
   )
 
 (let ((result (make-array 2 :element-type 'double-float)))
-  (defun zdotc (n zx incx zy incy)
-    (with-vector-data-addresses ((addr-result result)
-				 (addr-zx zx)
-				 (addr-zy zy))
-      (mzdotc addr-result n addr-zx incx addr-zy incy)
-      (complex (aref result 0) (aref result 1)))))
+  (defun zdotc (n zx incx zy incy &key (head-x 0) (head-y 0))
+    (mzdotc result n zx incx zy incy :head-x head-x :head-y head-y)
+    (complex (aref result 0) (aref result 1))))
 
 
 (def-fortran-routine idamax :integer
@@ -2143,12 +2137,12 @@
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
-  (a (* :complex-double-float) )
+  (a (* :complex-double-float :inc head-a) )
   (lda :integer )
-  (x (* :complex-double-float) )
+  (x (* :complex-double-float :inc head-x) )
   (incx :integer )
   (beta :complex-double-float )
-  (y (* :complex-double-float) :output)
+  (y (* :complex-double-float :inc head-y) :output)
   (incy :integer )
 )
 
