@@ -249,7 +249,7 @@
 		  (beta number) (c complex-matrix)
 		  &optional (job :nn))
   (scal! (complex-coerce beta) c)
-  (gemm! alpha a b 1d0 (realpart! c))
+  (gemm! alpha a b 1d0 (realpart! c) job)
   c)
 
 ;
@@ -257,7 +257,7 @@
 		  (beta complex) (c complex-matrix)
 		  &optional (job :nn))
   (scal! (complex-coerce beta) c)
-  (gemm! alpha a b 1d0 c))
+  (gemm! alpha a b 1d0 c job))
 
 (defmethod gemm! ((alpha cl:real) (a real-matrix) (b complex-matrix)
 		  (beta cl:real) (c complex-matrix)
@@ -297,7 +297,7 @@
 		  (beta complex) (c complex-matrix)
 		  &optional (job :nn))
   (scal! (complex-coerce beta) c)
-  (gemm! alpha a b 1d0 c))
+  (gemm! alpha a b 1d0 c job))
 
 (defmethod gemm! ((alpha cl:real) (a complex-matrix) (b real-matrix)
 		  (beta cl:real) (c complex-matrix)
@@ -310,8 +310,8 @@
 	(r-be (coerce beta 'double-float)))
     (declare (type real-matrix r-a i-a r-c i-c)
 	     (type double-float r-al r-be))
-    (real-double-gemm!-typed r-al r-a r-b r-be r-c job)
-    (real-double-gemm!-typed r-al i-a r-b r-be i-c job)))
+    (real-double-gemm!-typed r-al r-a b r-be r-c job)
+    (real-double-gemm!-typed r-al i-a b r-be i-c job)))
 
 (defmethod gemm! ((alpha complex) (a complex-matrix) (b real-matrix)
 		  (beta cl:real) (c complex-matrix)
