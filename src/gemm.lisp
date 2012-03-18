@@ -249,7 +249,8 @@
 		  (beta number) (c complex-matrix)
 		  &optional (job :nn))
   (scal! (complex-coerce beta) c)
-  (gemm! alpha a b 1d0 (realpart! c)))
+  (gemm! alpha a b 1d0 (realpart! c))
+  c)
 
 ;
 (defmethod gemm! ((alpha number) (a real-matrix) (b complex-matrix)
