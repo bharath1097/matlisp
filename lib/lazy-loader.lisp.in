@@ -180,8 +180,8 @@
 	 )
 	(t
 	 (cffi:use-foreign-library blas)
-	 (cffi:use-foreign-library matlisp)
-	 (cffi:use-foreign-library lapack))))
+	 (cffi:use-foreign-library lapack)
+	 (cffi:use-foreign-library matlisp))))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
