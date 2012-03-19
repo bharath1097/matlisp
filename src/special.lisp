@@ -147,7 +147,7 @@
   (unless (typep state 'random-state)
     (error "STATE must be a RANDOM-STATE, not a ~A" (type-of state)))
 
-  (locally (declare (type fixnum n m))
+  (locally (declare (type fixnum n m))    
     (let* ((size (* n m))
 	   (store (allocate-real-store size))
 	   (unity #.(coerce 1 'real-matrix-element-type)))
@@ -158,5 +158,7 @@
 	(declare (fixnum k))
 	(setf (aref store k) (random unity state)))
 	     
-      (make-instance 'real-matrix :nrows n :ncols m :store store))))
+      (make-instance 'real-matrix
+		     :nrows n :ncols m
+		     :row-stride m :col-stride 1 :store store))))
 

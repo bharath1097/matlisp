@@ -246,10 +246,14 @@
 
 ;
 (defmethod gemm! ((alpha number) (a real-matrix) (b real-matrix)
-		  (beta number) (c complex-matrix)
+		  (beta complex) (c complex-matrix)
 		  &optional (job :nn))
-  (scal! (complex-coerce beta) c)
-  (gemm! alpha a b 1d0 (realpart! c) job)
+  (let ((r-c (realpart! c))
+	(c-be (complex-coerce beta)))
+    (declare (type real-matrix c)
+	     (type complex-double-float c-al))
+    (scal! c-be c)
+    (gemm! alpha a b 1d0 r-c job))
   c)
 
 ;
