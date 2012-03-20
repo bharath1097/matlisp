@@ -22,6 +22,44 @@ integer storage.  Default INITIAL-ELEMENT = 0."
   (declare (type (and fixnum (integer 0)) row col head row-stride col-stride))
   (the fixnum (+ head (the fixnum (* row row-stride)) (the fixnum (* col col-stride)))))
 
+(defun blas-copyable-p (matrix)
+  (declare (optimize (safety 0) (speed 3))
+	   (type (or real-matrix complex-matrix) matrix))
+  (mlet* ((nr (nrows matrix) :type fixnum)
+	  (nc (ncols matrix) :type fixnum)
+	  (rs (row-stride matrix) :type fixnum)
+	  (cs (col-stride matrix) :type fixnum)
+	  (ne (number-of-elements matrix) :type fixnum))
+	 (cond
+	   ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
+	   ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
+	   (t (values  nil -1 -1)))))
+
+(defun blas-matrix-compatible-p (matrix &optional (op :n))
+  (declare (optimize (safety 0) (speed 3))
+	   (type (or real-matrix complex-matrix) matrix))
+  (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
+	   :type (fixnum fixnum)))
+	 (cond
+	   ((= cs 1) (values :row-major rs (fortran-nop op)))
+	   ((= rs 1) (values :col-major cs (fortran-op op)))
+	   ;;Lets not confound lisp's type declaration.
+	   (t (values nil -1 "?")))))
+
+(declaim (inline fortran-op))
+(defun fortran-op (op)
+  (ecase op (:n "N") (:t "T")))
+
+(declaim (inline fortran-nop))
+(defun fortran-nop (op)
+  (ecase op (:t "N") (:n "T")))
+
+(defun fortran-snop (sop)
+  (cond
+    ((string= sop "N") "T")
+    ((string= sop "T") "N")
+    (t (error "Unrecognised fortran-op."))))
+
 ;;
 (defclass standard-matrix ()
   ((number-of-rows
@@ -76,30 +114,29 @@ that way."))
 ;;
 (defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
   (declare (ignore initargs))
-  (let* ((n (nrows matrix))
-	 (m (ncols matrix))
-	 (h (head matrix))
-	 (ss (store-size matrix))
-	 (nxm (* n m)))
-    (declare (type fixnum n m h nxm))
-    ;;Row-ordered by default.
-    (unless (and (slot-boundp matrix 'row-stride) (slot-boundp matrix 'col-stride))
-      (setf (row-stride matrix) m)
-      (setf (col-stride matrix) 1))
-    (let ((rs (row-stride matrix))
-	  (cs (row-stride matrix)))
-      (declare (type fixnum rs cs))
-      ;;Error checking is good if we use foreign-pointers as store types.
-      (cond
-	((<= n 0) (error "Number of rows must be > 0. Initialized with ~A." n))
-	((<= m 0) (error "Number of columns must be > 0. Initialized with ~A." m))
-	;;
-	((< h 0) (error "Head of the store must be >= 0. Initialized with ~A." h))
-	((< rs 0) (error "Row-stride of the store must be >= 0. Initialized with ~A." rs))
-	((< cs 0) (error "Column-stride of the store must be >= 0. Initialized with ~A." cs))
-	((<= ss 0) (error "Store-size must be > 0. Initialized with ~A." ss))))
+  (mlet*
+   (((nr nc hd ss) (slot-values matrix '(number-of-rows number-of-cols head store-size))
+     :type (fixnum fixnum fixnum fixnum)))
+   ;;Row-ordered by default.
+   (unless (and (slot-boundp matrix 'row-stride) (slot-boundp matrix 'col-stride))
+     (setf (row-stride matrix) nc)
+     (setf (col-stride matrix) 1))
+   (let* ((rs (row-stride matrix))
+	  (cs (col-stride matrix))
+	  (l-idx (store-indexing (- nr 1) (- nc 1) hd rs cs)))
+     (declare (type fixnum rs cs))
+     ;;Error checking is good if we use foreign-pointers as store types.
+     (cond
+       ((<= nr 0) (error "Number of rows must be > 0. Initialized with ~A." nr))
+       ((<= nc 0) (error "Number of columns must be > 0. Initialized with ~A." nc))
+       ;;
+       ((< hd 0) (error "Head of the store must be >= 0. Initialized with ~A." hd))
+       ((< rs 0) (error "Row-stride of the store must be >= 0. Initialized with ~A." rs))
+       ((< cs 0) (error "Column-stride of the store must be >= 0. Initialized with ~A." cs))
+       ((<= ss l-idx) (error "Store is not large enough to hold the matrix.
+Initialized with ~A, but the largest possible index is ~A." ss l-idx))))
     ;;
-    (setf (number-of-elements matrix) nxm)))
+   (setf (number-of-elements matrix) (* nr nc))))
 
 ;;
 (defmacro matrix-ref (matrix row &optional col)
@@ -265,16 +302,17 @@ matrix and a number"))
     (format stream "~%")))
 
 ;;
-(defun transpose-i! (matrix)
+(defun transpose! (matrix)
 "
    Syntax
    ======
-   (transpose-i! matrix)
+   (transpose! matrix)
 
    Purpose
    =======
    Exchange row and column strides so that effectively
-   the matrix is transposed in place (without much effort).
+   the matrix is destructively transposed in place
+   (without much effort).
 "
   (cond
     ((typep matrix 'standard-matrix)
@@ -285,126 +323,144 @@ matrix and a number"))
     ((typep matrix 'number) matrix)
     (t (error "Don't know how to take the transpose of ~A." matrix))))
 
+(defmacro with-transpose! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
+
 ;;
-(defun transpose! (matrix)
+(defgeneric transpose (matrix)
+  (:documentation
 "
    Syntax
    ======
-   (transpose! matrix)
+   (transpose matrix)
 
    Purpose
    =======
    Create a new matrix object which represents the transpose of the
-   the given matrix, but shares the store with matrix.
+   the given matrix.
+
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (transpose matrix) value)
+
+   is basically the same as
+
+   (copy! value (transpose matrix))
+"))
+
+(defun (setf transpose) (value matrix)
+  (copy! value (transpose matrix)))
+
+(defmethod transpose ((matrix number))
+  matrix)
+
+;;
+(defgeneric sub-matrix (matrix origin dim)
+  (:documentation
 "
-  (cond
-    ((typep matrix 'standard-matrix)
-     (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
-	     (make-instance (class-of matrix)
-			    :nrows nc :ncols nr
-			    :store (store matrix)
-			    :head hd
-			    :row-stride cs :col-stride rs)))
-    ((typep matrix 'number) matrix)
-    (t (error "Don't know how to take the transpose of ~A." matrix))))
+   Syntax
+   ======
+   (sub-matrix matrix origin dimensions)
+
+   Purpose
+   =======
+   Create a block sub-matrix of \"matrix\" starting at \"origin\"
+   of dimension \"dim\", sharing the store.
+
+   origin, dim are lists with two elements.
+
+   Store is shared with \"matrix\"
+
+   Settable
+   ========
+   (setf (sub-matrix matrix origin dim) value)
+
+   is basically the same as
+
+   (copy! value (sub-matrix matrix origin dim))
+"))
+
+(defun (setf sub-matrix) (value matrix origin dim)
+  (copy! value (sub-matrix matrix origin dim)))
 
 ;;
-(defmacro with-transpose! (matlst &rest body)
-  `(progn
-     ,@(mapcar #'(lambda (mat) `(transpose-i! ,mat)) matlst)
-     ,@body
-     ,@(mapcar #'(lambda (mat) `(transpose-i! ,mat)) matlst)))
+(defgeneric row (matrix i)
+  (:documentation
+"
+   Syntax
+   ======
+   (row matrix i)
+
+   Purpose
+   =======
+   Returns the i'th row of the matrix.
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (row matrix i) value)
+
+   is basically the same as
+
+   (copy! value (row matrix i))
+"))
+
+(defun (setf row) (value matrix i)
+  (copy! value (row matrix i)))
 
 ;;
-(defun sub! (matrix i j nrows ncols)
-  (declare (type standard-matrix matrix)
-	   (type fixnum i j nrows ncols))
-  (let ((hd (head matrix))
-	(nr (nrows matrix))
-	(nc (ncols matrix))
-	(rs (row-stride matrix))
-	(cs (col-stride matrix)))
-    (declare (type fixnum hd nr nc rs cs))
-    (unless (and (< -1 i (+ i nrows) nr) (< -1 j (+ j ncols) nc))
-      (error "Bad index and/or size.
-Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nrows ncols i j))
-    (make-instance (class-of matrix)
-		   :nrows nrows :ncols ncols
-		   :store (store matrix)
-		   :head (store-indexing i j hd rs cs)
-		   :row-stride rs :col-stride cs)))
+(defgeneric col (matrix j)
+  (:documentation
+"
+   Syntax
+   ======
+   (col matrix j)
 
-(defun (setf sub!) (mat-b mat-a i j nrows ncols)
-  (copy! mat-b (sub! mat-a i j nrows ncols)))
+   Purpose
+   =======
+   Returns the j'th column of the matrix.
+   Store is shared with \"matrix\".
 
-;;
-(defun row! (matrix i)
-  (declare (type standard-matrix matrix)
-	   (type fixnum i))
-  (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
-	 (unless (< -1 i nr)
-	   (error "Index ~a is outside the valid range for the given matrix." i))
-	 (make-instance (class-of matrix)
-			:nrows 1 :ncols nc
-			:store (store matrix)
-			:head (store-indexing i 0 hd rs cs)
-			:row-stride rs :col-stride cs)))
+   Settable
+   ========
+   (setf (col matrix j) value)
 
-(defun (setf row!) (mat-b mat-a i)
-  (copy! mat-b (row! mat-a i)))
+   is basically the same as
+
+   (copy! value (col matrix j))
+"))
+
+(defun (setf col) (value matrix j)
+  (copy! value (col matrix j)))
 
 ;;
-(defun col! (matrix j)
-  (declare (type standard-matrix matrix)
-	   (type fixnum j))
-  (mlet* (((hd nr nc rs cs) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride)) :type (fixnum fixnum fixnum fixnum)))
-	 (unless (< -1 j nc)
-	   (error "Index ~a is outside the valid range for the given matrix." j))
-	 (make-instance (class-of matrix)
-			:nrows nr :ncols 1
-			:store (store matrix)
-			:head (store-indexing 0 j hd rs cs)
-			:row-stride rs :col-stride cs)))
+(defgeneric diag (matrix &optional d)
+  (:documentation
+"
+   Syntax
+   ======
+   (diag matrix &optional (d 0))
 
-(defun (setf col!) (mat-b mat-a j)
-  (copy! mat-b (col! mat-a j)))
+   Purpose
+   =======
+   Returns a row-vector representing the d'th diagonal of the matrix.
+   [a_{ij} : j - i = d]
 
-;;
-(defun blas-copyable-p (matrix)
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
-  (mlet* ((nr (nrows matrix) :type fixnum)
-	  (nc (ncols matrix) :type fixnum)
-	  (rs (row-stride matrix) :type fixnum)
-	  (cs (col-stride matrix) :type fixnum)
-	  (ne (number-of-elements matrix) :type fixnum))
-	 (cond
-	   ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
-	   ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
-	   (t (values  nil -1 -1)))))
+   Store is shared with \"matrix\".
 
-;;
-(defun blas-matrix-compatible-p (matrix &optional (op :n))
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
-  (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
-	   :type (fixnum fixnum)))
-	 (cond
-	   ((= cs 1) (values :row-major rs (fortran-nop op)))
-	   ((= rs 1) (values :col-major cs (fortran-op op)))
-	   ;;Lets not confound lisp's type declaration.
-	   (t (values nil -1 "?")))))
-;;
-(declaim (inline fortran-op))
-(defun fortran-op (op)
-  (ecase op (:n "N") (:t "T")))
+   Settable
+   ========
+   (setf (diag matrix d) value)
 
-(declaim (inline fortran-nop))
-(defun fortran-nop (op)
-  (ecase op (:t "N") (:n "T")))
+   is basically the same as
 
-(defun fortran-snop (sop)
-  (cond
-    ((string= sop "N") "T")
-    ((string= sop "T") "N")
-    (t (error "Unrecognised fortran-op."))))
+   (copy! value (diag matrix d))
+"))
+
+(defun (setf diag) (value matrix &optional (d 0))
+  (copy! value (diag matrix d)))

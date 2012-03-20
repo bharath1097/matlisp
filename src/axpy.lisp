@@ -134,11 +134,11 @@ don't know how to coerce COMPLEX to REAL"))
 (generate-typed-axpy!-func complex-double-axpy!-typed complex-double-float complex-matrix-store-type complex-matrix blas:zaxpy)
 
 (defmethod axpy! ((alpha cl:real) (x real-matrix) (y complex-matrix))
-  (real-double-axpy!-typed (coerce alpha 'double-float) x (realpart! y)))
+  (real-double-axpy!-typed (coerce alpha 'double-float) x (mrealpart y)))
 
 (defmethod axpy! ((alpha complex) (x real-matrix) (y complex-matrix))
-  (real-double-axpy!-typed (coerce (realpart alpha) 'double-float) x (realpart! y))
-  (real-double-axpy!-typed (coerce (imagpart alpha) 'double-float) x (imagpart! y)))
+  (real-double-axpy!-typed (coerce (realpart alpha) 'double-float) x (mrealpart y))
+  (real-double-axpy!-typed (coerce (imagpart alpha) 'double-float) x (mimagpart y)))
 
 (defmethod axpy! ((alpha number) (x complex-matrix) (y complex-matrix))
   (complex-double-axpy!-typed (complex-coerce alpha) x y))

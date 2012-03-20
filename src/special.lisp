@@ -88,8 +88,7 @@
     (error "the number of rows (~d) and columns (~d) must be positive integers" n m))
 
   (let ((result (make-real-matrix-dim n m)))
-    (setf (aref *1x1-real-array* 0) 1.0d0)
-    (dcopy (min n m) *1x1-real-array* 0 (store result) (1+ n))
+    (setf (diag result) 1d0)
     result))
 
 (defun zeros (n &optional (m n))
@@ -160,5 +159,4 @@
 	     
       (make-instance 'real-matrix
 		     :nrows n :ncols m
-		     :row-stride m :col-stride 1 :store store))))
-
+		     :store store))))

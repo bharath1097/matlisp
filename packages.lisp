@@ -295,41 +295,44 @@
 
 (defpackage :matlisp
   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
-  (:shadow "REAL")
-  (:export
-   "*PRINT-MATRIX*"
-   "AXPY!"
-   "AXPY"
-   "BLAS-COPYABLE-P"
-   "COL-VECTOR-P"
-   "COMPLEX-COERCE"
-   "COMPLEX-MATRIX"
-   "COMPLEX-MATRIX-ARRAY-TYPE"
-   "COMPLEX-MATRIX-ELEMENT-TYPE"
-   "COMPLEX-MATRIX-STORE-TYPE"
-   "COPY!"
-   "COPY"
-   "CONVERT-TO-LISP-ARRAY"
-   "CTRANSPOSE"
-   "DIAG"
+  (:shadow #:real)
+  (:export #:*print-matrix*
+	   ;;Level 1 BLAS
+	   #:axpy! #:axpy
+	   #:copy! #:copy
+	   #:scal! #:scal
+	   ;;Level 2 BLAS
+	   #:gemv! #:gemv
+	   ;;Level 3 BLAS
+	   #:gemm! #:gemm	   
+	   ;;Fortran stuff
+	   #:blas-copyable-p #:blas-matrix-compatible-p
+	   #:fortran-op #:fortran-nop #:fortran-snop
+	   ;;Standard-matrix
+	   #:standard-matrix
+	   #:nrows #:ncols #:number-of-elements
+	   #:head #:row-stride #:col-stride
+	   #:store #:store-size	   
+	   ;;Generic functions on standard-matrix
+	   #:fill-matrix
+	   #:ctranspose! #:ctranspose #:transpose #:transpose!
+	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
+	   #:row #:col #:diag #:sub-matrix
+	   ;;Real-double-matrix
+	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
+	   ;;Complex-double-matrix
+	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
+	   #:mrealpart #:mimagpart
+	   ;;
+	   "CONVERT-TO-LISP-ARRAY"
    "DOT"
    "EIG"
    "EYE"
    "FFT"
    "FFT"
-   "FILL-MATRIX"
-   "FLOAT-MATRIX"
-   "FLOAT-MATRIX-ARRAY-TYPE"
-   "FLOAT-MATRIX-ELEMENT-TYPE"
-   "FORTRAN-COMPLEX-MATRIX-INDEXING"
-   "FORTRAN-MATRIX-INDEXING"
    "GEEV"
    "GELSY!"
    "GELSY"
-   #:gemv!
-   #:gemv
-   "GEMM!"
-   "GEMM"
    "GESV!"
    "GESV"
    "GETRF!"
@@ -337,7 +340,6 @@
    "GETRS!"
    "HELP"
    "IFFT"
-   "IMAG"
    "JOIN"
    "LOAD-BLAS-&-LAPACK-BINARIES"
    "LOAD-BLAS-&-LAPACK-LIBRARIES"
@@ -375,8 +377,6 @@
    "MASINH"
    "MATAN"
    "MATANH"
-   "MATLISP-HERALD"
-   "MATLISP-VERSION"
    "MATRIX-REF"
    "MCOS"
    "MCOSH"
@@ -391,11 +391,6 @@
    "MTANH"
    "NCOLS"
    "NORM"
-   "NROWS"
-   "NUMBER-OF-COLS"
-   "NUMBER-OF-ELEMENTS"
-   "NUMBER-OF-ELEMS"
-   "NUMBER-OF-ROWS"
    "ONES"
    "PRINT-ELEMENT"
    "QR"
@@ -405,28 +400,18 @@
    "POTRS!"
    "RAND"
    "REAL"
-   "REAL-MATRIX"
-   "REAL-MATRIX-ELEMENT-TYPE"
-   "REAL-MATRIX-STORE-TYPE"
    "RESHAPE!"
    "RESHAPE"
-   "ROW-OR-COL-VECTOR-P"
-   "ROW-VECTOR-P"
    "SAVE-MATLISP"
-   "SCAL!"
-   "SCAL"
    "SEQ"
    "SET-M*!-SWAP-SIZE"
    "SIZE"
    "SQUARE-MATRIX-P"
-   "STANDARD-MATRIX"
+   "STORE-INDEXING"
    "SUM"
    "SVD"
    "SWAP!"
    "TR"
-   "TRANSPOSE"
-   "TRANSPOSE!"
-   "VEC"
    "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
    "ZEROS"
    ;; From Quadpack

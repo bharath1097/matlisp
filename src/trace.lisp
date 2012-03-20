@@ -48,14 +48,12 @@
 
 (in-package "MATLISP")
 
-#+nil (export '(tr))
-
-(defgeneric tr (a)
+(defgeneric mtrace (a)
   (:documentation
    "
   Syntax
   ======
-  (TR a)
+  (MTRACE a)
 
   Purpose
   =======
@@ -65,11 +63,11 @@
 
   Notes
   =====
-  (TR a) is the same as (SUM (DIAG a))
+  (MTRACE a) is the same as (SUM (DIAG a))
 "))
 
-(defmethod tr ((x number))
+(defmethod mtrace ((x number))
   x)
 
-(defmethod tr ((a standard-matrix))
-  (sum (diag a)))
+(defmethod mtrace ((a standard-matrix))
+  (sum (diag a 0)))

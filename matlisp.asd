@@ -145,7 +145,6 @@
 		     "matlisp-lapack-wrappers")
 	:components ((:file "compat")
 		     (:file "help")
-		     (:file "diag")
 		     (:file "special")
 		     (:file "reader")
 		     (:file "trans")

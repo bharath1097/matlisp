@@ -56,23 +56,9 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#+nil
-(defpackage "BLAS"
-#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  (:export
-"IDAMAX" "DASUM" "DDOT" "DNRM2"
-"DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"
-"DCABS1" "DZASUM" "DZNRM2" "IZAMAX"
-"ZDSCAL" "ZSCAL" "ZSWAP" "ZCOPY" "ZAXPY" "ZDOTC" "ZDOTU"
-"DGEMV" "DSYMV" "DTRMV" "DTRSV" "DGER" "DSYR" "DSYR2"
-"ZGEMV" "ZHEMV" "ZTRMV" "ZTRSV" "ZGERC" "ZGERU" "ZHER2"
-"DGEMM" "DSYRK" "DSYR2K" "DTRMM" "DTRSM"
-"ZGEMM" "ZTRMM" "ZTRSM" "ZHERK" "ZHER2K" ))
-
 (in-package "BLAS")
 
+;;
 (def-fortran-routine daxpy :void
   "
   Syntax

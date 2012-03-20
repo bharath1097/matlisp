@@ -18,17 +18,17 @@
     :type (real-matrix-store-type *)))
   (:documentation "A class of matrices with real elements."))
 
+(defclass sub-real-matrix (real-matrix)
+  ((parent-matrix
+    :initarg :parent
+    :accessor parent
+    :type real-matrix))
+  (:documentation "A class of matrices with real elements."))
+
 ;;
 (defmethod initialize-instance ((matrix real-matrix) &rest initargs)
   (setf (store-size matrix) (length (get-arg :store initargs)))
   (call-next-method))
-
-(defmethod initialize-instance :after ((matrix real-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (let ((ss (store-size matrix)))
-    (declare (type fixnum ss))
-    (unless (>= ss (number-of-elements matrix))
-      (error "Store is not large enough to hold the matrix."))))
 
 ;;
 (defmethod matrix-ref-1d ((matrix real-matrix) (idx fixnum))
@@ -54,6 +54,75 @@
 (defmethod fill-matrix ((matrix real-matrix) (fill complex))
   (error "cannot fill a real matrix with a complex number,
 don't know how to coerce COMPLEX to REAL"))
+
+;;
+(defmethod transpose ((matrix real-matrix))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *))))
+	 (make-instance 'sub-real-matrix
+			:nrows nc :ncols nr
+			:store st
+			:head hd
+			:row-stride cs :col-stride rs
+			:parent matrix)))
+
+;;
+(defmethod sub-matrix ((matrix real-matrix) (origin list) (dim list))
+  (destructuring-bind (o-i o-j) origin
+    (destructuring-bind (nr-s nc-s) dim
+      (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	       :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *))))
+    (unless (and (< -1 o-i (+ o-j nr-s) nr) (< -1 o-j (+ o-j nc-s) nc))
+      (error "Bad index and/or size.
+Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nr-s nc-s o-i o-j))
+    (make-instance 'sub-real-matrix
+		   :nrows nr-s :ncols nc-s
+		   :store st
+		   :head (store-indexing o-i o-j hd rs cs)
+		   :row-stride rs :col-stride cs)))))
+
+;;
+(defmethod row ((matrix real-matrix) (i fixnum))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *))))
+	 (unless (< -1 i nr)
+	   (error "Index ~a is outside the valid range for the given matrix." i))
+	 (make-instance 'sub-real-matrix
+			:nrows 1 :ncols nc
+			:store st
+			:head (store-indexing i 0 hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+;;
+(defmethod col ((matrix real-matrix) (j fixnum))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *))))
+	 (unless (< -1 j nc)
+	   (error "Index ~a is outside the valid range for the given matrix." j))
+	 (make-instance 'sub-real-matrix
+			:nrows nr :ncols 1
+			:store st
+			:head (store-indexing 0 j hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+;;
+(defmethod diag ((matrix real-matrix) &optional (d 0))
+  (declare (type fixnum d))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *)))
+	  ((f-i f-j) (if (< d 0)
+			 (values (- d) 0)
+			 (values 0 d))
+	   :type (fixnum fixnum)))
+	 (unless (and (< -1 f-i nr) (< -1 f-j nc))
+	   (error "Index ~a is outside the valid range for the given matrix." d))
+	 (let ((d-s (min (- nr f-i) (- nc f-j))))
+	   (declare (type fixnum d-s))
+	   (make-instance 'sub-real-matrix
+			  :nrows 1 :ncols d-s
+			  :store st
+			  :head (store-indexing f-i f-j hd rs cs)
+			  :row-stride 1 :col-stride (+ rs cs)))))
 
 ;;
 (defun make-real-matrix-dim (n m &key (fill 0.0d0) (order :row-major))

@@ -43,17 +43,17 @@
     :type (complex-matrix-store-type *)))
   (:documentation "A class of matrices with complex elements."))
 
+(defclass sub-complex-matrix (complex-matrix)
+  ((parent-matrix
+    :initarg :parent
+    :accessor parent
+    :type complex-matrix))
+  (:documentation "A class of matrices with complex elements."))
+
 ;;
 (defmethod initialize-instance ((matrix complex-matrix) &rest initargs)
-  (setf (store-size matrix) (length (get-arg :store initargs)))
+  (setf (store-size matrix) (/ (length (get-arg :store initargs)) 2))
   (call-next-method))
-
-(defmethod initialize-instance :after ((matrix complex-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (let ((ss (store-size matrix)))
-    (declare (type fixnum ss))
-    (unless (>= ss (* 2 (number-of-elements matrix)))
-      (error "Store is not large enough to hold the matrix."))))
 
 ;;
 (defmethod matrix-ref-1d ((matrix complex-matrix) (idx fixnum))
@@ -67,6 +67,75 @@
     (declare (type (complex-matrix-store-type *) store))
     (setf (aref store (* 2 idx)) (realpart coerced-value)
 	  (aref store (+ 1 (* 2 idx))) (imagpart coerced-value))))
+
+;;
+(defmethod transpose ((matrix complex-matrix))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *))))
+	 (make-instance 'sub-complex-matrix
+			:nrows nc :ncols nr
+			:store st
+			:head hd
+			:row-stride cs :col-stride rs
+			:parent matrix)))
+
+;;
+(defmethod sub-matrix ((matrix complex-matrix) (origin list) (dim list))
+  (destructuring-bind (o-i o-j) origin
+    (destructuring-bind (nr-s nc-s) dim
+      (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	       :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *))))
+    (unless (and (< -1 o-i (+ o-j nr-s) nr) (< -1 o-j (+ o-j nc-s) nc))
+      (error "Bad index and/or size.
+Cannot create a sub-matrix of size (~a ~a) starting at (~a ~a)" nr-s nc-s o-i o-j))
+    (make-instance 'sub-complex-matrix
+		   :nrows nr-s :ncols nc-s
+		   :store st
+		   :head (store-indexing o-i o-j hd rs cs)
+		   :row-stride rs :col-stride cs)))))
+
+;;
+(defmethod row ((matrix complex-matrix) (i fixnum))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *))))
+	 (unless (< -1 i nr)
+	   (error "Index ~a is outside the valid range for the given matrix." i))
+	 (make-instance 'sub-complex-matrix
+			:nrows 1 :ncols nc
+			:store st
+			:head (store-indexing i 0 hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+;;
+(defmethod col ((matrix complex-matrix) (j fixnum))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *))))
+	 (unless (< -1 j nc)
+	   (error "Index ~a is outside the valid range for the given matrix." j))
+	 (make-instance 'sub-complex-matrix
+			:nrows nr :ncols 1
+			:store st
+			:head (store-indexing 0 j hd rs cs)
+			:row-stride rs :col-stride cs)))
+
+;;
+(defmethod diag ((matrix complex-matrix) &optional (d 0))
+  (declare (type fixnum d))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *)))
+	  ((f-i f-j) (if (< d 0)
+			 (values (- d) 0)
+			 (values 0 d))
+	   :type (fixnum fixnum)))
+	 (unless (and (< -1 f-i nr) (< -1 f-j nc))
+	   (error "Index ~a is outside the valid range for the given matrix." d))
+	 (let ((d-s (min (- nr f-i) (- nc f-j))))
+	   (declare (type fixnum d-s))
+	   (make-instance 'sub-complex-matrix
+			  :nrows 1 :ncols d-s
+			  :store st
+			  :head (store-indexing f-i f-j hd rs cs)
+			  :row-stride 1 :col-stride (+ rs cs)))))
 
 ;;
 (declaim (inline allocate-complex-store))
@@ -291,32 +360,28 @@
 
 ;;
 
-(defun realpart! (mat)
-  (cond
-    ((typep mat 'real-matrix) mat)
-    ((typep mat 'complex-matrix) (make-instance 'real-matrix :store (store mat)
-						:nrows (nrows mat) :ncols (ncols mat)
-						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-						:head (* 2 (head mat))))))
+(defun mrealpart (mat)
+  (typecase mat
+    (real-matrix mat)
+    (complex-matrix (make-instance 'sub-real-matrix
+				   :parent mat :store (store mat)
+				   :nrows (nrows mat) :ncols (ncols mat)
+				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+				   :head (* 2 (head mat))))
+    (number (cl:realpart mat))))
 
-(defun imagpart! (mat)
-  (cond
-    ((typep mat 'real-matrix) nil)
-    ((typep mat 'complex-matrix) (make-instance 'real-matrix :store (store mat)
-						:nrows (nrows mat) :ncols (ncols mat)
-						:row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-						:head (+ 1 (* 2 (head mat)))))))
+(defun mimagpart (mat)
+  (typecase mat
+    (real-matrix nil)
+    (complex-matrix (make-instance 'sub-real-matrix
+				   :parent mat :store (store mat)
+				   :nrows (nrows mat) :ncols (ncols mat)
+				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+				   :head (+ 1 (* 2 (head mat)))))
+    (number (cl:imagpart mat))))
 
-
-(defun conjugate! (mat)
-  (cond
-    ((typep mat 'real-matrix) nil)
-    ((typep mat 'complex-matrix) (progn
-				   (transpose! (scal! -1d0 (imagpart! mat)))
-				   mat))))
-
-(defmacro with-conjugate! (matlst &rest body)
-  `(progn
-     ,@(mapcar #'(lambda (mat) `(conjugate! ,mat)) matlst)
-     ,@body
-     ,@(mapcar #'(lambda (mat) `(conjugate! ,mat)) matlst)))
+(defun mconjugate! (mat)
+  (typecase mat
+    (real-matrix mat)
+    (complex-matrix (scal! -1d0 (mimagpart mat))))
+  mat)
