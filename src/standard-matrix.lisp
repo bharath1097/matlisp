@@ -3,6 +3,12 @@
 
 ;;
 (declaim (inline allocate-integer4-store))
+
+(eval-when (load eval compile)
+  (deftype integer4-matrix-element-type ()
+    '(signed-byte 32))
+  )
+
 (defun allocate-integer4-store (size &optional (initial-element 0))
   "(ALLOCATE-INTEGER-STORE SIZE [INITIAL-ELEMENT]).  Allocates
 integer storage.  Default INITIAL-ELEMENT = 0."
@@ -73,25 +79,26 @@ that way."))
   (let* ((n (nrows matrix))
 	 (m (ncols matrix))
 	 (h (head matrix))
-	 (rs (row-stride matrix))
-	 (cs (col-stride matrix))
 	 (ss (store-size matrix))
 	 (nxm (* n m)))
-    (declare (type fixnum n m h rs cs nxm))
-    ;;Error checking is good if we use foreign-pointers as store types.
-    (cond
-      ((<= n 0) (error "Number of rows must be > 0. Initialized with ~A." n))
-      ((<= m 0) (error "Number of columns must be > 0. Initialized with ~A." m))
-      ;;
-      ((< h 0) (error "Head of the store must be >= 0. Initialized with ~A." h))
-      ((< rs 0) (error "Row-stride of the store must be > 0. Initialized with ~A." rs))
-      ((< cs 0) (error "Column-stride of the store must be > 0. Initialized with ~A." cs))
-      ((<= ss 0) (error "Store-size must be > 0. Initialized with ~A." ss)))
+    (declare (type fixnum n m h nxm))
     ;;Row-ordered by default.
-    (when (or (= rs 0) (= cs 0))
+    (unless (and (slot-boundp matrix 'row-stride) (slot-boundp matrix 'col-stride))
       (setf (row-stride matrix) m)
       (setf (col-stride matrix) 1))
-    
+    (let ((rs (row-stride matrix))
+	  (cs (row-stride matrix)))
+      (declare (type fixnum rs cs))
+      ;;Error checking is good if we use foreign-pointers as store types.
+      (cond
+	((<= n 0) (error "Number of rows must be > 0. Initialized with ~A." n))
+	((<= m 0) (error "Number of columns must be > 0. Initialized with ~A." m))
+	;;
+	((< h 0) (error "Head of the store must be >= 0. Initialized with ~A." h))
+	((< rs 0) (error "Row-stride of the store must be >= 0. Initialized with ~A." rs))
+	((< cs 0) (error "Column-stride of the store must be >= 0. Initialized with ~A." cs))
+	((<= ss 0) (error "Store-size must be > 0. Initialized with ~A." ss))))
+    ;;
     (setf (number-of-elements matrix) nxm)))
 
 ;;
