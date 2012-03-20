@@ -213,40 +213,40 @@ Example:
 
 ;; Call defcfun to define the foreign function.
 ;; Also creates a nice lisp helper function.
-(defmacro def-fortran-routine (name return-type &rest body)
-  (let ((fortran-name (make-fortran-name `,name))
-	(lisp-name  (make-fortran-ffi-name `,name))
-	(hack-return-type `,return-type)
-	(hack-body `(,@body))
-	(hidden-var-name nil))
-    
-    (multiple-value-bind (doc pars)
-	(parse-doc-&-parameters `(,@body))
-      (when (member hack-return-type '(:complex-single-float :complex-double-float))
-	;; The return type is complex.  Since this is a "structure",
-	;; Fortran inserts a "hidden" first parameter before all
-	;; others.  This is used to store the resulting complex
-	;; number.  Then there is no "return" value, so set the return
-	;; type to :void.
-	;;
-	(setq hidden-var-name (gensym "HIDDEN-COMPLEX-RETURN-"))
-	(setq hack-body `(,@doc
-			  (,hidden-var-name ,hack-return-type :output)
-			  ,@pars))
-	(setq hack-return-type :void)))
-			  
-    `(eval-when (load eval compile)
-       (progn
+(defmacro def-fortran-routine (func-name return-type &rest body)
+  (multiple-value-bind (name fortran-name) (if (listp func-name)
+					       (values (cadr func-name) (car func-name))
+					       (values func-name (make-fortran-name func-name)))
+    (let* ((lisp-name  (make-fortran-ffi-name `,name))
+	   (hack-return-type `,return-type)
+	   (hack-body `(,@body))
+	   (hidden-var-name nil))
 
-	 ;; Removing 'inlines' It seems that CMUCL has a problem with
-	 ;; inlines of FFI's when a lisp image is saved.  Until the
-	 ;; matter is clarified we leave out 'inline's
-         
-	 ;(declaim (inline ,lisp-name)) ;sbcl 0.8.5 has problems with
-	 ;inlining
-	 (cffi:defcfun (,fortran-name ,lisp-name) ,@(get-return-type hack-return-type)
-	   ,@(parse-fortran-parameters hack-body))
-	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
+      (multiple-value-bind (doc pars)
+	  (parse-doc-&-parameters `(,@body))
+	(when (member hack-return-type '(:complex-single-float :complex-double-float))
+	  ;; The return type is complex.  Since this is a "structure",
+	  ;; Fortran inserts a "hidden" first parameter before all
+	  ;; others.  This is used to store the resulting complex
+	  ;; number.  Then there is no "return" value, so set the return
+	  ;; type to :void.
+	  ;;
+	  (setq hidden-var-name (gensym "HIDDEN-COMPLEX-RETURN-"))
+	  (setq hack-body `(,@doc
+			    (,hidden-var-name ,hack-return-type :output)
+			    ,@pars))
+	  (setq hack-return-type :void)))
+
+      `(eval-when (load eval compile)
+	 (progn
+	   ;; Removing 'inlines' It seems that CMUCL has a problem with
+	   ;; inlines of FFI's when a lisp image is saved.  Until the
+	   ;; matter is clarified we leave out 'inline's
+
+	   ;; (declaim (inline ,lisp-name)) ;sbcl 0.8.5 has problems with
+	   (cffi:defcfun (,fortran-name ,lisp-name) ,@(get-return-type hack-return-type)
+	     ,@(parse-fortran-parameters hack-body))
+	   ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name))))))
 
 ;; Create a form specifying a simple Lisp function that calls the
 ;; underlying Fortran routine of the same name.
