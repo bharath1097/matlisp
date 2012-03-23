@@ -240,7 +240,7 @@ don't know how to coerce a COMPLEX to a REAL"))
 
 (defmethod copy ((matrix real-matrix))
   (let* ((n (nrows matrix))
-	 (m (nrows matrix))
+	 (m (ncols matrix))
 	 (result (make-real-matrix-dim n m)))
     (declare (type fixnum n m))
     (copy! matrix result)))

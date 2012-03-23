@@ -72,15 +72,6 @@
 
 (in-package "MATLISP")
 
-(use-package "BLAS")
-(use-package "LAPACK")
-(use-package "FORTRAN-FFI-ACCESSORS")
-
-(export '(m+
-	  m.+
-	  m+!
-	  m.+!))
-
 (defgeneric m+ (a b)
   (:documentation
    "
@@ -121,6 +112,9 @@
   Same as M+
 "))
 
+(defmethod m.+ (a b)
+  (m+ a b))
+
 (defgeneric m.+! (a b)
   (:documentation
    "
@@ -133,11 +127,8 @@
   Same as M.+!
 "))
 
-(defmethod m.+ (a b)
-  (M+ a b))
-
 (defmethod m.+! (a b)
-  (M+! a b))
+  (m+! a b))
 
 (defmethod m+ :before ((a standard-matrix) (b standard-matrix))
   (let ((n-a (nrows a))
