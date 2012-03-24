@@ -16,6 +16,7 @@ all :
 	(cd lib-src/toms715; $(MAKE) install)
 	(cd lib-src/odepack; $(MAKE) install)
 	(cd lib-src/compat; $(MAKE) install)
+	(cd lib-src/colnew; $(MAKE) install)
 if !ATLAS
 	(cd LAPACK/BLAS/SRC; $(MAKE) install)
 	(cd LAPACK/SRC; $(MAKE) install)

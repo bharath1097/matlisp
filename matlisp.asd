@@ -311,7 +311,17 @@
   :components
   ((:module "src"
     :components
-    ((:file "dlsode")))))
+	    ((:file "dlsode")))))
+
+(asdf:defsystem matlisp-colnew
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :components
+  ((:module "src"
+    :components
+    ((:file "colnew")
+     (:file "colnew-demo1" :depends-on ("colnew"))
+     #+nil
+     (:file "colnew-demo4" :depends-on ("colnew"))))))
 
 (defmethod perform ((op asdf:test-op) (c (eql (asdf:find-system :matlisp))))
   (oos 'asdf:test-op 'matlisp-tests))

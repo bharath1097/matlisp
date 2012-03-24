@@ -1,0 +1,91 @@
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
+
+(in-package #:matlisp)
+
+(defun fsub (x z f)
+  (setf (fv-ref f 0) (/ (- 1
+			   (* 6 x x (fv-ref z 3))
+			   (* 6 x (fv-ref z 2)))
+			(* x x x))))
+(defun dfsub (x z df)
+  (setf (fv-ref df 0) 0d0)
+  (setf (fv-ref df 1) 0d0)
+  (setf (fv-ref df 2) (/ -6 x x))
+  (setf (fv-ref df 3) (/ -6 x)))
+
+(defun gsub (i z g)
+  (setf (fv-ref g 0)
+	(if (or (= i 1) (= i 3))
+	    (fv-ref z 0)
+	    (fv-ref z 2))))
+
+(defun dgsub (i z dg)
+  (dotimes (k 4)
+    (setf (fv-ref dg k) 0d0))
+  (if (or (= i 1) (= i 3))
+      (setf (fv-ref dg 0) 1d0)
+      (setf (fv-ref dg 2) 1d0)))
+
+(defun guess (x z dmval)
+  )
+
+(defun exact (x)
+  (declare (type double-float x))
+  (let ((result (make-array 4 :element-type 'double-float)))
+    (setf (aref result 0)
+	  (+ (* .25d0 (- (* 10 (log 2d0)) 3)
+		(- 1 x))
+	     (* 0.5d0 (+ (/ x)
+			 (* (+ 3 x) (log x))
+			 (- x)))))
+    (setf (aref result 1)
+	  (+ (* -0.25d0 (- (* 10 (log 2d0)) 3))
+	     (* .5d0
+		(+ (/ -1 x x)
+		   (log x)
+		   (/ (+ 3 x) x)
+		   -1))))
+    (setf (aref result 2)
+	  (* 0.5d0
+	     (+ (/ 2 (expt x 3))
+		(/ x)
+		(/ -3 x x))))
+    (setf (aref result 3)
+	  (* 0.5d0
+	     (+ (/ -6 (expt x 4))
+		(/ -1 x x)
+		(/ 6 (expt x 3)))))
+    result))
+
+(defun colnew-prob1 ()
+  (let ((m (make-array 1 :element-type '(signed-byte 32)
+		       :initial-element 4))
+	(zeta (make-array 4 :element-type 'double-float
+			    :initial-contents '(1d0 1d0 2d0 2d0)))
+	(ipar (make-array 11 :element-type '(signed-byte 32)
+			     :initial-element 0))
+	(ltol (make-array 2 :element-type '(signed-byte 32)
+			    :initial-contents '(1 3)))
+	(tol (make-array 2 :element-type 'double-float
+			   :initial-contents '(1d-7 1d-7)))
+	(fspace (make-array 2000 :element-type 'double-float))
+	(ispace (make-array 200 :element-type '(signed-byte 32)))
+	(fixpnt (make-array 1 :element-type 'double-float))
+	(errors (make-array 4 :element-type 'double-float)))
+    (setf (aref ipar 2) 1)
+    (setf (aref ipar 3) 2)
+    (setf (aref ipar 4) 2000)
+    (setf (aref ipar 5) 200)
+    (colnew 1 m 1d0 2d0 zeta ipar ltol tol fixpnt ispace fspace 0
+	    #'fsub #'dfsub #'gsub #'dgsub #'guess)
+    (let ((x 1d0)
+	  (z (make-array 4 :element-type 'double-float)))
+      (dotimes (j 100)
+	(appsln x z fspace ispace)
+	(map-into errors #'(lambda (a b c)
+			     (max a (abs (- b c))))
+		  errors
+		  (exact x)
+		  z))
+      (format t "The exact errors are: ~{ ~11,4e~}~%" (coerce errors 'list)))))
+    

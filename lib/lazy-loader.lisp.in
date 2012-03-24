@@ -137,6 +137,10 @@
   (:darwin "libodepack.dylib")
   (t (:default "@libdir@/libodepack")))
 
+(cffi:define-foreign-library colnew
+  (:darwin "libcolnew.dylib")
+  (t (:default "@libdir@/libcolnew")))
+    
 (cffi:define-foreign-library matlisp
   (:darwin "libmatlisp.dylib")
   (t (:default "@libdir@/libmatlisp")))
