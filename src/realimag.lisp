@@ -66,12 +66,111 @@
 
 (in-package "MATLISP")
 
-#+nil (export '(real
-	  imag))
+(defun mrealpart~ (mat)
+"
+  Syntax
+  ======
+  (MREALPART~ matrix)
+ 
+  Purpose
+  =======
+  Returns a new SUB-REAL-MATRIX which is the real part of \"matrix\".
 
-(defgeneric real (matrix)
-  (:documentation
-   "
+  Store is shared with \"matrix\".
+
+  If \"matrix\" is a scalar, returns its real part.
+
+  See IMAG, REALPART, IMAGPART
+"
+
+  (typecase mat
+    (real-matrix mat)
+    (complex-matrix (make-instance 'sub-real-matrix
+				   :parent mat :store (store mat)
+				   :nrows (nrows mat) :ncols (ncols mat)
+				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+				   :head (* 2 (head mat))))
+    (number (cl:realpart mat))))
+
+(defun mrealpart (mat)
+"
+  Syntax
+  ======
+  (MREALPART matrix)
+ 
+  Purpose
+  =======
+  Returns a copy of the real part of \"matrix\".
+
+  If \"matrix\" is a scalar, returns its real part.
+
+  See IMAG, REALPART, IMAGPART
+"
+  (typecase mat
+    (real-matrix (copy mat))
+    (complex-matrix (copy (make-instance 'sub-real-matrix
+					 :parent mat :store (store mat)
+					 :nrows (nrows mat) :ncols (ncols mat)
+					 :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+					 :head (* 2 (head mat)))))
+    (number (cl:realpart mat))))
+
+(defun mimagpart~ (mat)
+"
+  Syntax
+  ======
+  (MIMAGPART~ matrix)
+ 
+  Purpose
+  =======
+  Returns a new SUB-REAL-MATRIX which is the imaginary part of \"matrix\".
+
+  Store is shared with \"matrix\".
+
+  If \"matrix\" is a real-matrix, returns nil.
+
+  If \"matrix\" is a scalar, returns its imaginary part.
+
+  See IMAG, REALPART, IMAGPART
+"  
+  (typecase mat
+    (real-matrix nil)
+    (complex-matrix (make-instance 'sub-real-matrix
+				   :parent mat :store (store mat)
+				   :nrows (nrows mat) :ncols (ncols mat)
+				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+				   :head (+ 1 (* 2 (head mat)))))
+    (number (cl:imagpart mat))))
+
+
+(defun mimagpart (mat)
+"
+  Syntax
+  ======
+  (MIMAGPART~ matrix)
+ 
+  Purpose
+  =======
+  Returns a copy of the imaginary part of \"matrix\".
+
+  If \"matrix\" is a scalar, returns its imaginary part.
+
+  See IMAG, REALPART, IMAGPART
+"
+  
+  (typecase mat
+    (real-matrix (make-real-matrix-dim (nrows mat) (ncols mat)))
+    (complex-matrix (copy (make-instance 'sub-real-matrix
+					 :parent mat :store (store mat)
+					 :nrows (nrows mat) :ncols (ncols mat)
+					 :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
+					 :head (+ 1 (* 2 (head mat))))))
+    (number (cl:imagpart mat))))
+
+
+(declaim (inline real))
+(defun real (matrix)
+"
   Syntax
   ======
   (REAL matrix)
@@ -82,11 +181,12 @@
   If MATRIX is a scalar, returns its real part.
 
   See IMAG, REALPART, IMAGPART
-"))
+"
+  (mrealpart matrix))
+  
 
-(defgeneric imag (matrix)
-  (:documentation
-   "
+(defun imag (matrix)
+"
   Syntax
   ======
   (IMAG matrix)
@@ -97,71 +197,5 @@
   If MATRIX is a scalar, returns its imaginary part.
 
   See REAL, REALPART, IMAGPART
-"))
-
-(defmethod real ((x number))
-  (realpart x))
-
-(defmethod real ((mat real-matrix))
-  (copy mat))
-
-(defmethod real ((mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (store (store mat))
-	 (new-store (allocate-real-store nxm)))
-    (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type *) store)
-	     (type (real-matrix-store-type *) new-store))
-
-    (dcopy nxm store 2 new-store 1)
-
-    (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
-
-(defmethod real ((mat standard-matrix))
-  (error "don't know how to take the real part of a STANDARD-MATRIX,
-its element types are unknown"))
-
-(defmethod imag ((x number))
-  (imagpart x))
-
-(defmethod imag ((mat real-matrix))
-  (let ((n (nrows mat))
-	(m (ncols mat)))
-    (declare (type fixnum n m))
-    (make-real-matrix-dim n m)))
-
-;;#+(or :cmu :sbcl)
-(defmethod imag ((mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (store (store mat))
-	 (new-store (allocate-real-store nxm)))
-    (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type *) store)
-	     (type (real-matrix-store-type *) new-store))
-
-    (with-vector-data-addresses ((addr-store store)
-				 (addr-new-store new-store))
-	(incf-sap :double-float addr-store)
-	(dcopy nxm addr-store 2 addr-new-store 1))
-    
-    (make-instance 'real-matrix :nrows n :ncols m :store new-store)))
-
-
-;;#+:allegro
-#+nil
-(defmethod imag ((mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (imag (make-real-matrix-dim n m)))
-    (declare (type fixnum n m nxm))
-
-    (dotimes (i nxm)
-      (declare (type fixnum i))
-      (setf (matrix-ref imag i) (imagpart (matrix-ref mat i))))
-
-    imag))
+"
+  (mimagpart matrix))

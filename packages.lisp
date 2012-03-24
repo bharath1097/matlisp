@@ -160,22 +160,27 @@
 	   #:zip-eq
 	   #:cut-cons-chain!
 	   #:when-let
+	   #:if-let
 	   #:if-ret
 	   #:get-arg
 	   #:nconsc
 	   #:with-gensyms
 	   #:slot-values
-	   #:mlet*))
+	   #:mlet*
+	   #:recursive-append
+	   ;;
+	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
+	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
 
 (defpackage :fortran-ffi-accessors
+  (:nicknames :ffi)
   #+:cmu (:use :common-lisp :c-call :cffi :utilities)
   #+:sbcl (:use :common-lisp :sb-alien :sb-c :cffi :utilities)
   #+:allegro (:use :common-lisp :cffi :utilities)
   #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;; interface functions
-   #:def-fortran-routine
-   #:incf-sap
+   #:def-fortran-routine   
    #:with-vector-data-addresses
    )
   (:documentation "Fortran foreign function interface"))
@@ -315,14 +320,22 @@
 	   #:store #:store-size	   
 	   ;;Generic functions on standard-matrix
 	   #:fill-matrix
-	   #:ctranspose! #:ctranspose #:transpose #:transpose!
 	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
-	   #:row #:col #:diag #:sub-matrix
+	   ;;Submatrix ops
+	   #:row~ #:row
+	   #:col~ #:col
+	   #:diag~ #:diag
+	   #:sub-matrix~ #:sub-matrix
+	   ;;Transpose
+	   #:transpose~ #:transpose! #:transpose
+	   #:ctranspose! #:ctranspose	   
 	   ;;Real-double-matrix
 	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
 	   ;;Complex-double-matrix
 	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
-	   #:mrealpart #:mimagpart
+	   ;;Real and imaginary parts
+	   #:mrealpart~ #:mrealpart #:real
+	   #:mimagpart~ #:mimagpart #:imag
 	   ;;
 	   "CONVERT-TO-LISP-ARRAY"
    "DOT"
@@ -399,7 +412,6 @@
    "POTRF!"
    "POTRS!"
    "RAND"
-   "REAL"
    "RESHAPE!"
    "RESHAPE"
    "SAVE-MATLISP"

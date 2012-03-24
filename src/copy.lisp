@@ -219,8 +219,8 @@ don't know how to coerce a COMPLEX to a REAL"))
   (complex-double-copy!-typed x y))
 
 (defmethod copy! ((x real-matrix) (y complex-matrix))
-  (real-double-copy!-typed x (mrealpart y))
-  (scal! 0d0 (mimagpart y))
+  (real-double-copy!-typed x (mrealpart~ y))
+  (scal! 0d0 (mimagpart~ y))
   y)
 
 (defmethod copy! ((x number) (y complex-matrix))

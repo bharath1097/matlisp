@@ -82,14 +82,16 @@ Returns
 
 #+(or sbcl cmu ccl)
 (defmacro with-vector-data-addresses (vlist &body body)
-  "WITH-VECTOR-DATA-ADDRESSES (var-list &body body)
+"
+  WITH-VECTOR-DATA-ADDRESSES (var-list &body body)
 
- Execute the body with the variables in VAR-LIST appropriately bound.
- VAR-LIST should be a list of pairs.  The first element is the address
- of the desired object; the second element is the variable whose address
- we want.
+  Execute the body with the variables in VAR-LIST appropriately bound.
+  VAR-LIST should be a list of pairs.  The first element is the address
+  of the desired object; the second element is the variable whose address
+  we want.
 
- Garbage collection is also disabled while executing the body."
+  Garbage collection is also disabled while executing the body.
+"
   ;; We wrap everything inside a WITHOUT-GCING form to inhibit garbage
   ;; collection to avoid complications that may arise during a
   ;; collection while in a fortran call.
@@ -103,13 +105,7 @@ Returns
        (let (,@(mapcar #'(lambda (lst)
 			   (destructuring-bind (addr-var var &key inc-type inc) lst
 			     `(,addr-var ,@(if inc
-					       `((cffi:inc-pointer (vector-data-address ,var)
-								   ,@(case inc-type
-									   (:double-float  `((* ,inc 8)))
-									   (:single-float `((* ,inc 4)))
-									   (:complex-double-float  `((* ,inc 16)))
-									   (:complex-single-float  `((* ,inc 8)))
-									   (t `(,inc)))))
+					       `((inc-sap (vector-data-address ,var) ,inc-type ,inc))
 					       `((vector-data-address ,var))))))
 		       vlist))
 	 ,@body))))

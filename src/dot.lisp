@@ -139,7 +139,7 @@
     (let ((realpart (ddot nxm store-x 1 store-y 2))
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						 (addr-y store-y))
-			  (incf-sap :double-float addr-y)
+			  (incf-sap addr-y :double-float)
 			  (ddot nxm addr-x 1 addr-y 2))))
 
       (declare (type complex-matrix-element-type realpart imagpart))
@@ -192,7 +192,7 @@
     (let ((realpart (ddot nxm store-x 2 store-y 1))
 	  (imagpart (with-vector-data-addresses ((addr-x store-x)
 						  (addr-y store-y))
-			  (incf-sap :double-float addr-x)
+			  (incf-sap addr-x :double-float)
 			  (ddot nxm addr-x 2 addr-y 1))))
 
       (declare (type complex-matrix-element-type realpart imagpart))

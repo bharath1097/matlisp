@@ -158,7 +158,7 @@
 	       (declare (type fixnum j))
 	       (setq nrm (max nrm 
 			      (with-vector-data-addresses ((addr-store store))
-				  (incf-sap :double-float addr-store (* j n))
+				  (incf-sap addr-store :double-float (* j n))
 				  (dasum n addr-store 1)))))
 	     nrm))
 	((2 :2) (multiple-value-bind (up sigma vp status)
@@ -173,7 +173,7 @@
 		(declare (type fixnum i))
 		(setq nrm (max nrm
 			       (with-vector-data-addresses ((addr-store store))
-				  (incf-sap :double-float addr-store i)
+				  (incf-sap addr-store :double-float i)
 				  (dasum m addr-store n)))))
 	      nrm))
 	((:f :fro :frob :frobenius)
@@ -181,7 +181,7 @@
 		   (dotimes (j m)
 		     (declare (type fixnum j))
 		     (incf nrm (with-vector-data-addresses ((addr-store store))
-                                  (incf-sap :double-float addr-store (* j n))
+                                  (incf-sap addr-store :double-float (* j n))
 				  (ddot m addr-store 1 addr-store 1))))
 		   (sqrt nrm)))
 	(t (error "don't know how to take a ~a-norm of a matrix" p))
@@ -228,7 +228,7 @@
 	       (declare (type fixnum j))
 	       (setq nrm (max nrm 
 			      (with-vector-data-addresses ((addr-store store))
-				  (incf-sap :complex-double-float addr-store (* j n))
+				  (incf-sap addr-store :complex-double-float (* j n))
 				  (dzasum n addr-store 1)))))
 	     nrm))
 	((2 :2) (multiple-value-bind (up sigma vp status)
@@ -243,7 +243,7 @@
 		(declare (type fixnum i))
 		(setq nrm (max nrm
 			       (with-vector-data-addresses ((addr-store store))
-				  (incf-sap :complex-double-float addr-store i)
+				  (incf-sap addr-store :complex-double-float i)
 				  (dzasum m addr-store n)))))
 	      nrm))
 	((:f :fro :frob :frobenius)
@@ -251,7 +251,7 @@
 		   (dotimes (j m)
 		     (declare (type fixnum j))
 		     (incf nrm (with-vector-data-addresses ((addr-store store))
-				  (incf-sap :double-float addr-store (* j n))
+				  (incf-sap addr-store :double-float (* j n))
 				  (realpart (zdotc m addr-store 1 addr-store 1)))))
 		   (sqrt nrm)))
 	(t (error "don't know how to take a ~a-norm of a matrix" p))

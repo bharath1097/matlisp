@@ -1,5 +1,5 @@
 ;; Definitions of STANDARD-MATRIX
-(in-package :matlisp)
+;;(in-package :matlisp)
 
 ;;
 (declaim (inline allocate-integer4-store))
@@ -7,6 +7,11 @@
 (eval-when (load eval compile)
   (deftype integer4-matrix-element-type ()
     '(signed-byte 32))
+  
+  (deftype index-type ()
+    'fixnum)
+  (deftype index-array-type (size)
+    '(simple-array index-type (,size)))
   )
 
 (defun allocate-integer4-store (size &optional (initial-element 0))
@@ -17,106 +22,50 @@ integer storage.  Default INITIAL-ELEMENT = 0."
 	      :initial-element initial-element))
 
 ;;
-(declaim (inline store-indexing))
-(defun store-indexing (row col head row-stride col-stride)
-  (declare (type (and fixnum (integer 0)) row col head row-stride col-stride))
-  (the fixnum (+ head (the fixnum (* row row-stride)) (the fixnum (* col col-stride)))))
-
-(defun blas-copyable-p (matrix)
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
-  (mlet* ((nr (nrows matrix) :type fixnum)
-	  (nc (ncols matrix) :type fixnum)
-	  (rs (row-stride matrix) :type fixnum)
-	  (cs (col-stride matrix) :type fixnum)
-	  (ne (number-of-elements matrix) :type fixnum))
-	 (cond
-	   ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
-	   ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
-	   (t (values  nil -1 -1)))))
-
-(defun blas-matrix-compatible-p (matrix &optional (op :n))
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
-  (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
-	   :type (fixnum fixnum)))
-	 (cond
-	   ((= cs 1) (values :row-major rs (fortran-nop op)))
-	   ((= rs 1) (values :col-major cs (fortran-op op)))
-	   ;;Lets not confound lisp's type declaration.
-	   (t (values nil -1 "?")))))
-
-(declaim (inline fortran-op))
-(defun fortran-op (op)
-  (ecase op (:n "N") (:t "T")))
-
-(declaim (inline fortran-nop))
-(defun fortran-nop (op)
-  (ecase op (:t "N") (:n "T")))
-
-(defun fortran-snop (sop)
-  (cond
-    ((string= sop "N") "T")
-    ((string= sop "T") "N")
-    (t (error "Unrecognised fortran-op."))))
-
-;;
-(defclass standard-matrix ()
-  ((number-of-rows
-    :initarg :nrows
-    :initform 0
-    :accessor nrows
-    :type fixnum
-    :documentation "Number of rows in the matrix")
-   (number-of-cols
-    :initarg :ncols
-    :initform 0
-    :accessor ncols
-    :type fixnum
-    :documentation "Number of columns in the matrix")
+(defclass standard-tensor ()
+  ((rank
+    :accessor rank
+    :type index-type
+    :documentation "Rank of the matrix: number of arguments for the tensor")
+   (dimensions
+    :accessor dimensions
+    :initarg :dimensions
+    :type (index-array-type *)
+    :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    (number-of-elements
-    :initform 0
     :accessor number-of-elements
     :type fixnum
-    :documentation "Total number of elements in the matrix (nrows * ncols)")
+    :documentation "Total number of elements in the tensor.")
    ;;
    (head
     :initarg :head
     :initform 0
     :accessor head
-    :type fixnum
+    :type index-type
     :documentation "Head for the store's accessor.")
-   (row-stride
-    :initarg :row-stride
-    :accessor row-stride
-    :type fixnum
-    :documentation "Row stride for the store's accessor.")
-   (col-stride
-    :initarg :col-stride
-    :accessor col-stride
-    :type fixnum
-    :documentation "Column stride for the store's accessor.")
+   (strides
+    :initarg :strides
+    :accessor strides
+    :type (index-array-type *)
+    :documentation "Strides for accesing elements of the tensor.")
    (store-size
     :accessor store-size
     :type fixnum
-    :documentation "Total number of elements needed to store the matrix.  (Usually
-the same as nels, but not necessarily so!")
+    :documentation "Size of the store.")
    (store
     :initarg :store
     :accessor store
-    :documentation "The actual storage for the matrix.  It is typically a one dimensional
-array but not necessarily so.  The float and complex matrices do use
-1-D arrays.  The complex matrix actually stores the real and imaginary
-parts in successive elements of the matrix because Fortran stores them
-that way."))
+    :documentation "The actual storage for the tensor."))
   (:documentation "Basic matrix class."))
 
 ;;
-(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
+(defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
   (mlet*
-   (((nr nc hd ss) (slot-values matrix '(number-of-rows number-of-cols head store-size))
-     :type (fixnum fixnum fixnum fixnum)))
+   (((dimensions hd) (slot-values tensor '(dimensions head))
+     :type ((index-array-type *) fixnum fixnum)))
+   (unless (slot-boundp tensor 'rank)
+     (setf (rank tensor) (len
    ;;Row-ordered by default.
    (unless (and (slot-boundp matrix 'row-stride) (slot-boundp matrix 'col-stride))
      (setf (row-stride matrix) nc)
@@ -293,3 +242,174 @@ matrix and a number"))
   "MAKE-LOAD-FORM allows us to determine a load time value for
    matrices, for example #.(make-matrix ...)"
   (make-load-form-saving-slots matrix :environment env))
+
+;;
+#+nil(defmethod print-object ((matrix standard-matrix) stream)
+  (dotimes (i (nrows matrix))
+    (dotimes (j (ncols matrix))
+      (format stream "~A    " (matrix-ref-2d matrix i j)))
+    (format stream "~%")))
+
+;;
+(defun transpose! (matrix)
+"
+   Syntax
+   ======
+   (transpose! matrix)
+
+   Purpose
+   =======
+   Exchange row and column strides so that effectively
+   the matrix is destructively transposed in place
+   (without much effort).
+"
+  (cond
+    ((typep matrix 'standard-matrix)
+     (progn
+       (rotatef (nrows matrix) (ncols matrix))
+       (rotatef (row-stride matrix) (col-stride matrix))
+       matrix))
+    ((typep matrix 'number) matrix)
+    (t (error "Don't know how to take the transpose of ~A." matrix))))
+
+(defmacro with-transpose! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
+
+;;
+(defgeneric transpose (matrix)
+  (:documentation
+"
+   Syntax
+   ======
+   (transpose matrix)
+
+   Purpose
+   =======
+   Create a new matrix object which represents the transpose of the
+   the given matrix.
+
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (transpose matrix) value)
+
+   is basically the same as
+
+   (copy! value (transpose matrix))
+"))
+
+(defun (setf transpose) (value matrix)
+  (copy! value (transpose matrix)))
+
+(defmethod transpose ((matrix number))
+  matrix)
+
+;;
+(defgeneric sub-matrix (matrix origin dim)
+  (:documentation
+"
+   Syntax
+   ======
+   (sub-matrix matrix origin dimensions)
+
+   Purpose
+   =======
+   Create a block sub-matrix of \"matrix\" starting at \"origin\"
+   of dimension \"dim\", sharing the store.
+
+   origin, dim are lists with two elements.
+
+   Store is shared with \"matrix\"
+
+   Settable
+   ========
+   (setf (sub-matrix matrix origin dim) value)
+
+   is basically the same as
+
+   (copy! value (sub-matrix matrix origin dim))
+"))
+
+(defun (setf sub-matrix) (value matrix origin dim)
+  (copy! value (sub-matrix matrix origin dim)))
+
+;;
+(defgeneric row (matrix i)
+  (:documentation
+"
+   Syntax
+   ======
+   (row matrix i)
+
+   Purpose
+   =======
+   Returns the i'th row of the matrix.
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (row matrix i) value)
+
+   is basically the same as
+
+   (copy! value (row matrix i))
+"))
+
+(defun (setf row) (value matrix i)
+  (copy! value (row matrix i)))
+
+;;
+(defgeneric col (matrix j)
+  (:documentation
+"
+   Syntax
+   ======
+   (col matrix j)
+
+   Purpose
+   =======
+   Returns the j'th column of the matrix.
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (col matrix j) value)
+
+   is basically the same as
+
+   (copy! value (col matrix j))
+"))
+
+(defun (setf col) (value matrix j)
+  (copy! value (col matrix j)))
+
+;;
+(defgeneric diag (matrix &optional d)
+  (:documentation
+"
+   Syntax
+   ======
+   (diag matrix &optional (d 0))
+
+   Purpose
+   =======
+   Returns a row-vector representing the d'th diagonal of the matrix.
+   [a_{ij} : j - i = d]
+
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (diag matrix d) value)
+
+   is basically the same as
+
+   (copy! value (diag matrix d))
+"))
+
+(defun (setf diag) (value matrix &optional (d 0))
+  (copy! value (diag matrix d)))

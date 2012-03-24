@@ -125,13 +125,17 @@ else run else-body"
 	     ,@else-body)))))
 
 ;;
-(defmacro when-let (lst &rest body)
-  (let ((ret (car lst))
-	(form (cadr lst)))
-    (check-type ret symbol)
-    `(let ((,ret ,form))
-       (when ,ret
-	 ,@body))))
+(defmacro when-let ((var . form) &rest body)
+  (check-type var symbol)
+  `(let ((,var ,@form))
+     (when ,var
+       ,@body)))
+
+(defmacro if-let ((var . form) &rest body)
+  (check-type var symbol)
+  `(let ((,var ,@form))
+     (if ,var
+	 ,@body)))
 
 ;;
 (defun cut-cons-chain! (lst test)
@@ -166,4 +170,59 @@ else run else-body"
   `(and ,@(mapcar (lambda (pair) (cons 'eq pair))
 		  (zip (ensure-list a) (ensure-list b)))))
 
+;;
+(defun recursive-append (&rest lsts)
+  (labels ((bin-append (x y)
+	     (if (null x)
+		 (if (typep (car y) 'symbol)
+		     y
+		     (car y))
+		 (append x (if (null y)
+			       nil
+			       (if (typep (car y) 'symbol)
+				   `(,y)
+				   y))))))
+    (if (null lsts)
+	nil
+	(bin-append (car lsts) (apply #'recursive-append (cdr lsts))))))
+
+;;
+(defstruct (foreign-vector
+	     (:conc-name fv-)
+	     (:print-function (lambda (obj stream depth)
+				(format stream "#F(")
+				(let ((sz (fv-size obj)))
+				  (dotimes (i sz)
+				    (format stream (if (= i (- sz 1))
+						       "~A)"
+						       "~A ") (fv-ref obj i)))))))
+  (pointer
+   (cffi:null-pointer)
+   :type cffi:foreign-pointer)
+  (size
+   0
+   :type fixnum)
+  (type
+   nil
+   :type symbol))
+
+(defun fv-ref (x n)
+  (declare (type foreign-vector x)
+	   (type fixnum n))
+  (let ((sap (fv-pointer x))
+	(ss (fv-size x))
+	(sty (fv-type x)))
+   (unless (< -1 n ss)
+     (error "Index N out of bounds."))
+   (cffi:mem-aref sap sty n)))
+
+(defun (setf fv-ref) (value x n)
+  (declare (type foreign-vector x)
+	   (type fixnum n))
+  (let ((sap (fv-pointer x))
+	(ss (fv-size x))
+	(sty (fv-type x)))
+   (unless (< -1 n ss)
+     (error "Index N out of bounds."))
+   (setf (cffi:mem-aref sap sty n) value)))
 ;;

@@ -67,8 +67,6 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
-
 ;; notes
 ;; =====
 ;; transposition is usually a redundant operation.  For example, all BLAS/LAPACK
@@ -81,12 +79,90 @@
 ;; for example, taking the transpose of a row/column vector is easy, due to
 ;; representation, but this will not create a new matrix.
 
-#+nil (export '(transpose
-	  ctranspose))
+(in-package #:matlisp)
 
-(defgeneric transpose (matrix)
-  (:documentation 
-   "
+(defun transpose! (matrix)
+"
+   Syntax
+   ======
+   (TRANSPOSE! matrix)
+
+   Purpose
+   =======
+   Exchange row and column strides so that effectively
+   the matrix is destructively transposed in place
+   (without much effort).
+"
+  (typecase matrix
+    (standard-matrix
+     (progn
+       (rotatef (nrows matrix) (ncols matrix))
+       (rotatef (row-stride matrix) (col-stride matrix))
+       matrix))
+    (number matrix)
+    (t (error "Don't know how to take the transpose of ~A." matrix))))
+
+(defmacro with-transpose! (matlst &rest body)
+  `(progn
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)
+     ,@body
+     ,@(mapcar #'(lambda (mat) `(transpose! ,mat)) matlst)))
+
+;;
+(defgeneric transpose~ (matrix)
+  (:documentation
+"
+   Syntax
+   ======
+   (TRANSPOSE~ matrix)
+
+   Purpose
+   =======
+   Create a new matrix object which represents the transpose of the
+   the given matrix.
+
+   Store is shared with \"matrix\".
+
+   Settable
+   ========
+   (setf (TRANSPOSE~ matrix) value)
+
+   is basically the same as
+
+   (copy! value (TRANSPOSE~ matrix))
+"))
+
+(defun (setf transpose~) (value matrix)
+  (copy! value (transpose~ matrix)))
+
+;;
+(defmethod transpose~ ((matrix number))
+  matrix)
+
+(defmethod transpose~ ((matrix real-matrix))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (real-matrix-store-type *))))
+	 (make-instance 'sub-real-matrix
+			:nrows nc :ncols nr
+			:store st
+			:head hd
+			:row-stride cs :col-stride rs
+			:parent matrix)))
+
+(defmethod transpose~ ((matrix complex-matrix))
+  (mlet* (((hd nr nc rs cs st) (slot-values matrix '(head number-of-rows number-of-cols row-stride col-stride store))
+	   :type (fixnum fixnum fixnum fixnum fixnum (complex-matrix-store-type *))))
+	 (make-instance 'sub-complex-matrix
+			:nrows nc :ncols nr
+			:store st
+			:head hd
+			:row-stride cs :col-stride rs
+			:parent matrix)))
+
+;;
+(declaim (inline transpose))
+(defun transpose (matrix)
+"
   Syntax
   ======
   (TRANSPOSE matrix)
@@ -94,11 +170,31 @@
   Purpose
   =======
   Creates a new matrix which is the transpose of MATRIX.
-"))
+"
+  (copy (transpose~ matrix)))
 
-(defgeneric ctranspose (matrix)
-  (:documentation
-   "
+;;
+(defun ctranspose! (matrix)
+"
+   Syntax
+   ======
+   (CTRANSPOSE! matrix)
+
+   Purpose
+   =======
+   Exchange row and column strides so that effectively
+   the matrix is destructively transposed in place
+   (without much effort). Also scale the imagpart with -1,
+   so that the end result is the Hermitian conjugate.
+"
+  (transpose! matrix)
+  (when (typep matrix 'complex-matrix)
+    (scal! -1d0 (mimagpart~ matrix)))
+  matrix)
+
+;;
+(defun ctranspose (matrix)
+"
   Syntax
   ======
   (CTRANSPOSE matrix)
@@ -107,115 +203,6 @@
   =======
   Returns a new matrix which is the conjugate transpose
   of MATRIX.
-"))
-
-(defmethod transpose ((mat t))
-  (error "argument to TRANSPOSE must be a matrix"))
-
-(defmethod ctranspose ((mat t))
-  (error "argument to CTRANSPOSE must be a matrix"))
-
-(defmethod transpose ((x number))
-  x)
-
-(defmethod transpose ((mat standard-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (new-mat (copy mat)))
-
-    (declare (type fixnum n m))
-
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (dotimes (j m)
-	(declare (type fixnum j))
-	(setf (matrix-ref new-mat j i)
-	      (matrix-ref mat i j))))
-    new-mat))
-
-(defmethod transpose ((mat real-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (store (store mat))
-	 (new-store (allocate-real-store nxm)))
-
-    (declare (type fixnum n m nxm)
-	     (type (real-matrix-store-type *) store new-store))
-
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (dotimes (j m)
-	(declare (type fixnum j))
-	(setf (aref new-store (fortran-matrix-indexing j i m))
-	      (aref store (fortran-matrix-indexing i j n)))))
-    
-    (make-instance 'real-matrix :nrows m :ncols n :store new-store)))
-
-(defmethod transpose ((mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (store (store mat))
-	 (new-store (allocate-complex-store nxm)))
-
-    (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type *) store new-store))
-
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (dotimes (j m)
-	(declare (type fixnum j))
-	(let* ((store-index (fortran-complex-matrix-indexing i j n))
-	       (new-store-index (fortran-complex-matrix-indexing j i m))
-	       (realpart (aref store store-index))
-	       (imagpart (aref store (1+ store-index))))
-	  (declare (type fixnum store-index new-store-index)
-		   (type complex-matrix-element-type realpart imagpart))
-	  
-	  (setf (aref new-store new-store-index) realpart)
-	  (setf (aref new-store (1+ new-store-index)) imagpart))))
-
-    (make-instance 'complex-matrix :nrows m :ncols n :store new-store)))
-
-
-(defmethod ctranspose ((x complex))
-  (declare (type complex x))
-  (conjugate x))
-
-(defmethod ctranspose ((x cl:real))
-  x)
-
-(defmethod ctranspose ((mat standard-matrix))
-  (error "don't know how to take the conjugate transpose of
-a STANDARD-MATRIX, element types are not known"))
-
-(defmethod ctranspose ((mat real-matrix))
-  (transpose mat))
-
-(defmethod ctranspose ((mat complex-matrix))
-  (let* ((n (nrows mat))
-	 (m (ncols mat))
-	 (nxm (number-of-elements mat))
-	 (store (store mat))
-	 (new-store (allocate-complex-store nxm)))
-
-    (declare (type fixnum n m nxm)
-	     (type (complex-matrix-store-type *) store new-store))
-
-    (dotimes (i n)
-      (declare (type fixnum i))
-      (dotimes (j m)
-	(declare (type fixnum j))
-	(let* ((store-index (fortran-complex-matrix-indexing i j n))
-	       (new-store-index (fortran-complex-matrix-indexing j i m))
-	       (realpart (aref store store-index))
-	       (imagpart (aref store (1+ store-index))))
-	  (declare (type fixnum store-index new-store-index)
-		   (type complex-matrix-element-type realpart imagpart))
-	  
-	  (setf (aref new-store new-store-index) realpart)
-	  (setf (aref new-store (1+ new-store-index)) (- imagpart)))))
-
-    (make-instance 'complex-matrix :nrows m :ncols n :store new-store)))
-
+"
+  (let ((result (copy matrix)))
+    (ctranspose! result)))
