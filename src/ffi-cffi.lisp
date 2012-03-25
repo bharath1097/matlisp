@@ -215,6 +215,179 @@
 	;; ,@doc
 	,@new-pars ,@aux-pars))))
 
+;;
+;; DEF-FORTRAN-ROUTINE
+;;
+;; An external Fortran routine definition form (DEF-FORTRAN-ROUTINE
+;; MY-FUN ...) creates two functions:
+;;
+;;   1. a raw FFI (foreign function interface),
+;;   2. an easier to use lisp interface to the raw interface.
+;;
+;; The documentation given here relates in the most part to the
+;; simplified lisp interface.
+;;
+;; Example:
+;; ========
+;; libblas.a contains the fortran subroutine DCOPY(N,X,INCX,Y,INCY)
+;; which copies the vector Y of N double-float's to the vector X.
+;; The function name in libblas.a is \"dcopy_\" (by Fortran convention).
+;;
+;; (DEF-FORTRAN-ROUTINE DCOPY :void 
+;;   (N :integer :input)
+;;   (X (* :double-float) :output)
+;;   (INCX :integer :input)
+;;   (Y (* :double-float) :input)
+;;   (INCY :integer :input))
+;;
+;; will expand into:
+;;
+;; (CFFI:DEFCFUN ("dcopy_" FORTRAN-DCOPY) :VOID
+;;   (N :POINTER :INT)
+;;   (DX :POINTER :DOUBLE)
+;;   (INCX :POINTER :INT)
+;;   (DY :POINTER :DOUBLE)
+;;   (INCY :POINTER :INT))
+;;
+;; and
+;; 
+;; (DEFUN DCOPY (N,X,INCX,Y,INCY)
+;;    ...
+;;
+;; In turn, the lisp function DCOPY calls FORTRAN-DCOPY which calls
+;; the Fortran function "dcopy_" in libblas.a.
+;;
+;; Arguments:
+;; ==========
+;;
+;;
+;; NAME    Name of the lisp interface function that will be created.
+;;         The name of the raw FFI will be derived from NAME via
+;;         the function MAKE-FFI-NAME.  The name of foreign function
+;;         (presumable a Fortran Function in an external library) 
+;;         will be derived from NAME via MAKE-FORTRAN-NAME.
+;;
+;; RETURN-TYPE
+;;         The type of data that will be returned by the external
+;;         (presumably Fortran) function.
+;;       
+;;             (MEMBER RETURN-TYPE '(:VOID :INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
+;;                                   :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT))
+;;
+;;         See GET-READ-OUT-TYPE.
+;;
+;; BODY    A list of parameter forms.  A parameter form is:
+;;
+;;                  (VARIABLE TYPE &optional (STYLE :INPUT))
+;;
+;;         The VARIABLE is the name of a parameter accepted by the
+;;         external (presumably Fortran) routine.  TYPE is the type of
+;;         VARIABLE.  The recognized TYPE's are:
+;;
+;;                TYPE                    Corresponds to Fortran Declaration
+;;                ----                    ----------------------------------
+;;                :STRING                  CHARACTER*(*)
+;;                :INTEGER                 INTEGER
+;;                :SINGLE-FLOAT            REAL
+;;                :DOUBLE-FLOAT            DOUBLE PRECISION
+;;                :COMPLEX-SINGLE-FLOAT    COMPLEX
+;;                :COMPLEX-DOUBLE-FLOAT    COMPLEX*16
+;;                 (* X)                   An array of type X.
+;;                (:CALLBACK args)         A description of a function or subroutine
+;;
+;;               (MEMBER X '(:INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
+;;                           :COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT)
+;;
+;;
+;;         The STYLE (default :INPUT) defines how VARIABLE is treated.
+;;         This is by far the most difficult quantity to learn.  To
+;;         begin with:
+;;
+;;
+;;                (OR (MEMBER STYLE '(:INPUT :OUTPUT :INPUT-OUTPUT))
+;;                    (MEMBER STYLE '(:IN :COPY :IN-OUT :OUT)))
+;;
+;;            TYPE        STYLE             Description
+;;            ----        -----             -----------
+;;              X          :INPUT            Value will be used but not modified.
+;;
+;;                         :OUTPUT           Input value not used (but some value must be given),
+;;                                           a value is returned as one of the values lisp
+;;                                           function NAME.  Similar to the :IN-OUT style
+;;                                           of DEF-ALIEN-ROUTINE.
+;;                         :INPUT-OUTPUT     Input value may be used, a value is returned
+;;                                           as one of the values from the lisp function
+;;                                           NAME.
+;;
+;;           ** Note:  In all 3 cases above the input VARIABLE will not be destroyed
+;;                     or modified directly, a copy is taken and a pointer of that
+;;                     copy is passed to the (presumably Fortran) external routine.
+;;
+;;           (OR (* X)     :INPUT           Array entries are used but not modified.
+;;               :STRING)  :OUTPUT          Array entries need not be initialized on input,
+;;                                          but will be *modified*.  In addition, the array
+;;                                          will be returned via the Lisp command VALUES
+;;                                          from the lisp function NAME.
+;;
+;;                         :INPUT-OUTPUT    Like :OUTPUT but initial values on entry may be used.
+;;              
+;;         The keyword :WORKSPACE is a nickname for :INPUT.  The
+;;         keywords :INPUT-OR-OUTPUT, :WORKSPACE-OUTPUT,
+;;         :WORKSPACE-OR-OUTPUT are nicknames for :OUTPUT.
+;;
+;;         This is complicated.  Suggestions are encouraged to
+;;         interface a *functional language* to a *pass-by-reference
+;;         language*.
+;;
+;; CALLBACKS
+;;
+;; A callback here means a function (or subroutine) that is passed into the Fortran
+;; routine which calls it as needed to compute something.
+;;
+;; The syntax of :CALLBACK is similar to the DEF-FORTRAN-ROUTINE:
+;;
+;;   (name (:CALLBACK return-type
+;;            {arg-description}))
+;;
+;; The RETURN-TYPE is the same as for DEF-FORTRAN-ROUTINE.  The arg description is the
+;; same syntax as list of parameter forms for DEF-FORTRAN-ROUTINE.  However, if the type
+;; is a pointer type (like (* :double-float)), then a required keyword option must be
+;; specified:
+;;
+;;   (name (* type :size size) &optional style)
+;;
+;; The size specifies the total length of the Fortran array.  This array is treated as a
+;; one dimentionsal vector and should be accessed using the function FV-REF, which is
+;; analogous to AREF.  The SIZE parameter can be any Lisp form and can refer to any of the
+;; arguments to the Fortran routine.
+;;
+;; For example, a fortran routine can have the callback
+;;
+;;   (def-fortran-routine foo :void
+;;     (m (* :integer) :input)
+;;     (fsub (:callback :void
+;;            (x :double-float :input)
+;;            (z (* :double-float :size (aref m 0)) :input)
+;;            (f (* :double-float :size (aref m 0)) :output)))))
+;;
+;; This means that the arrays Z and F in FSUB have a dimension of (AREF M 0), the first
+;; element of the vector M.  The function FSUB can be written in Lisp as
+;;
+;;   (defun fsub (x z f)
+;;     (setf (fv-ref f 0) (* x x (fv-ref z 3))))
+;;
+;; Further Notes:
+;; ===============
+;;
+;; Some Fortran routines use Fortran character strings in the
+;; parameter list.  The definition here is suitable for Solaris
+;; where the Fortran character string is converted to a C-style null
+;; terminated string, AND an extra hidden parameter that is appended
+;; to the parameter list to hold the length of the string.
+;;
+;; If your Fortran does this differently, you'll have to change this
+;; definition accordingly!
+
 ;; Call defcfun to define the foreign function.
 ;; Also creates a nice lisp helper function.
 (defmacro def-fortran-routine (func-name return-type &rest body)
