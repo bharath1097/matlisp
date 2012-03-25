@@ -15340,7 +15340,7 @@ case $host in
   *) share_ext=so ;;
 esac
 
-ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/odepack/Makefile lib-src/compat/Makefile src/f77-mangling.lisp"
+ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp src/f77-mangling.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/compat/Makefile lib-src/odepack/Makefile lib-src/colnew/Makefile"
 
 
 echo FLIBS = $FLIBS
@@ -16469,13 +16469,14 @@ do
     "start.lisp") CONFIG_FILES="$CONFIG_FILES start.lisp" ;;
     "config.lisp") CONFIG_FILES="$CONFIG_FILES config.lisp" ;;
     "lib/lazy-loader.lisp") CONFIG_FILES="$CONFIG_FILES lib/lazy-loader.lisp" ;;
+    "src/f77-mangling.lisp") CONFIG_FILES="$CONFIG_FILES src/f77-mangling.lisp" ;;
     "LAPACK/SRC/Makefile") CONFIG_FILES="$CONFIG_FILES LAPACK/SRC/Makefile" ;;
     "LAPACK/BLAS/SRC/Makefile") CONFIG_FILES="$CONFIG_FILES LAPACK/BLAS/SRC/Makefile" ;;
     "dfftpack/Makefile") CONFIG_FILES="$CONFIG_FILES dfftpack/Makefile" ;;
     "lib-src/toms715/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/toms715/Makefile" ;;
-    "lib-src/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/odepack/Makefile" ;;
     "lib-src/compat/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/compat/Makefile" ;;
-    "src/f77-mangling.lisp") CONFIG_FILES="$CONFIG_FILES src/f77-mangling.lisp" ;;
+    "lib-src/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/odepack/Makefile" ;;
+    "lib-src/colnew/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/colnew/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
