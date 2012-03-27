@@ -4,6 +4,10 @@
 
 (cffi:use-foreign-library colnew)
 
+(defun m* (ncomp m)
+  (loop for k from 0 below ncomp
+	sum (aref m k)))
+
 (def-fortran-routine colnew :void
   "COLNEW"
   (ncomp :integer :input)
@@ -20,24 +24,24 @@
   (iflag :integer :output)
   (fsub (:callback :void
 		   (x :double-float :input)
-		   (z (* :double-float :size (aref m 0)) :input)
-		   (f (* :double-float :size (aref m 0)) :output)))
+		   (z (* :double-float :size (m* ncomp m)) :input)
+		   (f (* :double-float :size ncomp) :output)))
   (dfsub (:callback :void
 		    (x :double-float :input)
-		    (z (* :double-float :size (aref m 0)) :input)
-		    (df (* :double-float :size (aref m 0)) :output)))
+		    (z (* :double-float :size (m* ncomp m)) :input)
+		    (df (* :double-float :size (* ncomp (m* ncomp m))) :output)))
   (gsub (:callback :void
 		   (i :integer :input)
-		   (z (* :double-float :size (aref m 0)) :input)
-		   (g (* :double-float :size (aref m 0)) :output)))
+		   (z (* :double-float :size (m* ncomp m)) :input)
+		   (g (* :double-float :size (m* ncomp m)) :output)))
   (dgsub (:callback :void
 		    (i :integer :input)
-		    (z (* :double-float :size (aref m 0)) :input)
-		    (dg (* :double-float :size (aref m 0)) :output)))
+		    (z (* :double-float :size (m* ncomp m)) :input)
+		    (dg (* :double-float :size (expt (m* ncomp m) 2)) :output)))
   (guess (:callback :void
 		    (x :double-float :input)
-		    (z (* :double-float) :output)
-		    (dmval (* :double-float) :output))))
+		    (z (* :double-float :size (m* ncomp m)) :output)
+		    (dmval (* :double-float :size ncomp) :output))))
 
 
 (def-fortran-routine appsln :void

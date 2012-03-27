@@ -320,8 +320,7 @@
     :components
     ((:file "colnew")
      (:file "colnew-demo1" :depends-on ("colnew"))
-     #+nil
-     (:file "colnew-demo4" :depends-on ("colnew"))))))
+     (:file "colnew-demo2" :depends-on ("colnew"))))))
 
 (defmethod perform ((op asdf:test-op) (c (eql (asdf:find-system :matlisp))))
   (oos 'asdf:test-op 'matlisp-tests))
