@@ -30,7 +30,7 @@ integer storage.  Default INITIAL-ELEMENT = 0."
   (make-array size :element-type 'index-type
 	      :initial-element initial-element))
 
-(defun make-index-store (&rest contents)
+(defun make-index-store (contents)
   (let ((size (length contents)))
     (make-array size :element-type 'index-type
 		:initial-contents contents)))
@@ -170,6 +170,12 @@ Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
     :documentation "The actual storage for the tensor."))
   (:documentation "Basic tensor class."))
 
+(defclass sub-tensor (standard-tensor)
+  ((parent-tensor
+    :initarg :parent-tensor
+    :accessor parent-tensor))
+  (:documentation "Basic sub-tensor class."))
+
 ;;
 (defun store-indexing (idx tensor)
   (declare (type standard-tensor tensor)
@@ -214,7 +220,6 @@ Initialized with ~A, but the largest possible index is ~A." ss L-idx)))
 Initialized with ~A." i ns))
 		((< st 0) (error "Stride of dimension ~A must be >= 0.
 Initialized with ~A." i st))))))
-   ;;
    (setf (number-of-elements tensor) (reduce #'* dims))))
 
 ;;
@@ -274,25 +279,33 @@ Tensor-store only has ~A elements." idx (store-size tensor))))
 ;;
 ;; TODO: Pretty-ify by borrowing from src/print.lisp
 (defmethod print-object ((tensor standard-tensor) stream)
-  (let ((rank (rank tensor))
-	(dims (dimensions tensor)))
-    (labels ((rec-print (tensor idx subs)
-	       (if (> idx 1)
-		   (dotimes (i (aref dims idx))
-		     (rec-print tensor (1- idx) (cons i subs)))
-		   (progn
-		     (format stream "~A~%" (append (list '\: '\:) subs))
-		     (dotimes (i (aref dims 0))
-		       (dotimes (j (aref dims 1))
-			 (format stream "~A~,4T" (apply #'tensor-ref (cons tensor (append (list i j) subs)))))
-		     (format stream "~%~%"))))))
-      (format stream "<TENSOR(~A) ~A>~%" rank dims)
-      (if (= rank 1)
-	  (progn
-	    (dotimes (i (aref dims 0))
-	      (format stream "~A~,4T" (tensor-ref tensor i)))
-	    (format stream "~%"))
-	  (rec-print tensor (- rank 1) nil)))))
+  (print-unreadable-object (tensor stream :type t)    
+    (let ((rank (rank tensor))
+	  (dims (dimensions tensor)))
+      (labels ((two-print (tensor subs)
+		 (dotimes (i (aref dims 0))
+		   (dotimes (j (aref dims 1))
+		     (format stream "~A~,4T" (apply #'tensor-ref (cons tensor (append (list i j) subs)))))
+		   (format stream "~%")))
+	       (rec-print (tensor idx subs)
+		 (if (> idx 1)
+		     (dotimes (i (aref dims idx))
+		       (rec-print tensor (1- idx) (cons i subs)))
+		     (progn
+		       (format stream "~A~%" (append (list '\: '\:) subs))
+		       (two-print tensor subs)
+		       (format stream "~%")))))
+	(format stream "~A ~A~%" rank dims)
+	(case rank
+	  (1
+	   (dotimes (i (aref dims 0))
+	     (format stream "~A~,4T" (tensor-ref tensor i)))
+	   (format stream "~%"))
+	  (2
+	   (two-print tensor nil))
+	  (t
+	   (rec-print tensor (- rank 1) nil)))))))
+
 ;;
 (defun tensor-type-p (tensor &rest subscripts)
   "
