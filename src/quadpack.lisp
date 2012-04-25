@@ -193,7 +193,7 @@
 
 "
   (let* ((lenw (* 4 limit))
-	 (iwork (make-array limit :element-type '(signed-byte 32)))
+	 (iwork (make-array limit :element-type 'f2cl-lib::integer4))
 	 (work (make-array lenw :element-type 'double-float)))
     (multiple-value-bind (z-f z-a z-b z-epsabs z-epsrel z-key
 			      result abserr neval ier
@@ -303,7 +303,7 @@
           if limit.lt.1, the routine will end with ier = 6.
 "
   (let* ((lenw (* 4 limit))
-	 (iwork (make-array limit :element-type '(signed-byte 32)))
+	 (iwork (make-array limit :element-type 'f2cl-lib:integer4))
 	 (work (make-array lenw :element-type 'double-float)))
     (multiple-value-bind (z-f z-a z-b z-epsabs z-epsrel
 			      result abserr neval ier
@@ -429,7 +429,7 @@ where a and/or b may be infinite.
 		(:pos-infinity 1)
 		(:infinite 2)))
 	 (lenw (* 4 limit))
-	 (iwork (make-array limit :element-type '(signed-byte 32)))
+	 (iwork (make-array limit :element-type 'f2cl-lib:integer4))
 	 (work (make-array lenw :element-type 'double-float)))
     (multiple-value-bind (z-f z-bound z-inf z-epsabs z-epsrel
 			      result abserr neval ier
@@ -552,7 +552,7 @@ where w(x) is the weight function below.
 
 "
   (let* ((lenw (* 4 limit))
-	 (iwork (make-array limit :element-type '(signed-byte 32)))
+	 (iwork (make-array limit :element-type 'f2cl-lib:integer4))
 	 (work (make-array lenw :element-type 'double-float)))
     (multiple-value-bind (z-f z-a z-b z-alfa z-beta z-integr z-epsabs z-epsrel
 			      result abserr neval ier
@@ -652,7 +652,7 @@ where w(x) is the weight function below.
                    is set to a and work(limit+1) to b.
 "
   (let* ((lenw (* 4 limit))
-	 (iwork (make-array limit :element-type '(signed-byte 32)))
+	 (iwork (make-array limit :element-type 'f2cl-lib:integer4))
 	 (work (make-array lenw :element-type 'double-float)))
     (multiple-value-bind (z-f z-a z-b z-c z-epsabs z-epsrel
 			      result abserr neval ier
