@@ -60,10 +60,10 @@ is not included")
 ;; If you change this, you may need to change some of the macros
 ;; below, such as INT and AINT!
 
-#+(or cmu scl)
+#+(or cmu scl sbcl)
 (deftype integer4 ()
   `(signed-byte 32))
-#-(or cmu scl)
+#-(or cmu scl sbcl)
 (deftype integer4 ()
   'fixnum)
 
