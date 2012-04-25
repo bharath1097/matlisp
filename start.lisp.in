@@ -217,7 +217,6 @@
 (ql:quickload "cffi")
 
 (load "matlisp:srcdir;matlisp.asd")
-(load "matlisp:builddir;config.lisp")
 
 (in-package "CL-USER")
 
@@ -238,5 +237,3 @@
           (in-package \"MATLISP-USER\")
 
 ")
-
-
