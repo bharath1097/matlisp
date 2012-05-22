@@ -11,30 +11,60 @@
 
 ;;; Error conditions for matlisp
 
-(in-package "MATLISP")
+;;(in-package :matlisp)
+(in-package :tensor)
 
 (define-condition matlisp-error (error)
-  ())
+  ;;Optional argument for error-handling.
+  ((tensor :reader tensor :initarg :tensor)))
 
-(define-condition vector-index-error (matlisp-error)
-  ((index :reader vector-index-error-index :initarg :index)
-   (matrix :reader matrix-index-error-matrix :initarg :matrix))
+(define-condition store-index-out-of-bounds (matlisp-error)
+  ((index :reader index :initarg :index)
+   (store-size :reader store-size :initarg :store-size))
+  (:documentation "An out of bounds index error for the one-dimensional store.")
+  (:report (lambda (c stream)
+	     (format stream "Requested index ~A, but store is only of size ~A." (index c) (store-size c)))))
+
+(define-condition insufficient-store (matlisp-error)
+  ((store-size :reader store-size :initarg :store-size)
+   (max-idx :reader max-idx :initarg :max-idx))
+  (:documentation "Store is too small for the tensor with given dimensions.")
+  (:report (lambda (c stream)
+	     (format stream "Store size is ~A, but maximum possible index is ~A." (store-size c) (max-idx c)))))
+
+
+(define-condition tensor-index-out-of-bounds (matlisp-error)
+  ((argument :reader argument :initarg :argument)
+   (index :reader index :initarg :index)
+   (argument-space-dimension :reader dimension :initarg :dimension))
   (:documentation "An out of bounds index error")
   (:report (lambda (c stream)
-	     (let ((m (matrix-index-error-matrix c)))
-	     (format stream "~&Out of bounds index for a ~D x ~D vector:  ~D~%"
-		     (nrows m) (ncols m)
-		     (vector-index-error-index c))))))
+	     (format stream "~&Out of bounds for argument ~A: requested ~A, but dimension is only ~A." (argument c) (index c) (dimension c)))))
 
-(define-condition matrix-index-error (matlisp-error)
-  ((row-index :reader matrix-index-error-row :initarg :row-index)
-   (col-index :reader matrix-index-error-col :initarg :col-index)
-   (matrix :reader matrix-index-error-matrix :initarg :matrix))
-  (:documentation "An out of bounds index error")
+(define-condition tensor-index-rank-mismatch (matlisp-error)
+  ((index-rank :reader index-rank :initarg :index-rank)
+   (rank :reader rank :initarg :rank))
+  (:documentation "Incorrect number of subscripts for the tensor.")
   (:report (lambda (c stream)
-	     (let ((m (matrix-index-error-matrix c)))
-	     (format stream "~&Out of bounds index for a ~D x ~D matrix:  (~D, ~D)~%"
-		     (nrows m) (ncols m)
-		     (matrix-index-error-row c)
-		     (matrix-index-error-col c))))))
-  
+	     (format stream "Index is of size ~A, whereas the tensor is of rank ~A." (index-rank c) (rank c)))))
+
+(define-condition tensor-invalid-head-value (matlisp-error)
+  ((head :reader head :initarg :head))
+  (:documentation "Incorrect value for the head of the tensor storage.")
+  (:report (lambda (c stream)
+	     (format stream "Head of the store must be >= 0, initialized with ~A." (head c)))))
+
+
+(define-condition tensor-invalid-dimension-value (matlisp-error)
+  ((argument :reader argument :initarg :argument)
+   (argument-dimension :reader dimension :initarg :dimension))
+  (:documentation "Incorrect value for one of the dimensions of the tensor.")
+  (:report (lambda (c stream)
+	     (format stream "Dimension of argument ~A must be > 0, initialized with ~A." (argument c) (dimension c)))))
+
+(define-condition tensor-invalid-stride-value (matlisp-error)  
+  ((argument :reader argument :initarg :argument)
+   (argument-stride :reader stride :initarg :stride))
+  (:documentation "Incorrect value for one of the strides of the tensor storage.")
+  (:report (lambda (c stream)
+	     (format stream "Stride of argument ~A must be >= 0, initialized with ~A." (argument c) (stride c)))))

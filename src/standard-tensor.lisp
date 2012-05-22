@@ -19,16 +19,14 @@
     `(simple-array index-type (,size)))
   )
 
-(defun allocate-int32-store (size &optional (initial-element 0))
-  "(ALLOCATE-INTEGER-STORE SIZE [INITIAL-ELEMENT]).  Allocates
-integer storage.  Default INITIAL-ELEMENT = 0."
-  (make-array size
-	      :element-type 'int32-type
-	      :initial-element initial-element))
+(make-array-allocator allocate-int32-store 'int32-type 0
+"(allocate-int32-store size [initial-element])
+Allocates integer-32 storage.  Default initial-element = 0.")
 
-(defun allocate-index-store (size &optional (initial-element 0))
-  (make-array size :element-type 'index-type
-	      :initial-element initial-element))
+(make-array-allocator allocate-index-store 'index-type 0
+"(allocate-index-store size [initial-element])
+Allocates index storage.  Default initial-element = 0.")
+
 
 (defun make-index-store (contents)
   (let ((size (length contents)))
@@ -47,21 +45,21 @@ integer storage.  Default INITIAL-ELEMENT = 0."
       i = 0
 
   "
-  (declare (type index-type hd)
+  (declare (optimize (safety 0) (speed 3))
+	   (type index-type hd)
 	   (type (index-array *) idx strides))
   (let ((rank (length strides)))
     (declare (type index-type rank))
-    (the index-type (+ hd
-		       (do ((i 0 (+ i 1))
-			    (sto-idx (the index-type 0) (the index-type
-							  (+ sto-idx
-							     (the index-type
-							       (* (the index-type
-								    (aref idx i))
-								  (the index-type
-								    (aref strides i))))))))
-			   ((= i rank) sto-idx))))))
-
+    (the index-type 
+      (do ((i 0 (+ i 1))
+	   (sto-idx (the index-type hd) (the index-type
+					  (+ sto-idx
+					     (the index-type
+					       (* (the index-type
+						    (aref idx i))
+						  (the index-type
+						    (aref strides i))))))))
+	  ((= i rank) sto-idx)))))
 
 (defun store-indexing-vec (idx strides dims &optional (hd (the index-type 0)))
   "
@@ -78,24 +76,24 @@ integer storage.  Default INITIAL-ELEMENT = 0."
 	   (type (index-array *) idx strides))
   (let ((rank (length strides)))
     (declare (type index-type rank))
-    (unless (= rank (length idx))
-      (error "Wrong number of subscripts for a array of rank ~A" rank))
-    (the index-type (+ hd
-		       (do ((i 0 (+ i 1))
-			    (sto-idx (the index-type 0) (the index-type
-							  (+ sto-idx
-							     (the index-type
-							       (* (the index-type
-								    (aref strides i))
-								  ;;
-								  (the index-type
-								    (let ((cidx (aref idx i)))
-								      (unless (< -1 cidx (aref dims i))
-									(error "Requested index ~A for argument ~A is out of bounds.
-Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
-								      cidx))))))))
-			   ((= i rank) sto-idx))))))
-
+    (if (not (= rank (length idx)))
+	(error 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank)
+	(the index-type
+	  (do ((i 0 (+ i 1))
+	       (sto-idx (the index-type hd)
+			(the index-type
+			  (+ sto-idx
+			     (the index-type
+			       (* (the index-type
+				    (aref strides i))
+				  ;;
+				  (the index-type
+				    (let ((cidx (aref idx i)))
+				      (declare (type index-type cidx))
+				      (if (< -1 cidx (aref dims i))
+					  cidx
+					  (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))))))))))
+	      ((= i rank) sto-idx))))))
 
 (defun store-indexing-lst (idx strides dims &optional (hd (the index-type 0)))
   "
@@ -107,31 +105,27 @@ Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
        /_        i      i
       i = 0
 
+  idx here is a list.
   "  
   (declare (type index-type hd)
 	   (type (index-array *) strides)
 	   (type cons idx))
   (let ((rank (length strides)))
     (declare (type index-type rank))
-    (the index-type (+ hd
-		       (let ((idx-sum (the index-type 0)))
-			 (do ((i 0 (+ i 1))
-			      (ilst idx (cdr ilst)))
-			     ((= i rank) (if (null ilst)
-					     idx-sum
-					     (error "Too many subscripts for a tensor of rank ~A" rank)))
-			   (let ((cidx (car ilst)))
-			     (when (null cidx)
-			       (error "Too few subscripts for a tensor of rank ~A" rank))
-			     (unless (< -1 cidx (aref dims i))
-			       (error "Requested index ~A for argument ~A is out of bounds.
-Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
-			     ;;
-			     (setf idx-sum (the index-type (+ idx-sum
-							      (the index-type
-								(*
-								 (the index-type cidx)
-								 (the index-type (aref strides i))))))))))))))
+    (labels ((rec-sum (sum i lst)
+	       (cond
+		 ((and (null lst) (= i rank)) (the index-type sum))
+		 ((or (null lst) (= i rank)) (error 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank))
+		 (t
+		  (let ((cidx (car lst)))
+		    (declare (type index-type cidx))
+		    (rec-sum (the index-type (+ sum
+						(* (aref strides i)
+						   (if (< -1 cidx (aref dims i))
+						       cidx
+						       (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i))))))
+			      (+ i 1) (cdr lst)))))))
+      (rec-sum (the index-type hd) 0 idx))))
 
 ;;
 (defclass standard-tensor ()
@@ -179,7 +173,7 @@ Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
 ;;
 (defun store-indexing (idx tensor)
   (declare (type standard-tensor tensor)
-	   (type (or cons (index-array *)) idx))  
+	   (type (or cons (index-array *)) idx))
   (typecase idx
     (cons (store-indexing-lst idx (strides tensor) (dimensions tensor) (head tensor)))
     (vector (store-indexing-lst idx (strides tensor) (dimensions tensor) (head tensor)))))
@@ -208,18 +202,16 @@ Tensor only has dimension ~A for the ~A argument." cidx i (aref dims i) i))
 	   (L-idx (store-indexing-vec (map `(index-array *) #'1- dims) stds dims hd) :type index-type))
 	  ;;Error checking is good if we use foreign-pointers as store types.
 	  (cond
-	    ((< hd 0) (error "Head of the store must be >= 0. Initialized with ~A." hd))
-	    ((<= ss L-idx) (error "Store is not large enough to hold the matrix.
-Initialized with ~A, but the largest possible index is ~A." ss L-idx)))
+	    ((< hd 0) (error 'tensor-invalid-head-value :head hd :tensor tensor))
+	    ((<= ss L-idx) (error 'insufficient-store :store-size ss :max-idx L-idx :tensor tensor)))
 	  ;;
+	  ;;--*TODO: Add checks to see if there is index-collision.*--
 	  (dotimes (i rank)
 	    (let ((ns (aref dims i))
 		  (st (aref stds i)))
 	      (cond
-		((<= ns 0) (error "Dimension ~A must be > 0.
-Initialized with ~A." i ns))
-		((< st 0) (error "Stride of dimension ~A must be >= 0.
-Initialized with ~A." i st))))))
+		((<= ns 0) (error 'tensor-invalid-dimension-value :argument i :dimension ns :tensor tensor))
+		((< st 0) (error 'tensor-invalid-stride-value :argument i :stride st :tensor tensor))))))
    (setf (number-of-elements tensor) (reduce #'* dims))))
 
 ;;
@@ -235,19 +227,17 @@ Initialized with ~A." i st))))))
 
 (defmethod tensor-store-ref :before ((tensor standard-tensor) (idx fixnum))
   (unless (< -1 idx (store-size tensor))
-    (error "Requested index ~A is out of bounds.
-Tensor-store only has ~A elements." idx (store-size tensor))))
+    (error 'store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor)))
 
 ;;
 (defgeneric (setf tensor-store-ref) (value matrix idx))
 
 (defmethod (setf tensor-store-ref) :before ((value t) (tensor standard-tensor) (idx fixnum))
   (unless (< -1 idx (store-size tensor))
-    (error "Requested index ~A is out of bounds.
-Tensor-store only has ~A elements." idx (store-size tensor))))
+    (error 'store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor)))
 
 ;;
-(defgeneric tensor-ref (tensor &rest subscripts)
+(defgeneric tensor-ref (tensor subscripts)
   (:documentation "
   Syntax
   ======
@@ -265,14 +255,14 @@ Tensor-store only has ~A elements." idx (store-size tensor))))
 
   of the store "))
 
-(defmethod tensor-ref ((tensor standard-tensor) &rest subscripts)
+(defmethod tensor-ref ((tensor standard-tensor) subscripts)
   (let ((sto-idx (store-indexing subscripts tensor)))
     (tensor-store-ref tensor sto-idx)))
 
 ;;
-(defgeneric (setf tensor-ref) (value tensor &rest subscripts))
+(defgeneric (setf tensor-ref) (value tensor subscripts))
 
-(defmethod (setf tensor-ref) ((value t) (tensor standard-tensor) &rest subscripts)
+(defmethod (setf tensor-ref) ((value t) (tensor standard-tensor) subscripts)
   (let ((sto-idx (store-indexing subscripts tensor)))
     (setf (tensor-store-ref tensor sto-idx) value)))
 
@@ -307,11 +297,11 @@ Tensor-store only has ~A elements." idx (store-size tensor))))
 	   (rec-print tensor (- rank 1) nil)))))))
 
 ;;
-(defun tensor-type-p (tensor &rest subscripts)
+(defun tensor-type-p (tensor subscripts)
   "
   Syntax
   ======
-  (tensor-ref tensor &rest subscripts)
+  (tensor-ref tensor subscripts)
 
   Purpose
   =======
@@ -319,10 +309,10 @@ Tensor-store only has ~A elements." idx (store-size tensor))))
   arguments.
 
   Checking if the tensor is a vector would then be:
-  (tensor-type-p ten t)
+  (tensor-type-p ten '(t))
 
   Checking if it is a matrix with 2 columns would be:
-  (tensor-type-p ten t 2)
+  (tensor-type-p ten '(t 2))
   "
   (declare (type standard-tensor tensor))
   (mlet* (((rank dims) (slot-values tensor '(rank dimensions))
@@ -348,14 +338,14 @@ Tensor-store only has ~A elements." idx (store-size tensor))))
 
 (defun vector-p (tensor)
   (declare (type standard-tensor tensor))
-  (tensor-type-p tensor t))
+  (tensor-type-p tensor '(t)))
 
 (defun matrix-p (tensor)
   (declare (type standard-tensor tensor))
-  (tensor-type-p tensor t t))
+  (tensor-type-p tensor '(t t)))
 
 (defun square-p (tensor)
   (let* ((rank (rank tensor))
 	 (sym (gensym))
 	 (lst (make-list rank :initial-element sym)))
-    (apply #'tensor-type-p (cons tensor lst))))
+    (apply #'tensor-type-p (list tensor lst))))

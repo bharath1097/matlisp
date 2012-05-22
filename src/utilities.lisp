@@ -302,3 +302,12 @@ else run else-body"
 	   ,@body))
       `(with-fortran-matrix ,(car array-list)
 	 ,@body)))
+
+;;
+
+(defmacro make-array-allocator (allocator-name type init &optional (doc ""))
+  `(defun ,allocator-name (size &optional (initial-element ,init))
+     ,@(unless (string= doc "")
+	       `(,doc))
+     (make-array size
+		 :element-type ,type :initial-element initial-element)))

@@ -62,8 +62,3 @@ Cannot hold complex numbers."))
 	 (store (allocate-complex-store ss)))
     (make-instance 'complex-tensor :store store :dimensions dims)))
 
-;;
-
-(defun find-longest-chain (stds dims)
-  (let ((dst (map '(index-array *) #'* stds dims)))
-    

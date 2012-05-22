@@ -10,10 +10,11 @@
     `(simple-array real-type (,size)))
   )
 ;;
+
 (declaim (inline allocate-real-store))
-(defun allocate-real-store (size &optional (initial-element 0d0))
-  (make-array size :element-type 'real-type
-	      :initial-element (coerce initial-element 'real-type)))
+(make-array-allocator allocate-real-store 'real-type 0d0
+"(allocate-real-store size [initial-element])
+Allocates real storage.  Default initial-element = 0d0.")
 
 (declaim (inline coerce-real))
 (defun coerce-real (x)

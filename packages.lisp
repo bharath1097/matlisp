@@ -168,6 +168,7 @@
 	   #:slot-values
 	   #:mlet*
 	   #:recursive-append
+	   #:make-array-allocator
 	   ;;
 	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
 	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
