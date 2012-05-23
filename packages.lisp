@@ -156,20 +156,15 @@
 (defpackage :utilities
   (:use :common-lisp)  
   (:export #:ensure-list
-	   #:zip
-	   #:zip-eq
-	   #:cut-cons-chain!
-	   #:when-let
-	   #:if-let
-	   #:if-ret
-	   #:get-arg
-	   #:nconsc
-	   #:with-gensyms
+	   #:zip #:zip-eq
+	   #:get-arg #:cut-cons-chain!
 	   #:slot-values
-	   #:mlet*
 	   #:recursive-append
-	   #:make-array-allocator
-	   ;;
+	   ;;Macros
+	   #:when-let #:if-let #:if-ret #:with-gensyms
+	   #:mlet* #:make-array-allocator
+	   #:nconsc
+	   ;;Structure-specific
 	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
 	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
 
@@ -186,42 +181,45 @@
    )
   (:documentation "Fortran foreign function interface"))
 
-(defpackage "BLAS"
-  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
+(defpackage :blas
+  (:use :commmon-lisp :fortran-ffi-accessors)
   (:export
-   "IDAMAX" "DASUM" "DDOT" "DNRM2"
-   "DROT" "DSCAL" "DSWAP" "DCOPY" "DAXPY"
-   "DCABS1" "DZASUM" "DZNRM2" "IZAMAX"
-   "ZDSCAL" "ZSCAL" "ZSWAP" "ZCOPY" "ZAXPY" "ZDOTC" "ZDOTU"
-   "DGEMV" "DSYMV" "DTRMV" "DTRSV" "DGER" "DSYR" "DSYR2"
-   "ZGEMV" "ZHEMV" "ZTRMV" "ZTRSV" "ZGERC" "ZGERU" "ZHER2"
-   "DGEMM" "DSYRK" "DSYR2K" "DTRMM" "DTRSM"
-   "ZGEMM" "ZTRMM" "ZTRSM" "ZHERK" "ZHER2K" )
+   ;;BLAS Level 1
+   ;;------------
+   ;;Real-double
+   #:ddot #:dnrm2 #:dasum #:dscal #:daxpy #:drot
+   #:dswap #:dcopy #:idamax
+   ;;Complex-double
+   #:zdotc #:zdotu #:zdscal #:zscal #:zswap #:zcopy #:zaxpy
+   #:dcabs1 #:dzasum #:dznrm2 #:izamax
+   ;;BLAS Level 2
+   ;;------------
+   ;;Real-double
+   #:dgemv #:dsymv  #:dtrmv #:dtrsv #:dger #:dsyr #:dsyr2
+   ;;Complex-double
+   #:zgemv #:zhemv #:ztrmv #:ztrsv #:zgerc #:zgeru #:zher2
+   ;;BLAS Level 3
+   ;;------------
+   ;;Real-double
+   #:dgemm #:dsyrk #:dsyr2k #:dtrmm #:dtrsm
+   ;;Complex-double  
+   #:zgemm #:ztrmm #:ztrsm #:zherk #:zher2k)
   (:documentation "BLAS routines"))
 
-(defpackage "LAPACK"
-  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
+(defpackage :lapack
+  (:use :commmon-lisp :fortran-ffi-accessors)
   (:export
-   "DGESV" "DGEEV" "DGETRF" "DGETRS" "DGESVD"
-   "ZGESV" "ZGEEV" "ZGETRF" "ZGETRS" "ZGESVD" 
-   "DGEQRF" "ZGEQRF" "DGEQP3" "ZGEQP3"
-   "DORGQR" "ZUNGQR"
-   "DPOTRS" "ZPOTRS" "DPOTRF" "ZPOTRF"
-   "DGELSY")
+   #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
+   #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
+   #:dgeqrf #:zgeqrf #:dgeqp3 #:zgeqp3
+   #:dorgqr #:zungqr
+   #:dpotrs #:zpotrs #:dpotrf #:zpotrf
+   #:dgelsy)
   (:documentation "LAPACK routines"))
 
-(defpackage "DFFTPACK"
-  #+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-  #+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-  #+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  #+(or ccl ecl) (:use "COMMON-LISP" "FORTRAN-FFI-ACCESSORS")
-  (:export "ZFFTI" "ZFFTF" "ZFFTB")
+(defpackage :dfftpack
+  (:use :commmon-lisp :fortran-ffi-accessors)
+  (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
   (:documentation "FFT routines"))
 
 ;; Stolen from f2cl.  
@@ -303,6 +301,25 @@
   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
   (:shadow #:real)
   (:export #:*print-matrix*
+	   ;;
+	   #:integer4-type #:integer4-array #:allocate-integer4-store
+	   #:index-type #:index-array #:allocate-index-store #:make-index-store
+	   ;;Standard-tensor
+	   #:standard-tensor
+	   #:rank #:dimensions #:number-of-elements
+	   #:head #:strides #:store-size #:store
+	   ;;Sub-tensor
+	   #:sub-tensor
+	   #:parent-tensor
+	   ;;Store indexers
+	   #:store-indexing
+	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
+	   ;;Store accessors
+	   #:tensor-store-ref
+	   #:tensor-ref
+	   ;;Type checking
+	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
+	   
 	   ;;Level 1 BLAS
 	   #:axpy! #:axpy
 	   #:copy! #:copy
@@ -318,7 +335,7 @@
 	   #:standard-matrix
 	   #:nrows #:ncols #:number-of-elements
 	   #:head #:row-stride #:col-stride
-	   #:store #:store-size	   
+	   #:store #:store-size	  
 	   ;;Generic functions on standard-matrix
 	   #:fill-matrix
 	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p

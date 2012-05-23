@@ -4,13 +4,11 @@
 (in-package :tensor)
 
 ;;
-(declaim (inline allocate-integer4-store))
-
 (eval-when (load eval compile)
-  (deftype int32-type ()
+  (deftype integer4-type ()
     '(signed-byte 32))
-  (deftype int32-array (size)
-    `(simple-array int32-type (,size)))
+  (deftype integer4-array (size)
+    `(simple-array integer4-type (,size)))
 
   ;;
   (deftype index-type ()
@@ -19,7 +17,8 @@
     `(simple-array index-type (,size)))
   )
 
-(make-array-allocator allocate-int32-store 'int32-type 0
+(declaim (inline allocate-integer4-store))
+(make-array-allocator allocate-integer4-store 'integer4-type 0
 "(allocate-int32-store size [initial-element])
 Allocates integer-32 storage.  Default initial-element = 0.")
 
@@ -170,6 +169,13 @@ Allocates index storage.  Default initial-element = 0.")
     :accessor parent-tensor))
   (:documentation "Basic sub-tensor class."))
 
+;; Akshay: I have no idea what this does, or why we want it
+;; (inherited from standard-matrix.lisp
+(defmethod make-load-form ((tensor standard-tensor) &optional env)
+  "MAKE-LOAD-FORM allows us to determine a load time value for
+   tensor, for example #.(make-tensors ...)"
+  (make-load-form-saving-slots tensor :environment env))
+
 ;;
 (defun store-indexing (idx tensor)
   (declare (type standard-tensor tensor)
@@ -266,7 +272,7 @@ Allocates index storage.  Default initial-element = 0.")
   (let ((sto-idx (store-indexing subscripts tensor)))
     (setf (tensor-store-ref tensor sto-idx) value)))
 
-;;
+;;-----------------------Move to print.lisp--------------------------------;;
 ;; TODO: Pretty-ify by borrowing from src/print.lisp
 (defmethod print-object ((tensor standard-tensor) stream)
   (print-unreadable-object (tensor stream :type t)    
@@ -295,6 +301,7 @@ Allocates index storage.  Default initial-element = 0.")
 	   (two-print tensor nil))
 	  (t
 	   (rec-print tensor (- rank 1) nil)))))))
+;;-----------------------Move to print.lisp--------------------------------;;
 
 ;;
 (defun tensor-type-p (tensor subscripts)

@@ -25,6 +25,12 @@
   (:report (lambda (c stream)
 	     (format stream "Requested index ~A, but store is only of size ~A." (index c) (store-size c)))))
 
+(define-condition tensor-not-matrix (matlisp-error)
+  ((tensor-rank :reader rank :initarg :rank))
+  (:documentation "Given tensor is not a matrix.")
+  (:report (lambda (c stream)
+	     (format stream "Given tensor with rank ~A, is not a matrix." (rank c)))))
+
 (define-condition insufficient-store (matlisp-error)
   ((store-size :reader store-size :initarg :store-size)
    (max-idx :reader max-idx :initarg :max-idx))
