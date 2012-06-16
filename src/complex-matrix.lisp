@@ -52,7 +52,7 @@
 
 ;;
 (defmethod initialize-instance ((matrix complex-matrix) &rest initargs)
-  (setf (store-size matrix) (/ (length (get-arg :store initargs)) 2))
+  (setf (store-size matrix) (/ (length (getf :store initargs)) 2))
   (call-next-method))
 
 ;;

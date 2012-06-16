@@ -27,7 +27,7 @@
 
 ;;
 (defmethod initialize-instance ((matrix real-matrix) &rest initargs)
-  (setf (store-size matrix) (length (get-arg :store initargs)))
+  (setf (store-size matrix) (length (getf :store initargs)))
   (call-next-method))
 
 ;;

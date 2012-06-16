@@ -11,9 +11,36 @@
 
 ;;; Error conditions for matlisp
 
-;;(in-package :matlisp)
-(in-package :tensor)
+(in-package :matlisp)
 
+;;---------------------------------------------------------------;;
+(define-condition generic-error (error)
+  ((message :reader message :initarg :message :initform "")))
+
+(defmethod print-object ((c generic-error) stream)
+  (format stream (message c)))
+
+;;---------------------------------------------------------------;;
+(define-condition invalid-type (generic-error)
+  ((given-type :reader given :initarg :given)
+   (expected-type :reader expected :initarg :expected))
+  (:documentation "Given an unexpected type."))
+
+(defmethod print-object ((c invalid-type) stream)
+  (format stream "Given object of type ~A, expected ~A.~%" (given c) (expected c))
+  (call-next-method))
+
+;;---------------------------------------------------------------;;
+(define-condition invalid-value (generic-error)
+  ((given-value :reader given :initarg :given)
+   (expected-value :reader expected :initarg :expected))
+  (:documentation "Given an unexpected value."))
+
+(defmethod print-object ((c invalid-value) stream)
+  (format stream "Given object ~A, expected ~A.~%" (given c) (expected c))
+  (call-next-method))
+  
+;;---------------------------------------------------------------;;
 (define-condition matlisp-error (error)
   ;;Optional argument for error-handling.
   ((tensor :reader tensor :initarg :tensor)))
@@ -38,7 +65,6 @@
   (:report (lambda (c stream)
 	     (format stream "Store size is ~A, but maximum possible index is ~A." (store-size c) (max-idx c)))))
 
-
 (define-condition tensor-index-out-of-bounds (matlisp-error)
   ((argument :reader argument :initarg :argument)
    (index :reader index :initarg :index)
@@ -60,7 +86,6 @@
   (:report (lambda (c stream)
 	     (format stream "Head of the store must be >= 0, initialized with ~A." (head c)))))
 
-
 (define-condition tensor-invalid-dimension-value (matlisp-error)
   ((argument :reader argument :initarg :argument)
    (argument-dimension :reader dimension :initarg :dimension))
@@ -74,3 +99,9 @@
   (:documentation "Incorrect value for one of the strides of the tensor storage.")
   (:report (lambda (c stream)
 	     (format stream "Stride of argument ~A must be >= 0, initialized with ~A." (argument c) (stride c)))))
+
+(define-condition tensor-cannot-find-sub-class (matlisp-error)
+  ()
+  (:documentation "Cannot find sub-class of the given tensor")
+  (:report (lambda (c stream)
+	     (format stream "Cannot find sub-class of the given tensor."))))

@@ -1,11 +1,9 @@
 (in-package :matlisp)
 
-(declaim (inline fortran-op))
-(defun fortran-op (op)
+(definline fortran-op (op)
   (ecase op (:n "N") (:t "T")))
 
-(declaim (inline fortran-nop))
-(defun fortran-nop (op)
+(definline fortran-nop (op)
   (ecase op (:t "N") (:n "T")))
 
 (defun fortran-snop (sop)
@@ -15,17 +13,17 @@
     (t (error "Unrecognised fortran-op."))))
 
 (defun blas-copyable-p (matrix)
-  (declare (optimize (safety 0) (speed 3))
-	   (type (or real-matrix complex-matrix) matrix))
+  (declare (type (or real-matrix complex-matrix) matrix))
   (mlet* ((nr (nrows matrix) :type fixnum)
 	  (nc (ncols matrix) :type fixnum)
 	  (rs (row-stride matrix) :type fixnum)
 	  (cs (col-stride matrix) :type fixnum)
 	  (ne (number-of-elements matrix) :type fixnum))
-	 (cond
-	   ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
-	   ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
-	   (t (values  nil -1 -1)))))
+	 (very-quickly 
+	   (cond
+	     ((or (= nc 1) (= cs (* nr rs))) (values t rs ne))
+	     ((or (= nr 1) (= rs (* nc cs))) (values t cs ne))
+	     (t (values  nil -1 -1))))))
 
 (defun blas-matrix-compatible-p (matrix &optional (op :n))
   (declare (optimize (safety 0) (speed 3))

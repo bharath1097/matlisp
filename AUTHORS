@@ -1,4 +1,8 @@
-Matlisp is primarily written by Tunc Simsek, based on an initial
-prototype by Raymond Toy.
+Matlisp was originally written by Tunc Simsek, 
+based on an initial prototype by Raymond Toy.
 
-It is now being tweaked by Akshay Srinivasan.
+It is now being refactored by Akshay Srinivasan.
+
+Some code has been either been directly obtained from, 
+or modified from Femlisp (www.femlisp.org), written by
+Nicholas Neuss.

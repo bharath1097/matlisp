@@ -60,6 +60,17 @@
 	   ,@body))))
 
 ;;
+(defmacro let-rec (name arglist &rest code)
+  "let-rec name ({var [init-form]}*) declaration* form* => result*
+
+   Works similar to \"let\" in Scheme."
+  (let ((init (mapcar #'second arglist))
+	(args (mapcar #'first arglist)))
+    `(labels ((,name (,@args)
+		,@code))
+       (,name ,@init))))
+
+;;
 (defmacro with-gensyms (symlist &body body)
   `(let ,(mapcar #'(lambda (sym)
 		     `(,sym (gensym ,(symbol-name sym))))
@@ -75,18 +86,6 @@
 	     (setf ,var ,(car args))
 	     (nconc ,var ,@(cdr args)))
 	   (nconc ,var ,@args))))
-
-;;
-(defun get-arg (sym arglist)
-  (check-type sym symbol)
-  (locally
-      (declare (optimize (speed 3) (safety 0)))
-    (labels ((get-sym (sym arglist)
-	       (cond
-		 ((null arglist) nil)
-		 ((eq (car arglist) sym) (cadr arglist))
-		 (t (get-sym sym (cddr arglist))))))
-      (get-sym sym arglist))))
 
 ;;
 (defun pop-arg! (sym arglist)
@@ -186,7 +185,7 @@ else run else-body"
 	nil
 	(bin-append (car lsts) (apply #'recursive-append (cdr lsts))))))
 
-;;
+;;---------------------------------------------------------------;;
 (defstruct (foreign-vector
 	     (:conc-name fv-)
 	     (:print-function (lambda (obj stream depth)
@@ -226,7 +225,6 @@ else run else-body"
      (error "Index N out of bounds."))
    (setf (cffi:mem-aref sap sty n) value)))
 
-
 ;;; Rudimentary support for making it a bit easier to deal with Fortran
 ;;; arrays in callbacks.
 
@@ -303,11 +301,77 @@ else run else-body"
       `(with-fortran-matrix ,(car array-list)
 	 ,@body)))
 
-;;
-
 (defmacro make-array-allocator (allocator-name type init &optional (doc ""))
-  `(defun ,allocator-name (size &optional (initial-element ,init))
+  `(definline ,allocator-name (size &optional (initial-element ,init))
      ,@(unless (string= doc "")
 	       `(,doc))
      (make-array size
 		 :element-type ,type :initial-element initial-element)))
+
+(defmacro define-constant (name value &optional doc)
+  "
+  Keeps the lisp implementation from defining constants twice.
+  "
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+
+(defmacro inlining (&rest definitions)
+  "Declaims the following definitions inline together with executing them."
+  `(progn ,@(loop for def in definitions when (eq (first def) 'defun) collect
+		  `(declaim (inline ,(second def))) collect def)))
+
+(defmacro definline (name &rest rest)
+  "Short form for defining an inlined function.  It should probably be
+deprecated, because it won't be recognized by default by some IDEs.  Better
+use the inlining macro directly."
+  `(inlining (defun ,name ,@rest)))
+
+;;TODO: Add general permutation support for currying, and composition.
+(inlining
+ (defun curry (func &rest args)
+   "Supplies @arg{args} to @arg{func} from the left."
+   #'(lambda (&rest after-args)
+       (apply func (append args after-args)))))
+
+;;---------------------------------------------------------------;;
+;; Optimization
+;;---------------------------------------------------------------;;
+;;TODO: Figure out a way of adding \"#+lispworks (float 0)\"
+(defmacro with-optimization ((&key speed safety space debug) &body forms)
+  "with-optimization (&key speed safety space debug) declaration* form*
+   Macro creates a local environment with optimization declarations, and
+   executes form*"
+  (mapcar #'(lambda (x) (assert (member x '(nil 0 1 2 3))))
+	  (list speed safety space debug))
+  `(locally
+       ,(recursive-append
+	 `(declare ,(append `(optimize)
+			    (when speed
+			      `((speed ,speed)))
+			    (when safety
+			      `((safety ,safety)))
+			    (when space
+			      `((space ,space)))
+			    (when debug
+			      `((debug ,debug)))))
+	 (when (eq (caar forms) 'declare)
+	   (cdar forms)))
+     ,@(if (eq (caar forms) 'declare) (cdr forms) forms)))
+
+(defmacro quickly (&body forms)
+  `(with-optimization (:speed 3) do
+     ,@forms))
+
+(defmacro very-quickly (&body forms)
+  `(with-optimization (:safety 0 :space 0 :speed 3) do
+     ,@forms))
+
+(defmacro slowly (&body forms)
+  `(with-optimization (:speed 1) do
+     ,@forms))
+
+(defmacro quickly-if (test &body forms)
+  `(if ,test ;runtime test
+       (quickly ,@forms)
+        (progn ,@forms)))
+;;---------------------------------------------------------------;;

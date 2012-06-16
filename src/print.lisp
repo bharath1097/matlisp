@@ -85,16 +85,15 @@
 
 (in-package "MATLISP")
 
-#+nil (export '(*print-matrix*
-	  print-element))
-
-(defvar *print-matrix*
+(defvar *print-max-len*
   5
-  "Maximum number of columns and/or rows to print.  Set this to NIL to
-  print no elements (same as *PRINT-ARRAY* set to NIL).  Set this to T
-  to print all elements of the matrix.
+  "Maximum number of elements in any particular argument to print.
+  Set this to NIL to print no elements.  Set this to T
+  to print all elements.")
 
-  This is useful for preventing printing of huge matrices by accident.")
+(defvar *print-max-args* 5
+  "Maximum number of arguments of the tensor to print.
+  Set this to NIL to print none; to T  to print all of them.")
 
 (defun set-print-limits-for-matrix (n m)
   (declare (type fixnum n m))
@@ -110,49 +109,37 @@
 Required that *PRINT-MATRIX* be T,NIL or a positive INTEGER,
 but got *PRINT-MATRIX* of type ~a"
 	       (type-of *print-matrix*))))))
-      
 
-(defgeneric print-element (matrix
-			    element
-			    stream)
-  (:documentation "
- Syntax
- ======
- (PRINT-ELEMENT matrix element stream)
-
- Purpose
- =======
- This generic function is specialized to MATRIX to
- print ELEMENT to STREAM.  Called by PRINT-MATRIX
- to format a matrix to STREAM.
-"))
-
-(defmethod print-element ((matrix standard-matrix)
-			  element
-			  stream)
-  (format stream "~a" element))
-
-(defmethod print-element ((matrix real-matrix)
-			  element
-			  stream)
-  (format stream "~11,5,,,,,'Eg" element))
-
-(defmethod print-element ((matrix complex-matrix)
-			  element
-			  stream)
-  
-  (let ((realpart (realpart element))
-	(imagpart (imagpart element)))
-
-    (if (zerop imagpart)
-	(format stream "      ~11,4,,,,,'Eg      " realpart)
-      (format stream "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)" 
-	      realpart
-	      imagpart))))
-
-(defvar *matrix-indent* 0
+(defvar *print-indent* 0
   "Determines how many spaces will be printed before each row 
    of a matrix (default 0)")
+
+(defun print-tensor (tensor stream)
+  (let ((rank (rank tensor))
+	(dims (dimensions tensor)))
+    (labels ((two-print (tensor subs)
+		 (dotimes (i (aref dims 0))
+		   (dotimes (j (aref dims 1))
+		     (format stream "~A~,4T" (apply #'tensor-ref (list tensor (append (list i j) subs)))))
+		   (format stream "~%")))
+	       (rec-print (tensor idx subs)
+		 (if (> idx 1)
+		     (dotimes (i (aref dims idx))
+		       (rec-print tensor (1- idx) (cons i subs)))
+		     (progn
+		       (format stream "~A~%" (append (list '\: '\:) subs))
+		       (two-print tensor subs)
+		       (format stream "~%")))))
+	(format stream "~A ~A~%" rank dims)
+	(case rank
+	  (1
+	   (dotimes (i (aref dims 0))
+	     (format stream "~A~,4T" (tensor-ref tensor `(,i))))
+	   (format stream "~%"))
+	  (2
+	   (two-print tensor nil))
+	  (t
+	   (rec-print tensor (- rank 1) nil))))))
 
 (defun print-matrix (matrix stream)
   (with-slots (number-of-rows number-of-cols)
@@ -208,29 +195,34 @@ but got *PRINT-MATRIX* of type ~a"
 
 (defmethod print-object ((matrix standard-matrix) stream)
   (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
-    (when *print-matrix*
+    (when *print-max*
       (print-matrix matrix stream))))
 
-#+nil
-(defmethod print-object ((matrix standard-matrix) stream)
-  (format stream "#<~a" (type-of matrix))
-  (if *print-matrix*
-      (print-matrix matrix stream)
-    (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
-  (format stream " >~%"))
 
-#+nil
-(defmethod print-object ((matrix real-matrix) stream)
-  (format stream "#<~a" (type-of matrix))
-  (if *print-matrix*
-      (print-matrix matrix stream)
-    (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
-  (format stream " >~%"))
-
-#+nil
-(defmethod print-object ((matrix complex-matrix) stream)
-  (format stream "#<~a" (type-of matrix))
-  (if *print-matrix*
-      (print-matrix matrix stream)
-    (format stream "{~x}" (kernel:get-lisp-obj-address matrix)))
-  (format stream " >~%"))
+(defmethod print-object ((tensor standard-tensor) stream)
+  (print-unreadable-object (tensor stream :type t)
+    (let ((rank (rank tensor))
+	  (dims (dimensions tensor)))
+      (labels ((two-print (tensor subs)
+		 (dotimes (i (aref dims 0))
+		   (dotimes (j (aref dims 1))
+		     (format stream "~A~,4T" (apply #'tensor-ref (list tensor (append (list i j) subs)))))
+		   (format stream "~%")))
+	       (rec-print (tensor idx subs)
+		 (if (> idx 1)
+		     (dotimes (i (aref dims idx))
+		       (rec-print tensor (1- idx) (cons i subs)))
+		     (progn
+		       (format stream "~A~%" (append (list '\: '\:) subs))
+		       (two-print tensor subs)
+		       (format stream "~%")))))
+	(format stream "~A ~A~%" rank dims)
+	(case rank
+	  (1
+	   (dotimes (i (aref dims 0))
+	     (format stream "~A~,4T" (tensor-ref tensor `(,i))))
+	   (format stream "~%"))
+	  (2
+	   (two-print tensor nil))
+	  (t
+	   (rec-print tensor (- rank 1) nil)))))))

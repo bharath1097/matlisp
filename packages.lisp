@@ -157,13 +157,16 @@
   (:use :common-lisp)  
   (:export #:ensure-list
 	   #:zip #:zip-eq
-	   #:get-arg #:cut-cons-chain!
-	   #:slot-values
+	   #:cut-cons-chain!
+	   #:slot-values 
 	   #:recursive-append
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator
-	   #:nconsc
+	   #:nconsc #:define-constant
+	   ;;
+	   #:inlining #:definline
+	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if
 	   ;;Structure-specific
 	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
 	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
@@ -176,13 +179,13 @@
   #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;; interface functions
-   #:def-fortran-routine   
+   #:def-fortran-routine
    #:with-vector-data-addresses
    )
   (:documentation "Fortran foreign function interface"))
 
 (defpackage :blas
-  (:use :commmon-lisp :fortran-ffi-accessors)
+  (:use :common-lisp :fortran-ffi-accessors)
   (:export
    ;;BLAS Level 1
    ;;------------
@@ -207,7 +210,7 @@
   (:documentation "BLAS routines"))
 
 (defpackage :lapack
-  (:use :commmon-lisp :fortran-ffi-accessors)
+  (:use :common-lisp :fortran-ffi-accessors)
   (:export
    #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
    #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
@@ -218,91 +221,90 @@
   (:documentation "LAPACK routines"))
 
 (defpackage :dfftpack
-  (:use :commmon-lisp :fortran-ffi-accessors)
+  (:use :common-lisp :fortran-ffi-accessors)
   (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
   (:documentation "FFT routines"))
 
+;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
+
 ;; Stolen from f2cl.  
-(defpackage :f2cl-lib
-  (:use :cl)
-  (:documentation "The package holding all symbols used by the fortran to lisp library.")
-  (:nicknames :fortran-to-lisp-library)
-  (:export
-   ;; constants
-   #:%false% #:%true%
-   ;; user-settable runtime options
-   #:*check-array-bounds*
-   ;; types
-   #:integer4 #:integer2 #:integer1 #:real8 #:real4 #:complex8 #:complex16
-   #:array-double-float #:array-single-float #:array-integer4 #:array-strings
-   #:logical
-   ;; macros
-   #:fref #:fset #:with-array-data #:with-multi-array-data
-   #:f2cl-init-string #:fref-string #:fset-string #:f2cl-set-string
-   #:f2cl-// #:fstring-/= #:fstring-= #:fstring-> #:fstring->= #:fstring-< #:fstring-<=
-   #:fortran_comment #:fdo #:f2cl/ #:arithmetic-if #:computed-goto
-   #:assigned-goto
-   #:fformat
-   #:data-implied-do
-   #:int-add #:int-sub #:int-mul
-   ;; utilities
-   #:array-slice #:array-initialize
-   ;; intrinsic functions
-   #:abs #:acos #:aimag #:aint #:alog #:alog10 #:amax0 #:amax1
-   #:amin1 #:amod #:anint #:asin #:atan #:atan2
-   #:cabs #:cexp #:fchar #:clog #:cmplx #:conjg #:ccos
-   #:csin #:csqrt #:dabs #:dacos #:dasin
-   #:datan #:datan2 #:dble #:dcos #:dcosh #:dexp #:dim
-   #:dint #:dlog #:dlog10 #:dmax1 #:dmin1 #:dmod
-   #:dnint #:dprod #:dsign #:dsin #:dsinh #:dsqrt #:dtan
-   #:dtanh #:ffloat #:iabs #:ichar #:idim #:idint
-   #:idnint #:ifix #:index #:int #:isign #:le #:len
-   #:lge #:lgt #:flog #:log10 #:lt #:max #:max0
-   #:max1 #:min0 #:min1 #:nint #:freal
-   #:sign #:sngl #:fsqrt
-   ;; other functions
-   #:d1mach #:r1mach #:i1mach
-   ))
+;; (defpackage :f2cl-lib
+;;   (:use :cl)
+;;   (:documentation "The package holding all symbols used by the fortran to lisp library.")
+;;   (:nicknames :fortran-to-lisp-library)
+;;   (:export
+;;    ;; constants
+;;    #:%false% #:%true%
+;;    ;; user-settable runtime options
+;;    #:*check-array-bounds*
+;;    ;; types
+;;    #:integer4 #:integer2 #:integer1 #:real8 #:real4 #:complex8 #:complex16
+;;    #:array-double-float #:array-single-float #:array-integer4 #:array-strings
+;;    #:logical
+;;    ;; macros
+;;    #:fref #:fset #:with-array-data #:with-multi-array-data
+;;    #:f2cl-init-string #:fref-string #:fset-string #:f2cl-set-string
+;;    #:f2cl-// #:fstring-/= #:fstring-= #:fstring-> #:fstring->= #:fstring-< #:fstring-<=
+;;    #:fortran_comment #:fdo #:f2cl/ #:arithmetic-if #:computed-goto
+;;    #:assigned-goto
+;;    #:fformat
+;;    #:data-implied-do
+;;    #:int-add #:int-sub #:int-mul
+;;    ;; utilities
+;;    #:array-slice #:array-initialize
+;;    ;; intrinsic functions
+;;    #:abs #:acos #:aimag #:aint #:alog #:alog10 #:amax0 #:amax1
+;;    #:amin1 #:amod #:anint #:asin #:atan #:atan2
+;;    #:cabs #:cexp #:fchar #:clog #:cmplx #:conjg #:ccos
+;;    #:csin #:csqrt #:dabs #:dacos #:dasin
+;;    #:datan #:datan2 #:dble #:dcos #:dcosh #:dexp #:dim
+;;    #:dint #:dlog #:dlog10 #:dmax1 #:dmin1 #:dmod
+;;    #:dnint #:dprod #:dsign #:dsin #:dsinh #:dsqrt #:dtan
+;;    #:dtanh #:ffloat #:iabs #:ichar #:idim #:idint
+;;    #:idnint #:ifix #:index #:int #:isign #:le #:len
+;;    #:lge #:lgt #:flog #:log10 #:lt #:max #:max0
+;;    #:max1 #:min0 #:min1 #:nint #:freal
+;;    #:sign #:sngl #:fsqrt
+;;    ;; other functions
+;;    #:d1mach #:r1mach #:i1mach
+;;    ))
 
-(defpackage :fortran-to-lisp
-    (:use :cl)
-  (:documentation "the package holding all symbols need by the fortran to lisp converter")
-  (:nicknames :f2cl)
-  (:export
-   ;; main routines
-   #:f2cl
-   #:f2cl-compile
-   ))
+;; (defpackage :fortran-to-lisp
+;;     (:use :cl)
+;;   (:documentation "the package holding all symbols need by the fortran to lisp converter")
+;;   (:nicknames :f2cl)
+;;   (:export
+;;    ;; main routines
+;;    #:f2cl
+;;    #:f2cl-compile
+;;    ))
 
-(defpackage "QUADPACK"
-  (:use "COMMON-LISP" "FORTRAN-TO-LISP")
-  (:export
-   ;; Do we want to export the core integration routines too?
+;; (defpackage "QUADPACK"
+;;   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
+;;   (:export
+;;    ;; Do we want to export the core integration routines too?
 
-   ;; The basic integrators
-   "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
-   ;; Simplified interface routines
-   "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC")
-  (:documentation "QUADPACK routines for numerical integration"))
+;;    ;; The basic integrators
+;;    "DQAGE" "DQAGIE" "DQAGPE" "DQAGSE" "DQAWFE" "DQAWOE" "DQAWSE" "DQAWCE"
+;;    ;; Simplified interface routines
+;;    "DQNG" "DQAG" "DQAGS" "DQAGI" "DQAWS" "DQAWC")
+;;   (:documentation "QUADPACK routines for numerical integration"))
 
-(defpackage "MINPACK"
-  (:use "COMMON-LISP" "FORTRAN-TO-LISP")
-  (:export
-   "LMDIF1")
-  (:documentation "MINPACK routines for minimization"))
+;; (defpackage "MINPACK"
+;;   (:use "COMMON-LISP" "FORTRAN-TO-LISP")
+;;   (:export
+;;    "LMDIF1")
+;;   (:documentation "MINPACK routines for minimization"))
 
-(defpackage "MATLISP-LIB"
-  (:use "COMMON-LISP" "F2CL")
-  (:export
-   "ZEROIN")
-  (:documentation "Other useful routines"))
+;; (defpackage "MATLISP-LIB"
+;;   (:use "COMMON-LISP" "F2CL")
+;;   (:export
+;;    "ZEROIN")
+;;   (:documentation "Other useful routines"))
 
 (defpackage :matlisp
-  (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
-  (:shadow #:real)
-  (:export #:*print-matrix*
-	   ;;
-	   #:integer4-type #:integer4-array #:allocate-integer4-store
+  (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :utilities)
+  (:export #:integer4-type #:integer4-array #:allocate-integer4-store
 	   #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor
@@ -318,170 +320,195 @@
 	   #:tensor-store-ref
 	   #:tensor-ref
 	   ;;Type checking
-	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
-	   
-	   ;;Level 1 BLAS
-	   #:axpy! #:axpy
-	   #:copy! #:copy
-	   #:scal! #:scal
-	   ;;Level 2 BLAS
-	   #:gemv! #:gemv
-	   ;;Level 3 BLAS
-	   #:gemm! #:gemm	   
-	   ;;Fortran stuff
-	   #:blas-copyable-p #:blas-matrix-compatible-p
-	   #:fortran-op #:fortran-nop #:fortran-snop
-	   ;;Standard-matrix
-	   #:standard-matrix
-	   #:nrows #:ncols #:number-of-elements
-	   #:head #:row-stride #:col-stride
-	   #:store #:store-size	  
-	   ;;Generic functions on standard-matrix
-	   #:fill-matrix
-	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
-	   ;;Submatrix ops
-	   #:row~ #:row
-	   #:col~ #:col
-	   #:diag~ #:diag
-	   #:sub-matrix~ #:sub-matrix
-	   ;;Transpose
-	   #:transpose~ #:transpose! #:transpose
-	   #:ctranspose! #:ctranspose	   
-	   ;;Real-double-matrix
-	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
-	   ;;Complex-double-matrix
-	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
-	   ;;Real and imaginary parts
-	   #:mrealpart~ #:mrealpart #:real
-	   #:mimagpart~ #:mimagpart #:imag
-	   ;;
-	   "CONVERT-TO-LISP-ARRAY"
-   "DOT"
-   "EIG"
-   "EYE"
-   "FFT"
-   "FFT"
-   "GEEV"
-   "GELSY!"
-   "GELSY"
-   "GESV!"
-   "GESV"
-   "GETRF!"
-   "GETRS"
-   "GETRS!"
-   "HELP"
-   "IFFT"
-   "JOIN"
-   "LOAD-BLAS-&-LAPACK-BINARIES"
-   "LOAD-BLAS-&-LAPACK-LIBRARIES"
-   "LOAD-MATLISP"
-   "LU"
-   "M*!"
-   "M*"
-   "M+!"
-   "M+"
-   "M-"
-   "M.*!"
-   "M.*"
-   "M.+!"
-   "M.+"
-   "M.-"
-   "M./!"
-   "M./"
-   "M/!"
-   "M/"
-   "MACOS"
-   "MACOSH"
-   "MAKE-COMPLEX-MATRIX"
-   "MAKE-COMPLEX-MATRIX-DIM"
-   "MAKE-FLOAT-MATRIX"
-   "MAKE-FLOAT-MATRIX-ARRAY"
-   "MAKE-FLOAT-MATRIX-DIM"
-   "MAKE-FLOAT-MATRIX-SEQ"
-   "MAKE-FLOAT-MATRIX-SEQ-OF-SEQ"
-   "MAKE-FLOAT-MATRIX-SEQUENCE"
-   "MAKE-REAL-MATRIX"
-   "MAKE-REAL-MATRIX-DIM"
-   "MAP-MATRIX!"
-   "MAP-MATRIX"
-   "MASIN"
-   "MASINH"
-   "MATAN"
-   "MATANH"
-   "MATRIX-REF"
-   "MCOS"
-   "MCOSH"
-   "MEXP"
-   "MLOG"
-   "MLOG10"
-   "MREF"
-   "MSIN"
-   "MSINH"
-   "MSQRT"
-   "MTAN"
-   "MTANH"
-   "NCOLS"
-   "NORM"
-   "ONES"
-   "PRINT-ELEMENT"
-   "QR"
-   "QR!"
-   "GEQR!"
-   "POTRF!"
-   "POTRS!"
-   "RAND"
-   "RESHAPE!"
-   "RESHAPE"
-   "SAVE-MATLISP"
-   "SEQ"
-   "SET-M*!-SWAP-SIZE"
-   "SIZE"
-   "SQUARE-MATRIX-P"
-   "STORE-INDEXING"
-   "SUM"
-   "SVD"
-   "SWAP!"
-   "TR"
-   "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
-   "ZEROS"
-   ;; From Quadpack
-   "INTEGRATE-QNG"
-   "INTEGRATE-QAG"
-   "INTEGRATE-QAGS"
-   "INTEGRATE-QAGI"
-   "INTEGRATE-QAWS"
-   "INTEGRATE-QAWC"
-   ;; From CPOLY
-   "POLYROOTS"
-   ;; From TOMS-715
-   "M-NORMAL-CDF"
-   "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
-   "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
-   "M-BESSEL-I0" "M-BESSEL-I1"
-   "M-BESSEL-J0" "M-BESSEL-J1"
-   "M-BESSEL-K0" "M-BESSEL-K1"
-   "M-BESSEL-Y0" "M-BESSEL-Y1"
-   "M-DAWSON-INTEGRAL"
-   "M-ERF" "M-ERFC" "M-ERFCX"
-   "M-GAMMA" "M-LOG-GAMMA"
-   "M-BESSEL-SERIES-I"
-   "M-BESSEL-SERIES-J"
-   "M-BESSEL-SERIES-K"
-   "M-BESSEL-SERIES-Y")
+	   #:tensor-type-p #:vector-p #:matrix-p #:square-p)
   (:documentation "MATLISP routines"))
 
-(defpackage "MATLISP-USER"
-  (:use "COMMON-LISP"
-        "MATLISP"
-        #+:allegro "EXCL"
-        #+:cmu "EXT"
-        #+:sbcl "SB-EXT")
-  (:shadowing-import-from "MATLISP" "REAL")
-  (:documentation "Matlisp user package meant for interacting with matlisp"))
+;; (defpackage :matlisp
+;;   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
+;;   (:shadow #:real)
+;;   (:export #:*print-matrix*
+;; 	   ;;
+;; 	   #:integer4-type #:integer4-array #:allocate-integer4-store
+;; 	   #:index-type #:index-array #:allocate-index-store #:make-index-store
+;; 	   ;;Standard-tensor
+;; 	   #:standard-tensor
+;; 	   #:rank #:dimensions #:number-of-elements
+;; 	   #:head #:strides #:store-size #:store
+;; 	   ;;Sub-tensor
+;; 	   #:sub-tensor
+;; 	   #:parent-tensor
+;; 	   ;;Store indexers
+;; 	   #:store-indexing
+;; 	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
+;; 	   ;;Store accessors
+;; 	   #:tensor-store-ref
+;; 	   #:tensor-ref
+;; 	   ;;Type checking
+;; 	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
+	   
+;; 	   ;;Level 1 BLAS
+;; 	   #:axpy! #:axpy
+;; 	   #:copy! #:copy
+;; 	   #:scal! #:scal
+;; 	   ;;Level 2 BLAS
+;; 	   #:gemv! #:gemv
+;; 	   ;;Level 3 BLAS
+;; 	   #:gemm! #:gemm	   
+;; 	   ;;Fortran stuff
+;; 	   #:blas-copyable-p #:blas-matrix-compatible-p
+;; 	   #:fortran-op #:fortran-nop #:fortran-snop
+;; 	   ;;Standard-matrix
+;; 	   #:standard-matrix
+;; 	   #:nrows #:ncols #:number-of-elements
+;; 	   #:head #:row-stride #:col-stride
+;; 	   #:store #:store-size	  
+;; 	   ;;Generic functions on standard-matrix
+;; 	   #:fill-matrix
+;; 	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
+;; 	   ;;Submatrix ops
+;; 	   #:row~ #:row
+;; 	   #:col~ #:col
+;; 	   #:diag~ #:diag
+;; 	   #:sub-matrix~ #:sub-matrix
+;; 	   ;;Transpose
+;; 	   #:transpose~ #:transpose! #:transpose
+;; 	   #:ctranspose! #:ctranspose	   
+;; 	   ;;Real-double-matrix
+;; 	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
+;; 	   ;;Complex-double-matrix
+;; 	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
+;; 	   ;;Real and imaginary parts
+;; 	   #:mrealpart~ #:mrealpart #:real
+;; 	   #:mimagpart~ #:mimagpart #:imag
+;; 	   ;;
+;; 	   "CONVERT-TO-LISP-ARRAY"
+;;    "DOT"
+;;    "EIG"
+;;    "EYE"
+;;    "FFT"
+;;    "FFT"
+;;    "GEEV"
+;;    "GELSY!"
+;;    "GELSY"
+;;    "GESV!"
+;;    "GESV"
+;;    "GETRF!"
+;;    "GETRS"
+;;    "GETRS!"
+;;    "HELP"
+;;    "IFFT"
+;;    "JOIN"
+;;    "LOAD-BLAS-&-LAPACK-BINARIES"
+;;    "LOAD-BLAS-&-LAPACK-LIBRARIES"
+;;    "LOAD-MATLISP"
+;;    "LU"
+;;    "M*!"
+;;    "M*"
+;;    "M+!"
+;;    "M+"
+;;    "M-"
+;;    "M.*!"
+;;    "M.*"
+;;    "M.+!"
+;;    "M.+"
+;;    "M.-"
+;;    "M./!"
+;;    "M./"
+;;    "M/!"
+;;    "M/"
+;;    "MACOS"
+;;    "MACOSH"
+;;    "MAKE-COMPLEX-MATRIX"
+;;    "MAKE-COMPLEX-MATRIX-DIM"
+;;    "MAKE-FLOAT-MATRIX"
+;;    "MAKE-FLOAT-MATRIX-ARRAY"
+;;    "MAKE-FLOAT-MATRIX-DIM"
+;;    "MAKE-FLOAT-MATRIX-SEQ"
+;;    "MAKE-FLOAT-MATRIX-SEQ-OF-SEQ"
+;;    "MAKE-FLOAT-MATRIX-SEQUENCE"
+;;    "MAKE-REAL-MATRIX"
+;;    "MAKE-REAL-MATRIX-DIM"
+;;    "MAP-MATRIX!"
+;;    "MAP-MATRIX"
+;;    "MASIN"
+;;    "MASINH"
+;;    "MATAN"
+;;    "MATANH"
+;;    "MATRIX-REF"
+;;    "MCOS"
+;;    "MCOSH"
+;;    "MEXP"
+;;    "MLOG"
+;;    "MLOG10"
+;;    "MREF"
+;;    "MSIN"
+;;    "MSINH"
+;;    "MSQRT"
+;;    "MTAN"
+;;    "MTANH"
+;;    "NCOLS"
+;;    "NORM"
+;;    "ONES"
+;;    "PRINT-ELEMENT"
+;;    "QR"
+;;    "QR!"
+;;    "GEQR!"
+;;    "POTRF!"
+;;    "POTRS!"
+;;    "RAND"
+;;    "RESHAPE!"
+;;    "RESHAPE"
+;;    "SAVE-MATLISP"
+;;    "SEQ"
+;;    "SET-M*!-SWAP-SIZE"
+;;    "SIZE"
+;;    "SQUARE-MATRIX-P"
+;;    "STORE-INDEXING"
+;;    "SUM"
+;;    "SVD"
+;;    "SWAP!"
+;;    "TR"
+;;    "UNLOAD-BLAS-&-LAPACK-LIBRARIES"
+;;    "ZEROS"
+;;    ;; From Quadpack
+;;    "INTEGRATE-QNG"
+;;    "INTEGRATE-QAG"
+;;    "INTEGRATE-QAGS"
+;;    "INTEGRATE-QAGI"
+;;    "INTEGRATE-QAWS"
+;;    "INTEGRATE-QAWC"
+;;    ;; From CPOLY
+;;    "POLYROOTS"
+;;    ;; From TOMS-715
+;;    "M-NORMAL-CDF"
+;;    "M-BESSEL-SCALED-I0" "M-BESSEL-SCALED-I1"
+;;    "M-BESSEL-SCALED-K0" "M-BESSEL-SCALED-K1"
+;;    "M-BESSEL-I0" "M-BESSEL-I1"
+;;    "M-BESSEL-J0" "M-BESSEL-J1"
+;;    "M-BESSEL-K0" "M-BESSEL-K1"
+;;    "M-BESSEL-Y0" "M-BESSEL-Y1"
+;;    "M-DAWSON-INTEGRAL"
+;;    "M-ERF" "M-ERFC" "M-ERFCX"
+;;    "M-GAMMA" "M-LOG-GAMMA"
+;;    "M-BESSEL-SERIES-I"
+;;    "M-BESSEL-SERIES-J"
+;;    "M-BESSEL-SERIES-K"
+;;    "M-BESSEL-SERIES-Y")
+;;   (:documentation "MATLISP routines"))
 
-(in-package "MATLISP")
 
-;; We've shadowed CL's REAL.  Re-establish the real type.
-(deftype real (&optional low high)
-  `(cl::real ,low ,high))
 
+;; (defpackage "MATLISP-USER"
+;;   (:use "COMMON-LISP"
+;;         "MATLISP"
+;;         #+:allegro "EXCL"
+;;         #+:cmu "EXT"
+;;         #+:sbcl "SB-EXT")
+;;   (:shadowing-import-from "MATLISP" "REAL")
+;;   (:documentation "Matlisp user package meant for interacting with matlisp"))
+
+;; (in-package "MATLISP")
+
+;; ;; We've shadowed CL's REAL.  Re-establish the real type.
+;; (deftype real (&optional low high)
+;;   `(cl::real ,low ,high))

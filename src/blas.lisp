@@ -231,7 +231,7 @@
   (n :integer :input)
   (dx (* :double-float) :output)
   (incx :integer :input)
-  (dy (* :double-float :inc))
+  (dy (* :double-float))
   (incy :integer :input)
   )
 

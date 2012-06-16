@@ -9,17 +9,16 @@
 
 ;; Callbacks : (:function <output-type> {(params)})
 
-(in-package "FORTRAN-FFI-ACCESSORS")
+(in-package :ffi)
 
-(defconstant +ffi-types+ '(:single-float :double-float
-			   :complex-single-float :complex-double-float
-			   :integer :long
-			   :string
-			   :callback))
+(define-constant +ffi-types+ '(:single-float :double-float
+			       :complex-single-float :complex-double-float
+			       :integer :long
+			       :string
+			       :callback))
 
-(defconstant +ffi-styles+ '(:input :input-value :workspace
-			    ;;
-			    :input-output :output :workspace-output))
+(define-constant +ffi-styles+ '(:input :input-value :workspace
+				:input-output :output :workspace-output))
 
   
 ;; Create objects on the heap and run some stuff.
@@ -461,7 +460,7 @@
 	       (setq ffi-var (scat "ADDR-" var))
 	       (nconsc array-vars `((,ffi-var ,var)))
 	       ;;
-	       (when-let (arg (get-arg :inc type))
+	       (when-let (arg (getf type :inc))
 		 (nconsc defun-keyword-args
 			 `((,arg 0)))
 		 (nconc (car (last array-vars)) `(:inc-type ,(cadr type) :inc ,arg))))
@@ -581,7 +580,7 @@
 	       (setq ffi-var (scat "ADDR-" var))
 	       (setq func-var var)
 	       (nconsc array-vars `((,func-var (make-foreign-vector :pointer ,ffi-var :type ,(second (->cffi-type type))
-								    :size ,(if-let (size (get-arg :size type))
+								    :size ,(if-let (size (getf type :size))
 										   size
 										   1))))))
 	      ;;
@@ -666,15 +665,17 @@
 ;; Only support types that we currently use.
 (deftype matlisp-specialized-array ()
   `(or (simple-array double-float (*))
-       ;;
        (simple-array single-float (*))
        ;;
+       (simple-array (signed-byte 64) *)
        (simple-array (signed-byte 32) *)
        (simple-array (signed-byte 16) *)
-       (simple-array (signed-byte  8) *)
+       (simple-array (signed-byte 8) *)
+       ;;
+       (simple-array (unsigned-byte 64) *)
        (simple-array (unsigned-byte 32) *)
        (simple-array (unsigned-byte 16) *)
-       (simple-array (unsigned-byte  8) *)
+       (simple-array (unsigned-byte 8) *)
        ;;
        cffi:foreign-pointer))
 
