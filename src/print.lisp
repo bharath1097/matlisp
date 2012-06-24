@@ -81,148 +81,84 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Routines for printing a matrix nicely.
+;;; Routines for printing a tensors/matrices nicely.
 
-(in-package "MATLISP")
+(in-package :matlisp)
 
-(defvar *print-max-len*
-  5
-  "Maximum number of elements in any particular argument to print.
-  Set this to NIL to print no elements.  Set this to T
-  to print all elements.")
+(defparameter *print-max-len* 5
+"
+Maximum number of elements in any particular argument to print.
+Set this to T to print all the elements.
+")
 
-(defvar *print-max-args* 5
-  "Maximum number of arguments of the tensor to print.
-  Set this to NIL to print none; to T  to print all of them.")
+(defparameter *print-max-args* 5
+"
+Maximum number of arguments of the tensor to print.
+Set this to T to print all the arguments.
+")
 
-(defun set-print-limits-for-matrix (n m)
-  (declare (type fixnum n m))
-  (if (eq *print-matrix* t)
-      (values n m)
-    (if (eq *print-matrix* nil)
-	(values 0 0)
-      (if (and (integerp *print-matrix*)
-	       (> *print-matrix* 0))
-	  (values (min n *print-matrix*)
-		  (min m *print-matrix*))
-	(error "Cannot set the print limits for matrix.
-Required that *PRINT-MATRIX* be T,NIL or a positive INTEGER,
-but got *PRINT-MATRIX* of type ~a"
-	       (type-of *print-matrix*))))))
-
-(defvar *print-indent* 0
-  "Determines how many spaces will be printed before each row 
-   of a matrix (default 0)")
+(defparameter *print-indent* 0
+"
+Determines how many spaces will be printed before each row
+of a matrix (default 0)
+")
 
 (defun print-tensor (tensor stream)
   (let ((rank (rank tensor))
-	(dims (dimensions tensor)))
+	(dims (dimensions tensor))
+	(two-print-calls 0))
     (labels ((two-print (tensor subs)
-		 (dotimes (i (aref dims 0))
-		   (dotimes (j (aref dims 1))
-		     (format stream "~A~,4T" (apply #'tensor-ref (list tensor (append (list i j) subs)))))
-		   (format stream "~%")))
-	       (rec-print (tensor idx subs)
-		 (if (> idx 1)
-		     (dotimes (i (aref dims idx))
-		       (rec-print tensor (1- idx) (cons i subs)))
+	       (dotimes (i (aref dims (- rank 2)))
+		 (format stream (format-to-string "~~~AT" *print-indent*))
+		 (if (or (eq *print-max-len* t) (< i *print-max-len*))
 		     (progn
-		       (format stream "~A~%" (append (list '\: '\:) subs))
-		       (two-print tensor subs)
-		       (format stream "~%")))))
-	(format stream "~A ~A~%" rank dims)
+		       (dotimes (j (aref dims (- rank 1)))
+			 (if (or (eq *print-max-len* t) (< j *print-max-len*))
+			     (progn
+			       (print-element tensor (tensor-ref tensor (append subs `(,i ,j))) stream)
+			       (format stream "~,4T"))
+			     (progn
+			       (format stream "...")
+			       (return nil))))
+			 (format stream "~%"))
+		     (progn
+		       (format stream (format-to-string ".~~%~~~AT:~~%" *print-indent*))
+		       (return nil)))))
+	     (rec-print (tensor idx subs)
+	       (if (< idx (- rank 2))
+		   (dotimes (i (aref dims idx) t)
+		     (unless (rec-print tensor (1+ idx) (append subs `(,i)))
+		       (return nil)))
+		   (progn
+		     (if (or (eq *print-max-args* t) (< two-print-calls *print-max-args*))
+			 (progn
+			   (format stream "~A~%" (append subs '(\: \:)))
+			   (two-print tensor subs)
+			   (format stream "~%")
+			   (incf two-print-calls)
+			   t)
+			 (progn
+			   (format stream "~A~%" (make-list rank :initial-element '\:))
+			   (format stream (format-to-string "~~~AT..~~%~~~AT::~~%" *print-indent* *print-indent*))
+			   nil))))))
+			   
 	(case rank
 	  (1
 	   (dotimes (i (aref dims 0))
-	     (format stream "~A~,4T" (tensor-ref tensor `(,i))))
+	     (print-element tensor (tensor-ref tensor `(,i)) stream)
+	     (format stream "~,4T"))
 	   (format stream "~%"))
 	  (2
 	   (two-print tensor nil))
 	  (t
-	   (rec-print tensor (- rank 1) nil))))))
-
-(defun print-matrix (matrix stream)
-  (with-slots (number-of-rows number-of-cols)
-      matrix
-    (multiple-value-bind (max-n max-m)
-	(set-print-limits-for-matrix number-of-rows number-of-cols)
-      (declare (type fixnum max-n max-m))
-      (format stream " ~d x ~d" number-of-rows number-of-cols)
-
-      ;; Early exit if the total number of elements is zero.
-      (when (zerop (number-of-elements matrix))
-	(return-from print-matrix))
-      (decf max-n)
-      (decf max-m)  
-      (flet ((print-row (i)
-	       (when (minusp i)
-		 (return-from print-row))
-	       (format stream "~%   ")
-		  
-	       (dotimes (k *matrix-indent*)
-		 (format stream " "))
-	       (dotimes (j max-m)
-		 (declare (type fixnum j))
-		 (print-element matrix 
-				(matrix-ref matrix i j)
-				stream)
-		 (format stream " "))
-	       (if (< max-m (1- number-of-cols))
-		   (progn
-		     (format stream "... ")
-		     (print-element matrix 
-				    (matrix-ref matrix i (1- number-of-cols))
-				    stream)
-		     (format stream " "))
-		   (if (< max-m number-of-cols)
-		       (progn
-			 (print-element matrix 
-					(matrix-ref matrix i (1- number-of-cols))
-					stream)
-			 (format stream " "))))))
-	   
-	(dotimes (i max-n)
-	  (declare (type fixnum i))
-	  (print-row i))
-	   
-	(if (< max-n (1- number-of-rows))
-	    (progn
-	      (format stream "~%     :")
-	      (print-row (1- number-of-rows)))
-	    (if (< max-n number-of-rows)
-		(print-row (1- number-of-rows))))))))
-
-
-(defmethod print-object ((matrix standard-matrix) stream)
-  (print-unreadable-object (matrix stream :type t :identity (not *print-matrix*))
-    (when *print-max*
-      (print-matrix matrix stream))))
-
+	   (rec-print tensor 0 nil))))))
 
 (defmethod print-object ((tensor standard-tensor) stream)
   (print-unreadable-object (tensor stream :type t)
-    (let ((rank (rank tensor))
-	  (dims (dimensions tensor)))
-      (labels ((two-print (tensor subs)
-		 (dotimes (i (aref dims 0))
-		   (dotimes (j (aref dims 1))
-		     (format stream "~A~,4T" (apply #'tensor-ref (list tensor (append (list i j) subs)))))
-		   (format stream "~%")))
-	       (rec-print (tensor idx subs)
-		 (if (> idx 1)
-		     (dotimes (i (aref dims idx))
-		       (rec-print tensor (1- idx) (cons i subs)))
-		     (progn
-		       (format stream "~A~%" (append (list '\: '\:) subs))
-		       (two-print tensor subs)
-		       (format stream "~%")))))
-	(format stream "~A ~A~%" rank dims)
-	(case rank
-	  (1
-	   (dotimes (i (aref dims 0))
-	     (format stream "~A~,4T" (tensor-ref tensor `(,i))))
-	   (format stream "~%"))
-	  (2
-	   (two-print tensor nil))
-	  (t
-	   (rec-print tensor (- rank 1) nil)))))))
+    (format stream "~A~%" (dimensions tensor))
+    (print-tensor tensor stream)))
+
+(defmethod print-object ((tensor standard-matrix) stream)
+  (print-unreadable-object (tensor stream :type t)
+    (format stream "~A x ~A~%" (nrows tensor) (ncols tensor))
+    (print-tensor tensor stream)))

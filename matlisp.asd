@@ -91,7 +91,13 @@
 		     (:file "complex-tensor"
 			    :depends-on ("standard-tensor"))
 		     (:file "standard-matrix"
-			    :depends-on ("standard-tensor"))))))
+			    :depends-on ("standard-tensor"))
+		     ;; (:file "real-matrix"
+		     ;; 	    :depends-on ("standard-matrix"))
+		     ;; (:file "complex-matrix"
+		     ;; 	    :depends-on ("standard-matrix"))
+		     (:file "print"
+		     	    :depends-on ("standard-tensor" "standard-matrix"))))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

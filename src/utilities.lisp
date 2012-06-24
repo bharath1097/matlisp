@@ -1,22 +1,22 @@
 (in-package :utilities)
 
-;;
 (defmacro mlet* (decls &rest body)
-" mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
+"
+mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
 
-  o var is just one symbol -> expands into let
-  o var is a list -> expands into multiple-value-bind
+o var is just one symbol -> expands into let
+o var is a list -> expands into multiple-value-bind
 
-  This macro also handles type declarations.
+This macro also handles type declarations.
 
-  Example:
-  (mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
-  	((a b) (floor 3) :type (nil fixnum)))
-         (+ x b))
+Example:
+> (mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
+         ((a b) (floor 3) :type (nil fixnum)))
+     (+ x b))
 
-  expands into:
+expands into:
 
-  (let ((x 2))
+> (let ((x 2))
     (declare (optimize (safety 0) (speed 3))
              (type fixnum x))
     (multiple-value-bind (a b)
@@ -33,7 +33,6 @@
 							     `(ignore ,(second tv))
 							     `(type ,(first tv) ,(second tv))))
 					  (map 'list #'list type vars)))))))
-	   ;;
 	   (mlet-transform (elst nest-code)
 	     (destructuring-bind (vars form &key declare type) elst
 	       `(,(append (cond
@@ -41,37 +40,41 @@
 			    ;;instead of multiple-value-bind
 			    ((or (symbolp vars))
 			     `(let ((,vars ,form))))
-                            ;;
 			    (t
 			     `(multiple-value-bind (,@vars) ,form)))
 			  (if (symbolp vars)
 			      (mlet-decl (list vars) (list type) declare)
 			      (mlet-decl vars type declare))
 			  nest-code))))
-	   ;;
 	   (mlet-walk (elst body)
 	     (if (null elst)
 		 `(,@body)
 		 (mlet-transform (car elst) (mlet-walk (cdr elst) body)))))
-    ;;
     (if decls
 	(car (mlet-walk decls body))
 	`(progn
 	   ,@body))))
 
-;;
 (defmacro let-rec (name arglist &rest code)
-  "let-rec name ({var [init-form]}*) declaration* form* => result*
+"
+(let-rec name ({var [init-form]}*) declaration* form*) => result*
+Works similar to \"let\" in Scheme.
 
-   Works similar to \"let\" in Scheme."
+Example:
+> (let-rec rev ((x '(1 2 3 4)) (ret nil))
+      (if (null x) ret
+	  (rev (cdr x) (cons (car x) ret))))
+"
   (let ((init (mapcar #'second arglist))
 	(args (mapcar #'first arglist)))
     `(labels ((,name (,@args)
 		,@code))
        (,name ,@init))))
 
-;;
 (defmacro with-gensyms (symlist &body body)
+"
+(with-gensyms (var *) form*)
+Binds every variable in SYMLIST to a gensym."
   `(let ,(mapcar #'(lambda (sym)
 		     `(,sym (gensym ,(symbol-name sym))))
 		 symlist)
@@ -87,7 +90,6 @@
 	     (nconc ,var ,@(cdr args)))
 	   (nconc ,var ,@args))))
 
-;;
 (defun pop-arg! (sym arglist)
   (check-type sym symbol)
   (locally
@@ -102,19 +104,23 @@
 		 (t (get-sym sym (cdr arglist) arglist)))))
       (get-sym sym arglist nil))))
 
-;;
 (defun slot-values (obj slots)
   (values-list (mapcar #'(lambda (slt) (slot-value obj slt))
 		       slots)))
 
-;;
+(declaim (inline linear-array-type))
+(defun linear-array-type (type-sym &optional (size '*))
+  `(simple-array ,type-sym (,size)))
+
+(declaim (inline ensure-list))
 (defun ensure-list (lst)
   (if (listp lst)
       lst
       `(,lst)))
 
 (defmacro if-ret (form &rest else-body)
-  "if-ret (form &rest else-body)
+"
+if-ret (form &rest else-body)
 Evaluate form, and if the form is not nil, then return it,
 else run else-body"
   (let ((ret (gensym)))
@@ -150,7 +156,7 @@ else run else-body"
     (cut-cons-chain-tin lst test lst)))
 
 ;;
-(defun zip (&rest args)  
+(defun zip (&rest args)
   (apply #'map 'list #'list args))
 
 ;;
@@ -169,8 +175,7 @@ else run else-body"
   `(and ,@(mapcar (lambda (pair) (cons 'eq pair))
 		  (zip (ensure-list a) (ensure-list b)))))
 
-;;
-(defun recursive-append (&rest lsts)
+(defun recursive-append (&rest lsts)  
   (labels ((bin-append (x y)
 	     (if (null x)
 		 (if (typep (car y) 'symbol)
@@ -184,6 +189,50 @@ else run else-body"
     (if (null lsts)
 	nil
 	(bin-append (car lsts) (apply #'recursive-append (cdr lsts))))))
+
+(defun unquote-args (lst args)
+  (labels ((replace-atoms (lst ret)
+	     (if (null lst) (reverse ret)
+		 (let ((fst (car lst)))
+		   (replace-atoms (cdr lst)
+				  (cond 
+				    ((atom fst)
+				     (if (member fst args)
+					 (cons fst ret)
+					 (append `(',fst) ret)))
+				    ((consp fst)
+				     (cons (replace-lst fst nil) ret)))))))
+	   (replace-lst (lst acc)
+	     (cond
+	       ((null lst) acc)
+	       ((consp lst)
+		(cons 'list (replace-atoms lst nil)))
+	       ((atom lst) lst))))
+    (replace-lst lst nil)))
+
+(defun flatten (x)
+  (labels ((rec (x acc)
+             (cond ((null x) acc)
+                   ((atom x) (cons x acc))
+                   (t (rec
+		       (car x)
+		       (rec (cdr x) acc))))))
+    (rec x nil)))
+
+(defmacro macrofy (lambda-func)
+  (destructuring-bind (labd args &rest body) lambda-func
+    (assert (eq labd 'lambda))
+    `(lambda ,args ,@(cdr (unquote-args body args)))))
+
+(declaim (inline string+))
+(defun string+ (&rest strings)
+  (apply #'concatenate (cons 'string strings)))
+
+(defun format-to-string (fmt &rest args)
+  (let ((ret (make-array 0 :element-type 'character :fill-pointer t)))
+    (with-output-to-string (ostr ret)
+      (apply #'format (append `(,ostr ,fmt) args)))
+    ret))
 
 ;;---------------------------------------------------------------;;
 (defstruct (foreign-vector
@@ -359,15 +408,15 @@ use the inlining macro directly."
      ,@(if (eq (caar forms) 'declare) (cdr forms) forms)))
 
 (defmacro quickly (&body forms)
-  `(with-optimization (:speed 3) do
+  `(with-optimization (:speed 3)
      ,@forms))
 
 (defmacro very-quickly (&body forms)
-  `(with-optimization (:safety 0 :space 0 :speed 3) do
+  `(with-optimization (:safety 0 :space 0 :speed 3)
      ,@forms))
 
 (defmacro slowly (&body forms)
-  `(with-optimization (:speed 1) do
+  `(with-optimization (:speed 1)
      ,@forms))
 
 (defmacro quickly-if (test &body forms)

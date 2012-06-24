@@ -40,11 +40,18 @@ Allocates real storage.  Default initial-element = 0d0.")
   (call-next-method))
 ;;
 
-(defmethod tensor-store-ref ((tensor real-tensor) (idx fixnum))
-  (aref (store tensor) idx))
+(tensor-store-defs (real-tensor real-type real-type)
+  :reader
+  (lambda (tstore idx)
+    (aref tstore idx))
+  :value-writer
+  (lambda (value store idx)
+    (setf (aref store idx) value))
+  :reader-writer
+  (lambda (fstore fidx tstore tidx)
+    (setf (aref fstore fidx) (aref tstore tidx))))
 
-(defmethod (setf tensor-store-ref) ((value number) (tensor real-tensor) (idx fixnum))
-  (setf (aref (store tensor) idx) (coerce-real value)))
+(setf (gethash 'real-sub-tensor *tensor-class-optimizations*) 'real-tensor)
 
 ;;
 (defmethod print-element ((tensor real-tensor)
@@ -53,8 +60,12 @@ Allocates real storage.  Default initial-element = 0d0.")
 
 ;;
 
-(defun make-real-tensor (&rest subs)
+(defun make-real-tensor-dims (&rest subs)
   (let* ((dims (make-index-store subs))
 	 (ss (reduce #'* dims))
 	 (store (allocate-real-store ss)))
     (make-instance 'real-tensor :store store :dimensions dims)))
+
+#+nil(defun make-real-tensor-array (arr)
+  (let* ((dims (array-dimensions arr))
+	 (ret (apply #'make-real-tensor-dims dims)))))

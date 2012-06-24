@@ -1,7 +1,9 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :fortran-ffi-accessors; Base: 10 -*-
 ;; Yes the file name is an oxymoron.
 
-(in-package "FORTRAN-FFI-ACCESSORS")
+(in-package :ffi)
+
+;;TODO: Add support for {Allegro CL, Lispworks, ECL, clisp}
 
 (defmacro with-fortran-float-modes (&body body)
   "Execute the body with the IEEE FP modes appropriately set for Fortran"
@@ -40,18 +42,17 @@
    #+ccl `(ccl::without-gcing)
    body))
 
-(defmacro vector-sap-interpreter-specific (vec)
-  #+sbcl `(sb-sys:vector-sap ,vec)
-  #+cmu `(system:vector-sap ,vec)  
-  #+ccl (let ((addr-vec (gensym)))
-	  `(let ((,addr-vec (ccl:%null-ptr)))
-	     (declare (type ccl:macptr ,addr-vec))
-	     (ccl::%vect-data-to-macptr ,vec ,addr-vec))))
+(definline vector-sap-interpreter-specific (vec)
+  #+sbcl (sb-sys:vector-sap vec)
+  #+cmu (system:vector-sap vec)
+  #+ccl (let ((addr-vec (ccl:%null-ptr)))
+	  (declare (type ccl:macptr addr-vec))
+	  (ccl::%vect-data-to-macptr vec addr-vec)))
 
-(defmacro vector-data-address (vec)
-"
-Creates lisp code to return the physical address of where the actual
-data of the object VEC is stored.
+#+(or sbcl cmu ccl)
+(defun vector-data-address (vec)
+  "
+Returns the pointer address of where the actual data store of the object VEC.
 
 VEC - must be a either a (complex double-float), (complex single-float)
 or a specialized array type in CMU Lisp.  This currently means
@@ -65,45 +66,18 @@ VEC is a simple-array of one dimension of one of the following types:
 Returns
   1   - system area pointer to the actual data
 "
-  `(progn
-     (with-optimization (:speed 1 :safety 3)
-	 ;; It's quite important that the arrays have the right type.
-	 ;; Otherwise, we will probably get the address of the data wrong,
-	 ;; and then foreign function could be scribbling over who knows
-	 ;; where!
-	 (check-type ,vec matlisp-specialized-array))
-     (with-optimization (:speed 3 :safety 0 :space 0)
-	 ;;vec is either a simple-array or a system-area-pointer itself.
-	 (declare (type matlisp-specialized-array ,vec))
-       (if (typep ,vec '(simple-array * (*)))
-	   (vector-sap-interpreter-specific ,vec)
-	   vec))))
-
-;; #+(or sbcl cmu ccl)
-;; (progn
-;;   (declaim (inline vector-data-address))
-
-;;   (defun vector-data-address (vec)
-
-;;     (locally
-;; 	(declare (optimize (speed 1) (safety 3)))
-;;       ;; It's quite important that the arrays have the write type.
-;;       ;; Otherwise, we will probably get the address of the data wrong,
-;;       ;; and then foreign function could be scribbling over who knows
-;;       ;; where!
-;;       ;;
-;;       (check-type vec matlisp-specialized-array))
-;;     (locally
-;; 	(declare (type matlisp-specialized-array vec)
-;; 		 (optimize (speed 3) (safety 0) (space 0)))
-;;       ;;vec is either a simple-array or a system-area-pointer itself.
-;;       (if (typep vec '(simple-array * (*)))
-;; 	  #+sbcl (sb-sys:vector-sap vec)
-;; 	  #+cmu (system:vector-sap vec)
-;; 	  #+ccl (let ((addr-vec (ccl:%null-ptr)))
-;; 		  (declare (type ccl:macptr addr-vec))
-;; 		  (ccl::%vect-data-to-macptr vec addr-vec))
-;; 	  vec))))
+  (with-optimization (:speed 1 :safety 3)
+    ;; It's quite important that the arrays have the right type.
+    ;; Otherwise, we will probably get the address of the data wrong,
+    ;; and then foreign function could be scribbling over who knows
+    ;; where!
+    (check-type vec matlisp-specialized-array))
+  (with-optimization (:speed 3 :safety 0 :space 0)
+    ;;vec is either a simple-array or a system-area-pointer itself.
+    (declare (type matlisp-specialized-array vec))
+    (if (typep vec '(simple-array * (*)))
+	(vector-sap-interpreter-specific vec)
+	vec)))
 
 #+(or sbcl cmu ccl)
 (defmacro with-vector-data-addresses (vlist &body body)

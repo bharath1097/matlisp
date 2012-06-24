@@ -413,16 +413,15 @@
 			    ,@pars))
 	  (setq hack-return-type :void)))
       
-      `(eval-when (load eval compile)
-	 (progn
-	   ;; Removing 'inlines' It seems that CMUCL has a problem with
-	   ;; inlines of FFI's when a lisp image is saved.  Until the
-	   ;; matter is clarified we leave out 'inline's
-
-	   ;; (declaim (inline ,lisp-name)) ;sbcl 0.8.5 has problems with
-	   (cffi:defcfun (,fortran-name ,lisp-name) ,@(get-return-type hack-return-type)
-	     ,@(parse-fortran-parameters hack-body))
-	   ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name))))))
+      `(progn
+	 ;; Removing 'inlines' It seems that CMUCL has a problem with
+	 ;; inlines of FFI's when a lisp image is saved.  Until the
+	 ;; matter is clarified we leave out 'inline's
+	 
+	 ;; (declaim (inline ,lisp-name)) ;sbcl 0.8.5 has problems with
+	 (cffi:defcfun (,fortran-name ,lisp-name) ,@(get-return-type hack-return-type)
+	   ,@(parse-fortran-parameters hack-body))
+	 ,@(def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
 
 ;; Create a form specifying a simple Lisp function that calls the
 ;; underlying Fortran routine of the same name.

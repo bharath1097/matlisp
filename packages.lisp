@@ -159,11 +159,14 @@
 	   #:zip #:zip-eq
 	   #:cut-cons-chain!
 	   #:slot-values 
-	   #:recursive-append
+	   #:recursive-append #:unquote-args #:flatten
+	   #:format-to-string #:string+
+	   #:linear-array-type 
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator
 	   #:nconsc #:define-constant
+	   #:macrofy
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if
@@ -173,10 +176,13 @@
 
 (defpackage :fortran-ffi-accessors
   (:nicknames :ffi)
-  #+:cmu (:use :common-lisp :c-call :cffi :utilities)
-  #+:sbcl (:use :common-lisp :sb-alien :sb-c :cffi :utilities)
-  #+:allegro (:use :common-lisp :cffi :utilities)
-  #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
+  (:use :common-lisp :cffi :utilities)
+  ;; TODO: Check if this is implementation-agnostic.
+  ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)
+  ;; #+:sbcl (:use :common-lisp :cffi :utilities)
+
+  ;; #+:allegro (:use :common-lisp :cffi :utilities)
+  ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
    ;; interface functions
    #:def-fortran-routine

@@ -1,34 +1,3 @@
-;;; Definitions of REAL-MATRIX.
-
-(in-package :matlisp)
-
-(eval-when (load eval compile)
-  (deftype real-matrix-element-type ()
-    "The type of the elements stored in a REAL-MATRIX"
-    'double-float)
-  
-  (deftype real-matrix-store-type (size)
-    "The type of the storage structure for a REAL-MATRIX"
-    `(simple-array double-float (,size)))
-  )
-;;
-(defclass real-matrix (standard-matrix)
-  ((store
-    :initform nil
-    :type (real-matrix-store-type *)))
-  (:documentation "A class of matrices with real elements."))
-
-(defclass sub-real-matrix (real-matrix)
-  ((parent-matrix
-    :initarg :parent
-    :accessor parent
-    :type real-matrix))
-  (:documentation "A class of matrices with real elements."))
-
-;;
-(defmethod initialize-instance ((matrix real-matrix) &rest initargs)
-  (setf (store-size matrix) (length (getf :store initargs)))
-  (call-next-method))
 
 ;;
 (defmethod matrix-ref-1d ((matrix real-matrix) (idx fixnum))

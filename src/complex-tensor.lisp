@@ -7,11 +7,11 @@
   
   (deftype complex-base-array (size)
     "The type of the storage structure for a COMPLEX-MATRIX"
-    `(simple-array real-type (,size)))
+    `(simple-array complex-base-type (,size)))
  
   (deftype complex-type ()
     "Complex number with Re, Im parts in complex-base-type."
-    '(cl:complex (complex-base-type * *)))
+    '(cl:complex complex-base-type))
   )
 ;;
 
@@ -24,6 +24,9 @@ Default initial-element = 0d0."
 
 (definline coerce-complex (x)
   (coerce x 'complex-type))
+
+(definline coerce-complex-base (x)
+  (coerce x 'complex-base-type))
 
 ;;
 (defclass complex-tensor (standard-tensor)
@@ -53,13 +56,21 @@ Cannot hold complex numbers."))
   (call-next-method))
 ;;
 
-(defmethod tensor-store-ref ((tensor complex-tensor) (idx fixnum))
-  (complex (aref (store tensor) (* 2 idx))
-	   (aref (store tensor) (+ (* 2 idx) 1))))
+(tensor-store-defs (complex-tensor complex-type complex-base-type)
+  :reader
+  (lambda (tstore idx)
+    (complex (aref tstore (* 2 idx))
+	     (aref tstore (1+ (* 2 idx)))))
+  :value-writer
+  (lambda (value store idx)
+    (setf (aref store (* 2 idx)) (realpart value)
+	  (aref store (1+ (* 2 idx))) (imagpart value)))
+  :reader-writer
+  (lambda (fstore fidx tstore tidx)
+    (setf (aref fstore (* 2 fidx)) (aref tstore (* 2 tidx))
+	  (aref fstore (1+ (* 2 fidx))) (aref tstore (1+ (* 2 tidx))))))
 
-(defmethod (setf tensor-store-ref) ((value number) (tensor complex-tensor) (idx fixnum))
-  (setf (aref (store tensor) (* 2 idx)) (coerce (realpart value) 'complex-base-type)
-	(aref (store tensor) (+ (* 2 idx) 1)) (coerce (imagpart value) 'complex-base-type)))
+(setf (gethash 'complex-sub-tensor *tensor-class-optimizations*) 'complex-tensor)
 
 ;;
 (defmethod print-element ((tensor complex-tensor)
@@ -77,4 +88,3 @@ Cannot hold complex numbers."))
 	 (ss (reduce #'* dims))
 	 (store (allocate-complex-store ss)))
     (make-instance 'complex-tensor :store store :dimensions dims)))
-
