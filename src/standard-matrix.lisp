@@ -122,7 +122,7 @@ matrix and a number"))
       ;;
       (gethash 'complex-matrix *tensor-class-optimizations*) 'complex-tensor
       (gethash 'complex-sub-matrix *tensor-class-optimizations*) 'complex-tensor)
-      
+
 ;;
 
 (definline matrix-ref (matrix row &optional col)

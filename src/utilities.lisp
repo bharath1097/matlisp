@@ -2,28 +2,28 @@
 
 (defmacro mlet* (decls &rest body)
 "
-mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
+  mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
 
-o var is just one symbol -> expands into let
-o var is a list -> expands into multiple-value-bind
+  o var is just one symbol -> expands into let
+  o var is a list -> expands into multiple-value-bind
 
-This macro also handles type declarations.
+  This macro also handles type declarations.
 
-Example:
-> (mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
-         ((a b) (floor 3) :type (nil fixnum)))
-     (+ x b))
+  Example:
+  > (mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
+           ((a b) (floor 3) :type (nil fixnum)))
+       (+ x b))
 
-expands into:
+  expands into:
 
-> (let ((x 2))
-    (declare (optimize (safety 0) (speed 3))
-             (type fixnum x))
-    (multiple-value-bind (a b)
-        (floor 3)
-      (declare (ignore a)
-               (type fixnum b))
-      (+ x b)))
+  > (let ((x 2))
+      (declare (optimize (safety 0) (speed 3))
+               (type fixnum x))
+      (multiple-value-bind (a b)
+          (floor 3)
+        (declare (ignore a)
+                 (type fixnum b))
+        (+ x b)))
 "
   (labels ((mlet-decl (vars type decls)
 	     (when (or type decls)
@@ -57,13 +57,13 @@ expands into:
 
 (defmacro let-rec (name arglist &rest code)
 "
-(let-rec name ({var [init-form]}*) declaration* form*) => result*
-Works similar to \"let\" in Scheme.
+  (let-rec name ({var [init-form]}*) declaration* form*) => result*
+  Works similar to \"let\" in Scheme.
 
-Example:
-> (let-rec rev ((x '(1 2 3 4)) (ret nil))
-      (if (null x) ret
-	  (rev (cdr x) (cons (car x) ret))))
+  Example:
+  > (let-rec rev ((x '(1 2 3 4)) (ret nil))
+        (if (null x) ret
+   	  (rev (cdr x) (cons (car x) ret))))
 "
   (let ((init (mapcar #'second arglist))
 	(args (mapcar #'first arglist)))
@@ -73,8 +73,8 @@ Example:
 
 (defmacro with-gensyms (symlist &body body)
 "
-(with-gensyms (var *) form*)
-Binds every variable in SYMLIST to a gensym."
+  (with-gensyms (var *) form*)
+  Binds every variable in SYMLIST to a gensym."
   `(let ,(mapcar #'(lambda (sym)
 		     `(,sym (gensym ,(symbol-name sym))))
 		 symlist)
@@ -120,9 +120,9 @@ Binds every variable in SYMLIST to a gensym."
 
 (defmacro if-ret (form &rest else-body)
 "
-if-ret (form &rest else-body)
-Evaluate form, and if the form is not nil, then return it,
-else run else-body"
+  if-ret (form &rest else-body)
+  Evaluate form, and if the form is not nil, then return it,
+  else run else-body"
   (let ((ret (gensym)))
     `(let ((,ret ,form))
        (or ,ret

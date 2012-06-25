@@ -4,5 +4,5 @@ based on an initial prototype by Raymond Toy.
 It is now being refactored by Akshay Srinivasan.
 
 Some of code was originally written by Nicholas Neuss for
-Femlisp (www.femlisp.org); it has used here (with modification) 
-with the author's consent.
+Femlisp (www.femlisp.org); it has been used here
+(with modification or otherwise) with the author's consent.

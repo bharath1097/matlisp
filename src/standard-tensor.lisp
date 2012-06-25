@@ -96,23 +96,23 @@
 ;;
 (defparameter *sub-tensor-counterclass* (make-hash-table)
   "
-Contains the sub-tensor CLOS counterpart classes of every
-tensor class. This is used by sub-tensor~ and other in-place
-slicing functions to construct new objects.")
+  Contains the sub-tensor CLOS counterpart classes of every
+  tensor class. This is used by sub-tensor~ and other in-place
+  slicing functions to construct new objects.")
 
 (setf (gethash 'standard-tensor *sub-tensor-counterclass*) 'standard-sub-tensor)
 
 ;;
 (defparameter *tensor-class-optimizations* (make-hash-table)
   "
-Contains a either:
-o A property list containing:
-:element-type
-:store-type
-:reader (store idx) => result
-:value-writer (value store idx) => (store idx) <- value
-:reader-writer (fstore fidx tstore tidx) => (tstore tidx) <- (fstore fidx)
-o class-name (symbol) of the superclass whose optimizations
+  Contains a either:
+  o A property list containing:
+  :element-type
+  :store-type
+  :reader (store idx) => result
+  :value-writer (value store idx) => (store idx) <- value
+  :reader-writer (fstore fidx tstore tidx) => (tstore tidx) <- (fstore fidx)
+  o class-name (symbol) of the superclass whose optimizations
   are to be made use of.")
 
 (defun get-tensor-class-optimization (clname)
@@ -127,8 +127,9 @@ o class-name (symbol) of the superclass whose optimizations
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp
 (defmethod make-load-form ((tensor standard-tensor) &optional env)
-  "MAKE-LOAD-FORM allows us to determine a load time value for
-   tensor, for example #.(make-tensors ...)"
+  "
+  MAKE-LOAD-FORM allows us to determine a load time value for
+  tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
 
 ;;

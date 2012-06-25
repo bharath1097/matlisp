@@ -72,6 +72,10 @@ Cannot hold complex numbers."))
 
 (setf (gethash 'complex-sub-tensor *tensor-class-optimizations*) 'complex-tensor)
 
+(defmethod (setf tensor-ref) ((value number) (tensor complex-tensor) subscripts)
+  (let ((sto-idx (store-indexing subscripts tensor)))
+    (setf (tensor-store-ref tensor sto-idx) (coerce-complex value))))
+
 ;;
 (defmethod print-element ((tensor complex-tensor)
 			  element stream)

@@ -23,89 +23,123 @@ is used, else the fortran routine is called instead.
        unless (= off accumulated-off) do (return nil)
        finally (return t))))
 
-;;
-
-(defmacro mod-tensor-loop ((idx dims) &body body)
+(defmacro mod-loop ((idx dims) &body body)
   (check-type idx symbol)
   (let ((tensor-table (make-hash-table)))
-    (labels ((get-tensors (decl ret)
-	       (if (null decl)
-		   ret
+    (labels ((get-tensors (decl)
+	       (if (null decl) t
 		   (let ((cdecl (car decl)))
-		     (if (and (eq (first cdecl) 'type)
-			      (gethash (second cdecl) *sub-tensor-counterclass*))
-			 (dolist sym 
-			 (get-tensors (cdr decl) (append ret (cddr cdecl)))
-			 (get-tensors (cdr decl) ret)))))
+		     (when (and (eq (first cdecl) 'type)
+				(get-tensor-class-optimization (second cdecl)))
+		       (dolist (sym (cddr cdecl))
+			 (let ((hsh (list
+				     :class (second cdecl)
+				     :stride-sym (gensym (string+ (symbol-name sym) "-stride"))
+				     :store-sym (gensym (string+ (symbol-name sym) "-store"))
+				     :offset-sym (gensym (string+ (symbol-name sym) "-offset")))))
+			   (setf (gethash sym tensor-table) hsh))))
+		     (get-tensors (cdr decl)))))
+	     (ttrans-p (code)
+	       (and (eq (first code) 'tensor-ref)
+		    (gethash (second code) tensor-table)
+		    (eq (third code) idx)))
+	     (transform-setf-tensor-ref (snippet ret)
+	       (if (null snippet) ret
+		   (transform-setf-tensor-ref
+		    (cddr snippet)
+		    (append ret
+			    (destructuring-bind (to from &rest rest) snippet
+			      (declare (ignore rest))
+			      (let ((to-t? (ttrans-p to))
+				    (fr-t? (ttrans-p from)))
+				(cond
+				  ((and to-t? fr-t?)
+				   (let ((to-opt (gethash (second to) tensor-table))
+					 (fr-opt (gethash (second from) tensor-table)))
+				     ;;Add type checking here!
+				     (cdr (funcall (getf (get-tensor-class-optimization (getf to-opt :class)) :reader-writer)
+						   (getf fr-opt :store-sym) (getf fr-opt :offset-sym) (getf to-opt :store-sym) (getf to-opt :offset-sym)))))
+				  (to-t?
+				   (let ((to-opt (gethash (second to) tensor-table)))
+				     ;;Add type checking here!
+				     (cdr (funcall (getf (get-tensor-class-optimization (getf to-opt :class)) :value-writer)
+						   from (getf to-opt :store-sym) (getf to-opt :offset-sym)))))
+				  (fr-t?
+				   (let ((fr-opt (gethash (second from) tensor-table)))
+				     (cons to (funcall (getf (get-tensor-class-optimization (getf fr-opt :class)) :reader)
+						       (getf fr-opt :store-sym) (getf fr-opt :offset-sym)))))
+				  (t
+				   (list to from)))))))))
 	     (transform-tensor-ref (snippet)
-	       (let ((ten (second snippet))
-		     (index (third snippet)))
-		 (if (not (eq index idx)) snippet
-		     (destructuring-bind (tstride tstore toff)
-			 (if-ret (gethash ten tensor-table)
-				 (setf (gethash ten tensor-table)
-				       (mapcar #'(lambda (x)
-						   (gensym (string+ (symbol-name ten) (symbol-name x))))
-					       '(stride store off))))
-		       (let ((let-before-code `((,tstride (strides ,ten))
-						(,tstore (store ,ten))))
-			     (loop-code `(with ,toff of-type index-type = (head ,ten)))
-			     (decl-code `(type 
-					     
-		   
-	     
-	   (find-tensor-refs (code ret ten)
-	     (let ((ccode (car code)))
-	       (cond
-		 ((consp ccode)
-		  (find-tensor-refs (car ccode) ...))
-		 ((eq ccode 'tensor-ref)
-		  (transform-tensor-ref code)))
-		   
-  (with-gensyms (dims-sym rank-sym)
-    `(let* ((,dims-sym ,dims)
-	    (,rank-sym (length ,dims-sym))
-	    (,idx (allocate-index-store ,rank-sym)))
-       (declare (type (index-array *) ,idx))
-       (loop
-	  do (progn
-	       ,@body)
-	  while (dotimes (i ,rank-sym nil)
-		  (declare (type index-type i))
-		  (if (= (aref ,idx i) (1- (aref ,dims-sym i)))
-		      (progn
-			(setf (aref ,idx i) 0))
-		      (progn
-			(incf (aref ,idx i))
-			(return t))))))))
+	       (if (eq (first snippet) 'setf)
+		   (cons 'setf (transform-setf-tensor-ref (cdr snippet) nil))
+		   (destructuring-bind (tref ten index) snippet
+		     (assert (eq tref 'tensor-ref))
+		     (let ((topt (gethash ten tensor-table)))
+		       (if (not (and (eq index idx) topt)) snippet
+			   (funcall (getf (get-tensor-class-optimization (getf topt :class)) :reader) (getf topt :store-sym) (getf topt :offset-sym)))))))
+	     (find-tensor-refs (code ret)
+	       (if (null code) (reverse ret)
+		   (cond
+		     ((consp code)
+		      (if (member (first code) '(tensor-ref setf))
+			  (transform-tensor-ref code)
+			  (find-tensor-refs (cdr code) (cons (find-tensor-refs (car code) nil) ret))))
+		     (t code)))))
+      (when (eq (caar body) 'declare)
+	(get-tensors (cdar body)))
+      (with-gensyms (dims-sym rank-sym count-sym)
+	`(let* ((,dims-sym ,dims)
+		(,rank-sym (length ,dims-sym))
+		(,idx (allocate-index-store ,rank-sym))
+		,@(loop for key being the hash-keys of tensor-table
+		     collect (let ((hsh (gethash key tensor-table)))
+			       `(,(getf hsh :stride-sym) (strides ,key))))
+		,@(loop for key being the hash-keys of tensor-table
+		     collect (let ((hsh (gethash key tensor-table)))
+			       `(,(getf hsh :store-sym) (store ,key)))))
+	   (declare (type (index-array *) ,idx ,@(loop for key being the hash-keys of tensor-table
+						    collect (getf (gethash key tensor-table) :stride-sym)))
+		    ,@(loop for key being the hash-keys of tensor-table
+			   collect (let* ((hsh (gethash key tensor-table))
+					  (opt (get-tensor-class-optimization (getf hsh :class))))
+				     `(type ,(linear-array-type (getf opt :store-type)) ,(getf hsh :store-sym)))))
+	   (loop
+	      ,@(loop for key being the hash-keys of tensor-table
+		   append (let ((hsh (gethash key tensor-table)))
+			    `(with ,(getf hsh :offset-sym) of-type index-type = (head ,key))))
+	      do (locally
+		   ,@(find-tensor-refs body nil))
+	      while (dotimes (,count-sym ,rank-sym nil)
+		      (declare (type index-type ,count-sym))
+		      (if (= (aref ,idx ,count-sym) (1- (aref ,dims-sym ,count-sym)))
+			  (progn
+			    (setf (aref ,idx ,count-sym) 0)
+			    ,@(loop for key being the hash-keys of tensor-table
+				 collect (let ((hsh (gethash key tensor-table)))
+					   `(decf ,(getf hsh :offset-sym) (* (aref ,(getf hsh :stride-sym) ,count-sym) (1- (aref ,dims-sym ,count-sym)))))))
+			  (progn
+			    (incf (aref ,idx ,count-sym))
+			    ,@(loop for key being the hash-keys of tensor-table
+				 collect (let ((hsh (gethash key tensor-table)))
+					   `(incf ,(getf hsh :offset-sym) (aref ,(getf hsh :stride-sym) ,count-sym))))
+			    (return t))))))))))
        
 (defun tensor-copy (from to)
   (declare (optimize (speed 3) (safety 0))
 	   (type real-tensor to from))
-  (let* ((rank (rank to))
-	 (dims (dimensions to))
-	 (t-strides (strides to))
-	 (f-strides (strides from))
-	 (t-store (store to))
-	 (f-store (store from))
-	 (idx (allocate-index-store rank)))
-    (declare (type (index-array *) dims t-strides f-strides idx))
-    (declare (type (real-array *) t-store f-store))
-    (loop
-       with of-t of-type index-type = (head to)
-       with of-f of-type index-type = (head from)
-       do (setf (aref t-store of-t) (aref f-store of-f))
-       while (dotimes (i rank nil)
-	       (if (= (aref idx i) (1- (aref dims i)))
-		   (progn
-		     (setf (aref idx i) 0)
-		     (decf of-t (* (aref t-strides i) (1- (aref dims i))))
-		     (decf of-f (* (aref f-strides i) (1- (aref dims i)))))
-		   (progn
-		     (incf (aref idx i))
-		     (incf of-t (aref t-strides i))
-		     (incf of-f (aref f-strides i))
-		     (return t)))))))
+  (let ((dims (dimensions from)))
+    (mod-loop (idx dims)
+      (declare (type real-tensor to from))
+      (setf (tensor-ref to idx) (tensor-ref from idx)))))
+
+
+(let ((x (make-real-tensor-dims 100 100 100))
+      (y (make-real-tensor-dims 100 100 100)))
+  (mod-loop (idx #(100 100 100))
+    (declare (type real-tensor x y))
+    (setf (tensor-ref x idx) (random 1d0)))
+  (time (tensor-copy x y)))
 
 (defmacro generate-typed-copy!-func (func store-type matrix-type blas-func)
   ;;Be very careful when using functions generated by this macro.

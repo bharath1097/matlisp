@@ -53,6 +53,10 @@ Allocates real storage.  Default initial-element = 0d0.")
 
 (setf (gethash 'real-sub-tensor *tensor-class-optimizations*) 'real-tensor)
 
+(defmethod (setf tensor-ref) ((value number) (tensor real-tensor) subscripts)
+  (let ((sto-idx (store-indexing subscripts tensor)))
+    (setf (tensor-store-ref tensor sto-idx) (coerce-real value))))
+
 ;;
 (defmethod print-element ((tensor real-tensor)
 			  element stream)
