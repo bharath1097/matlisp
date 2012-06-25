@@ -92,7 +92,6 @@
     :accessor parent-tensor))
   (:documentation "Basic sub-tensor class."))
 
-
 ;;
 (defparameter *sub-tensor-counterclass* (make-hash-table)
   "
@@ -122,7 +121,7 @@
       ((symbolp opt)
        (get-tensor-class-optimization opt))
       ((null opt) nil)
-      (t opt))))
+      (t (value opt clname)))))
 
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp
@@ -219,10 +218,10 @@
      i = 0
 "  
   (declare (type standard-tensor tensor)
-	   (type (or cons (index-array *)) idx))
+	   (type (or (index-array *) cons) idx))
   (typecase idx
     (cons (store-indexing-lst idx (head tensor) (strides tensor) (dimensions tensor)))
-    (vector (store-indexing-lst idx (head tensor) (strides tensor) (dimensions tensor)))))
+    (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
 
 ;;
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
