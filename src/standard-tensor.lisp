@@ -49,6 +49,9 @@
     (make-array size :element-type 'index-type
 		:initial-contents contents)))
 
+(definline idxv (&rest contents)
+  (make-index-store contents))
+
 ;;
 (defclass standard-tensor ()
   ((rank
@@ -121,7 +124,7 @@
       ((symbolp opt)
        (get-tensor-class-optimization opt))
       ((null opt) nil)
-      (t (value opt clname)))))
+      (t (values opt clname)))))
 
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp
@@ -153,7 +156,7 @@
 	   (type (index-array *) idx strides dims))
   (let ((rank (length strides)))
     (declare (type index-type rank))
-    (if (not (= rank (length idx)))
+    (if (not (= rank (length idx) (length dims)))
 	(error 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank)
 	(very-quickly
 	  (loop

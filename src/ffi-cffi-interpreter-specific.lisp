@@ -3,7 +3,7 @@
 
 (in-package :ffi)
 
-;;TODO: Add support for {Allegro CL, Lispworks, ECL, clisp}
+;;TODO: Add support for {ECL, clisp, Allegro CL, Lispworks}
 
 (defmacro with-fortran-float-modes (&body body)
   "Execute the body with the IEEE FP modes appropriately set for Fortran"
