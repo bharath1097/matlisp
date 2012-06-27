@@ -23,14 +23,6 @@ is used, else the fortran routine is called instead.
        unless (= off accumulated-off) do (return nil)
        finally (return t))))
 
-
-(linloop (idx #(2 2))
-  with (loop-order row-order)
-  with (linear-sums
-	(of-t #(..))
-	(of-a #(..)))
-  do (..))
-
 (defmacro mod-dotimes ((idx dims) &body body)
   (check-type idx symbol)
   (labels ((parse-code (body ret)
@@ -43,7 +35,7 @@ is used, else the fortran routine is called instead.
 		(parse-code (cddr body) ret))
 	       ((eq (car body) 'do)
 		(values (cadr body) ret))
-	       (t (error "unknown word passed to linloop: ~a" (car body)))))
+	       (t (error 'unknown-token :token (car body) :message "Error in macro: mod-dotimes -> parse-code.~%"))))
 	   (parse-with (code)
 	     (cond
 	       ((eq (car code) 'linear-sums)
@@ -57,37 +49,98 @@ is used, else the fortran routine is called instead.
 	       ((and (eq (car code) 'loop-order)
 		     (member (cadr code) '(:row-major :col-major)))
 		(values :loop-order (second code)))
-	       (t (error "unknown word passed to linloop: ~a" (car code))))))
+	       ((eq (car code) 'variables)
+		(values :variables
+			(loop for decl in (cdr code)
+			   collect (destructuring-bind (sym init &key type) decl
+				     (list :variable sym
+					   :init init
+					   :type type)))))
+	       (t (error 'unknown-token :token (car code) :message "Error in macro: mod-dotimes -> parse-with.~%")))))
     (multiple-value-bind (code sdecl) (parse-code body nil)
       (with-gensyms (dims-sym rank-sym count-sym)
 	`(let* ((,dims-sym ,dims)
 		(,rank-sym (length ,dims-sym))
 		(,idx (allocate-index-store ,rank-sym))
-		,@(mapcar #'(lambda (x) `(,(getf x :stride-sym) ,(getf x :stride-expr))) (getf sdecl :linear-sums)))
-	   ,@(when (getf sdecl :linear-sums)
-		   `((declare (type (index-array *) ,@(mapcar #'(lambda (x) (getf x :stride-sym)) (getf sdecl :linear-sums))))))
+		,@(mapcar #'(lambda (x) `(,(getf x :stride-sym) ,(getf x :stride-expr))) (getf sdecl :linear-sums))
+		,@(mapcar #'(lambda (x) `(,(getf x :variable) ,(getf x :init))) (getf sdecl :variables)))
+	   ,@(let ((decl `(,@(when (getf sdecl :linear-sums)
+				   `((type (index-array *) ,@(mapcar #'(lambda (x) (getf x :stride-sym)) (getf sdecl :linear-sums)))))
+			   ,@(loop for x in (getf sdecl :variables)
+				unless (null (getf x :type))
+				collect `(type ,(getf x :type) ,(getf x :variable))))))
+		  (unless (null decl)
+		    `((declare ,@decl))))
 	   (loop ,@(loop for decl in (getf sdecl :linear-sums)
 		      append `(with ,(getf decl :offset-sym) of-type index-type = ,(getf decl :offset-init)))
-	      do (,@code)
-	      while ,(append
-		      (if (member (getf sdecl :loop-order) '(nil :row-major))
-			  `(loop for ,count-sym of-type index-type from (1- ,rank-sym) downto 0)
-			  `(loop for ,count-sym of-type index-type from 0 below ,rank-sym))
-		      `(do (if (= (aref ,idx ,count-sym) (1- (aref ,dims-sym ,count-sym)))
-			       (progn
-				 (setf (aref ,idx ,count-sym) 0)
-				 ,@(loop for decl in (getf sdecl :linear-sums)
-				      collect `(decf ,(getf decl :offset-sym) (* (aref ,(getf decl :stride-sym) ,count-sym) (1- (aref ,dims-sym ,count-sym))))))
-			       (progn
-				 (incf (aref ,idx ,count-sym))
-				 ,@(loop for decl in (getf sdecl :linear-sums)
-				      collect `(incf ,(getf decl :offset-sym) (aref ,(getf decl :stride-sym) ,count-sym)))
-				 (return t)))
-			   finally (return nil)))))))))
+	      ,@(unless (null code)
+		 `(do (,@code)))
+	      while (very-quickly
+		      ,(append
+			(if (member (getf sdecl :loop-order) '(nil :row-major))
+			    `(loop for ,count-sym of-type index-type from (1- ,rank-sym) downto 0)
+			    `(loop for ,count-sym of-type index-type from 0 below ,rank-sym))
+			`(do
+			  (if (= (aref ,idx ,count-sym) (1- (aref ,dims-sym ,count-sym)))
+			      (progn
+				(setf (aref ,idx ,count-sym) 0)
+				,@(loop
+				     for decl in (getf sdecl :linear-sums)
+				     collect (let ((cstrd (gensym (string+ "cur-" (symbol-name (getf decl :stride-sym))))))
+					       `(let ((,cstrd (aref ,(getf decl :stride-sym) ,count-sym)))
+						  (declare (type index-type ,cstrd))
+						  (unless (= ,cstrd 0)
+						    (decf ,(getf decl :offset-sym) (* ,cstrd (1- (aref ,dims-sym ,count-sym)))))))))
+			      (progn
+				(incf (aref ,idx ,count-sym))
+				,@(loop
+				     for decl in (getf sdecl :linear-sums)
+				     collect (let ((cstrd (gensym (string+ "cur-" (symbol-name (getf decl :stride-sym))))))
+					       `(let ((,cstrd (aref ,(getf decl :stride-sym) ,count-sym)))
+						  (declare (type index-type ,cstrd))
+						  (unless (= ,cstrd 0)
+						    (incf ,(getf decl :offset-sym) ,cstrd)))))
+				(return t)))
+			    finally (return nil))))))))))
 
+
+
+(defun modidx (n i len dims)
+  (declare (optimize (speed 3) (safety 0))
+	   (type index-type n)
+	   (type (index-array *) dims))
+  (multiple-value-bind (div rem) (floor n (aref dims i))
+    (declare (ignore div))
+    (if (= i len) t
+	(modidx rem (1+ i) len dims))))
+
+
+
+(very-quickly
+  (let ((idx (allocate-index-store 3))
+	(cdims (idxv 10000 100 1))
+	(rem 0))
+    (declare (type (index-array *) idx cdims)
+	     (type index-type rem))
+    (time   
+     (loop for i of-type index-type from 0 below (* 100 100 100)
+	do (progn
+	     (setf rem i)
+	     (loop
+		for j of-type index-type from 0 below 3
+		do (setf (values (aref idx j) rem) (floor rem (aref cdims j)))))))))
+
+(time 
+ (let ((idx (allocate-index-store 3)))
+   (loop for i of-type index-type from 0 below (* 1000 1000 1000)
+      do (multiple-value-bind (div rem) (floor i 1000000)
+	   (setf (aref idx 0) div)
+	   (multiple-value-bind (div-1 rem-1) (floor rem 1000)
+	     (setf (aref idx 1) div-1)
+	     (setf (aref idx 2) rem-1))))))
 
 ;;Very ugly inflexible code; get rid of this in some time or make use of mod-dotimes.
-#+nil(defmacro mod-loop ((idx dims) &body body)
+(defmacro mod-loop ((idx dims) &body body)
   (check-type idx symbol)
   (let ((tensor-table (make-hash-table)))
     (labels ((get-tensors (decl)

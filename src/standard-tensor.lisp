@@ -471,7 +471,7 @@
 			     (assert (member op-val +array-slicing-symbols+) nil 'invalid-value
 				     :message "Cannot find OP in +array-slicing-symbols+"
 				     :given op-val :expected `(member op ,+array-slicing-symbols+)))
-			   (let* ((mul (if (consp op) (first op) 1))
+			   (let* ((mul (if (consp op) (second op) 1))
 				  (dim (floor (- (if (eq end '*) (aref dims i) end) ori) mul)))
 			     (sub-tread (1+ i) (cdr subs) (+ nhd (* ori (aref stds i))) (cons dim ndims) (cons (* mul (aref stds i)) nstds))))
 			 (progn

@@ -144,9 +144,15 @@ of a matrix (default 0)
 			   
 	(case rank
 	  (1
+	   (format stream (format-to-string "~~~AT" *print-indent*))
 	   (dotimes (i (aref dims 0))
-	     (print-element tensor (tensor-ref tensor `(,i)) stream)
-	     (format stream "~,4T"))
+	     (if (< i *print-max-len*)
+		 (progn
+		   (print-element tensor (tensor-ref tensor `(,i)) stream)
+		   (format stream "~,4T"))
+		 (progn
+		   (format stream "...")
+		   (return nil))))
 	   (format stream "~%"))
 	  (2
 	   (two-print tensor nil))

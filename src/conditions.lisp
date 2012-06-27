@@ -40,7 +40,13 @@
   (format stream "Given object ~A, expected ~A.~%" (given c) (expected c))
   (call-next-method))
 ;;---------------------------------------------------------------;;
+(define-condition unknown-token (generic-error)
+  ((token :reader token :initarg :token))
+  (:documentation "Given an unknown token."))
 
+(defmethod print-object ((c unknown-token) stream)
+  (format stream "Given unknown token: ~A.~%" (token c))
+  (call-next-method))
 
 ;;---------------------------------------------------------------;;
 (define-condition matlisp-error (error)
