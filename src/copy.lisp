@@ -144,10 +144,11 @@
 	 to))))
 
 (generate-typed-copy!-func real-typed-copy! (real-tensor dcopy))
-(generate-typed-copy!-func real-typed-num-copy! (real-tensor dcopy))
+(generate-typed-num-copy!-func real-typed-num-copy! (real-tensor dcopy))
 
 (generate-typed-copy!-func complex-typed-copy! (complex-tensor zcopy))
-(generate-typed-copy!-func complex-typed-num-copy! (complex-tensor zcopy))
+(generate-typed-num-copy!-func complex-typed-num-copy! (complex-tensor zcopy))
+;;---------------------------------------------------------------;;
 
 (defgeneric copy! (from-tensor to-tensor)
   (:documentation
