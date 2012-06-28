@@ -57,6 +57,8 @@ Cannot hold complex numbers."))
 ;;
 
 (tensor-store-defs (complex-tensor complex-type complex-base-type)
+  :store-allocator allocate-complex-store
+  :coercer coerce-complex  
   :reader
   (lambda (tstore idx)
     (complex (aref tstore (* 2 idx))

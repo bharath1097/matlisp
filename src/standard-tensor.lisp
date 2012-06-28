@@ -285,8 +285,10 @@
 	   (unless (< -1 idx (store-size tensor))
 	     (error 'store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
 
-(defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key reader value-writer reader-writer)
+(defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key  store-allocator coercer reader value-writer reader-writer)
   (let ((tensym  (gensym "tensor")))
+    (assert store-allocator)
+    (assert coercer)
     (assert (eq (first reader-writer) 'lambda))
     `(progn
        ,(destructuring-bind (lbd args &rest body) reader
@@ -306,10 +308,12 @@
 	       (let ((,tstore (store ,tensym)))
 		 (declare (type ,(linear-array-type store-element-type) ,tstore))
 		 ,@body))))
-       (let ((hst (list
+       (let ((hst (list		   
 		   :reader (macrofy ,reader)
 		   :value-writer (macrofy ,value-writer)
 		   :reader-writer (macrofy ,reader-writer)
+		   :store-allocator ',store-allocator
+		   :coercer ',coercer
 		   :element-type ',element-type
 		   :store-type ',store-element-type)))
 	 (setf (gethash ',tensor-class *tensor-class-optimizations*) hst)))))
@@ -483,6 +487,6 @@
 	(if (null ndim)
 	    (tensor-store-ref tensor nhd)
 	    (make-instance (if-ret (gethash (class-name (class-of tensor)) *sub-tensor-counterclass*)
-				   (error 'tensor-cannot-find-sub-class :tensor tensor))
+				   (error 'tensor-cannot-find-sub-class :tensor-class (class-of tensor)))
 			   :parent-tensor tensor :store (store tensor) :head nhd
 			   :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))

@@ -86,6 +86,8 @@
 		     "foreign-functions")
 	:components ((:file "conditions")
 		     (:file "standard-tensor")
+		     (:file "loopy"
+			    :depends-on ("standard-tensor"))
 		     (:file "real-tensor"
 			    :depends-on ("standard-tensor"))
 		     (:file "complex-tensor"

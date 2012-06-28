@@ -41,6 +41,8 @@ Allocates real storage.  Default initial-element = 0d0.")
 ;;
 
 (tensor-store-defs (real-tensor real-type real-type)
+  :store-allocator allocate-real-store
+  :coercer coerce-real
   :reader
   (lambda (tstore idx)
     (aref tstore idx))

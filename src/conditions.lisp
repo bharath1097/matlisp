@@ -109,7 +109,13 @@
 	     (format stream "Stride of argument ~A must be >= 0, initialized with ~A." (argument c) (stride c)))))
 
 (define-condition tensor-cannot-find-sub-class (matlisp-error)
-  ()
-  (:documentation "Cannot find sub-class of the given tensor")
+  ((tensor-class :reader tensor-class :initarg :tensor-class))
+  (:documentation "Cannot find sub-class of the given tensor class")
   (:report (lambda (c stream)
-	     (format stream "Cannot find sub-class of the given tensor."))))
+	     (format stream "Cannot find sub-class of the given tensor class: ~a." (tensor-class c)))))
+
+(define-condition tensor-cannot-find-optimization (matlisp-error)
+  ((tensor-class :reader tensor-class :initarg :tensor-class))
+  (:documentation "Cannot find optimization information for the given tensor class")
+  (:report (lambda (c stream)
+	     (format stream "Cannot find optimization information for the given tensor class: ~a." (tensor-class c)))))

@@ -507,7 +507,7 @@
 						     (:complex-double-float #c(0d0 0d0)))))))
       ;;Keyword argument list
       (unless (null defun-keyword-args)
-	(setq defun-keyword-args (cons '&key defun-keyword-args)))
+	(setq defun-keyword-args (cons '&optional defun-keyword-args)))
       ;;Return the function definition
       (let ((retvar (gensym)))
 	`(

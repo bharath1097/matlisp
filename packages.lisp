@@ -161,7 +161,8 @@
 	   #:slot-values 
 	   #:recursive-append #:unquote-args #:flatten
 	   #:format-to-string #:string+
-	   #:linear-array-type 
+	   #:linear-array-type
+	   #:seq-max #:seq-min
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator
