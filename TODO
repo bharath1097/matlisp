@@ -1,0 +1,8 @@
+* Write documentation. Maybe move to TeXinfo (like femlisp).
+  Fix the formatting for docstrings.
+* Write tests
+* Get the python-bridge working with burgled-batteries, nothing beats
+  matplotlib for plotting.
+* Add infix to Matlisp
+* Support linking to libraries ? Might have to parse function declarations
+  with cffi-grovel.

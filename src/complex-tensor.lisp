@@ -35,7 +35,7 @@ Default initial-element = 0d0."
     :type (complex-base-array *)))
   (:documentation "Tensor class with complex elements."))
 
-(defclass complex-sub-tensor (complex-tensor sub-tensor)
+(defclass complex-sub-tensor (complex-tensor standard-sub-tensor)
   ()
   (:documentation "Sub-tensor class with complex elements."))
 
@@ -84,13 +84,14 @@ Cannot hold complex numbers."))
   (let ((realpart (realpart element))
 	(imagpart (imagpart element)))
     (format stream (if (zerop imagpart)
-		       "      ~11,4,,,,,'Eg      "
+		       "~11,5,,,,,'Eg"
 		       "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)")
 	    realpart imagpart)))
 
 ;;
-(defun make-complex-tensor (&rest subs)
+(defun make-complex-tensor-dims (&rest subs)
   (let* ((dims (make-index-store subs))
 	 (ss (reduce #'* dims))
 	 (store (allocate-complex-store ss)))
     (make-instance 'complex-tensor :store store :dimensions dims)))
+

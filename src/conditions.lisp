@@ -39,6 +39,7 @@
 (defmethod print-object ((c invalid-value) stream)
   (format stream "Given object ~A, expected ~A.~%" (given c) (expected c))
   (call-next-method))
+
 ;;---------------------------------------------------------------;;
 (define-condition unknown-token (generic-error)
   ((token :reader token :initarg :token))
@@ -47,6 +48,17 @@
 (defmethod print-object ((c unknown-token) stream)
   (format stream "Given unknown token: ~A.~%" (token c))
   (call-next-method))
+
+;;---------------------------------------------------------------;;
+(define-condition coercion-error (generic-error)
+  ((from :reader from :initarg :from)
+   (to :reader to :initarg :to))
+  (:documentation "Cannot coerce one type into another."))
+
+(defmethod print-object ((c coercion) stream)
+  (format stream "Cannot coerce ~a into ~a." (from c) (to c))
+  (call-next-method))
+
 
 ;;---------------------------------------------------------------;;
 (define-condition matlisp-error (error)
@@ -119,3 +131,10 @@
   (:documentation "Cannot find optimization information for the given tensor class")
   (:report (lambda (c stream)
 	     (format stream "Cannot find optimization information for the given tensor class: ~a." (tensor-class c)))))
+
+(define-condition tensor-dimension-mismatch (matlisp-error)
+  ()
+  (:documentation "The dimensions of the given tensors are not suitable for continuing with the operation.")
+  (:report (lambda (c stream)
+	     (declare (ignore c))
+	     (format stream "The dimensions of the given tensors are not suitable for continuing with the operation."))))

@@ -64,35 +64,53 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
+(in-package #:matlisp)
 
-(defun mrealpart~ (mat)
+(defun tensor-realpart~ (tensor)
 "
   Syntax
   ======
-  (MREALPART~ matrix)
+  (tensor-realpart~ tensor)
  
   Purpose
   =======
-  Returns a new SUB-REAL-MATRIX which is the real part of \"matrix\".
+  Returns a new tensor object which points to  the real part of TENSOR.
+  Store is shared with TENSOR.
 
-  Store is shared with \"matrix\".
-
-  If \"matrix\" is a scalar, returns its real part.
-
-  See IMAG, REALPART, IMAGPART
+  If TENSOR is a scalar, returns its real part.
 "
+  (etypecase tensor
+    (real-tensor tensor)
+    (complex-tensor (make-instance 'real-sub-tensor
+				   :parent-tensor tensor :store (store tensor)
+				   :dimensions (dimensions tensor)
+				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides xten))
+				   :head (the index-type (* 2 (head tensor)))))
+    (number (realpart tensor))))
 
-  (typecase mat
-    (real-matrix mat)
-    (complex-matrix (make-instance 'sub-real-matrix
-				   :parent mat :store (store mat)
-				   :nrows (nrows mat) :ncols (ncols mat)
-				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-				   :head (* 2 (head mat))))
-    (number (cl:realpart mat))))
+(defun tensor-imagpart~ (tensor)
+"
+  Syntax
+  ======
+  (tensor-imagpart~ tensor)
+ 
+  Purpose
+  =======
+  Returns a new tensor object which points to  the \"imaginary\" part of TENSOR.
+  Store is shared with TENSOR.
 
-(defun mrealpart (mat)
+  If TENSOR is a scalar, returns its imaginary part.
+"
+  (etypecase tensor
+    (real-tensor tensor)
+    (complex-tensor (make-instance 'real-sub-tensor
+				   :parent-tensor tensor :store (store tensor)
+				   :dimensions (dimensions tensor)
+				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides xten))
+				   :head (the index-type (+ 1 (* 2 (head tensor))))))
+    (number (imagpart tensor))))
+
+(defun tensor-realpart (mat)
 "
   Syntax
   ======
@@ -114,34 +132,6 @@
 					 :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
 					 :head (* 2 (head mat)))))
     (number (cl:realpart mat))))
-
-(defun mimagpart~ (mat)
-"
-  Syntax
-  ======
-  (MIMAGPART~ matrix)
- 
-  Purpose
-  =======
-  Returns a new SUB-REAL-MATRIX which is the imaginary part of \"matrix\".
-
-  Store is shared with \"matrix\".
-
-  If \"matrix\" is a real-matrix, returns nil.
-
-  If \"matrix\" is a scalar, returns its imaginary part.
-
-  See IMAG, REALPART, IMAGPART
-"  
-  (typecase mat
-    (real-matrix nil)
-    (complex-matrix (make-instance 'sub-real-matrix
-				   :parent mat :store (store mat)
-				   :nrows (nrows mat) :ncols (ncols mat)
-				   :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-				   :head (+ 1 (* 2 (head mat)))))
-    (number (cl:imagpart mat))))
-
 
 (defun mimagpart (mat)
 "

@@ -153,8 +153,8 @@
 
 ;;; Define the packages and symbols for Matlisp.
 
-(defpackage :utilities
-  (:use :common-lisp)  
+(defpackage "UTILITIES"
+  (:use #:common-lisp)
   (:export #:ensure-list
 	   #:zip #:zip-eq
 	   #:cut-cons-chain!
@@ -175,9 +175,9 @@
 	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
 	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
 
-(defpackage :fortran-ffi-accessors
-  (:nicknames :ffi)
-  (:use :common-lisp :cffi :utilities)
+(defpackage "FORTRAN-FFI-ACCESSORS"
+  (:nicknames #:ffi)
+  (:use #:common-lisp #:cffi #:utilities)
   ;; TODO: Check if this is implementation-agnostic.
   ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)
   ;; #+:sbcl (:use :common-lisp :cffi :utilities)
@@ -191,8 +191,8 @@
    )
   (:documentation "Fortran foreign function interface"))
 
-(defpackage :blas
-  (:use :common-lisp :fortran-ffi-accessors)
+(defpackage "BLAS"
+  (:use #:common-lisp #:ffi)
   (:export
    ;;BLAS Level 1
    ;;------------
@@ -216,8 +216,8 @@
    #:zgemm #:ztrmm #:ztrsm #:zherk #:zher2k)
   (:documentation "BLAS routines"))
 
-(defpackage :lapack
-  (:use :common-lisp :fortran-ffi-accessors)
+(defpackage "LAPACK"
+  (:use #:common-lisp #:ffi)
   (:export
    #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
    #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
@@ -227,10 +227,31 @@
    #:dgelsy)
   (:documentation "LAPACK routines"))
 
-(defpackage :dfftpack
-  (:use :common-lisp :fortran-ffi-accessors)
+(defpackage "DFFTPACK"
+  (:use #:common-lisp #:fortran-ffi-accessors)
   (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
   (:documentation "FFT routines"))
+
+(defpackage "MATLISP"
+  (:use #:common-lisp #:fortran-ffi-accessors #:blas #:lapack #:dfftpack #:utilities)
+  (:export #:integer4-type #:integer4-array #:allocate-integer4-store
+	   #:index-type #:index-array #:allocate-index-store #:make-index-store
+	   ;;Standard-tensor
+	   #:standard-tensor
+	   #:rank #:dimensions #:number-of-elements
+	   #:head #:strides #:store-size #:store
+	   ;;Sub-tensor
+	   #:sub-tensor
+	   #:parent-tensor
+	   ;;Store indexers
+	   #:store-indexing
+	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
+	   ;;Store accessors
+	   #:tensor-store-ref
+	   #:tensor-ref
+	   ;;Type checking
+	   #:tensor-type-p #:vector-p #:matrix-p #:square-p)
+  (:documentation "MATLISP routines"))
 
 ;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
 
@@ -309,26 +330,6 @@
 ;;    "ZEROIN")
 ;;   (:documentation "Other useful routines"))
 
-(defpackage :matlisp
-  (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :utilities)
-  (:export #:integer4-type #:integer4-array #:allocate-integer4-store
-	   #:index-type #:index-array #:allocate-index-store #:make-index-store
-	   ;;Standard-tensor
-	   #:standard-tensor
-	   #:rank #:dimensions #:number-of-elements
-	   #:head #:strides #:store-size #:store
-	   ;;Sub-tensor
-	   #:sub-tensor
-	   #:parent-tensor
-	   ;;Store indexers
-	   #:store-indexing
-	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
-	   ;;Store accessors
-	   #:tensor-store-ref
-	   #:tensor-ref
-	   ;;Type checking
-	   #:tensor-type-p #:vector-p #:matrix-p #:square-p)
-  (:documentation "MATLISP routines"))
 
 ;; (defpackage :matlisp
 ;;   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)

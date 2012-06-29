@@ -1,23 +1,5 @@
 (in-package :matlisp)
 
-(defun column-major-p (offsets dims)
-  (loop
-     for off across offsets
-     and dim across dims
-     and accumulated-off = 1 then (* accumulated-off dim)
-     unless (= off accumulated-off) do (return nil)
-     finally (return t)))
-
-(defun row-major-p (offsets dims)
-  (very-quickly
-    (loop
-       for idx of-type index-type from (1- (length dims)) downto 0
-       for dim of-type index-type = (aref dims idx)
-       for off of-type index-type = (aref offsets idx)
-       and accumulated-off of-type index-type = 1 then (* accumulated-off dim)
-       unless (= off accumulated-off) do (return nil)
-       finally (return t))))
-
 (defmacro mod-dotimes ((idx dims) &body body)
 "
   (mod-dotimes (idx {seq}) compound-form*)
