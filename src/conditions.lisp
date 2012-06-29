@@ -55,10 +55,9 @@
    (to :reader to :initarg :to))
   (:documentation "Cannot coerce one type into another."))
 
-(defmethod print-object ((c coercion) stream)
+(defmethod print-object ((c coercion-error) stream)
   (format stream "Cannot coerce ~a into ~a." (from c) (to c))
   (call-next-method))
-
 
 ;;---------------------------------------------------------------;;
 (define-condition matlisp-error (error)

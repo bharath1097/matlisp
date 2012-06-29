@@ -133,7 +133,7 @@
 					 :head (* 2 (head mat)))))
     (number (cl:realpart mat))))
 
-(defun mimagpart (mat)
+(defun tensor-imagpart (mat)
 "
   Syntax
   ======

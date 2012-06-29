@@ -140,8 +140,7 @@
 (defmethod scal ((alpha number) (x number))
   (* alpha x))
 
-;;
-(defmethod scal ((alpha cl:real) (x real-matrix))
+(defmethod scal ((alpha number) (x real-tensor))
   (let ((result (copy x)))
     (scal! alpha result)))
 
@@ -153,7 +152,6 @@
     (copy! x result)
     (scal! alpha result)))
 
-;;
 (defmethod scal ((alpha number) (x complex-matrix))
   (let ((result (copy x)))
     (scal! alpha result)))

@@ -8,9 +8,9 @@
     `(simple-array integer4-type (,size)))
 
   ;;
-  (deftype index-type ()    
+  (deftype index-type ()
     #+cmu '(signed-byte 32)
-    #-cmu '(signed-byte 64))  
+    #-cmu '(signed-byte 64))
   (deftype index-array (size)
     `(simple-array index-type (,size)))
   )
@@ -189,7 +189,7 @@
 	   (type cons idx))
   (let ((rank (length strides)))
     (declare (type index-type rank))
-    (labels ((rec-sum (sum i lst)	       
+    (labels ((rec-sum (sum i lst)
 	       (cond
 		 ((consp lst)
 		  (let ((cidx (car lst)))
@@ -219,7 +219,7 @@
   HD + \  STRIDES  * IDX
        /_        i      i
      i = 0
-"  
+"
   (declare (type standard-tensor tensor)
 	   (type (or (index-array *) cons) idx))
   (typecase idx
@@ -308,7 +308,7 @@
 	       (let ((,tstore (store ,tensym)))
 		 (declare (type ,(linear-array-type store-element-type) ,tstore))
 		 ,@body))))
-       (let ((hst (list		   
+       (let ((hst (list
 		   :reader (macrofy ,reader)
 		   :value-writer (macrofy ,value-writer)
 		   :reader-writer (macrofy ,reader-writer)
@@ -408,7 +408,7 @@
 				   nil)))))))
 	     (parse-sub subscripts 0)))))
 
-(definline vector-p (tensor)  
+(definline vector-p (tensor)
   (declare (type standard-tensor tensor))
   (tensor-type-p tensor '(*)))
 
@@ -425,7 +425,7 @@
 ;;---------------------------------------------------------------;;
 
 (define-constant +array-slicing-symbols+ '(\:)
-"  
+"
   Symbols which are used to refer to slicing operations.")
 
 (defun sub-tensor~ (tensor subscripts)
@@ -453,7 +453,7 @@
 
   ;; Get [:, :, 0:10:2] (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
   > (sub-tensor~ X '(\: \: ((\: 2) 0 *)))
-" 
+"
   (declare (type standard-tensor tensor))
   (let ((rank (rank tensor))
 	(dims (dimensions tensor))

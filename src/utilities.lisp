@@ -233,15 +233,6 @@
     (with-output-to-string (ostr ret)
       (apply #'format (append `(,ostr ,fmt) args)))
     ret))
-
-(declaim (inline seq-max))
-(defun seq-max (seq)
-  (reduce #'max seq))
-
-(declaim (inline seq-max))
-(defun seq-min (seq)
-  (reduce #'min seq))
-
 ;;---------------------------------------------------------------;;
 (defstruct (foreign-vector
 	     (:conc-name fv-)
