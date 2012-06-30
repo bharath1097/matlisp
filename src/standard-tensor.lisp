@@ -1,30 +1,10 @@
 (in-package :matlisp)
 
-;;
-(eval-when (load eval compile)
-  (deftype integer4-type ()
-    '(signed-byte 32))
-  (deftype integer4-array (size)
-    `(simple-array integer4-type (,size)))
+(deftype index-type ()
+  'fixnum)
 
-  ;;
-  (deftype index-type ()
-    #+cmu '(signed-byte 32)
-    #-cmu '(signed-byte 64))
-  (deftype index-array (size)
-    `(simple-array index-type (,size)))
-  )
-
-(declaim (inline allocate-integer4-store))
-(make-array-allocator allocate-integer4-store 'integer4-type 0
-"
-  Syntax
-  ======
-  (ALLOCATE-INT32-STORE SIZE [INITIAL-ELEMENT 0])
-
-  Purpose
-  =======
-  Allocates integer-32 storage.")
+(deftype index-array (size)
+  `(simple-array index-type (,size)))
 
 (make-array-allocator allocate-index-store 'index-type 0
 "
@@ -51,8 +31,8 @@
 
 (definline idxv (&rest contents)
   (make-index-store contents))
-
 ;;
+
 (defclass standard-tensor ()
   ((rank
     :accessor rank
@@ -161,12 +141,13 @@
 	(very-quickly
 	  (loop
 	     for i of-type index-type from 0 below rank
-	     and sto-idx of-type index-type = hd then (+ sto-idx (* cidx (aref strides i)))
-	     for cidx of-type index-type = (aref idx i)
-	     do (unless (< -1 cidx (aref dims i))
-		  (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))
+	     for cidx across idx
+	     with sto-idx of-type index-type = hd
+	     do (if (< -1 cidx (aref dims i))
+		    (incf sto-idx (the index-type (* (aref strides i) cidx)))
+		    (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))
 	     finally (return sto-idx))))))
-
+x
 (defun store-indexing-lst (idx hd strides dims)
 "
   Syntax

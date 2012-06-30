@@ -1,9 +1,11 @@
 (in-package :matlisp)
 
 (definline idx-max (seq)
+  (declare (type (index-array *) seq))
   (reduce #'max seq))
 
 (definline idx-min (seq)
+  (declare (type (index-array *) seq))
   (reduce #'min seq))
 
 (defun idx= (a b)
@@ -22,12 +24,23 @@
   (loop for ele across a
        collect ele))
 
-(defun blas-copyable-p (&rest tensors)
-  (let ((stdi-list (very-quickly
+(defun blas-copyable-p (ten-a ten-b)
+  ;; (declare (type standard-tensor ten-a ten-b))
+  ;; (let ((stdi-a (very-quickly
+  ;; 		  (sort (apply #'vector
+  ;; 			       (loop
+  ;; 				  for std across (strides ten-a)
+  ;; 				  and dim across (dimensions ten-a)
+  ;; 				  collect `(,std ,dim)))
+  ;; 			#'< :key #'first))))
+  ;;   t))
+
+
+   (let ((stdi-list (very-quickly
 		     (loop
-			for ten in tensors
+			for ten of-type standard-tensor in tensors
 			and pten = nil then ten
-			for i = 0 then (1+ i)
+			for i of-type index-type = 0 then (1+ i)
 			when (> i 0)
 			do (unless (idx= (dimensions ten) (dimensions pten))
 			     (return nil))
@@ -37,8 +50,8 @@
 				  (very-quickly
 				    (sort (apply #'vector
 						 (loop
-						    for std across (strides ten)
-						    and dim across (dimensions ten)
+						    for std of-type index-type across (strides ten)
+						    and dim of-type index-type across (dimensions ten)
 						    collect `(,std ,dim)))
 					  #'< :key #'car)))))))
     (if (null stdi-list) (values nil nil)
@@ -46,7 +59,7 @@
 	  (loop
 	     for stdi in stdi-list
 	     and p-stdi = (first stdi-list) then stdi
-	     for i = 0 then (1+ i)
+	     for i of-type index-type = 0 then (1+ i)
 	     when (> i 0)
 	     do (unless (loop
 			   for a-stdi across stdi

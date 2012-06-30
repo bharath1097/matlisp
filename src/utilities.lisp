@@ -237,6 +237,7 @@
 (defstruct (foreign-vector
 	     (:conc-name fv-)
 	     (:print-function (lambda (obj stream depth)
+				(declare (ignore depth))
 				(format stream "#F(")
 				(let ((sz (fv-size obj)))
 				  (dotimes (i sz)

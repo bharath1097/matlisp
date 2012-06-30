@@ -75,22 +75,17 @@
     `(defun ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
-       (let ((t-dims (dimensions to))
-	     (t-stds (strides to))
-	     (t-sto (store to))
-	     (t-hd (head to)))
-	 (declare (type (index-array *) t-dims t-stds)
-		  (type index-type t-hd)
-		  (type ,(linear-array-type (getf opt :store-type)) t-sto))
-	 (if-let (min-stride (consecutive-store-p t-stds t-dims))
-	   (,blas-func (number-of-elements to) alpha t-sto min-stride t-hd)
+       (if-let (min-stride (consecutive-store-p to))
+	 (,blas-func (number-of-elements to) alpha (store to) min-stride (head to))
+	 (let ((t-sto (store to)))
+	   (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
 	   (very-quickly
 	     ;;Can possibly make this faster (x2) by using ,blas-func in one of
 	     ;;the inner loops, but this is to me messy and as of now unnecessary.
 	     ;;SBCL can already achieve Fortran-ish speed inside this loop.
-	     (mod-dotimes (idx t-dims)
+	     (mod-dotimes (idx (dimensions to))
 	       with (linear-sums
-		     (t-of t-stds t-hd))
+		     (t-of (strides to) (head to)))
 	       do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
 		    ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))
        to)))
@@ -99,8 +94,8 @@
 ;; zdscal and zscal is significant, except for very large arrays.
 (generate-typed-scal! real-typed-scal! (real-tensor dscal))
 (generate-typed-scal! complex-typed-scal! (complex-tensor zscal))
-
 ;;---------------------------------------------------------------;;
+
 (defgeneric scal! (alpha x)
   (:documentation
 "
@@ -144,14 +139,12 @@
   (let ((result (copy x)))
     (scal! alpha result)))
 
-(defmethod scal ((alpha complex) (x real-matrix))
-  (let* ((n (nrows x))
-	 (m (ncols x))
-	 (result (make-complex-matrix-dim n m)))
-    (declare (type fixnum n m))
+(defmethod scal ((alpha complex) (x real-tensor))
+  (let* ((result (apply #'make-complex-tensor-dims (idx->list (dimensions x)))))
+    (declare (type complex-tensor result))
     (copy! x result)
     (scal! alpha result)))
 
-(defmethod scal ((alpha number) (x complex-matrix))
+(defmethod scal ((alpha number) (x complex-tensor))
   (let ((result (copy x)))
     (scal! alpha result)))

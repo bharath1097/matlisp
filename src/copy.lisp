@@ -143,6 +143,7 @@
 (generate-typed-copy! complex-typed-copy! (complex-tensor zcopy))
 (generate-typed-num-copy! complex-typed-num-copy! (complex-tensor zcopy))
 ;;---------------------------------------------------------------;;
+
 (defgeneric copy! (from-tensor to-tensor)
   (:documentation
    "
@@ -182,18 +183,27 @@
 (defmethod copy! ((x number) (y real-tensor))
   (real-typed-num-copy! (coerce-real x) y))
 
-(defmethod copy! ((x complex-matrix) (y complex-tensor))
+(defmethod copy! ((x complex-tensor) (y complex-tensor))
   (complex-typed-copy! x y))
 
-(defmethod copy! ((x real-matrix) (y complex-tensor))
-  (real-double-copy!-typed x (mrealpart~ y))
-  (scal! 0d0 (mimagpart~ y))
+(defmethod copy! ((x real-tensor) (y complex-tensor))
+  ;;Borrowed from realimag.lisp
+  (let ((tmp (make-instance 'real-sub-tensor
+			    :parent-tensor y :store (store y)
+			    :dimensions (dimensions y)
+			    :strides (map '(index-array *) #'(lambda (n) (* 2 n)) (strides y))
+			    :head (the index-type (* 2 (head y))))))
+    (declare (type real-sub-tensor tmp))
+    (real-typed-copy! x tmp)
+    ;;Increasing the head by 1 points us to the imaginary part.
+    (incf (head tmp))
+    (real-typed-num-copy! 0d0 tmp))
   y)
 
 (defmethod copy! ((x number) (y complex-tensor))
   (complex-typed-num-copy! (coerce-complex x) y))
 
-;;;;
+;;
 (defgeneric copy (tensor)
   (:documentation 
    "
@@ -206,16 +216,12 @@
   Return a copy of the tensor X"))
 
 (defmethod copy ((tensor real-tensor))
-  (let* ((ret (apply #'make-real-tensor-dims
-		     (loop for dim across (dimensions tensor)
-			collect dim))))
+  (let* ((ret (apply #'make-real-tensor-dims (idx->list (dimensions tensor)))))
     (declare (type real-tensor ret))
     (copy! tensor ret)))
 
 (defmethod copy ((tensor complex-tensor))
-  (let* ((ret (apply #'make-complex-tensor-dims
-		     (loop for dim across (dimensions tensor)
-			collect dim))))
+  (let* ((ret (apply #'make-complex-tensor-dims (idx->list (dimensions tensor)))))
     (declare (type complex-tensor ret))
     (copy! tensor ret)))
 

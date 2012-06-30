@@ -84,7 +84,7 @@
     (complex-tensor (make-instance 'real-sub-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
-				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides xten))
+				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))
 				   :head (the index-type (* 2 (head tensor)))))
     (number (realpart tensor))))
 
@@ -106,38 +106,31 @@
     (complex-tensor (make-instance 'real-sub-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
-				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides xten))
+				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))
 				   :head (the index-type (+ 1 (* 2 (head tensor))))))
     (number (imagpart tensor))))
 
-(defun tensor-realpart (mat)
+(definline tensor-realpart (tensor)
 "
   Syntax
   ======
-  (MREALPART matrix)
+  (tensor-realpart tensor)
  
   Purpose
   =======
-  Returns a copy of the real part of \"matrix\".
+  Returns a copy of the real part of tensor.
 
-  If \"matrix\" is a scalar, returns its real part.
+  If \"tensor\" is a scalar, returns its real part.
 
   See IMAG, REALPART, IMAGPART
 "
-  (typecase mat
-    (real-matrix (copy mat))
-    (complex-matrix (copy (make-instance 'sub-real-matrix
-					 :parent mat :store (store mat)
-					 :nrows (nrows mat) :ncols (ncols mat)
-					 :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-					 :head (* 2 (head mat)))))
-    (number (cl:realpart mat))))
+  (copy (tensor-realpart~ tensor)))
 
-(defun tensor-imagpart (mat)
+(definline tensor-imagpart (tensor)
 "
   Syntax
   ======
-  (MIMAGPART~ matrix)
+  (tensor-imagpart matrix)
  
   Purpose
   =======
@@ -147,45 +140,4 @@
 
   See IMAG, REALPART, IMAGPART
 "
-  
-  (typecase mat
-    (real-matrix (make-real-matrix-dim (nrows mat) (ncols mat)))
-    (complex-matrix (copy (make-instance 'sub-real-matrix
-					 :parent mat :store (store mat)
-					 :nrows (nrows mat) :ncols (ncols mat)
-					 :row-stride (* 2 (row-stride mat)) :col-stride (* 2 (col-stride mat))
-					 :head (+ 1 (* 2 (head mat))))))
-    (number (cl:imagpart mat))))
-
-
-(declaim (inline real))
-(defun real (matrix)
-"
-  Syntax
-  ======
-  (REAL matrix)
- 
-  Purpose
-  =======
-  Returns a new REAL-MATRIX which is the real part of MATRIX. 
-  If MATRIX is a scalar, returns its real part.
-
-  See IMAG, REALPART, IMAGPART
-"
-  (mrealpart matrix))
-  
-
-(defun imag (matrix)
-"
-  Syntax
-  ======
-  (IMAG matrix)
- 
-  Purpose
-  =======
-  Returns a new REAL-MATRIX which is the imaginary part of MATRIX. 
-  If MATRIX is a scalar, returns its imaginary part.
-
-  See REAL, REALPART, IMAGPART
-"
-  (mimagpart matrix))
+  (copy (tensor-imagpart tensor)))

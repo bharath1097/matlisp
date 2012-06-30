@@ -85,23 +85,35 @@
 	    :depends-on ("foreign-interface"
 			 "foreign-functions")
 	    :components ((:file "conditions")
-			 (:file "standard-tensor")
+			 ;;
+			 (:file "standard-tensor"
+				:depends-on ("conditions"))
+			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor"))
+			 ;;
 			 (:file "real-tensor"
 				:depends-on ("standard-tensor"))
 			 (:file "complex-tensor"
 				:depends-on ("standard-tensor"))
 			 (:file "standard-matrix"
-				:depends-on ("standard-tensor"))
+				:depends-on ("standard-tensor" "real-tensor" "complex-tensor"))
 			 ;; (:file "real-matrix"
 			 ;;	    :depends-on ("standard-matrix"))
 			 ;; (:file "complex-matrix"
 			 ;;	    :depends-on ("standard-matrix"))
 			 (:file "print"
-				:depends-on ("standard-tensor" "standard-matrix"))))))
+				:depends-on ("standard-tensor" "standard-matrix"))
+			 ;;Copy, Scal
+			 (:file "copy"
+				:depends-on ("real-tensor" "complex-tensor" "loopy"))
+			 (:file "scal"
+				:depends-on ("copy" "loopy"))
+			 (:file "realimag"
+				:depends-on ("real-tensor" "complex-tensor" "copy"))
+			 ))))			 
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
