@@ -69,10 +69,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
-
-#+nil (export '(map-matrix!
-		map-matrix))
+(in-package :matlisp)
 
 (defun matrix-map (func matrix)
   (map-matrix func matrix))
@@ -321,14 +318,3 @@
 (make-complex-mapper asinh)
 (make-complex-mapper acosh)
 (make-complex-mapper atanh)
-
-
-
-
-
-
-
-
-
-
-
