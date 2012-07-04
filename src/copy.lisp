@@ -86,23 +86,20 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(defun ,func (from to)
        (declare (type ,tensor-class from to))
-       (multiple-value-bind (dims-p strd-p) (blas-copyable-p from to)
-	 (unless dims-p
-	   (error 'tensor-dimension-mismatch))
-	 (if strd-p
-	     (,blas-func (number-of-elements from) (store from) (first strd-p) (store to) (second strd-p) (head from) (head to))
-	     (let ((f-sto (store from))
-		   (t-sto (store to)))
-	       (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
-	       (very-quickly
-		 ;;Can possibly make this faster (x2) by using ,blas-func in one of
-		 ;;the inner loops, but this is to me messy and as of now unnecessary.
-		 ;;SBCL can already achieve Fortran-ish speed inside this loop.
-		 (mod-dotimes (idx (dimensions from))
-		   with (linear-sums
-			 (f-of (strides from) (head from))
-			 (t-of (strides to) (head to)))
-		   do ,(funcall (getf opt :reader-writer) 'f-sto 'f-of 't-sto 't-of))))))
+       (if-let (strd-p (blas-copyable-p from to))
+	 (,blas-func (number-of-elements from) (store from) (first strd-p) (store to) (second strd-p) (head from) (head to))
+	 (let ((f-sto (store from))
+	       (t-sto (store to)))
+	   (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
+	   (very-quickly
+	     ;;Can possibly make this faster (x2) by using ,blas-func in one of
+	     ;;the inner loops, but this is to me messy and as of now unnecessary.
+	     ;;SBCL can already achieve Fortran-ish speed inside this loop.
+	     (mod-dotimes (idx (dimensions from))
+	       with (linear-sums
+		     (f-of (strides from) (head from))
+		     (t-of (strides to) (head to)))
+	       do ,(funcall (getf opt :reader-writer) 'f-sto 'f-of 't-sto 't-of)))))
        to)))
 
 (defmacro generate-typed-num-copy! (func (tensor-class blas-func))

@@ -10,9 +10,35 @@
 	 do (setf (aref ret i) i)))
     ret))
 
+(definline idx-max (seq)
+  (declare (type (index-array *) seq))
+  (reduce #'max seq))
+
+(definline idx-min (seq)
+  (declare (type (index-array *) seq))
+  (reduce #'min seq))
+
+(defun idx= (a b)
+  (declare (type (index-array *) a b))
+  (when (= (length a) (length b))
+    (very-quickly
+      (loop
+	 for ele-a across a
+	 for ele-b across b
+	 unless (= ele-a ele-b)
+	 do (return nil)
+	 finally (return t)))))
+
+(definline idx->list (a)
+  (declare (type (index-array *) a))
+  (loop for ele across a
+       collect ele))
+
+;;Write a uniform randomiser
 (defun seqrnd (seq)
   "Randomize the elements of a sequence. Destructive on SEQ."
-  (sort seq #'> :key #'(lambda (x) (random 1.0))))
+  (sort seq #'> :key #'(lambda (x) (declare (ignore x))
+			       (random 1.0))))
 
 ;;Class definitions----------------------------------------------;;
 (defclass permutation ()

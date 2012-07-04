@@ -140,4 +140,4 @@
 
   See IMAG, REALPART, IMAGPART
 "
-  (copy (tensor-imagpart tensor)))
+  (copy (tensor-imagpart~ tensor)))

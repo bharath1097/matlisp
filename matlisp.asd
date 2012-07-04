@@ -91,10 +91,10 @@
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
-			 (:file "blas-helpers"
-				:depends-on ("standard-tensor"))
 			 (:file "permutation"
 				:depends-on ("standard-tensor"))
+			 (:file "blas-helpers"
+				:depends-on ("standard-tensor" "permutation"))			 
 			 ;;
 			 (:file "real-tensor"
 				:depends-on ("standard-tensor"))
@@ -115,7 +115,7 @@
 				:depends-on ("copy" "loopy"))
 			 (:file "realimag"
 				:depends-on ("real-tensor" "complex-tensor" "copy"))
-			 ))))			 
+			 ))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
