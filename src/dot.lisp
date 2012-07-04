@@ -62,13 +62,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
-
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-#+nil (export 'dot)
+(in-package :matlisp)
 
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
@@ -103,10 +97,10 @@
   otherwise.
 "))
 
-(defmethod dot ((x number) (y number) &optional (conjugate-p t))
+(defmethod dot ((x number) (y number) &optional (conjugate-p nil))
   (if conjugate-p
       (* (conjugate x) y)
-    (* x y)))
+      (* x y)))
 
 (defmethod dot :before ((x standard-matrix) (y standard-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
@@ -154,7 +148,7 @@
 
 
 ;;#+:allegro
-#+:nil
+#+nil
 (defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
   (declare (ignore conjugate-p))
   (let ((nxm (number-of-elements x)))
