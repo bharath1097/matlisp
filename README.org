@@ -1,4 +1,54 @@
-MatLisp - a base for scientific computation in Lisp
+MatLisp - a base for scientific computation in Lisp.
+
+This is the development branch of Matlisp.
+
+* Progress Tracker
+** What works ?
+   * Basic {real, complex} tensor structure in place.
+   * Added a specialisation agnostic macro which generates 
+   functions by getting special method producing macros - produced
+   by another macro.
+   * copy, scal work
+   * tensor-{real, imag}part(~) work
+   * sub-tensor~ works
+   * print methods work
+   * permutation class, sorting, conversion between action and 
+   cycle representations.
+   * mod-loop works, can produce very quick multi-index loops.
+** TODO : What remains ? (Help!)
+*** Functionality
+   * Some stuff from BLAS level-1 is not yet abstracted.
+   * BLAS level-2 and level-3: most importantly Matrix multiplication.
+   * LAPACK: solving Linear equations, Eigenvalue decomposition.
+   * DFFTPACK: computing FFTs
+   * QUADPACK: Move from f2cl-ed version to the Fortran one.
+   * MINPACK: Move from f2cl-ed version to the Fortran one.
+   * ODEPACK: Add abstraction for DLSODE, and DLSODAR.   
+   
+*** Python-bridge
+   (C)Python has far too many things, that we cannot even begin to hope to replicate.
+   Burgled-batteries has a lot of things which could be useful in talking to CPython.
+
+   Getting standard-tensor <-> numpy tranlation should be enough. Mostly care about 
+   matplotlib at the moment.
+
+*** Add infix to Matlisp
+   Added Mark Kantrowicz' infix package into lib-src. Should be straight forward to use it,
+   although changes are not strictly local.
+
+*** Support linking to libraries ? 
+   Might have to parse header files with cffi-grovel.
+
+*** Documentation, tests
+   Write documentation. 
+   Fix the formatting for docstrings. Maybe move to TeXinfo (like femlisp).
+
+*** Write tests
+   Use cl-rt stuff to write more tests. Probably even add benchmarks.
+
+*** symbolics, AD, more fancy stuff {wishlist}
+   * Use things like macrofy to work with Maxima
+   * Provide seamless AD, Symbolic differentiation and numerical function calls, ala scmutils.
 
 * What is MatLisp?
 
@@ -16,16 +66,21 @@ the core LAPACK routines.
 
 * Why MatLisp?
 
-While MatLisp essentially supplies a wrapper around the LAPACK
-routines, it is more than that.  You have at your disposable the
-complete Lisp language and CLOS.  
+Lisp is a very hacker friendly language - difference between
+source and binary is almost non-existent. When you do use Matlisp we
+are being selfish in that we hope that when you do use Matlisp, you
+hack matlisp and contribute changes back.
+
+While MatLisp essentially supplies a wrapper around the BLAS/LAPACK
+routines, it is more than just that.  You have at your disposable the
+complete Lisp language and CLOS.
 
 This allows you to write clean, object-oriented code that can utilize
 the LAPACK matrix routines.  Thus, you can think about your problem in
 the natural way instead of trying to force-fit your problem in
 matrices, like some other packages do.
 
-* What About Matlab, Rlab, Octave, etc?
+* What about Matlab, Python, Octave, etc?
 
 While all of these are good at what they do, they all have a
 fundamental limitation:  Everything is a matrix.  You have no
@@ -111,25 +166,3 @@ m/
 	divide two matrices.  (m/ a b) means the same as inv(B)*A.
 	(m/ a) is the same as inv(A).
 
-
-* TODO
-** Python-bridge
-   (C)Python has far too many things, that we cannot even begin to hope to replicate.
-   Burgled-batteries has a lot of things which could be useful in talking to CPython.
-
-   Getting standard-tensor <-> numpy tranlation should be enough. Mostly care about 
-   matplotlib at the moment.
-   
-** Add infix to Matlisp
-   Added Mark Kantrowicz' infix package into lib-src. Should be straight forward to use it,
-   although changes are not strictly local.
-
-** Support linking to libraries ? 
-   Might have to parse header files with cffi-grovel.
-
-** Documentation, tests
-   Write documentation. 
-   Fix the formatting for docstrings. Maybe move to TeXinfo (like femlisp).
-
-** Write tests
-   Use cl-rt stuff to write more tests. Probably even add benchmarks.

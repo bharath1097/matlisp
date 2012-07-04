@@ -317,27 +317,32 @@
 	 (perm (id-action-repr len)))
     (declare (type index-type len)
 	     (type (index-array *) perm))
-    (labels ((qsort-bounds (lb ub)
-	       (declare (type index-type lb ub))
-	       #+nil(format t "~a lb:~a ub:~a ~%" seq lb ub)
-	       (if (= ub (1+ lb)) t
-		   (let* ((ele (aref seq lb))
-			  (ele-idx (very-quickly
-				     (loop
-					for i of-type index-type from (1+ lb) below ub
-					with ele-idx of-type index-type = lb
-					do (unless (funcall predicate ele (aref seq i))
-					     (when (> i (1+ ele-idx))
-					       (rotatef (aref seq ele-idx) (aref seq (1+ ele-idx)))
-					       (rotatef (aref perm ele-idx) (aref perm (1+ ele-idx))))
-					     (rotatef (aref seq ele-idx) (aref seq i))
-					     (rotatef (aref perm ele-idx) (aref perm i))
-					     (incf ele-idx)
-					     #+nil(format t "       ~a ~%" seq))
-					finally (return ele-idx)))))
-		     (when (> (- ub ele-idx) 2)
-		       (qsort-bounds (1+ ele-idx) ub))
-		     (when (> (- ele-idx lb) 1)
-		       (qsort-bounds lb ele-idx))))))
-      (qsort-bounds 0 len)
+    (labels ((qsort-bounds (todo)
+	       (declare (type list todo))
+	       (if (null todo) t
+		   (destructuring-bind (lb ub) (pop todo)
+		     (declare (type index-type lb ub))
+		     #+nil(format t "~a lb:~a ub:~a ~%" seq lb ub)
+		     (if (= ub (1+ lb)) t
+			 (let* ((ele (aref seq lb))
+				(ele-idx (very-quickly
+					   (loop
+					      for i of-type index-type from (1+ lb) below ub
+					      with ele-idx of-type index-type = lb
+					      do (unless (funcall predicate ele (aref seq i))
+						   (when (> i (1+ ele-idx))
+						     (rotatef (aref seq ele-idx) (aref seq (1+ ele-idx)))
+						     (rotatef (aref perm ele-idx) (aref perm (1+ ele-idx))))
+						   (rotatef (aref seq ele-idx) (aref seq i))
+						   (rotatef (aref perm ele-idx) (aref perm i))
+						   (incf ele-idx)
+						   #+nil(format t "       ~a ~%" seq))
+					      finally (return ele-idx)))))
+			   ;;The things we do for tail recursion!
+			   (when (> (- ub ele-idx) 2)
+			     (push (list (1+ ele-idx) ub) todo))
+			   (when (> (- ele-idx lb) 1)
+			     (push (list lb ele-idx) todo))
+			   (qsort-bounds todo)))))))
+      (qsort-bounds `((0 ,len)))
       (values seq (action->cycle (make-paction perm))))))
