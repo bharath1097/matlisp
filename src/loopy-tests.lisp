@@ -44,7 +44,7 @@
 	  do (setf (aref st-a of-a) (random 1d0)
 		   (aref st-b of-b) (random 1d0)
 		   (aref st-c of-c) 0d0)))
-      (time
+      (time 
        (very-quickly
       	 (mod-dotimes (idx (idxv n n n))
       	   with (loop-order :row-major)
@@ -52,7 +52,7 @@
       		 (of-a (idxv n 1 0))
       		 (of-b (idxv 0 n 1))
       		 (of-c (idxv n 0 1)))
-      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))
+      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))  
 
 (defun test-mm-ddot (n)
   (let* ((t-a (make-real-tensor-dims n n))

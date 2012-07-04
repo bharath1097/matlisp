@@ -90,19 +90,17 @@
 	     (nconc ,var ,@(cdr args)))
 	   (nconc ,var ,@args))))
 
-(defun pop-arg! (sym arglist)
+(defun pop-arg! (arglist sym)
   (check-type sym symbol)
-  (locally
-      (declare (optimize (speed 3) (safety 0)))
-    (labels ((get-sym (sym arglist prev)
-	       (cond
-		 ((null arglist) nil)
-		 ((eq (car arglist) sym) (prog1
+  (labels ((get-sym (sym arglist prev)
+	     (cond
+	       ((null arglist) nil)
+	       ((eq (car arglist) sym) (prog1
 					   (cadr arglist)
-					   (if prev
-					       (rplacd prev (cddr arglist)))))
-		 (t (get-sym sym (cdr arglist) arglist)))))
-      (get-sym sym arglist nil))))
+					 (if prev
+					     (rplacd prev (cddr arglist)))))
+	       (t (get-sym sym (cdr arglist) arglist)))))
+    (get-sym sym arglist nil)))
 
 (defun slot-values (obj slots)
   (values-list (mapcar #'(lambda (slt) (slot-value obj slt))
@@ -138,7 +136,7 @@
 
 (defmacro if-let ((var . form) &rest body)
   (check-type var symbol)
-  `(let ((,var ,@form))
+  `(let ((,var ,@form))      
      (if ,var
 	 ,@body)))
 

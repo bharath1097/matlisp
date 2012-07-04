@@ -147,7 +147,7 @@
 		    (incf sto-idx (the index-type (* (aref strides i) cidx)))
 		    (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))
 	     finally (return sto-idx))))))
-x
+
 (defun store-indexing-lst (idx hd strides dims)
 "
   Syntax
@@ -232,7 +232,7 @@ x
 	  ;;Error checking is good if we use foreign-pointers as store types.
 	  (cond
 	    ((< hd 0) (error 'tensor-invalid-head-value :head hd :tensor tensor))
-	    ((<= ss L-idx) (error 'insufficient-store :store-size ss :max-idx L-idx :tensor tensor)))
+	    ((<= ss L-idx) (error 'tensor-insufficient-store :store-size ss :max-idx L-idx :tensor tensor)))
 	  ;;
 	  ;;--*TODO: Add checks to see if there is index-collision.*--
 	  ;;   This is a hard (NP ?) search problem
@@ -258,13 +258,13 @@ x
   (:method :before ((tensor standard-tensor) idx)
 	   (declare (type index-type idx))
 	   (unless (< -1 idx (store-size tensor))
-	     (error 'store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
+	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
 
 (defgeneric (setf tensor-store-ref) (value tensor idx)
   (:method :before (value (tensor standard-tensor) idx)
 	   (declare (type index-type idx))
 	   (unless (< -1 idx (store-size tensor))
-	     (error 'store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
+	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
 
 (defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key  store-allocator coercer reader value-writer reader-writer)
   (let ((tensym  (gensym "tensor")))

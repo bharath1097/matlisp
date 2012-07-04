@@ -93,6 +93,8 @@
 				:depends-on ("standard-tensor"))
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor"))
+			 (:file "permutation"
+				:depends-on ("standard-tensor"))
 			 ;;
 			 (:file "real-tensor"
 				:depends-on ("standard-tensor"))
