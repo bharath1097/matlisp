@@ -144,6 +144,12 @@
 )
 
 (def-fortran-routine drot :void
+  "    
+   Applies a plane rotation.
+   dx <-   c * dx + s * dy
+   dy <- - s * dx + c * dy
+
+"
   (n :integer :input)
   (dx (* :double-float) :output)
   (incx :integer :input)
@@ -559,6 +565,7 @@
 
 (def-fortran-routine idamax :integer
 "
+  Finds the index of element having max. absolute value.
 "
   (n :integer :input)
   (dx (* :double-float) :input)
@@ -623,6 +630,10 @@
 
 (def-fortran-routine dnrm2 :double-float
 "
+  DNRM2 returns the euclidean norm of a vector via the function
+  name, so that
+
+    DNRM2 := sqrt( x'*x )
 "
   (n :integer :input)
   (x (* :double-float) :input)
@@ -1998,12 +2009,14 @@
 
 (def-fortran-routine dcabs1 :double-float
 "
+  DCABS1 computes absolute value of a double complex number.
 "
   (z :complex-double-float :input)
 )
 
-(def-fortran-routine dzasum :double-float
+(def-fortran-routine dzasum :double-float  
 "
+  Takes the sum of the absolute values.
 "
   (n :integer :input)
   (zx (* :complex-double-float) :input)
@@ -2012,6 +2025,10 @@
 
 (def-fortran-routine dznrm2 :double-float
 "
+  DZNRM2 returns the euclidean norm of a vector via the function
+  name, so that
+
+    DZNRM2 := sqrt( conjg( x' )*x )
 "
   (n :integer :input)
   (x (* :complex-double-float) :input)
@@ -2020,6 +2037,7 @@
 
 (def-fortran-routine izamax :integer
 "
+  Finds the index of element having max. absolute value.
 "
   (n :integer :input)
   (zx (* :complex-double-float) :input)

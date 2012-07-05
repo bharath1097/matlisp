@@ -101,7 +101,7 @@
 		    (declare (type ,(getf opt :element-type) f-val t-val))
 		    (let ((t-new (+ (* f-val alpha) t-val)))
 		      (declare (type ,(getf opt :element-type) t-new))
-		    ,(funcall (getf opt :value-writer) 't-new 't-sto 't-of)))))))
+		      ,(funcall (getf opt :value-writer) 't-new 't-sto 't-of)))))))
        to)))
 
 (generate-typed-axpy! real-typed-axpy! (real-tensor daxpy))
@@ -110,7 +110,7 @@
 
 (defgeneric axpy! (alpha x y)
   (:documentation
- " 
+   " 
  Syntax
  ======
  (AXPY! alpha x y)
@@ -149,7 +149,7 @@
 ;;
 (defgeneric axpy (alpha x y)
   (:documentation
- "
+   "
  Syntax
  ======
  (AXPY alpha x y)

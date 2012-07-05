@@ -8,6 +8,7 @@ This is the development branch of Matlisp.
      functions by getting special method producing macros - produced
      by another macro {tensor-store-defs}.
    * copy, scal, dot, swap work
+   * axpy works
    * tensor-{real, imag}part(~) work
    * sub-tensor~ works
    * print methods work
