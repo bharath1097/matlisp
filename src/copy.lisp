@@ -213,12 +213,12 @@
   Return a copy of the tensor X"))
 
 (defmethod copy ((tensor real-tensor))
-  (let* ((ret (apply #'make-real-tensor-dims (idx->list (dimensions tensor)))))
+  (let* ((ret (apply #'make-real-tensor (idx->list (dimensions tensor)))))
     (declare (type real-tensor ret))
     (copy! tensor ret)))
 
 (defmethod copy ((tensor complex-tensor))
-  (let* ((ret (apply #'make-complex-tensor-dims (idx->list (dimensions tensor)))))
+  (let* ((ret (apply #'make-complex-tensor (idx->list (dimensions tensor)))))
     (declare (type complex-tensor ret))
     (copy! tensor ret)))
 

@@ -72,9 +72,9 @@
 	       (t-sto (store y)))
 	   (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
 	   (very-quickly
-	     ;;Can possibly make this faster (x2) by using ,blas-func in one of
-	     ;;the inner loops, but this is to me messy and as of now unnecessary.
-	     ;;SBCL can already achieve Fortran-ish speed inside this loop.
+	     ;;One would question the wisdom in calling the Fortran method here.
+	     ;;Simple benchmarks proved that SBCL is as quick as or better than
+	     ;;OpenBLAS's methods
 	     (mod-dotimes (idx (dimensions x))
 	       with (linear-sums
 		     (f-of (strides x) (head x))

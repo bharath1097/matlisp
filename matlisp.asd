@@ -106,13 +106,18 @@
 	    :pathname "src/"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions")
 	    :components ((:file "tensor-maker")
-			 (:file "copy")
 			 (:file "swap")
 			 (:file "dot")
+			 (:file "copy"
+				:depends-on ("tensor-maker"))
 			 (:file "scal"
-				:depends-on ("copy"))
+				:depends-on ("copy" "tensor-maker"))
 			 (:file "realimag"
-				:depends-on ("copy"))))))
+				:depends-on ("copy"))))
+   (:module "matlisp-level-2"
+	    :pathname "src/"
+	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions" "matlisp-level-1")
+	    :components ((:file "axpy")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

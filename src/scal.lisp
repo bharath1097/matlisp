@@ -140,7 +140,7 @@
     (scal! alpha result)))
 
 (defmethod scal ((alpha complex) (x real-tensor))
-  (let* ((result (apply #'make-complex-tensor-dims (idx->list (dimensions x)))))
+  (let* ((result (apply #'make-complex-tensor (idx->list (dimensions x)))))
     (declare (type complex-tensor result))
     (copy! x result)
     (scal! alpha result)))
