@@ -70,7 +70,12 @@ Cannot hold complex numbers."))
   :reader-writer
   (lambda (fstore fidx tstore tidx)
     (setf (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx))
-	  (aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx))))))
+	  (aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx)))))
+  :swapper
+  (lambda (fstore fidx tstore tidx)
+    (progn
+      (rotatef (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx)))
+      (rotatef (aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx)))))))
 
 (setf (gethash 'complex-sub-tensor *tensor-class-optimizations*) 'complex-tensor)
 

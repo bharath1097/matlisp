@@ -1,5 +1,6 @@
 (in-package :matlisp)
 
+;;Check dimensions of the tensors before passing the argument here!
 (defun blas-copyable-p (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (mlet*
@@ -10,18 +11,17 @@
     (perm-b-dims (permute (dimensions ten-b) std-a-perm) :type (index-array *)))
    (very-quickly
      (loop
+	for i of-type index-type from 0 below (rank ten-a)
 	for sost-a across sort-std-a
-	for sodi-a across perm-a-dims
-	for a-aoff of-type index-type = (aref sort-std-a 0) then (the index-type (* a-aoff sodi-a))
+	for a-aoff of-type index-type = (aref sort-std-a 0) then (the index-type (* a-aoff (aref perm-a-dims (1- i))))
 	;;
 	for sost-b across sort-std-b
-	for sodi-b across perm-b-dims
-	for b-aoff of-type index-type = (aref sort-std-b 0) then (the index-type (* b-aoff sodi-b))
+	for b-aoff of-type index-type = (aref sort-std-b 0) then (the index-type (* b-aoff (aref perm-b-dims (1- i))))
 	;;
-	do (unless (and (= sost-a a-aoff)
-			(= sost-b b-aoff)
-			(= sodi-a sodi-b))
-	     (return nil))
+	do (progn
+	     (unless (and (= sost-a a-aoff)
+			  (= sost-b b-aoff))
+	       (return nil)))
 	finally (return (list (aref sort-std-a 0) (aref sort-std-b 0)))))))
 
 (defun consecutive-store-p (tensor)

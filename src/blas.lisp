@@ -229,9 +229,9 @@
 	    Y(0),Y(INCY), ... , Y((N-1)*INCY)
 "
   (n :integer :input)
-  (dx (* :double-float) :output)
+  (dx (* :double-float :inc head-x) :output)
   (incx :integer :input)
-  (dy (* :double-float))
+  (dy (* :double-float :inc head-y))
   (incy :integer :input)
   )
 
@@ -431,9 +431,9 @@
 	    Y(0),Y(2*INCY), ... , Y(2*(N-1)*INCY)
 "
   (n :integer :input)
-  (zx (* :complex-double-float) :output)
+  (zx (* :complex-double-float :inc head-x) :output)
   (incx :integer :input)
-  (zy (* :complex-double-float))
+  (zy (* :complex-double-float :inc head-y))
   (incy :integer :input)
   )
 

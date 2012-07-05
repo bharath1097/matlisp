@@ -96,6 +96,7 @@
   :reader (store idx) => result
   :value-writer (value store idx) => (store idx) <- value
   :reader-writer (fstore fidx tstore tidx) => (tstore tidx) <- (fstore fidx)
+  :swapper       (fstore fidx tstore tidx) => (tstore tidx) <-> (fstore fidx)
   o class-name (symbol) of the superclass whose optimizations
   are to be made use of.")
 
@@ -268,11 +269,12 @@
 	   (unless (< -1 idx (store-size tensor))
 	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
 
-(defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key  store-allocator coercer reader value-writer reader-writer)
+(defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key  store-allocator coercer reader value-writer reader-writer swapper)
   (let ((tensym  (gensym "tensor")))
     (assert store-allocator)
     (assert coercer)
     (assert (eq (first reader-writer) 'lambda))
+    (assert swapper)
     `(progn
        ,(destructuring-bind (lbd args &rest body) reader
 	  (assert (eq lbd 'lambda))
@@ -295,6 +297,7 @@
 		   :reader (macrofy ,reader)
 		   :value-writer (macrofy ,value-writer)
 		   :reader-writer (macrofy ,reader-writer)
+		   :swapper (macrofy ,swapper)
 		   :store-allocator ',store-allocator
 		   :coercer ',coercer
 		   :element-type ',element-type

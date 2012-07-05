@@ -49,7 +49,10 @@ Allocates real storage.  Default initial-element = 0d0.")
     (setf (aref store idx) value))
   :reader-writer
   (lambda (fstore fidx tstore tidx)
-    (setf (aref tstore tidx) (aref fstore fidx))))
+    (setf (aref tstore tidx) (aref fstore fidx)))
+  :swapper
+  (lambda (fstore fidx tstore tidx)
+    (rotatef (aref tstore tidx) (aref fstore fidx))))
 
 (setf (gethash 'real-sub-tensor *tensor-class-optimizations*) 'real-tensor)
 

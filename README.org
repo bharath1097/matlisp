@@ -7,7 +7,7 @@ This is the development branch of Matlisp.
    * Added a specialisation agnostic macros {copy, scal} which generate
      functions by getting special method producing macros - produced
      by another macro {tensor-store-defs}.
-   * copy, scal work
+   * copy, scal, dot, swap work
    * tensor-{real, imag}part(~) work
    * sub-tensor~ works
    * print methods work
@@ -17,7 +17,6 @@ This is the development branch of Matlisp.
 
 ** TODO : What remains ? (Help!)
 *** Functionality
-   * Some stuff from BLAS level-1 is not yet abstracted.
    * BLAS level-2 and level-3: most importantly Matrix multiplication.
    * LAPACK: solving Linear equations, Eigenvalue decomposition.
    * DFFTPACK: computing FFTs

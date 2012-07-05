@@ -107,6 +107,7 @@
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions")
 	    :components ((:file "tensor-maker")
 			 (:file "copy")
+			 (:file "swap")
 			 (:file "dot")
 			 (:file "scal"
 				:depends-on ("copy"))
