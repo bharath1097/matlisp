@@ -80,12 +80,10 @@
 	    :components ((:file "blas")
 			 (:file "lapack")
 			 (:file "dfftpack")))
-   (:module "matlisp-essentials"
+   (:module "matlisp-base"
 	    :pathname "src/"
-	    :depends-on ("foreign-interface"
-			 "foreign-functions")
+	    :depends-on ("foreign-functions")
 	    :components ((:file "conditions")
-			 ;;
 			 (:file "standard-tensor"
 				:depends-on ("conditions"))
 			 ;;
@@ -94,28 +92,26 @@
 			 (:file "permutation"
 				:depends-on ("standard-tensor"))
 			 (:file "blas-helpers"
-				:depends-on ("standard-tensor" "permutation"))			 
-			 ;;
-			 (:file "real-tensor"
-				:depends-on ("standard-tensor"))
-			 (:file "complex-tensor"
-				:depends-on ("standard-tensor"))
-			 (:file "standard-matrix"
-				:depends-on ("standard-tensor" "real-tensor" "complex-tensor"))
-			 ;; (:file "real-matrix"
-			 ;;	    :depends-on ("standard-matrix"))
-			 ;; (:file "complex-matrix"
-			 ;;	    :depends-on ("standard-matrix"))
+				:depends-on ("standard-tensor" "permutation"))
 			 (:file "print"
-				:depends-on ("standard-tensor" "standard-matrix"))
-			 ;;Copy, Scal
-			 (:file "copy"
-				:depends-on ("real-tensor" "complex-tensor" "loopy"))
+				:depends-on ("standard-tensor"))))
+   (:module "matlisp-classes"
+	    :pathname "src/"
+	    :depends-on ("matlisp-base")
+	    :components ((:file "real-tensor")
+			 (:file "complex-tensor")
+			 (:file "matrix"
+				:depends-on ("real-tensor" "complex-tensor"))))
+   (:module "matlisp-level-1"
+	    :pathname "src/"
+	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions")
+	    :components ((:file "tensor-maker")
+			 (:file "copy")
+			 (:file "dot")
 			 (:file "scal"
-				:depends-on ("copy" "loopy"))
+				:depends-on ("copy"))
 			 (:file "realimag"
-				:depends-on ("real-tensor" "complex-tensor" "copy"))
-			 ))))
+				:depends-on ("copy"))))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

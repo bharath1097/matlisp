@@ -26,6 +26,8 @@ This is the development branch of Matlisp.
    * ODEPACK: Add abstraction for DLSODE, and DLSODAR.
    * Tensor contraction: Hard to do very quickly.
      Might have to copy stuff into a contiguous array; like Femlisp.
+*** Syntactic sugar
+   * Add array slicing macros
 
 *** Python-bridge
     (C)Python has far too many things, that we cannot even begin to hope to replicate.

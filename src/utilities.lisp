@@ -231,6 +231,17 @@
     (with-output-to-string (ostr ret)
       (apply #'format (append `(,ostr ,fmt) args)))
     ret))
+
+(defun list-dimensions (lst)
+  (declare (type list lst))
+  (labels ((lst-tread (idx lst)
+	     (if (null lst) (reverse idx)
+		 (progn
+		   (setf (car idx) (length lst))
+		   (if (consp (car lst))
+		       (lst-tread (cons 0 idx) (car lst))
+		       (reverse idx))))))
+    (lst-tread (list 0) lst)))
 ;;---------------------------------------------------------------;;
 (defstruct (foreign-vector
 	     (:conc-name fv-)

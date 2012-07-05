@@ -163,8 +163,3 @@ of a matrix (default 0)
   (print-unreadable-object (tensor stream :type t)
     (format stream "~A~%" (dimensions tensor))
     (print-tensor tensor stream)))
-
-(defmethod print-object ((tensor standard-matrix) stream)
-  (print-unreadable-object (tensor stream :type t)
-    (format stream "~A x ~A~%" (nrows tensor) (ncols tensor))
-    (print-tensor tensor stream)))

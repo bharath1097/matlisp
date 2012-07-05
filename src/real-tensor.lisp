@@ -1,14 +1,12 @@
 (in-package :matlisp)
 
-(eval-when (load eval compile)
-  (deftype real-type ()
-    "The type of the elements stored in a REAL-MATRIX"
-    'double-float)
-  
-  (deftype real-array (size)
-    "The type of the storage structure for a REAL-MATRIX"
-    `(simple-array real-type (,size)))
-  )
+(deftype real-type ()
+  "The type of the elements stored in a REAL-MATRIX"
+  'double-float)
+
+(deftype real-array (size)
+  "The type of the storage structure for a REAL-MATRIX"
+  `(simple-array real-type (,size)))
 ;;
 
 (make-array-allocator allocate-real-store 'real-type 0d0
@@ -64,14 +62,4 @@ Allocates real storage.  Default initial-element = 0d0.")
 			  element stream)
   (format stream "~11,5,,,,,'Eg" element))
 
-;;
 
-(defun make-real-tensor-dims (&rest subs)
-  (let* ((dims (make-index-store subs))
-	 (ss (reduce #'* dims))
-	 (store (allocate-real-store ss)))
-    (make-instance 'real-tensor :store store :dimensions dims)))
-
-#+nil(defun make-real-tensor-array (arr)
-  (let* ((dims (array-dimensions arr))
-	 (ret (apply #'make-real-tensor-dims dims)))))

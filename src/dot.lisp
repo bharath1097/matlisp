@@ -97,149 +97,67 @@
   otherwise.
 "))
 
-(defmethod dot ((x number) (y number) &optional (conjugate-p nil))
+(defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
       (* (conjugate x) y)
       (* x y)))
 
-(defmethod dot :before ((x standard-matrix) (y standard-matrix) &optional conjugate-p)
+(defmethod dot :before ((x standard-tensor) (y standard-tensor) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (if (not (row-or-col-vector-p x))
-      (error "argument X to DOT is not a row or column vector")
-    (if (not (row-or-col-vector-p y))
-	(error "argument Y to DOT is not a row or column vector")
-      (let ((nxm-x (number-of-elements x))
-	    (nxm-y (number-of-elements y)))
-	(declare (type fixnum nxm-x nxm-y))
-	(if (not (= nxm-x nxm-y))
-	    (error "arguments X,Y to DOT are not of the same size"))))))
+  (unless (and (vector-p x) (vector-p y))
+    (error 'tensor-not-vector
+	   :rank (cond
+		   ((not (vector-p x))
+		    (rank x))
+		   ((not (vector-p y))
+		    (rank y)))))
+  (unless (idx= (dimensions x) (dimensions y))
+    (error 'tensor-dimension-mismatch)))
 
-(defmethod dot ((x real-matrix) (y real-matrix) &optional conjugate-p)
+(defmethod dot ((x real-tensor) (y real-tensor) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-    (ddot nxm (store x) 1 (store y) 1)))
+  (ddot (number-of-elements x)
+	(store x) (aref (strides x) 0)
+	(store y) (aref (strides y) 0)
+	(head x) (head y)))
 
-;;#+(or :cmu :sbcl)
-(defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
+(defmethod dot ((x real-tensor) (y complex-tensor) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (let ((nxm (number-of-elements x))
-	(store-x (store x))
-	(store-y (store y)))
-    (declare (type fixnum nxm)
-	     (type (real-matrix-store-type *) store-x)
-	     (type (complex-matrix-store-type *) store-y))
+  (let ((nele (number-of-elements x))
+	(std-x (aref (strides x) 0))
+	(hd-x (head x))
+	(std-y (aref (strides y) 0))
+	(hd-y (head y)))
+    (declare (type index-type nele std-x std-y hd-x hd-y))
+    (let ((rpart (ddot nele (store x) std-x (store y) (* 2 std-y) hd-x (* 2 hd-y)))
+	  (ipart (ddot nele (store x) std-x (store y) (* 2 std-y) hd-x (1+ (* 2 hd-y)))))
+      (declare (type complex-base-type rpart ipart))
+      (if (zerop ipart)
+	  rpart
+	  (complex rpart ipart)))))
 
-    (let ((realpart (ddot nxm store-x 1 store-y 2))
-	  (imagpart (with-vector-data-addresses ((addr-x store-x)
-						 (addr-y store-y))
-			  (incf-sap addr-y :double-float)
-			  (ddot nxm addr-x 1 addr-y 2))))
+(defmethod dot ((x complex-tensor) (y real-tensor) &optional (conjugate-p t))
+  (let ((cres (dot y x)))
+    (if conjugate-p
+	(conjugate cres)
+	cres)))
 
-      (declare (type complex-matrix-element-type realpart imagpart))
-
-      #+:complex-arg-implies-complex-result
-      (complex realpart imagpart)
-      #-:complex-arg-implies-comples-result
-      (if (zerop imagpart)
-	  realpart
-	(complex realpart imagpart))
-      )))
-
-
-;;#+:allegro
-#+nil
-(defmethod dot ((x real-matrix) (y complex-matrix) &optional conjugate-p)
-  (declare (ignore conjugate-p))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-
-    (let ((realpart 0.0d0)
-	  (imagpart 0.0d0))
-      (declare (type complex-matrix-element-type realpart imagpart))
-
-      (dotimes (i nxm)
-        (declare (type fixnum i))
-        (let ((x-elt (matrix-ref x i))
-	      (y-elt (matrix-ref y i)))
-	  (incf realpart (+ x-elt (realpart y-elt)))
-	  (incf imagpart (+ x-elt (imagpart y-elt)))))
-
-
-      #+:complex-arg-implies-complex-result
-      (complex realpart imagpart)
-      #-:complex-arg-implies-comples-result
-      (if (zerop imagpart)
-	  realpart
-	(complex realpart imagpart))
-      )))
-
-;;#+(or :cmu :sbcl)
-(defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
-  (let ((nxm (number-of-elements x))
-	(store-x (store x))
-	(store-y (store y)))
-    (declare (type fixnum nxm)
-	     (type (real-matrix-store-type *) store-y)
-	     (type (complex-matrix-store-type *) store-x))
-
-    (let ((realpart (ddot nxm store-x 2 store-y 1))
-	  (imagpart (with-vector-data-addresses ((addr-x store-x)
-						  (addr-y store-y))
-			  (incf-sap addr-x :double-float)
-			  (ddot nxm addr-x 2 addr-y 1))))
-
-      (declare (type complex-matrix-element-type realpart imagpart))
-
-      (if conjugate-p
-	  (setq imagpart (- imagpart)))
-
-      #+:complex-arg-implies-complex-result
-      (complex realpart  imagpart)
-      #-:complex-arg-implies-comples-result
-      (if (zerop imagpart)
-	  realpart
-	(complex realpart imagpart))
-      )))
-
-#+nil
-(defmethod dot ((x complex-matrix) (y real-matrix) &optional (conjugate-p t))
-  (let ((nxm (number-of-elements x)))
-    (declare (type fixnum nxm))
-
-    (let ((realpart 0.0d0)
-	  (imagpart 0.0d0))
-      (declare (type complex-matrix-element-type realpart imagpart))
-
-      (dotimes (i nxm)
-        (declare (type fixnum i))
-        (let ((x-elt (matrix-ref x i))
-	      (y-elt (matrix-ref y i)))
-	  (incf realpart (+ y-elt (realpart x-elt)))
-	  (incf imagpart (+ y-elt (imagpart x-elt)))))
-
-      (if conjugate-p
-	  (setq imagpart (- imagpart)))
-
-      #+:complex-arg-implies-complex-result
-      (complex realpart  imagpart)
-      #-:complex-arg-implies-comples-result
-      (if (zerop imagpart)
-	  realpart
-	(complex realpart imagpart))
-      )))
-
-(defmethod dot ((x complex-matrix) (y complex-matrix) &optional (conjugate-p t))
-  (let* ((nxm (number-of-elements x))
-	 (store-x (store x))
-	 (store-y (store y))
-	 (dot (if conjugate-p
-		  (zdotc nxm store-x 1 store-y 1)
-		  (zdotu nxm store-x 1 store-y 1))))
-    
-    #-:complex-arg-implies-complex-result
-    (if (zerop (imagpart dot))
-	(realpart dot)
-	dot)
-    #+:complex-arg-implies-complex-result
-    dot))
+(defmethod dot ((x complex-tensor) (y complex-tensor) &optional (conjugate-p t))
+  (let ((nele (number-of-elements x))
+	(std-x (aref (strides x) 0))
+	(hd-x (head x))
+	(std-y (aref (strides y) 0))
+	(hd-y (head y)))
+    (declare (type index-type nele std-x hd-x std-y hd-y))
+    (let ((ret (if conjugate-p
+		   (zdotc nele
+			  (store x) std-x
+			  (store y) std-y
+			  hd-x hd-y)
+		   (zdotu nele
+			  (store x) std-x
+			  (store y) std-y
+			  hd-x hd-y))))
+      (if (zerop (imagpart ret))
+	  (realpart ret)
+	  ret))))

@@ -1,24 +1,24 @@
 (in-package :matlisp)
 
-(eval-when (load eval compile)
-  (deftype complex-base-type ()
-    "The type of the elements stored in a COMPLEX-MATRIX"
-    'double-float)
-  
-  (deftype complex-base-array (size)
-    "The type of the storage structure for a COMPLEX-MATRIX"
-    `(simple-array complex-base-type (,size)))
- 
-  (deftype complex-type ()
-    "Complex number with Re, Im parts in complex-base-type."
-    '(cl:complex complex-base-type))
-  )
+(deftype complex-base-type ()
+  "The type of the elements stored in a COMPLEX-MATRIX"
+  'double-float)
+
+(deftype complex-base-array (size)
+  "The type of the storage structure for a COMPLEX-MATRIX"
+  `(simple-array complex-base-type (,size)))
+
+(deftype complex-type ()
+  "Complex number with Re, Im parts in complex-base-type."
+  '(cl:complex complex-base-type))
 ;;
 
 (definline allocate-complex-store (size)
-"(allocate-complex-store size)
-Allocates real storage of size (* SIZE 2).
-Default initial-element = 0d0."
+  "
+  (allocate-complex-store size)
+  Allocates real storage of size (* SIZE 2).
+  Default initial-element = 0d0.
+"
   (make-array (* 2 size) :element-type 'complex-base-type
 	      :initial-element (coerce 0 'complex-base-type)))
 
@@ -87,11 +87,3 @@ Cannot hold complex numbers."))
 		       "~11,5,,,,,'Eg"
 		       "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)")
 	    realpart imagpart)))
-
-;;
-(defun make-complex-tensor-dims (&rest subs)
-  (let* ((dims (make-index-store subs))
-	 (ss (reduce #'* dims))
-	 (store (allocate-complex-store ss)))
-    (make-instance 'complex-tensor :store store :dimensions dims)))
-

@@ -89,6 +89,8 @@
   "
   Contains a either:
   o A property list containing:
+  :store-allocator (n) -> Allocates a store of size n
+  :coercer (ele) -> Coerced to store-type
   :element-type
   :store-type
   :reader (store idx) => result
@@ -101,9 +103,9 @@
   (declare (type symbol clname))
   (let ((opt (gethash clname *tensor-class-optimizations*)))
     (cond
+      ((null opt) nil)
       ((symbolp opt)
        (get-tensor-class-optimization opt))
-      ((null opt) nil)
       (t (values opt clname)))))
 
 ;; Akshay: I have no idea what this does, or why we want it
@@ -471,3 +473,4 @@
 				   (error 'tensor-cannot-find-sub-class :tensor-class (class-of tensor)))
 			   :parent-tensor tensor :store (store tensor) :head nhd
 			   :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))
+

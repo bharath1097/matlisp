@@ -33,7 +33,7 @@
 ;;Generic conditions---------------------------------------------;;
 (defcondition generic-error (error)
   ((message :reader message :initarg :message :initform ""))
-  (:method print-method ((c generic-error) stream)
+  (:method print-object ((c generic-error) stream)
 	   (format stream (message c))))
 
 (defcondition invalid-type (generic-error)
@@ -64,9 +64,25 @@
    (to :reader to :initarg :to))
   (:documentation "Cannot coerce one type into another.")
   (:method print-object ((c coercion-error) stream)
-	   (format stream "Cannot coerce ~a into ~a." (from c) (to c))
+	   (format stream "Cannot coerce ~a into ~a.~%" (from c) (to c))
 	   (call-next-method)))
 
+(defcondition out-of-bounds-error (generic-error)
+  ((requested :reader requested :initarg :requested)
+   (bound :reader bound :initarg :bound))
+  (:documentation "General out-of-bounds error")
+  (:method print-object ((c out-of-bounds-error) stream)
+	   (format stream "Out-of-bounds error, requested index : ~a, bound : ~a.~%" (requested c) (bound c))
+	   (call-next-method)))
+
+(defcondition non-uniform-bounds-error (generic-error)
+  ((assumed :reader assumed :initarg :assumed)
+   (found :reader found :initarg :found))
+  (:documentation "Bounds are not uniform")
+  (:method print-object ((c out-of-bounds-error) stream)
+	   (format stream "The bounds are not uniform, assumed bound : ~a, now found to be : ~a.~%" (assumed c) (found c))
+	   (call-next-method)))
+	   
 ;;Tensor conditions----------------------------------------------;;
 (define-condition tensor-error (error)
   ;;Optional argument for error-handling.
@@ -91,6 +107,12 @@
   (:documentation "Given tensor is not a matrix.")
   (:report (lambda (c stream)
 	     (format stream "Given tensor with rank ~A, is not a matrix." (rank c)))))
+
+(define-condition tensor-not-vector (tensor-error)
+  ((tensor-rank :reader rank :initarg :rank))
+  (:documentation "Given tensor is not a vector.")
+  (:report (lambda (c stream)
+	     (format stream "Given tensor with rank ~A, is not a vector." (rank c)))))
 
 (define-condition tensor-index-out-of-bounds (tensor-error)
   ((argument :reader argument :initarg :argument)
