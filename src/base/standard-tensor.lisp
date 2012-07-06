@@ -540,13 +540,20 @@
 				   :given (type-of csub) :expected 'index-type)
 			   (sub-tread (1+ i) (cdr subs) (+ nhd (* csub (aref stds i))) ndims nstds)))))))
       (multiple-value-bind (nhd ndim nstd) (sub-tread 0 subscripts hd nil nil)
-	(cond
-	  ((null ndim) (tensor-store-ref tensor nhd))
-	  ((= (length ndim) 1) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :vector)))
-				 (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
-				 (make-instance cocl
-						:parent-tensor tensor :store (store tensor) :head nhd
-						:dimensions (make-index-store ndim) :strides (make-index-store nstd))))
-	  (t (make-instance (class-name (class-of tensor))
-			    :parent-tensor tensor :store (store tensor) :head nhd
-			    :dimensions (make-index-store ndim) :strides (make-index-store nstd))))))))
+	(let ((nrnk (length ndim)))
+	  (declare (type index-type nrnk))
+	  (cond
+	    ((null ndim) (tensor-store-ref tensor nhd))
+	    ((= nrnk 1) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :vector)))
+			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
+			  (make-instance cocl
+					 :parent-tensor tensor :store (store tensor) :head nhd
+					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))
+	    ((= nrnk 2) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :matrix)))
+			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
+			  (make-instance cocl
+					 :parent-tensor tensor :store (store tensor) :head nhd
+					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))	     
+	     (t (make-instance (class-name (class-of tensor))
+			       :parent-tensor tensor :store (store tensor) :head nhd
+			       :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))))
