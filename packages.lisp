@@ -25,136 +25,43 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: packages.lisp,v 1.23 2011/01/25 18:36:56 rtoy Exp $
-;;;
-;;; $Log: packages.lisp,v $
-;;; Revision 1.23  2011/01/25 18:36:56  rtoy
-;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
-;;; automake build infrastructure.
-;;;
-;;; Revision 1.22.2.1  2011/01/25 18:16:10  rtoy
-;;; config.lisp.in:
-;;; o New file to setup some configuration.  Mostly taken from
-;;;   packages.lisp.
-;;;
-;;; configure.ac:
-;;; o Add mailing list and URL
-;;; o Build config.lisp from config.lisp.in
-;;;
-;;; packages.lisp:
-;;; o Move the non-package stuff to config.lisp.in.
-;;;
-;;; Revision 1.22  2009/08/19 16:01:34  rtoy
-;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
-;;; Gjerden.
-;;;
-;;; src/potrf.lisp:
-;;; o New file for matlisp interface to potrf.  Modeled after getrf.
-;;;
-;;; src/potrs.lisp:
-;;; o New file for matlisp interface to potrs.  Modeled after getrs.
-;;;
-;;; src/lapack.lisp:
-;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
-;;;
-;;; matlisp.mk.in:
-;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
-;;;   need to compile.
-;;;
-;;; packages.lisp:
-;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
-;;; o Export POTRF! and POTRS!.
-;;;
-;;; start.lisp:
-;;; o Don't use verbose output from mk:oos.
-;;;
-;;; system.dcl:
-;;; o Add potrf and potrs to system.
-;;;
-;;; Revision 1.21  2004/05/20 21:43:00  rtoy
-;;; Add some docstrings to the packages, remove some unused stuff.
-;;;
-;;; Revision 1.20  2004/02/20 17:34:31  rtoy
-;;; Update to latest f2cl code, so
-;;; o Fix defpackage stuff for f2cl
-;;; o Update macros.l.
-;;;
-;;; Revision 1.19  2003/12/07 15:03:44  rtoy
-;;; Add support for SBCL.  I did not test if SBCL works, but CMUCL still
-;;; works.
-;;;
-;;; From Robbie Sedgewick on matlisp-users, 2003-11-13.
-;;;
-;;; Revision 1.18  2003/10/25 17:01:49  rtoy
-;;; o Remove the nicknames "MATRIX" and "M".
-;;; o Minor indentation changes.
-;;;
-;;; Revision 1.17  2003/07/25 16:20:08  rtoy
-;;; Use PCL:FIND-CLASS for CMUCL so all versions of CMUCL will still work.
-;;;
-;;; Revision 1.16  2003/05/31 03:41:43  rtoy
-;;; Our REAL function was colliding with CL's REAL.  Shadow this
-;;; appropriately.
-;;;
-;;; Revision 1.15  2002/09/30 18:28:52  simsek
-;;; o Added changes by N.Neuss for getrs functions
-;;;
-;;; Revision 1.14  2002/01/20 00:41:52  simsek
-;;; o exporting some forgotton symbols from LAPACK
-;;;
-;;; Revision 1.13  2002/01/08 00:32:52  rtoy
-;;; Add defpackage for the new MINPACK package.
-;;;
-;;; Revision 1.12  2001/10/25 21:52:57  rtoy
-;;; Export QR, QR!, and GEQR!.
-;;;
-;;; Revision 1.11  2001/07/26 15:47:15  rtoy
-;;; Updated version number to "Pre 2.0" since this isn't 1.0b anymore!
-;;;
-;;; Revision 1.10  2001/05/01 13:11:06  rtoy
-;;; o Export I1MACH, R1MACH, D1MACH from the F2CL package.
-;;; o Export POLYROOTS.
-;;;
-;;; Revision 1.9  2001/04/29 15:52:19  rtoy
-;;; Add the external symbols from TOMS 715.
-;;;
-;;; Revision 1.8  2001/04/26 21:49:15  rtoy
-;;; Add MATLISP-LIB package.
-;;;
-;;; Revision 1.7  2001/02/23 18:00:11  rtoy
-;;; Add defpackages for FORTRAN-TO-LISP and QUADPACK for quadpack
-;;; routines.  Update MATLISP package accordingly.
-;;;
-;;; Revision 1.6  2000/10/04 23:54:47  simsek
-;;; o Importing EXCL (EXT) for CMUCL (Allegro) in Matlisp-user package
-;;;
-;;; Revision 1.5  2000/10/04 22:49:52  simsek
-;;; o Added matlisp-user package
-;;;
-;;; Revision 1.4  2000/10/04 15:40:46  simsek
-;;; o Added unload-blas-&-lapack-binaries
-;;;   to symbols exported from matlisp
-;;;
-;;; Revision 1.3  2000/10/04 01:20:44  simsek
-;;; o Moved version related code from system.dcl
-;;;   to here.  This code should be the first bit of code loaded
-;;;   but only after the system is defined (furthermore, in this
-;;;   way we avoid interning symbols in packages other than the
-;;;   matlisp package
-;;;
-;;; Revision 1.2  2000/07/11 02:03:51  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.1  2000/06/19 22:19:33  rtoy
-;;; Initial revision.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;;; Define the packages and symbols for Matlisp.
 
-(defpackage "UTILITIES"
+(defpackage "MATLISP-CONDITIONS"
   (:use #:common-lisp)
+  (:export
+   ;;<conditon {accessors*}>
+   ;;Generic errors
+   #:generic-error #:message
+   #:invalid-type #:given #:expected
+   #:invalid-value #:given #:expected
+   #:unknown-token #:token
+   #:coercion-error #:from #:to
+   #:out-of-bounds-error #:requested #:bound   
+   #:non-uniform-bounds-error #:assumed #:found
+   ;;Permutation conditions
+   #:permutation #:permutation
+   #:permutation-invalid-error
+   #:permutation-permute-error #:seq-len #:group-rank   
+   ;;Tensor conditions
+   #:tensor-error #:tensor
+   #:tensor-store-index-out-of-bounds #:index #:store-size
+   #:tensor-insufficient-store #:store-size #:max-idx
+   #:tensor-not-matrix #:rank
+   #:tensor-not-vector #:rank
+   #:tensor-index-out-of-bounds #:argument #:index #:dimension
+   #:tensor-index-rank-mismatch #:index-rank #:rank
+   #:tensor-invalid-head-value #:head
+   #:tensor-invalid-dimension-value #:argument #:dimension
+   #:tensor-invalid-stride-value #:argument #:stride
+   #:tensor-cannot-find-sub-class #:tensor-class
+   #:tensor-cannot-find-optimization #:tensor-class
+   #:tensor-dimension-mismatch
+))
+
+;;foreign-vector stuff must go to ffi-...
+(defpackage "MATLISP-UTILITIES"
+  (:use #:common-lisp #:matlisp-conditions)
   (:export #:ensure-list
 	   #:zip #:zip-eq
 	   #:cut-cons-chain!
@@ -170,29 +77,28 @@
 	   #:macrofy
 	   ;;
 	   #:inlining #:definline
-	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if
-	   ;;Structure-specific
-	   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
-	   #:fv-ref #:fv-pointer #:fv-size #:fv-type))
+	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
 
-(defpackage "FORTRAN-FFI-ACCESSORS"
-  (:nicknames #:ffi)
-  (:use #:common-lisp #:cffi #:utilities)
+(defpackage "MATLISP-FFI"
+  (:use #:common-lisp #:cffi #:matlisp-utilities #:matlisp-conditions)
   ;; TODO: Check if this is implementation-agnostic.
   ;; #+:cmu (:use :common-lisp :c-call :cffi :utilities)
   ;; #+:sbcl (:use :common-lisp :cffi :utilities)
-
+  ;; Works with ccl.
   ;; #+:allegro (:use :common-lisp :cffi :utilities)
   ;; #+(not (or sbcl cmu allegro)) (:use :common-lisp :cffi :utilities)
   (:export
-   ;; interface functions
+   ;;Foreign-pointer enclosing structure.
+   #:foreign-vector #:make-foreign-vector #:foreign-vector-p
+   #:fv-ref #:fv-pointer #:fv-size #:fv-type
+   ;;Interface functions
    #:def-fortran-routine
    #:with-vector-data-addresses
    )
   (:documentation "Fortran foreign function interface"))
 
-(defpackage "BLAS"
-  (:use #:common-lisp #:ffi)
+(defpackage "MATLISP-BLAS"
+  (:use #:common-lisp #:matlisp-ffi)
   (:export
    ;;BLAS Level 1
    ;;------------
@@ -216,8 +122,8 @@
    #:zgemm #:ztrmm #:ztrsm #:zherk #:zher2k)
   (:documentation "BLAS routines"))
 
-(defpackage "LAPACK"
-  (:use #:common-lisp #:ffi)
+(defpackage "MATLISP-LAPACK"
+  (:use #:common-lisp #:matlisp-ffi)
   (:export
    #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
    #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
@@ -227,15 +133,16 @@
    #:dgelsy)
   (:documentation "LAPACK routines"))
 
-(defpackage "DFFTPACK"
-  (:use #:common-lisp #:fortran-ffi-accessors)
+(defpackage "MATLISP-DFFTPACK"
+  (:use #:common-lisp #:matlisp-ffi)
   (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
   (:documentation "FFT routines"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:fortran-ffi-accessors #:blas #:lapack #:dfftpack #:utilities)
-  (:export #:integer4-type #:integer4-array #:allocate-integer4-store
-	   #:index-type #:index-array #:allocate-index-store #:make-index-store
+  (:use #:common-lisp
+	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi
+	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack)
+  (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor
 	   #:rank #:dimensions #:number-of-elements

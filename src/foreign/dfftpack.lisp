@@ -25,42 +25,8 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Tunc Simsek, Univ. of California, Berkeley
-;;; May 5th, 2000, simsek@eecs.berkeley.edu
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: dfftpack.lisp,v 1.5 2004/05/24 16:34:22 rtoy Exp $
-;;;
-;;; $Log: dfftpack.lisp,v $
-;;; Revision 1.5  2004/05/24 16:34:22  rtoy
-;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
-;;; was incomplete.
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/06/19 22:21:45  rtoy
-;;; Define packages elsewhere.
-;;;
-;;; Revision 1.1  2000/05/05 21:35:54  simsek
-;;; o Initial revision
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#+nil
-(defpackage "DFFTPACK"
-#+:cmu  (:use "COMMON-LISP" "ALIEN" "C-CALL" "FORTRAN-FFI-ACCESSORS")
-#+:sbcl  (:use "COMMON-LISP" "SB-ALIEN" "SB-C" "FORTRAN-FFI-ACCESSORS")
-#+:allegro  (:use "COMMON-LISP" "FOREIGN-FUNCTIONS" "FORTRAN-FFI-ACCESSORS")
-  (:export "ZFFTI" "ZFFTF" "ZFFTB"))
-
-(in-package "DFFTPACK")
+(in-package #:matlisp-dfftpack)
 
 
 (def-fortran-routine zffti :void

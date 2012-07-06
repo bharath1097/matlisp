@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (defun id-action-repr (n)
   (declare (type fixnum n))

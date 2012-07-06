@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 ;;
 (defclass standard-matrix (standard-tensor)  

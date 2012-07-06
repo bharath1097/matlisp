@@ -36,12 +36,19 @@
 (asdf:defsystem matlisp-packages
   :depends-on (#:cffi)
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
-  :components
+  :components 
   ((:file "packages")))
+
+(asdf:defsystem matlisp-conditions
+  :depends-on ("matlisp-packages")
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :components ((:module "conditions"
+			:pathname "src/"
+			:components ((:file "conditions")))))
 
 (asdf:defsystem matlisp-utilities
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
-  :depends-on ("matlisp-packages")
+  :depends-on ("matlisp-packages" "matlisp-conditions")
   :components ((:module "utilities"
 			:pathname "src/"
 			:components ((:file "utilities")))))
@@ -59,20 +66,21 @@
 
 (asdf:defsystem fortran-names
   :pathname #.(translate-logical-pathname "matlisp:src;")
-  :depends-on ("matlisp-packages")
+  :depends-on ("matlisp-packages" "matlisp-conditions")
   :components
   ((:file "f77-mangling")))
 
 (asdf:defsystem matlisp
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
   :depends-on (#:cffi "lazy-loader"
-	       "matlisp-packages" "matlisp-utilities"
-	       "fortran-names")
+	       "matlisp-packages" "matlisp-conditions"
+	       "matlisp-utilities" "fortran-names")
   :components
   ((:module "foreign-interface"
 	    :pathname "src/"
 	    :components ((:file "ffi-cffi")
 			 (:file "ffi-cffi-interpreter-specific")
+			 (:file "foreign-vector")
 			 ))
    (:module "foreign-functions"
 	    :pathname "src/"
@@ -113,11 +121,9 @@
 			 (:file "scal"
 				:depends-on ("copy" "tensor-maker"))
 			 (:file "realimag"
-				:depends-on ("copy"))))
-   (:module "matlisp-level-2"
-	    :pathname "src/"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions" "matlisp-level-1")
-	    :components ((:file "axpy")))))
+				:depends-on ("copy"))
+			 (:file "axpy"
+				:depends-on ("copy"))))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

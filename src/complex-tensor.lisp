@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (deftype complex-base-type ()
   "The type of the elements stored in a COMPLEX-MATRIX"

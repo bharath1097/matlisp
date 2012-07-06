@@ -4,12 +4,9 @@
 ;; :complex-single-float :complex-double-float
 ;; :integer :long
 
-;; Written by Akshay Srinivasan
-
-
 ;; Callbacks : (:function <output-type> {(params)})
 
-(in-package :ffi)
+(in-package #:matlisp-ffi)
 
 (define-constant +ffi-types+ '(:single-float :double-float
 			       :complex-single-float :complex-double-float
@@ -20,7 +17,6 @@
 (define-constant +ffi-styles+ '(:input :input-value :workspace
 				:input-output :output :workspace-output))
 
-  
 ;; Create objects on the heap and run some stuff.
 (defmacro with-foreign-objects-heaped (declarations &rest body)
 "
@@ -30,10 +26,10 @@
   binding := {(var type &optional count &key (initial-contents nil))}*
 
   Example:
-  >> (with-foreign-objects-heaped ((x :int :count 10 :initial-element 2))
+  > (with-foreign-objects-heaped ((x :int :count 10 :initial-element 2))
        (+ (cffi:mem-aref x :int 2) 1))
   3
->>
+  >
 "
 ;; Allocate objects from the heap
   (recursive-append

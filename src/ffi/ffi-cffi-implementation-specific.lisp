@@ -1,7 +1,7 @@
-;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :fortran-ffi-accessors; Base: 10 -*-
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp-ffi; Base: 10 -*-
 ;; Yes the file name is an oxymoron.
 
-(in-package :ffi)
+(in-package #:matlisp-ffi)
 
 ;;TODO: Add support for {ECL, clisp, Allegro CL, Lispworks}
 

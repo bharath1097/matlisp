@@ -25,40 +25,10 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Tunc Simsek, Univ. of California, Berkeley
-;;; 1999, simsek@eecs.berkeley.edu
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: blas.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
-;;;
-;;; $Log: blas.lisp,v $
-;;; Revision 1.6  2004/05/24 16:34:22  rtoy
-;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
-;;; was incomplete.
-;;;
-;;; Revision 1.5  2001/02/21 19:31:13  simsek
-;;; o Fixed minor typos and doc strings
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/06/19 22:21:45  rtoy
-;;; Define packages elsewhere.
-;;;
-;;; Revision 1.1  2000/04/14 00:12:48  simsek
-;;; Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "BLAS")
+(in-package #:matlisp-blas)
 
-;;
+
 (def-fortran-routine daxpy :void
   "
   Syntax
@@ -158,15 +128,6 @@
   (c :double-float :output)
   (s :double-float :output)
   )
-
-#|
-(def-fortran-routine drotg :void
-  (da :double-float :output)
-  (db :double-float :output)
-  (c :double-float :output)
-  (s :double-float :output)
-)
-|#
 
 (def-fortran-routine dscal :void
   "

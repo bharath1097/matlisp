@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 ;;Check dimensions of the tensors before passing the argument here!
 (defun blas-copyable-p (ten-a ten-b)

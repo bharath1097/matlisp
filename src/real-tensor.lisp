@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (deftype real-type ()
   "The type of the elements stored in a REAL-MATRIX"

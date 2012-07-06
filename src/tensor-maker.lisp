@@ -1,4 +1,4 @@
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (defmacro make-tensor-maker (func-name (tensor-class))
   (let ((opt (get-tensor-class-optimization tensor-class)))

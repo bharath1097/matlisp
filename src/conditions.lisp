@@ -1,17 +1,5 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: conditions.lisp,v 1.1 2003/06/01 15:21:41 rtoy Exp $
-;;;
-;;; $Log: conditions.lisp,v $
-;;; Revision 1.1  2003/06/01 15:21:41  rtoy
-;;; Some conditions for matlisp matrix errors.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; Error conditions for matlisp
-
-(in-package :matlisp)
+(in-package #:matlisp-conditions)
 
 (defmacro defcondition (name (&rest parent-types) (&rest slot-specs) &body options)
   "Like define-condition except that you can define
@@ -82,7 +70,27 @@
   (:method print-object ((c out-of-bounds-error) stream)
 	   (format stream "The bounds are not uniform, assumed bound : ~a, now found to be : ~a.~%" (assumed c) (found c))
 	   (call-next-method)))
-	   
+
+;;Permutation conditions-----------------------------------------;;
+(define-condition permutation-error (error)
+  ((permutation :reader permutation :initarg :permutation)))
+
+(define-condition permutation-invalid-error (permutation-error)
+  ()
+  (:documentation "Object is not a permutation.")
+  (:report (lambda (c stream)
+	     (declare (ignore c))
+	     (format stream "Object is not a permutation."))))
+
+(define-condition permutation-permute-error (permutation-error)
+  ((sequence-length :reader seq-len :initarg :seq-len)
+   (group-rank :reader group-rank :initarg :group-rank))
+  (:documentation "Cannot permute sequence.")
+  (:report (lambda (c stream)
+	     (format stream "Cannot permute sequence.
+sequence-length : ~a
+group-rank: ~a" (seq-len c) (group-rank c)))))
+
 ;;Tensor conditions----------------------------------------------;;
 (define-condition tensor-error (error)
   ;;Optional argument for error-handling.
@@ -167,23 +175,3 @@
   (:report (lambda (c stream)
 	     (declare (ignore c))
 	     (format stream "The dimensions of the given tensors are not suitable for continuing with the operation."))))
-
-;;Permutation conditions-----------------------------------------;;
-(define-condition permutation-error (error)
-  ((permutation :reader permutation :initarg :permutation)))
-
-(define-condition permutation-invalid-error (permutation-error)
-  ()
-  (:documentation "Object is not a permutation.")
-  (:report (lambda (c stream)
-	     (declare (ignore c))
-	     (format stream "Object is not a permutation."))))
-
-(define-condition permutation-permute-error (permutation-error)
-  ((sequence-length :reader seq-len :initarg :seq-len)
-   (group-rank :reader group-rank :initarg :group-rank))
-  (:documentation "Cannot permute sequence.")
-  (:report (lambda (c stream)
-	     (format stream "Cannot permute sequence.
-sequence-length : ~a
-group-rank: ~a" (seq-len c) (group-rank c)))))

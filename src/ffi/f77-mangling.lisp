@@ -1,15 +1,15 @@
 ;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :fortran-ffi-accessors; Base: 10 -*-
 
-(in-package "FORTRAN-FFI-ACCESSORS")
+(in-package #:matlisp-ffi)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-(defconstant +f77-lower-case+ @F77_LOWER_CASE@
-  "Fortran names are lower case if non-NIL")
-(defconstant +f77-underscore+ @F77_UNDERSCORE@
-  "Fortran names have a trailing underscore if non-NIL")
-(defconstant +f77-extra-underscore+ @F77_EXTRA_UNDERSCORE@
-  "Fortran names containing an underscore have an extra underscore appended if non-NIL")
-)
+  (defconstant +f77-lower-case+ t
+    "Fortran names are lower case if non-NIL")
+  (defconstant +f77-underscore+ t
+    "Fortran names have a trailing underscore if non-NIL")
+  (defconstant +f77-extra-underscore+ nil
+    "Fortran names containing an underscore have an extra underscore
+    appended if non-NIL"))
 
 (defun %cat% (prefix-string s &optional suffix-string)
   (concatenate 'string 
@@ -38,10 +38,6 @@
 			   (if +f77-underscore+ "_" "")
 			   (if (and +f77-extra-underscore+ internal-underscore-p)
 			       "_" ""))))
-    (declare (ignorable internal-underscore-p))
     (if +f77-lower-case+
 	(string-downcase name)
 	name)))
-  
-
-

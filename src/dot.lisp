@@ -25,44 +25,7 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Tunc Simsek, Univ. of California, Berkeley,
-;;; 2000, simsek@eecs.berkeley.edu
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: dot.lisp,v 1.6 2004/05/24 16:34:22 rtoy Exp $
-;;;
-;;; $Log: dot.lisp,v $
-;;; Revision 1.6  2004/05/24 16:34:22  rtoy
-;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
-;;; was incomplete.
-;;;
-;;; Revision 1.5  2002/07/28 14:59:31  rtoy
-;;; Clean up method dot for complex matrices.
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/05/08 17:19:18  rtoy
-;;; Changes to the STANDARD-MATRIX class:
-;;; o The slots N, M, and NXM have changed names.
-;;; o The accessors of these slots have changed:
-;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
-;;;   The old names aren't available anymore.
-;;; o The initargs of these slots have changed:
-;;;      :nrows, :ncols, :nels
-;;;
-;;; Revision 1.1  2000/04/14 00:12:48  simsek
-;;; Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(in-package :matlisp)
+(in-package #:matlisp)
 
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
