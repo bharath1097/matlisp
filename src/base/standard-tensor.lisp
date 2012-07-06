@@ -48,6 +48,12 @@
     :type index-type
     :documentation "Total number of elements in the tensor.")
    ;;
+   (parent-tensor
+    :accessor parent-tensor
+    :initarg :parent-tensor
+    :type standard-tensor
+    :documentation "If the tensor is a view of another tensor, then this slot is bound.")
+   ;;
    (head
     :initarg :head
     :initform 0
@@ -69,20 +75,70 @@
     :documentation "The actual storage for the tensor."))
   (:documentation "Basic tensor class."))
 
-(defclass standard-sub-tensor (standard-tensor)
-  ((parent-tensor
-    :initarg :parent-tensor
-    :accessor parent-tensor))
-  (:documentation "Basic sub-tensor class."))
+;;
+(defclass standard-matrix (standard-tensor)
+  ((rank
+    :accessor rank
+    :type index-type
+    :initform 2
+    :documentation "For a matrix, rank = 2."))
+  (:documentation "Basic matrix class."))
+
+(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
+  (declare (ignore initargs))
+  (mlet*
+   ((rank (rank matrix) :type index-type))
+   (unless (= rank 2)
+     (error 'tensor-not-matrix :rank rank :tensor matrix))))
+
+(defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-matrix) &rest initargs)
+  (declare (ignore initargs))
+  (unless (= (rank old) 2)
+    (error 'tensor-not-matrix :rank (rank old))))
 
 ;;
-(defparameter *sub-tensor-counterclass* (make-hash-table)
-  "
-  Contains the sub-tensor CLOS counterpart classes of every
-  tensor class. This is used by sub-tensor~ and other in-place
-  slicing functions to construct new objects.")
+(defclass standard-vector (standard-tensor)
+  ((rank
+    :accessor rank
+    :type index-type
+    :initform 1
+    :documentation "For a vector, rank = 1."))
+  (:documentation "Basic vector class."))
 
-(setf (gethash 'standard-tensor *sub-tensor-counterclass*) 'standard-sub-tensor)
+(defmethod initialize-instance :after ((vector standard-vector) &rest initargs)
+  (declare (ignore initargs))
+  (mlet*
+   ((rank (rank vector) :type index-type))
+   (unless (= rank 1)
+     (error 'tensor-not-vector :rank rank :tensor vector))))
+
+(defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-vector) &rest initargs)
+  (declare (ignore initargs))
+  (unless (= (rank old) 1)
+    (error 'tensor-not-vector :rank (rank old))))
+
+;;
+(defparameter *tensor-counterclass* (make-hash-table)
+  "
+  Contains the CLOS counterpart classes of every tensor class.
+  This is used to change the tensor class automatically to a matrix
+  and vector")
+
+(defun get-tensor-counterclass (clname)
+  (declare (type symbol clname))
+  (let ((opt (gethash clname *tensor-counterclass*)))
+    (cond
+      ((null opt) nil)
+      ((symbolp opt)
+       (get-tensor-counterclass opt))
+      (t (values opt clname)))))
+
+(defun (setf get-tensor-counterclass) (value clname)
+  (setf (gethash clname *tensor-counterclass*) value))
+
+(setf (get-tensor-counterclass 'standard-tensor)
+      '(:matrix standard-matrix
+	:vector standard-vector))
 
 ;;
 (defparameter *tensor-class-optimizations* (make-hash-table)
@@ -108,6 +164,9 @@
       ((symbolp opt)
        (get-tensor-class-optimization opt))
       (t (values opt clname)))))
+
+(defun (setf get-tensor-class-optimization) (value clname)
+  (setf (gethash clname *tensor-class-optimizations*) value))
 
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp
@@ -246,7 +305,16 @@
 	      (cond
 		((<= ns 0) (error 'tensor-invalid-dimension-value :argument i :dimension ns :tensor tensor))
 		((< st 0) (error 'tensor-invalid-stride-value :argument i :stride st :tensor tensor))))))
-   (setf (number-of-elements tensor) (reduce #'* dims))))
+   (setf (number-of-elements tensor) (reduce #'* dims))
+   (cond
+     ((= rank 2)
+      (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :matrix)))
+	(assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
+	(change-class tensor cocl)))
+     ((= rank 1)
+      (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :vector)))
+	(assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
+	(change-class tensor cocl))))))
 
 ;;
 (defgeneric tensor-store-ref (tensor store-idx)
@@ -302,7 +370,7 @@
 		   :coercer ',coercer
 		   :element-type ',element-type
 		   :store-type ',store-element-type)))
-	 (setf (gethash ',tensor-class *tensor-class-optimizations*) hst)))))
+	 (setf (get-tensor-class-optimization ',tensor-class) hst)))))
 
 ;;
 (defgeneric tensor-ref (tensor subscripts)
@@ -445,6 +513,8 @@
 	(dims (dimensions tensor))
 	(stds (strides tensor))
 	(hd (head tensor)))
+    (declare (type index-type rank hd)
+	     (type (index-array *) dims stds))
     (labels ((sub-tread (i subs nhd ndims nstds)
 	       (if (null subs)
 		   (progn
@@ -470,10 +540,13 @@
 				   :given (type-of csub) :expected 'index-type)
 			   (sub-tread (1+ i) (cdr subs) (+ nhd (* csub (aref stds i))) ndims nstds)))))))
       (multiple-value-bind (nhd ndim nstd) (sub-tread 0 subscripts hd nil nil)
-	(if (null ndim)
-	    (tensor-store-ref tensor nhd)
-	    (make-instance (if-ret (gethash (class-name (class-of tensor)) *sub-tensor-counterclass*)
-				   (error 'tensor-cannot-find-sub-class :tensor-class (class-of tensor)))
-			   :parent-tensor tensor :store (store tensor) :head nhd
-			   :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))
-
+	(cond
+	  ((null ndim) (tensor-store-ref tensor nhd))
+	  ((= (length ndim) 1) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :vector)))
+				 (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
+				 (make-instance cocl
+						:parent-tensor tensor :store (store tensor) :head nhd
+						:dimensions (make-index-store ndim) :strides (make-index-store nstd))))
+	  (t (make-instance (class-name (class-of tensor))
+			    :parent-tensor tensor :store (store tensor) :head nhd
+			    :dimensions (make-index-store ndim) :strides (make-index-store nstd))))))))

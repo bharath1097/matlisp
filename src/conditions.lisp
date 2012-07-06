@@ -67,7 +67,7 @@
   ((assumed :reader assumed :initarg :assumed)
    (found :reader found :initarg :found))
   (:documentation "Bounds are not uniform")
-  (:method print-object ((c out-of-bounds-error) stream)
+  (:method print-object ((c non-uniform-bounds-error) stream)
 	   (format stream "The bounds are not uniform, assumed bound : ~a, now found to be : ~a.~%" (assumed c) (found c))
 	   (call-next-method)))
 
@@ -157,11 +157,11 @@ group-rank: ~a" (seq-len c) (group-rank c)))))
   (:report (lambda (c stream)
 	     (format stream "Stride of argument ~A must be >= 0, initialized with ~A." (argument c) (stride c)))))
 
-(define-condition tensor-cannot-find-sub-class (tensor-error)
+(define-condition tensor-cannot-find-counter-class (tensor-error)
   ((tensor-class :reader tensor-class :initarg :tensor-class))
-  (:documentation "Cannot find sub-class of the given tensor class")
+  (:documentation "Cannot find the counter-class list of the given tensor class")
   (:report (lambda (c stream)
-	     (format stream "Cannot find sub-class of the given tensor class: ~a." (tensor-class c)))))
+	     (format stream "Cannot find the counter-class list of the given tensor class: ~a." (tensor-class c)))))
 
 (define-condition tensor-cannot-find-optimization (tensor-error)
   ((tensor-class :reader tensor-class :initarg :tensor-class))

@@ -26,10 +26,16 @@
     (if (null (cdr dims)) t
 	(modidx rem (cdr dims)))))
 
+(defun test-axpy ()
+  (let ((x (copy! pi (make-real-tensor 1000 1000)))
+	(y (make-real-tensor 1000 1000)))
+    (time (axpy! 1d0 x y))
+    t))
+
 (defun test-mm-lisp (n)
-  (let ((t-a (make-real-tensor-dims n n))
-	(t-b (make-real-tensor-dims n n))
-	(t-c (make-real-tensor-dims n n)))
+  (let ((t-a (make-real-tensor n n))
+	(t-b (make-real-tensor n n))
+	(t-c (make-real-tensor n n)))
     (declare (type real-tensor t-a t-b t-c))
     (let ((st-a (store t-a))
 	  (st-b (store t-b))
@@ -55,9 +61,9 @@
       	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))  
 
 (defun test-mm-ddot (n)
-  (let* ((t-a (make-real-tensor-dims n n))
-	 (t-b (make-real-tensor-dims n n))
-	 (t-c (make-real-tensor-dims n n))
+  (let* ((t-a (make-real-tensor n n))
+	 (t-b (make-real-tensor n n))
+	 (t-c (make-real-tensor n n))
 	 (st-a (store t-a))
 	 (st-b (store t-b))
 	 (st-c (store t-c)))

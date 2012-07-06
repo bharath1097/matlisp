@@ -105,5 +105,8 @@ of a matrix (default 0)
 
 (defmethod print-object ((tensor standard-tensor) stream)
   (print-unreadable-object (tensor stream :type t)
-    (format stream "~A~%" (dimensions tensor))
+    (if (slot-boundp tensor 'parent-tensor)
+	(format stream "~A~,4T:DISPLACED~%" (dimensions tensor))
+	(format stream "~A~%" (dimensions tensor)))
     (print-tensor tensor stream)))
+

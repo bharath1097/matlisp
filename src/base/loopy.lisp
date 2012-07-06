@@ -212,7 +212,7 @@
 				  ;;list-dimensions does not parse the entire list, just goes through caaa..r's to find out the
 				  ;;dimensions if it is uniform.
 				  (unless (< -1 (aref ,idx ,lst-rec-count-sym) (aref ,dims-sym ,lst-rec-count-sym))
-				    (error 'out-of-bounds-error :requested ,lst-rec-count-sym :bound (aref ,dims-sym ,lst-rec-count-sym)
+				    (error 'out-of-bounds-error :requested (aref ,idx ,lst-rec-count-sym) :bound (aref ,dims-sym ,lst-rec-count-sym)
 					   :message "Error in list-loop, given list is not uniform in dimensions."))
 				  (if (consp (car ,lst-rec-lst-sym))
 				      (,lst-rec-sym (1+ ,lst-rec-count-sym) (car ,lst-rec-lst-sym))

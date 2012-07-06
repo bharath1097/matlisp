@@ -43,7 +43,7 @@
 "
   (etypecase tensor
     (real-tensor tensor)
-    (complex-tensor (make-instance 'real-sub-tensor
+    (complex-tensor (make-instance 'real-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
 				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))
@@ -65,7 +65,7 @@
 "
   (etypecase tensor
     (real-tensor tensor)
-    (complex-tensor (make-instance 'real-sub-tensor
+    (complex-tensor (make-instance 'real-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
 				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))

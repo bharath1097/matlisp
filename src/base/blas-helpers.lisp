@@ -37,25 +37,26 @@
 	   finally (return (aref sort-std 0))))))
 
 
-;; (defun blas-matrix-compatible-p (matrix &optional (op :n))
-;;   (declare (optimize (safety 0) (speed 3))
-;; 	   (type (or real-matrix complex-matrix) matrix))
-;;   (mlet* (((rs cs) (slot-values matrix '(row-stride col-stride))
-;; 	   :type (fixnum fixnum)))
-;; 	 (cond
-;; 	   ((= cs 1) (values :row-major rs (fortran-nop op)))
-;; 	   ((= rs 1) (values :col-major cs (fortran-op op)))
-;; 	   ;;Lets not confound lisp's type declaration.
-;; 	   (t (values nil -1 "?")))))
+(defun blas-matrix-compatible-p (matrix &optional (op :n))
+  (declare (type standard-tensor matrix))
+  (let ((stds (strides matrix)))
+    (declare (type (index-array *) stds))
+    (if (not (= (array-dimension stds 0) 2)) nil
+	(let ((rs (aref stds 0))
+	      (cs (aref stds 1)))
+	  (declare (type index-type rs cs))
+	  (cond
+	    ((= cs 1) (values :row-major rs (fortran-nop op)))
+	    ((= rs 1) (values :col-major cs (fortran-op op))))))))
 
-;; (definline fortran-op (op)
-;;   (ecase op (:n "N") (:t "T")))
+(definline fortran-op (op)
+  (ecase op (:n "N") (:t "T")))
 
-;; (definline fortran-nop (op)
-;;   (ecase op (:t "N") (:n "T")))
+(definline fortran-nop (op)
+  (ecase op (:t "N") (:n "T")))
 
-;; (defun fortran-snop (sop)
-;;   (cond
-;;     ((string= sop "N") "T")
-;;     ((string= sop "T") "N")
-;;     (t (error "Unrecognised fortran-op."))))
+(defun fortran-snop (sop)
+  (cond
+    ((string= sop "N") "T")
+    ((string= sop "T") "N")
+    (t (error "Unrecognised fortran-op."))))

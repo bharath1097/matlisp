@@ -1,18 +1,7 @@
 (in-package #:matlisp)
 
 ;;
-(defclass standard-matrix (standard-tensor)  
-  ((rank
-    :accessor rank
-    :type index-type
-    :initform 2
-    :documentation "For a matrix, rank = 2."))
-  (:documentation "Basic matrix class."))
 
-(defmethod print-object ((tensor standard-matrix) stream)
-  (print-unreadable-object (tensor stream :type t)
-    (format stream "~A x ~A~%" (nrows tensor) (ncols tensor))
-    (print-tensor tensor stream)))
 
 (definline nrows (matrix)
   (declare (type standard-matrix matrix))
@@ -37,12 +26,7 @@
     (list (aref dims 0) (aref dims 1))))
 
 ;;
-(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (mlet*
-   ((rank (rank matrix) :type index-type))
-   (unless (= rank 2)
-     (error 'tensor-not-matrix :rank rank :tensor matrix))))
+
 
 ;;
 (definline row-matrix-p (matrix)
@@ -99,34 +83,7 @@
 matrix and a number"))
 
 ;;
-(defclass real-matrix (standard-matrix real-tensor)
-  ()
-  (:documentation "A class of matrices with real elements."))
-
-(defclass real-sub-matrix (real-matrix standard-sub-tensor)
-  ()
-  (:documentation "Sub-matrix class with real elements."))
-
-(setf (gethash 'real-matrix *sub-tensor-counterclass*) 'real-sub-matrix
-      (gethash 'real-sub-matrix *sub-tensor-counterclass*) 'real-sub-matrix
-      ;;
-      (gethash 'real-matrix *tensor-class-optimizations*) 'real-tensor
-      (gethash 'real-sub-matrix *tensor-class-optimizations*) 'real-tensor)
 ;;
-
-(defclass complex-matrix (standard-matrix complex-tensor)
-  ()
-  (:documentation "A class of matrices with complex elements."))
-
-(defclass complex-sub-matrix (complex-matrix standard-sub-tensor)
-  ()
-  (:documentation "Sub-matrix class with complex elements."))
-
-(setf (gethash 'complex-matrix *sub-tensor-counterclass*) 'complex-sub-matrix
-      (gethash 'complex-sub-matrix *sub-tensor-counterclass*) 'complex-sub-matrix
-      ;;
-      (gethash 'complex-matrix *tensor-class-optimizations*) 'complex-tensor
-      (gethash 'complex-sub-matrix *tensor-class-optimizations*) 'complex-tensor)
 
 ;;
 

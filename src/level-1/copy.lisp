@@ -135,12 +135,12 @@
 
 (defmethod copy! ((x real-tensor) (y complex-tensor))
   ;;Borrowed from realimag.lisp
-  (let ((tmp (make-instance 'real-sub-tensor
+  (let ((tmp (make-instance 'real-tensor
 			    :parent-tensor y :store (store y)
 			    :dimensions (dimensions y)
 			    :strides (map '(index-array *) #'(lambda (n) (* 2 n)) (strides y))
 			    :head (the index-type (* 2 (head y))))))
-    (declare (type real-sub-tensor tmp))
+    (declare (type real-tensor tmp))
     (real-typed-copy! x tmp)
     ;;Increasing the head by 1 points us to the imaginary part.
     (incf (head tmp))

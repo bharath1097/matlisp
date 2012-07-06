@@ -87,7 +87,7 @@
 
 (defmethod axpy! ((alpha number) (x real-tensor) (y complex-tensor))
   (let ((tmp (tensor-realpart~ y)))
-    (declare (type real-sub-tensor tmp))
+    (declare (type real-tensor tmp))
     (etypecase alpha
       (cl:real (real-typed-axpy! (coerce-real alpha) x tmp))
       (cl:complex

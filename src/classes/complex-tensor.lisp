@@ -35,14 +35,17 @@
     :type (complex-base-array *)))
   (:documentation "Tensor class with complex elements."))
 
-(defclass complex-sub-tensor (complex-tensor standard-sub-tensor)
+(defclass complex-matrix (standard-matrix complex-tensor)
   ()
-  (:documentation "Sub-tensor class with complex elements."))
+  (:documentation "Matrix class with complex elements."))
 
-;;Push the counter sub-class name into a hash-table so that we can
-;;refer to it later from class-ignorant functions.
-(setf (gethash 'complex-tensor *sub-tensor-counterclass*) 'complex-sub-tensor
-      (gethash 'complex-sub-tensor *sub-tensor-counterclass*) 'complex-sub-tensor)
+(defclass complex-vector (standard-vector complex-tensor)
+  ()
+  (:documentation "Vector class with complex elements."))
+
+(setf (get-tensor-counterclass 'complex-tensor) '(:matrix complex-matrix :vector complex-vector)
+      (get-tensor-counterclass 'complex-matrix) 'complex-tensor
+      (get-tensor-counterclass 'complex-vector) 'complex-tensor)
 
 ;;
 (defmethod initialize-instance ((tensor complex-tensor) &rest initargs)
@@ -77,12 +80,6 @@ Cannot hold complex numbers."))
       (rotatef (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx)))
       (rotatef (aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx)))))))
 
-(setf (gethash 'complex-sub-tensor *tensor-class-optimizations*) 'complex-tensor)
-
-(defmethod (setf tensor-ref) ((value number) (tensor complex-tensor) subscripts)
-  (let ((sto-idx (store-indexing subscripts tensor)))
-    (setf (tensor-store-ref tensor sto-idx) (coerce-complex value))))
-
 ;;
 (defmethod print-element ((tensor complex-tensor)
 			  element stream)
@@ -92,3 +89,7 @@ Cannot hold complex numbers."))
 		       "~11,5,,,,,'Eg"
 		       "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)")
 	    realpart imagpart)))
+
+(defmethod (setf tensor-ref) ((value number) (tensor complex-tensor) subscripts)
+  (let ((sto-idx (store-indexing subscripts tensor)))
+    (setf (tensor-store-ref tensor sto-idx) (coerce-complex value))))

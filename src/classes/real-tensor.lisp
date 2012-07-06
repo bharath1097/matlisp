@@ -23,21 +23,24 @@ Allocates real storage.  Default initial-element = 0d0.")
     :type (real-array *)))
   (:documentation "Tensor class with real elements."))
 
-(defclass real-sub-tensor (real-tensor standard-sub-tensor)
+(defclass real-matrix (standard-matrix real-tensor)
   ()
-  (:documentation "Sub-tensor class with real elements."))
+  (:documentation "A class of matrices with real elements."))
 
-;;Push the counter sub-class name into a hash-table so that we can
-;;refer to it later from class-ignorant functions.
-(setf (gethash 'real-tensor *sub-tensor-counterclass*) 'real-sub-tensor
-      (gethash 'real-sub-tensor *sub-tensor-counterclass*) 'real-sub-tensor)
+(defclass real-vector (standard-vector real-tensor)
+  ()
+  (:documentation "A class of vector with real elements."))
+
+(setf (get-tensor-counterclass 'real-tensor) '(:matrix real-matrix :vector real-vector)
+      (get-tensor-counterclass 'real-matrix) 'real-tensor
+      (get-tensor-counterclass 'real-vector) 'real-tensor)
 
 ;;
 (defmethod initialize-instance ((tensor real-tensor) &rest initargs)
   (setf (store-size tensor) (length (getf initargs :store)))
   (call-next-method))
-;;
 
+;;
 (tensor-store-defs (real-tensor real-type real-type)
   :store-allocator allocate-real-store
   :coercer coerce-real
@@ -54,13 +57,11 @@ Allocates real storage.  Default initial-element = 0d0.")
   (lambda (fstore fidx tstore tidx)
     (rotatef (aref tstore tidx) (aref fstore fidx))))
 
-(setf (gethash 'real-sub-tensor *tensor-class-optimizations*) 'real-tensor)
-
+;;
 (defmethod (setf tensor-ref) ((value number) (tensor real-tensor) subscripts)
   (let ((sto-idx (store-indexing subscripts tensor)))
     (setf (tensor-store-ref tensor sto-idx) (coerce-real value))))
 
-;;
 (defmethod print-element ((tensor real-tensor)
 			  element stream)
   (format stream "~11,5,,,,,'Eg" element))

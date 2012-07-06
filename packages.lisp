@@ -54,7 +54,7 @@
    #:tensor-invalid-head-value #:head
    #:tensor-invalid-dimension-value #:argument #:dimension
    #:tensor-invalid-stride-value #:argument #:stride
-   #:tensor-cannot-find-sub-class #:tensor-class
+   #:tensor-cannot-find-counter-class #:tensor-class
    #:tensor-cannot-find-optimization #:tensor-class
    #:tensor-dimension-mismatch
 ))
