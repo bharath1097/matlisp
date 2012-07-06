@@ -61,7 +61,7 @@
 	  )))
 
 (asdf:defsystem fortran-names
-  :pathname #.(translate-logical-pathname "matlisp:src;")
+  :pathname #.(translate-logical-pathname "matlisp:src;ffi;")
   :depends-on ("matlisp-packages" "matlisp-conditions")
   :components
   ((:file "f77-mangling")))
