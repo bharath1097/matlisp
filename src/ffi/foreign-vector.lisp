@@ -1,4 +1,4 @@
-(in-packge :matlisp-ffi)
+(in-package #:matlisp-ffi)
 
 (defstruct (foreign-vector
 	     (:conc-name fv-)

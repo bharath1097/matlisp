@@ -41,17 +41,13 @@
 
 (asdf:defsystem matlisp-conditions
   :depends-on ("matlisp-packages")
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
-  :components ((:module "conditions"
-			:pathname "src/"
-			:components ((:file "conditions")))))
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
+  :components ((:file "conditions")))
 
 (asdf:defsystem matlisp-utilities
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
   :depends-on ("matlisp-packages" "matlisp-conditions")
-  :components ((:module "utilities"
-			:pathname "src/"
-			:components ((:file "utilities")))))
+  :components ((:file "utilities")))
 
 (asdf:defsystem lazy-loader
   :pathname #.(translate-logical-pathname "matlisp:lib;")
@@ -71,29 +67,27 @@
   ((:file "f77-mangling")))
 
 (asdf:defsystem matlisp
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
   :depends-on (#:cffi "lazy-loader"
 	       "matlisp-packages" "matlisp-conditions"
 	       "matlisp-utilities" "fortran-names")
   :components
   ((:module "foreign-interface"
-	    :pathname "src/"
+	    :pathname "ffi"	    
 	    :components ((:file "ffi-cffi")
-			 (:file "ffi-cffi-interpreter-specific")
+			 (:file "ffi-cffi-implementation-specific")
 			 (:file "foreign-vector")
 			 ))
-   (:module "foreign-functions"
-	    :pathname "src/"
+   (:module "foreign-core"
+	    :pathname "foreign-core"
 	    :depends-on ("foreign-interface")
 	    :components ((:file "blas")
 			 (:file "lapack")
 			 (:file "dfftpack")))
    (:module "matlisp-base"
-	    :pathname "src/"
-	    :depends-on ("foreign-functions")
-	    :components ((:file "conditions")
-			 (:file "standard-tensor"
-				:depends-on ("conditions"))
+	    :depends-on ("foreign-core")
+	    :pathname "base"
+	    :components ((:file "standard-tensor")
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
@@ -104,15 +98,15 @@
 			 (:file "print"
 				:depends-on ("standard-tensor"))))
    (:module "matlisp-classes"
-	    :pathname "src/"
+	    :pathname "classes"
 	    :depends-on ("matlisp-base")
 	    :components ((:file "real-tensor")
 			 (:file "complex-tensor")
 			 (:file "matrix"
 				:depends-on ("real-tensor" "complex-tensor"))))
    (:module "matlisp-level-1"
-	    :pathname "src/"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-functions")
+	    :pathname "level-1"
+	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
 	    :components ((:file "tensor-maker")
 			 (:file "swap")
 			 (:file "dot")
