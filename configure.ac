@@ -421,7 +421,7 @@ AC_CONFIG_FILES([
   start.lisp
   config.lisp
   lib/lazy-loader.lisp
-  src/f77-mangling.lisp
+  src/ffi/f77-mangling.lisp
   LAPACK/SRC/Makefile
   LAPACK/BLAS/SRC/Makefile
   dfftpack/Makefile
