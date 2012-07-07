@@ -96,8 +96,11 @@
       (t
        (error 'parser-error)))))
 	  
-(defun parse-indexing-expression (stream char)
-  (declare (ignore char))
+(defun parse-indexing-expression (stream macro-char)
+  (declare (ignore macro-char))
+  ;;macro-char is assumed to be #\$
+  ;;#\[...#\] uses sub-tensor~ (displaced)
+  ;;#\{...#\} uses sub-tensor (copied)
   (labels ((pop-char () (read-char stream t nil t))
 	   (pop-ichar () (read-interesting-char stream t nil t))
 	   (peek () (peek-ahead-no-hang stream t nil t))
