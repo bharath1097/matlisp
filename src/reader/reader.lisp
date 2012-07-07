@@ -1,10 +1,10 @@
 (in-package #:matlisp)
-
 ;;TODO move things from old/reader.lisp; must adapt things to reading tensors.
 
 (define-constant +parser-ignored-characters+ '(#\^m #\space #\tab #\return #\newline))
 (define-constant +newline-characters+ '(#\newline #\^m #\linefeed #\return))
 
+;;General stuff--------------------------------------------------;;
 (defun peek-ahead-no-hang (&optional (stream *standard-input*) (eof-error t) eof-value recursive-p)
   (symbol-macrolet ((pop-char (read-char-no-hang stream eof-error eof-value recursive-p)))
     (loop
@@ -35,7 +35,9 @@
 	       ((member char +parser-ignored-characters+) nil)
 	       (t t))
        finally (return char))))
-;;---------------------------------------------------------------;;
+
+
+;;Array slicer---------------------------------------------------;;
 (defun get-slicing-subscript (lst)
   (flet ((idxp (x)
 	   (or (consp x)
@@ -171,3 +173,5 @@
 
 #+nil(with-input-from-string (ostr "x[0:5, 0, 0]$ ")
   (parse-indexing-expression ostr #\$))
+
+;;Tensor reader--------------------------------------------------;;

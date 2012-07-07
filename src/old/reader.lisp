@@ -279,7 +279,6 @@
 		    (peek-ahead-no-hang stream nil nil t)
 		    (return val))))))
 
-
 (with-input-from-string (ostr "[1 2; 3 4]")
   (parse-matrix-expression ostr #\[))
 
