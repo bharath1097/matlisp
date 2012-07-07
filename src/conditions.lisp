@@ -47,6 +47,10 @@
 	   (format stream "Given unknown token: ~A.~%" (token c))
 	   (call-next-method)))
 
+(defcondition parser-error (generic-error)
+  ()
+  (:documentation "Macro reader encountered an error while parsing the stream."))
+
 (defcondition coercion-error (generic-error)
   ((from :reader from :initarg :from)
    (to :reader to :initarg :to))

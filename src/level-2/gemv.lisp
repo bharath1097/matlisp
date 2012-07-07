@@ -31,8 +31,8 @@
     `(defun ,func (alpha A x beta y job)
        (declare (type (getf opt :element-type) alpha beta)
 		(type ,tensor-class A x y)
-		(type boolean job))       
-       
+		(type boolean job))
+       (tensor-t
 
      
 ;;There's no support for ":c", because there is no

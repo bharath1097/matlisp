@@ -482,7 +482,7 @@
 "
   Symbols which are used to refer to slicing operations.")
 
-(defun sub-tensor~ (tensor subscripts)
+(defun sub-tensor~ (tensor subscripts &optional (preserve-rank nil))
 "
   Syntax
   ======
@@ -508,7 +508,9 @@
   ;; Get [:, :, 0:10:2] (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
   > (sub-tensor~ X '(\: \: ((\: 2) 0 *)))
 "
-  (declare (type standard-tensor tensor))
+  (declare (type standard-tensor tensor)
+	   (type list subscripts)
+	   (type boolean preserve-rank))
   (let ((rank (rank tensor))
 	(dims (dimensions tensor))
 	(stds (strides tensor))
@@ -522,23 +524,33 @@
 			     :index-rank i :rank rank)
 		     (values nhd (nreverse ndims) (nreverse nstds)))
 		   (let ((csub (car subs)))
-		     (if (or (consp csub) (symbolp csub))
-			 (destructuring-bind (op &optional (ori 0) (end '*)) (ensure-list csub)
-			   (assert (or (typep end 'index-type) (eq end '*)) nil 'invalid-type
-				   :message "END must either be an integer or '*"
-				   :given (type-of end) :expected '(or (typep end 'index-type) (eq end '*)))
-			   (let ((op-val (if (consp op) (first op) op)))
-			     (assert (member op-val +array-slicing-symbols+) nil 'invalid-value
-				     :message "Cannot find OP in +array-slicing-symbols+"
-				     :given op-val :expected `(member op ,+array-slicing-symbols+)))
-			   (let* ((mul (if (consp op) (second op) 1))
-				  (dim (floor (- (if (eq end '*) (aref dims i) end) ori) mul)))
-			     (sub-tread (1+ i) (cdr subs) (+ nhd (* ori (aref stds i))) (cons dim ndims) (cons (* mul (aref stds i)) nstds))))
-			 (progn
-			   (assert (typep csub 'index-type) nil 'invalid-type
-				   :message "OP must be of type index-type"
-				   :given (type-of csub) :expected 'index-type)
-			   (sub-tread (1+ i) (cdr subs) (+ nhd (* csub (aref stds i))) ndims nstds)))))))
+		     (cond
+		       ((or (consp csub)
+			    (and (symbolp csub) (member csub +array-slicing-symbols+)))
+			(destructuring-bind ((op &optional (step 1)) &optional (ori 0) (end (aref dims i))) (if (consp csub)
+														(cons (ensure-list (car csub)) (cdr csub))
+														(list (ensure-list csub)))
+			  (assert (and (typep ori 'index-type) (< -1 ori (aref dims i))) nil 'tensor-index-out-of-bounds
+				  :argument i :index ori :dimension (aref dims i))
+			  (assert (and (typep ori 'index-type) (< ori end (1+ (aref dims i)))) nil 'invalid-value
+				  :given end :expected `(> ,ori end ,(1+ (aref dims i))) :message "END is outside allowed bounds.")
+			  (assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value
+				  :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
+			  (assert (member op +array-slicing-symbols+) nil 'invalid-value
+				  :message "Cannot find OP in +array-slicing-symbols+"
+				  :given op :expected `(member op ,+array-slicing-symbols+))
+			  (let ((dim (ceiling (- end ori) step)))
+			    (sub-tread (1+ i) (cdr subs) (+ nhd (* ori (aref stds i)))
+				       (if (and (= dim 1) (not preserve-rank)) ndims (cons dim ndims))
+				       (if (and (= dim 1) (not preserve-rank)) nstds (cons (* step (aref stds i)) nstds))))))
+		       ((typep csub 'index-type)
+			(assert (< -1 csub (aref dims i)) nil 'tensor-index-out-of-bounds
+				:argument i :index csub :dimension (aref dims i))
+			(sub-tread (1+ i) (cdr subs) (+ nhd (* csub (aref stds i)))
+				   (if (not preserve-rank) ndims (cons 1 ndims))
+				   (if (not preserve-rank) nstds (cons (aref stds i) nstds))))
+		       (t
+			(error 'parser-error :message "Error parsing subscript-list.")))))))
       (multiple-value-bind (nhd ndim nstd) (sub-tread 0 subscripts hd nil nil)
 	(let ((nrnk (length ndim)))
 	  (declare (type index-type nrnk))

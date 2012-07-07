@@ -36,6 +36,7 @@
    #:invalid-type #:given #:expected
    #:invalid-value #:given #:expected
    #:unknown-token #:token
+   #:parser-error
    #:coercion-error #:from #:to
    #:out-of-bounds-error #:requested #:bound   
    #:non-uniform-bounds-error #:assumed #:found

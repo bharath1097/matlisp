@@ -280,11 +280,13 @@
 		    (return val))))))
 
 
+(with-input-from-string (ostr "[1 2; 3 4]")
+  (parse-matrix-expression ostr #\[))
 
 
 
-(set-macro-character #\] (get-macro-character #\)))
-(set-macro-character #\[ #'parse-matrix-expression)
+;;(set-macro-character #\] (get-macro-character #\)))
+;;(set-macro-character #\[ #'parse-matrix-expression)
 #|
 (read-from-string "[ [1 2 ; 3 4] [5 ; 6] ; [7 8 9] ] 1000")
 (read-from-string " 1 2 [2]

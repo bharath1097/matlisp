@@ -20,6 +20,7 @@ This is the development branch of Matlisp.
 ** TODO : What remains ? (Help!)
 *** Functionality
    * Make everything in src/old/ compatible with new datastrutures.
+   * Add negative stride support, ala Python.
    * Tensor contraction: Hard to do very quickly.
      Might have to copy stuff into a contiguous array; like Femlisp.
    * BLAS level-2 and level-3: most importantly Matrix multiplication.
