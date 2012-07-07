@@ -52,7 +52,7 @@
 	    ((null (cddr lst))                      ; '(\: \:)
 	     '(quote \:))
 	    ((idxp (third lst))                  ; '(\: \: num)
-	     `(list (list '\: ,(third lst)) 0 *))
+	     `(list (list '\: ,(third lst)) 0))
 	    (t
 	     (error 'parser-error))))
 	 ((idxp (second lst))      ; '(\: num *)
@@ -71,14 +71,14 @@
 	  (first lst))
 	 ((and (eq (second lst) #\:)      ; '(num \:)
 	       (null (cddr lst)))
-	  `(list '\: ,(first lst) '*))
+	  `(list '\: ,(first lst)))
 	 ((and (eq (second lst) #\:)   ; '(num \: \: *)
 	       (eq (third lst) #\:))
 	  (cond
 	    ((null (cdddr lst))                     ; '(num \: \:)
-	     `(list '\: ,(first lst) '*))
+	     `(list '\: ,(first lst)))
 	    ((idxp (fourth lst))                 ; '(num \: \: num)
-	     `(list (list '\: ,(fourth lst)) ,(first lst) '*))
+	     `(list (list '\: ,(fourth lst)) ,(first lst)))
 	    (t
 	     (error 'parser-error))))
 	 ((and (eq (second lst) #\:)   ; '(num \: num *)
