@@ -77,8 +77,8 @@
   is stored in Y and Y is returned.
 ")
   (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
-	   (unless (idx= (dimensions x) (dimensions y))
-	     (error 'tensor-dimension-mismatch)))
+	   (assert (idx= (dimensions x) (dimensions y)) nil
+		   'tensor-dimension-mismatch))
   (:method ((alpha number) (x complex-tensor) (y real-tensor))
     (error 'coercion-error :from 'complex-tensor :to 'real-tensor)))
 

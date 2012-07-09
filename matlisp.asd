@@ -117,7 +117,11 @@
 			 (:file "realimag"
 				:depends-on ("copy"))
 			 (:file "axpy"
-				:depends-on ("copy"))))))
+				:depends-on ("copy"))))
+   (:module "matlisp-level-2"
+	    :pathname "level-2"
+	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
+	    :components ((:file "gemv")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

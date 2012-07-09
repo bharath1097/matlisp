@@ -6,6 +6,8 @@
 
 ;; Callbacks : (:function <output-type> {(params)})
 
+;;TODO add declarations to generated wrappers.
+
 (in-package #:matlisp-ffi)
 
 (define-constant +ffi-types+ '(:single-float :double-float

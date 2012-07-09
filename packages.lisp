@@ -34,6 +34,7 @@
    ;;Generic errors
    #:generic-error #:message
    #:invalid-type #:given #:expected
+   #:invalid-arguments
    #:invalid-value #:given #:expected
    #:unknown-token #:token
    #:parser-error

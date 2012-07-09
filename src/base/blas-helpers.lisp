@@ -36,18 +36,15 @@
 	   unless (= so-st accumulated-off) do (return nil)
 	   finally (return (aref sort-std 0))))))
 
-
-(defun blas-matrix-compatible-p (matrix &optional (op :n))
-  (declare (type standard-tensor matrix))
-  (let ((stds (strides matrix)))
-    (declare (type (index-array *) stds))
-    (if (not (= (array-dimension stds 0) 2)) nil
-	(let ((rs (aref stds 0))
-	      (cs (aref stds 1)))
-	  (declare (type index-type rs cs))
-	  (cond
-	    ((= cs 1) (values :row-major rs (fortran-nop op)))
-	    ((= rs 1) (values :col-major cs (fortran-op op))))))))
+(defun blas-matrix-compatible-p (matrix op)
+  (declare (type standard-matrix matrix))
+  (let ((rs (aref (strides matrix) 0))
+	(cs (aref (strides matrix) 1)))
+    (declare (type index-type rs cs))
+    (cond
+      ((= cs 1) (values :row-major rs (fortran-nop op)))
+      ((= rs 1) (values :col-major cs (fortran-op op)))
+      (t (values nil 0 "?")))))
 
 (definline fortran-op (op)
   (ecase op (:n "N") (:t "T")))

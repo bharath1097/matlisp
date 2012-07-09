@@ -32,6 +32,10 @@
 	   (format stream "Given object of type ~A, expected ~A.~%" (given c) (expected c))
 	   (call-next-method)))
 
+(defcondition invalid-arguments (generic-error)
+  ()
+  (:documentation "Given invalid arguments to the function."))  
+
 (defcondition invalid-value (generic-error)
   ((given-value :reader given :initarg :given)
    (expected-value :reader expected :initarg :expected))
