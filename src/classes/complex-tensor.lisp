@@ -80,6 +80,8 @@ Cannot hold complex numbers."))
       (rotatef (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx)))
       (rotatef (aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx)))))))
 
+(setf (get-tensor-class-optimization 'complex-matrix) 'complex-tensor
+      (get-tensor-class-optimization 'complex-vector) 'complex-tensor)
 ;;
 (defmethod print-element ((tensor complex-tensor)
 			  element stream)

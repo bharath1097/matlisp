@@ -58,33 +58,25 @@
   If X and Y are both scalars then this is the same
   as (* (CONJUGATE X) Y) if CONJUAGTE-P and (* X Y)
   otherwise.
-"))
+")
+  (:method :before ((x standard-vector) (y standard-vector) &optional (conjugate-p t))
+  (declare (ignore conjugate-p))
+  (unless (idx= (dimensions x) (dimensions y))
+    (error 'tensor-dimension-mismatch))))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
       (* (conjugate x) y)
       (* x y)))
 
-(defmethod dot :before ((x standard-tensor) (y standard-tensor) &optional (conjugate-p t))
-  (declare (ignore conjugate-p))
-  (unless (and (vector-p x) (vector-p y))
-    (error 'tensor-not-vector
-	   :rank (cond
-		   ((not (vector-p x))
-		    (rank x))
-		   ((not (vector-p y))
-		    (rank y)))))
-  (unless (idx= (dimensions x) (dimensions y))
-    (error 'tensor-dimension-mismatch)))
-
-(defmethod dot ((x real-tensor) (y real-tensor) &optional (conjugate-p t))
+(defmethod dot ((x real-vector) (y real-vector) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
   (ddot (number-of-elements x)
 	(store x) (aref (strides x) 0)
 	(store y) (aref (strides y) 0)
 	(head x) (head y)))
 
-(defmethod dot ((x real-tensor) (y complex-tensor) &optional (conjugate-p t))
+(defmethod dot ((x real-vector) (y complex-vector) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
   (let ((nele (number-of-elements x))
 	(std-x (aref (strides x) 0))
@@ -99,13 +91,13 @@
 	  rpart
 	  (complex rpart ipart)))))
 
-(defmethod dot ((x complex-tensor) (y real-tensor) &optional (conjugate-p t))
+(defmethod dot ((x complex-vector) (y real-vector) &optional (conjugate-p t))
   (let ((cres (dot y x)))
     (if conjugate-p
 	(conjugate cres)
 	cres)))
 
-(defmethod dot ((x complex-tensor) (y complex-tensor) &optional (conjugate-p t))
+(defmethod dot ((x complex-vector) (y complex-vector) &optional (conjugate-p t))
   (let ((nele (number-of-elements x))
 	(std-x (aref (strides x) 0))
 	(hd-x (head x))

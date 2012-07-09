@@ -57,6 +57,9 @@ Allocates real storage.  Default initial-element = 0d0.")
   (lambda (fstore fidx tstore tidx)
     (rotatef (aref tstore tidx) (aref fstore fidx))))
 
+(setf (get-tensor-class-optimization 'real-matrix) 'real-tensor
+      (get-tensor-class-optimization 'real-vector) 'real-tensor)
+
 ;;
 (defmethod (setf tensor-ref) ((value number) (tensor real-tensor) subscripts)
   (let ((sto-idx (store-indexing subscripts tensor)))
