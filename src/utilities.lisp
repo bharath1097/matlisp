@@ -1,5 +1,6 @@
 (in-package #:matlisp-utilities)
 
+;;TODO: cleanup!
 (defmacro mlet* (decls &rest body)
 "
   mlet* ({ {(var*) | var} values-form &keyform declare type}*) form*
@@ -54,6 +55,49 @@
 	(car (mlet-walk decls body))
 	`(progn
 	   ,@body))))
+
+(defmacro let-typed (bindings &rest body)
+"
+  let-typed ({var form &key type}*) form*
+
+  This macro also handles type declarations.
+
+  Example:
+  > (let-typed ((x 1 :type fixnum))
+       (+ 1 x))
+
+  expands into:
+
+  > (let ((x 1))
+      (declare (type fixnum x))
+      (+ 1 x))
+"
+  (labels ((parse-bindings (bdng let-decl type-decl)
+	     (if (null bdng) (values (reverse let-decl) (reverse type-decl))
+		 ;;Unless the user gives a initialisation form, no point declaring type
+		 ;; {var is bound to nil}.
+		 (destructuring-bind (var &optional form &key (type nil)) (ensure-list (car bdng))
+		   (parse-bindings (cdr bdng)
+				   (cons (if form `(,var ,form) var) let-decl)
+				   (if type
+				       (cons `(type ,type ,var) type-decl)
+				       type-decl))))))
+    (multiple-value-bind (let-bdng type-decl) (parse-bindings bindings nil nil)
+      (let ((decl-code (recursive-append
+			(cond
+			  ((and (consp (first body))
+				(eq (caar body) 'declare))
+			   (first body))
+			  ((consp type-decl)
+			   '(declare ))
+			  (t nil))
+			type-decl)))
+      `(let (,@let-bdng)
+	 ,@(if (null decl-code) nil `(,decl-code))
+	 ,@(if (and (consp (first body))
+		    (eq (caar body) 'declare))
+	       (cdr body)
+	       body))))))
 
 (defmacro let-rec (name arglist &rest code)
 "

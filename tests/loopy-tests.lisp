@@ -58,7 +58,36 @@
       		 (of-a (idxv n 1 0))
       		 (of-b (idxv 0 n 1))
       		 (of-c (idxv n 0 1)))
-      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))  
+      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))
+
+(defun test-mm-daxpy (n)
+  (let* ((t-a (make-real-tensor n n))
+	 (t-b (make-real-tensor n n))
+	 (t-c (make-real-tensor n n))
+	 (st-a (store t-a))
+	 (st-b (store t-b))
+	 (st-c (store t-c)))
+    (declare (type real-tensor t-a t-b t-c)
+	     (type (real-array *) st-a st-b st-c))
+    (mod-dotimes (idx (dimensions t-a))
+      with (linear-sums
+	    (of-a (strides t-a))
+	    (of-b (strides t-b))
+	    (of-c (strides t-c)))
+      do (setf (aref st-a of-a) (random 1d0)
+	       (aref st-b of-b) (random 1d0)
+	       (aref st-c of-c) 0d0))
+    (time     
+     (very-quickly
+       (mod-dotimes (idx (idxv n n))
+	 with (loop-order :row-major)
+	 with (linear-sums
+	       (of-a (idxv 1 0))
+	       (of-b (idxv n 1))
+	       (of-c (idxv 1 0)))
+	 do (daxpy n (aref st-b of-b) st-a n st-c n
+		   of-a of-c))))))
+
 
 (defun test-mm-ddot (n)
   (let* ((t-a (make-real-tensor n n))

@@ -1,8 +1,5 @@
 (in-package #:matlisp)
 
-;;
-
-
 (definline nrows (matrix)
   (declare (type standard-matrix matrix))
   (aref (dimensions matrix) 0))
@@ -24,9 +21,6 @@
   (let ((dims (dimensions matrix)))
     (declare (type (index-array 2) dims))
     (list (aref dims 0) (aref dims 1))))
-
-;;
-
 
 ;;
 (definline row-matrix-p (matrix)
@@ -62,32 +56,32 @@
   Return T if X is either a row or a column matrix."
   (or (row-vector-p matrix) (col-vector-p matrix)))
 
-(defun square-matrix-p (matrix)
+(definline square-matrix-p (matrix)
   (and (square-p matrix) (matrix-p matrix)))
 
-;;
-(defgeneric fill-matrix (matrix fill-element)
-  (:documentation 
-   "
-   Syntax
-   ======
-   (FILL-MATRIX matrix fill-element)
+;; ;;
+;; (defgeneric fill-matrix (matrix fill-element)
+;;   (:documentation 
+;;    "
+;;    Syntax
+;;    ======
+;;    (FILL-MATRIX matrix fill-element)
   
-   Purpose
-   =======
-   Fill MATRIX with FILL-ELEMENT.
-"))
+;;    Purpose
+;;    =======
+;;    Fill MATRIX with FILL-ELEMENT.
+;; "))
 
-(defmethod fill-matrix ((matrix t) (fill t))
-  (error "arguments MATRIX and FILL to FILL-MATRIX must be a
-matrix and a number"))
+;; (defmethod fill-matrix ((matrix t) (fill t))
+;;   (error "arguments MATRIX and FILL to FILL-MATRIX must be a
+;; matrix and a number"))
 
-;;
-;;
+;; ;;
+;; ;;
 
-;;
+;; ;;
 
-(definline matrix-ref (matrix row &optional col)
-  (declare (type standard-matrix matrix))
-  (tensor-ref matrix `(,row ,col)))
+;; (definline matrix-ref (matrix row &optional col)
+;;   (declare (type standard-matrix matrix))
+;;   (tensor-ref matrix `(,row ,col)))
 

@@ -25,138 +25,130 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Raymond Toy.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: gemm.lisp,v 1.8 2011/01/25 18:36:56 rtoy Exp $
-;;;
-;;; $Log: gemm.lisp,v $
-;;; Revision 1.8  2011/01/25 18:36:56  rtoy
-;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
-;;; automake build infrastructure.
-;;;
-;;; Revision 1.7.2.1  2011/01/25 18:16:53  rtoy
-;;; Use cl:real instead of real.
-;;;
-;;; Revision 1.7  2004/05/24 16:34:22  rtoy
-;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
-;;; was incomplete.
-;;;
-;;; Revision 1.6  2001/06/22 12:52:41  rtoy
-;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
-;;; instead of using the error-prone make-array.
-;;;
-;;; Revision 1.5  2001/02/26 17:44:54  rtoy
-;;; Remove the complex-alpha,beta special variables.  (Make a closure out
-;;; of them.)
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/05/08 17:19:18  rtoy
-;;; Changes to the STANDARD-MATRIX class:
-;;; o The slots N, M, and NXM have changed names.
-;;; o The accessors of these slots have changed:
-;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
-;;;   The old names aren't available anymore.
-;;; o The initargs of these slots have changed:
-;;;      :nrows, :ncols, :nels
-;;;
-;;; Revision 1.1  2000/04/14 00:11:12  simsek
-;;; o This file is adapted from obsolete files 'matrix-float.lisp'
-;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
-;;; o Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
+(in-package #:matlisp)
 
-(defmacro generate-typed-gemm!-func (func element-type store-type matrix-type blas-gemm-func lisp-gemv-func)
-  `(defun ,func (alpha a b beta c job)
-     (declare (optimize (safety 0) (speed 3))
-	      (type ,element-type alpha beta)
-	      (type ,matrix-type a b c)
-	      (type symbol job))
-     (mlet* ((job-a (ecase job ((:nn :nt) :n) ((:tn :tt) :t)) :type symbol)
-	     (job-b (ecase job ((:nn :tn) :n) ((:nt :tt) :t)) :type symbol)
-	     ((hd-c nr-c nc-c st-c) (slot-values c '(head number-of-rows number-of-cols store))
-	      :type (fixnum fixnum fixnum (,store-type *)))
-	     ((hd-a st-a) (slot-values a '(head store))
-	      :type (fixnum (,store-type *)))
-	     ((hd-b st-b) (slot-values b '(head store))
-	      :type (fixnum (,store-type *)))
-	     (k (if (eq job-a :n)
-		    (ncols a)
-		    (nrows a))
-		:type fixnum)
-	     ((order-a lda fort-job-a) (blas-matrix-compatible-p a job-a)
-	      :type (symbol fixnum (string 1)))
-	     ((order-b ldb fort-job-b) (blas-matrix-compatible-p b job-b)
-	      :type (symbol fixnum (string 1)))
-	     ((order-c ldc fort-job-c) (blas-matrix-compatible-p c :n)
-	      :type (nil fixnum (string 1))))
-	    ;;
-	    (if (and (> lda 0) (> ldb 0) (> ldc 0))
-		(progn
-		  (when (string= fort-job-c "T")
-		    (rotatef a b)
-		    (rotatef lda ldb)
-		    (rotatef fort-job-a fort-job-b)
-		    (rotatef hd-a hd-b)
-		    (rotatef st-a st-b)
-		    (rotatef nr-c nc-c)
-		    ;;
-		    (setf fort-job-a (fortran-snop fort-job-a))
-		    (setf fort-job-b (fortran-snop fort-job-b)))
-		  (,blas-gemm-func fort-job-a fort-job-b
-				   nr-c nc-c k
-				   alpha
-				   st-a lda
-				   st-b ldb
-				   beta
-				   st-c ldc
-				   :head-a hd-a :head-b hd-b :head-c hd-c))
-	     (progn
-	       (when (eq job-a :t) (transpose! a))
-	       (when (eq job-b :t) (transpose! b))
-	       ;;
-	       (symbol-macrolet
-		   ((loop-col
-		       (mlet* ((cs-b (col-stride b) :type fixnum)
-			       (cs-c (col-stride c) :type fixnum)
-			       (col-b (col~ b 0) :type ,matrix-type)
-			       (col-c (col~ c 0) :type ,matrix-type))
-			      (dotimes (j nc-c)
-				(when (> j 0)
-				  (setf (head col-b) (+ (head col-b) cs-b))
-				  (setf (head col-c) (+ (head col-c) cs-c)))
-				(,lisp-gemv-func alpha a col-b beta col-c :n))))
-		    (loop-row
-		       (mlet* ((rs-a (row-stride a) :type fixnum)
-			       (rs-c (row-stride c) :type fixnum)
-			       (row-a (transpose! (row~ a 0)) :type ,matrix-type)
-			       (row-c (transpose! (row~ c 0)) :type ,matrix-type))
-			 (dotimes (i nr-c)
-			   (when (> i 0)
-			     (setf (head row-a) (+ (head row-a) rs-a))
-			     (setf (head row-c) (+ (head row-c) rs-c)))
-			   (,lisp-gemv-func alpha b row-a beta row-c :t)))))
-		 (cond
-		   (order-a loop-col)
-		   (order-b loop-row)
-		   ((< nr-c nc-c) loop-row)
-		   (t loop-col)))
-	       ;;
-	       (when (eq job-a :t) (transpose! a))
-	       (when (eq job-b :t) (transpose! b))
-	       )))
-     c))
+(defmacro generate-typed-gemm! (func (matrix-class) (blas-gemm-func blas-gemv-func))
+  (let* ((opt (get-tensor-class-optimization matrix-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
+    `(defun ,func (alpha A B beta C job)
+       (declare (type ,(getf opt :element-type) alpha beta)
+		(type ,matrix-class A B C)
+		(type symbol job))
+       (mlet* (((job-a job-b) (ecase job
+				(:nn (values :n :n))
+				(:nt (values :n :t))
+				(:tn (values :t :n))
+				(:tt (values :t :t)))
+		:type (symbol symbol))
+	       ((maj-a ld-a fop-a) (blas-matrix-compatible-p A job-a) :type (symbol index-type (string 1)))
+	       ((maj-b ld-b fop-b) (blas-matrix-compatible-p B job-b) :type (symbol index-type (string 1)))
+	       ((maj-c ld-c fop-c) (blas-matrix-compatible-p C :n) :type (symbol index-type nil)))
+	      (if (and maj-a maj-b maj-c)
+		  (let-typed ((nr-c (nrows C) :type index-type)
+			      (nc-c (ncols C) :type index-type)
+			      (dotl (ecase job-a (:n (ncols A)) (:t (nrows A))) :type index-type))
+			     (when (eq maj-c :row-major)
+			       (rotatef A B)
+			       (rotatef ld-a ld-b)
+			       (rotatef maj-a maj-b)
+			       (rotatef nr-c nc-c)
+			       (setf (values fop-a fop-b)
+				     (values (fortran-snop fop-b) (fortran-snop fop-a))))
+			     (,blas-gemm-func fop-a fop-b nr-c nc-c dotl
+					      alpha (store A) ld-a (store B) ld-b
+					      beta (store C) ld-c
+					      (head A) (head B) (head C)))
+		  (cond
+		    (maj-a
+		     (let-typed ((nc-c (ncols C) :type index-type)
+				 (sto-c (store C) :type ,(linear-array-type (getf opt :store-type)))
+				 (stp-c (row-stride C) :type index-type)
+				 (nr-a (nrows A) :type index-type)
+				 (nc-a (ncols A) :type index-type)
+				 (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
+				 (hd-a (head A) :type index-type)
+				 (stp-b (if (eq job-b :n) (row-stride B) (col-stride B)) :type index-type)
+				 (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
+				 (strd-b (if (eq job-b :n) (col-stride B) (row-stride B)) :type index-type)
+				 (strd-c (col-stride C) :type index-type))
+		       (when (eq maj-a :row-major)
+			 (rotatef nr-a nc-a))
+		       (very-quickly
+			 (mod-dotimes (idx (idxv nc-c))
+			   with (linear-sums
+				 (of-b (idxv strd-b) (head B))
+				 (of-c (idxv strd-c) (head C)))
+			   do (,blas-gemv-func fop-a nr-a nc-a
+					       alpha sto-a ld-a
+					       sto-b stp-b
+					       beta sto-c stp-c
+					       hd-a of-b of-c)))))
+		    (maj-b
+		     (let-typed ((nr-c (nrows C) :type index-type)
+				 (stp-c (col-stride C) :type index-type)
+				 (sto-c (store c) :type ,(linear-array-type (getf opt :store-type)))
+				 (stp-a (if (eq job-a :n) (col-stride B) (row-stride B)) :type index-type)
+				 (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
+				 (nr-b (nrows B) :type index-type)
+				 (nc-b (ncols B) :type index-type)
+				 (hd-b (head B) :type index-type)
+				 (fop-b (fortran-snop fop-b) :type (string 1))
+				 (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
+				 (strd-a (if (eq job-A :n) (row-stride A) (col-stride A)) :type index-type)
+				 (strd-c (row-stride C) :type index-type))
+				(when (eq maj-b :row-major)
+				  (rotatef nr-b nc-b))
+				(very-quickly
+				  (mod-dotimes (idx (idxv nr-c))
+				    with (linear-sums
+					  (of-A (idxv strd-a) (head A))
+					  (of-c (idxv strd-c) (head C)))
+				    do (,blas-gemv-func fop-b nr-b nc-b
+							alpha sto-b ld-b
+							sto-a stp-a
+							beta sto-c stp-c
+							hd-b of-a of-c)))))
+		    (t
+		     (let-typed ((dotl (ecase job-a (:n (ncols A)) (:t (nrows A))) :type index-type)
+				 (rstp-a (row-stride A) :type index-type)
+				 (cstp-a (col-stride A) :type index-type)
+				 (rstp-b (row-stride A) :type index-type)
+				 (cstp-b (col-stride A) :type index-type)
+				 (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
+				 (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
+				 (sto-c (store C) :type ,(linear-array-type (getf opt :store-type))))
+				(when (eq job-a :t)
+				  (rotatef rstp-a cstp-a))
+				(when (eq job-b :t)
+				  (rotatef rstp-b cstp-b))
+				(very-quickly
+				  (mod-dotimes (idx (dimensions C))
+				    with (loop-order :row-major)
+				    with (linear-sums
+					  (of-a (idxv rstp-a 0) (head A)) ; cstp-a))
+					  (of-b (idxv 0 cstp-b) (head B)) ; rstp-b))
+					  (of-c (strides C) (head C)))    ; 0)))
+				    do (let-typed ((tmp (,(getf opt :coercer) 0) :type ,(getf opt :element-type))
+						   (val (* beta ,(funcall (getf opt :reader) 'sto-c 'of-c)) :type ,(getf opt :element-type)))
+						  (loop repeat dotl
+						     for dof-a of-type index-type = of-a then (+ dof-a cstp-a)
+						     for dof-b of-type index-type = of-b then (+ dof-b rstp-b)
+						     do (incf tmp (* ,(funcall (getf opt :reader) 'sto-a 'dof-a)
+								     ,(funcall (getf opt :reader) 'sto-b 'dof-b))))
+						  ,(funcall (getf opt :value-writer) '(+ (* alpha tmp) (* beta val)) 'sto-c 'of-c)))))))))
+       C)))
+
+(generate-typed-gemm! real-typed-gemm! (real-matrix) (dgemm dgemv))
+(generate-typed-gemm! complex-typed-gemm! (complex-matrix) (zgemm zgemv))
+
+(let ((A (tensor-realpart~
+	  (make-complex-tensor '((1 2 3)
+				 (4 5 6)
+				 (7 8 9)))))
+      (C (make-real-tensor 3 3)))
+  (real-typed-gemm! 1d0 A A 0d0 C :nn))
+
 ;;;;
 (defgeneric gemm! (alpha a b beta c &optional job)
   (:documentation

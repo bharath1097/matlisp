@@ -80,6 +80,8 @@
 		      (zgemv zaxpy zdotu zscal))
 
 ;;---------------------------------------------------------------;;
+
+;;Can't support "C" because the dual isn't supported by BLAS.
 (defgeneric gemv! (alpha A x beta y &optional job)
   (:documentation
 "

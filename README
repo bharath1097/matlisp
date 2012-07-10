@@ -29,6 +29,7 @@ This is the development branch of Matlisp.
    * QUADPACK: Move from f2cl-ed version to the Fortran one.
    * MINPACK: Move from f2cl-ed version to the Fortran one.
    * ODEPACK: Add abstraction for DLSODE, and DLSODAR may others too.
+   * Add a Lisp generic wrapper for every BLAS func {low priority}.
 
 *** Syntactic sugar
    * Add array slicing macros

@@ -74,7 +74,7 @@
 	   #:list-dimensions
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
-	   #:mlet* #:make-array-allocator
+	   #:mlet* #:make-array-allocator #:let-typed
 	   #:nconsc #:define-constant
 	   #:macrofy
 	   ;;
