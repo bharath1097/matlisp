@@ -209,9 +209,9 @@
 (defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
 		 (beta number) (y real-vector) &optional (job :n))
   (let ((result (if (or (complexp alpha) (complexp beta)
-			(typep A 'complex-matrix) (typep x'complex-matrix))
+			(typep A 'complex-matrix) (typep x 'complex-vector))
 		    (make-complex-tensor (aref (dimensions y) 0))
 		    (make-real-tensor (aref (dimensions y) 0)))))
-    (copy! y result)
+    (scal! y result)
     (gemv! alpha A x beta result job)))
 
