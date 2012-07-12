@@ -304,7 +304,7 @@
 "))
 
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
-		 (beta number) (c real-matrix)
+		 (beta number) (c complex-matrix)
 		 &optional (job :nn))
   (let ((result (copy C)))
     (gemm! alpha A B beta result job)))
@@ -312,7 +312,7 @@
 ;; if all args are not real then at least one of them
 ;; is complex, so we need to call GEMM! with a complex C
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
-		 (beta number) (c standard-matrix)
+		 (beta number) (c real-matrix)
 		 &optional (job :nn))
   (let ((result (if (or (complexp alpha) (complexp beta)
 			(typep a 'complex-matrix) (typep b 'complex-matrix))
@@ -320,3 +320,20 @@
 		    (make-real-tensor (nrows C) (ncols C)))))
     (copy! C result)
     (gemm! alpha A B beta result job)))
+
+(defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
+		 (beta (eql nil)) (c (eql nil))
+		 &optional (job :nn))
+  (multiple-value-bind (job-A job-B) (ecase job
+				       (:nn (values :n :n))
+				       (:nt (values :n :t))
+				       (:tn (values :t :n))
+				       (:tt (values :t :t)))
+    (let ((result (apply
+		   (if (or (complexp alpha) (complexp beta)
+			   (typep a 'complex-matrix) (typep b 'complex-matrix))
+		       #'make-complex-tensor
+		       #'make-real-tensor)
+		   (list (if (eq job-A :n) (nrows A) (ncols A))
+			 (if (eq job-B :n) (ncols B) (nrows B))))))
+      (gemm! alpha A B 0 result job))))

@@ -145,10 +145,10 @@
   (:method ((alpha number) (x complex-tensor) (y real-tensor))
     (error 'coercion-error :from 'complex-tensor :to 'real-tensor)))
 
-(defmethod axpy! ((alpha number) (x (eql t)) (y real-tensor))
+(defmethod axpy! ((alpha number) (x (eql nil)) (y real-tensor))
   (real-typed-num-axpy! (coerce-real alpha) y))
 
-(defmethod axpy! ((alpha number) (x (eql t)) (y complex-tensor))
+(defmethod axpy! ((alpha number) (x (eql nil)) (y complex-tensor))
   (complex-typed-num-axpy! (coerce-complex alpha) y))
 
 (defmethod axpy! ((alpha number) (x real-tensor) (y real-tensor))

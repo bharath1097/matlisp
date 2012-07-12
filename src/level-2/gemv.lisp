@@ -220,3 +220,12 @@
     (scal! y result)
     (gemv! alpha A x beta result job)))
 
+(defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
+		 (beta (eql nil)) (y (eql nil)) &optional (job :n))
+  (let ((result (apply
+		 (if (or (complexp alpha) (complexp beta)
+			 (typep A 'complex-matrix) (typep x 'complex-vector))
+		     #'make-complex-tensor
+		     #'make-real-tensor)
+		 (list (ecase job (:n (nrows A)) (:t (ncols A)))))))
+    (gemv! alpha A x beta result job)))
