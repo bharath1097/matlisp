@@ -39,26 +39,107 @@
     (declare (type real-tensor t-a t-b t-c))
     (let ((st-a (store t-a))
 	  (st-b (store t-b))
-	  (st-c (store t-c)))
-      (declare (type (real-array *) st-a st-b st-c))
-      (very-quickly
-	(mod-dotimes (idx (dimensions t-a))
-	  with (linear-sums
-		(of-a (strides t-a))
-		(of-b (strides t-b))
-		(of-c (strides t-c)))
-	  do (setf (aref st-a of-a) (random 1d0)
-		   (aref st-b of-b) (random 1d0)
-		   (aref st-c of-c) 0d0)))
-      (time 
+	  (st-c (store t-c))
+	  (rstrd-a (row-stride t-a))
+	  (cstrd-a (col-stride t-a))
+	  (rstrd-b (row-stride t-b))
+	  (cstrd-b (col-stride t-b))
+	  (rstrd-c (row-stride t-c))
+	  (cstrd-c (col-stride t-c))
+	  (nr-c (nrows t-c))
+	  (nc-c (ncols t-c))
+	  (nc-a (ncols t-a))
+	  (hd-a (head t-a))
+	  (hd-b (head t-b))
+	  (hd-c (head t-c)))
+      (declare (type (real-array *) st-a st-b st-c)
+	       (type index-type rstrd-a cstrd-a rstrd-b cstrd-b rstrd-c cstrd-c nr-c
+		     nc-c nc-a hd-a hd-b hd-c))
+      (mod-dotimes (idx (dimensions t-a))
+	with (linear-sums
+	      (of-a (strides t-a))
+	      (of-b (strides t-b))
+	      (of-c (strides t-c)))
+	do (setf (aref st-a of-a) (random 1d0)
+		 (aref st-b of-b) (random 1d0)
+		 (aref st-c of-c) 0d0))
+      (time      
        (very-quickly
-      	 (mod-dotimes (idx (idxv n n n))
+	 (loop repeat nr-c
+	    for rof-a of-type index-type = hd-a then (+ rof-a rstrd-a)
+	    for rof-c of-type index-type = hd-c then (+ rof-c rstrd-c)
+	    do (loop repeat nc-c
+		  for cof-b of-type index-type = hd-b then (+ cof-b cstrd-b)
+		  for of-c of-type index-type = rof-c then (+ of-c cstrd-c)
+		  do (loop repeat nc-a
+			for of-a of-type index-type = rof-a then (+ of-a cstrd-a)
+			for of-b of-type index-type = cof-b then (+ of-b rstrd-b)
+			summing (* (aref st-a of-a) (aref st-b of-b)) into sum of-type real-type
+			finally (setf (aref st-c of-c) sum))))
+      	 #+nil(mod-dotimes (idx (dimensions t-c))
       	   with (loop-order :row-major)
       	   with (linear-sums
-      		 (of-a (idxv n 1 0))
-      		 (of-b (idxv 0 n 1))
-      		 (of-c (idxv n 0 1)))
+      		 (of-a (idxv (row-stride t-a) 0) (head t-a))
+      		 (of-b (idxv 0 (col-stride t-b)) (head t-b))
+      		 (of-c (strides t-c) (head t-c)))
       	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))
+
+
+
+(defun test-mm-ddot (n)
+  (let ((t-a (make-real-tensor n n))
+	(t-b (make-real-tensor n n))
+	(t-c (make-real-tensor n n)))
+    (declare (type real-tensor t-a t-b t-c))
+    (let ((st-a (store t-a))
+	  (st-b (store t-b))
+	  (st-c (store t-c))
+	  (rstrd-a (row-stride t-a))
+	  (cstrd-a (col-stride t-a))
+	  (rstrd-b (row-stride t-b))
+	  (cstrd-b (col-stride t-b))
+	  (rstrd-c (row-stride t-c))
+	  (cstrd-c (col-stride t-c))
+	  (nr-c (nrows t-c))
+	  (nc-c (ncols t-c))
+	  (nc-a (ncols t-a))
+	  (hd-a (head t-a))
+	  (hd-b (head t-b))
+	  (hd-c (head t-c)))
+      (declare (type (real-array *) st-a st-b st-c)
+	       (type index-type rstrd-a cstrd-a rstrd-b cstrd-b rstrd-c cstrd-c nr-c
+		     nc-c nc-a hd-a hd-b hd-c))
+      (mod-dotimes (idx (dimensions t-a))
+	with (linear-sums
+	      (of-a (strides t-a))
+	      (of-b (strides t-b))
+	      (of-c (strides t-c)))
+	do (setf (aref st-a of-a) (random 1d0)
+		 (aref st-b of-b) (random 1d0)
+		 (aref st-c of-c) 0d0))
+      (time      
+       (very-quickly
+	 (loop repeat nr-c
+	    for rof-a of-type index-type = hd-a then (+ rof-a rstrd-a)
+	    for rof-c of-type index-type = hd-c then (+ rof-c rstrd-c)
+	    do (loop repeat nc-c
+		  for cof-b of-type index-type = hd-b then (+ cof-b cstrd-b)
+		  for of-c of-type index-type = rof-c then (+ of-c cstrd-c)
+		  do (let ((dotp (ddot nc-a
+				       st-a cstrd-a
+				       st-b rstrd-b
+				       rof-a cof-b)))
+		       (declare (type real-type dotp))
+		       (setf (aref st-c of-c) dotp))))
+
+      	 #+nil(mod-dotimes (idx (dimensions t-c))
+      	   with (loop-order :row-major)
+      	   with (linear-sums
+      		 (of-a (idxv (row-stride t-a) 0) (head t-a))
+      		 (of-b (idxv 0 (col-stride t-b)) (head t-b))
+      		 (of-c (strides t-c) (head t-c)))
+      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))
+
 
 (defun test-mm-daxpy (n)
   (let* ((t-a (make-real-tensor n n))

@@ -28,8 +28,132 @@
 
 (in-package #:matlisp)
 
+(defmacro generate-typed-gemm! (func (matrix-class) (blas-gemm-func blas-gemv-func) fortran-lb-parameter)
+  (let* ((opt (get-tensor-class-optimization matrix-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
+    `(defun ,func (alpha A B beta C job)
+       (declare (type ,(getf opt :element-type) alpha beta)
+		(type ,matrix-class A B C)
+		(type symbol job))
+       (mlet* (((job-A job-B) (ecase job
+				(:nn (values :n :n))
+				(:nt (values :n :t))
+				(:tn (values :t :n))
+				(:tt (values :t :t)))
+		:type (symbol symbol))
+	       ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
+	       ((maj-B ld-B fop-B) (blas-matrix-compatible-p B job-B) :type (symbol index-type (string 1)))
+	       ((maj-C ld-C fop-C) (blas-matrix-compatible-p C :n) :type (symbol index-type nil)))
+	      (let ((call-fortran? (> (max (nrows C) (ncols C) (if (eq job-A :n) (ncols A) (nrows A)))
+				      ,fortran-lb-parameter)))
+		(cond
+		  ((and maj-A maj-B maj-C call-fortran?)
+		   (let-typed ((nr-C (nrows C) :type index-type)
+			       (nc-C (ncols C) :type index-type)
+			       (dotl (ecase job-A (:n (ncols A)) (:t (nrows A))) :type index-type))
+			      (when (eq maj-C :row-major)
+				(rotatef A B)
+				(rotatef ld-A ld-B)
+				(rotatef maj-A maj-B)
+				(rotatef nr-C nc-C)
+				(setf (values fop-A fop-B)
+				      (values (fortran-snop fop-B) (fortran-snop fop-A))))
+			      (,blas-gemm-func fop-A fop-B nr-C nc-C dotl
+					       alpha (store A) ld-A (store B) ld-B
+					       beta (store C) ld-C
+					       (head A) (head B) (head C))))
+		  ((and maj-A call-fortran?)
+		   (let-typed ((nc-C (ncols C) :type index-type)
+			       (strd-C (col-stride C) :type index-type)
+			       (stp-C (row-stride C) :type index-type)
+			       (sto-C (store C) :type ,(linear-array-type (getf opt :store-type)))
+			       ;
+			       (nr-A (nrows A) :type index-type)
+			       (nc-A (ncols A) :type index-type)
+			       (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+			       (hd-A (head A) :type index-type)
+			       ;
+			       (stp-B (if (eq job-B :n) (row-stride B) (col-stride B)) :type index-type)
+			       (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+			       (strd-B (if (eq job-B :n) (col-stride B) (row-stride B)) :type index-type))
+			      (when (eq maj-A :row-major)
+				(rotatef nr-A nc-A))
+			      (very-quickly
+				(loop repeat nc-C
+				     for of-B of-type index-type = (head B) then (+ of-B strd-B)
+				     for of-C of-type index-type = (head C) then (+ of-C strd-C)
+				   do (,blas-gemv-func fop-A nr-A nc-A
+						       alpha sto-A ld-A
+						       sto-B stp-B
+						       beta sto-C stp-C
+						       hd-A of-B of-C)))))
+		  ((and maj-B call-fortran?)
+		   (let-typed ((nr-C (nrows C) :type index-type)
+			       (stp-C (col-stride C) :type index-type)
+			       (strd-C (row-stride C) :type index-type)
+			       (sto-C (store c) :type ,(linear-array-type (getf opt :store-type)))
+			       ;
+			       (stp-A (if (eq job-A :n) (col-stride A) (row-stride A)) :type index-type)
+			       (strd-A (if (eq job-A :n) (row-stride A) (col-stride A)) :type index-type)
+			       (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+			       ;
+			       (nr-B (nrows B) :type index-type)
+			       (nc-B (ncols B) :type index-type)
+			       (hd-B (head B) :type index-type)
+			       (fop-B (fortran-snop fop-B) :type (string 1))
+			       (sto-B (store B) :type ,(linear-array-type (getf opt :store-type))))
+			      (when (eq maj-B :row-major)
+				(rotatef nr-B nc-B))
+			      (very-quickly
+				(loop repeat nr-C
+				     for of-A of-type index-type = (head A) then (+ of-A strd-A)
+				     for of-C of-type index-type = (head C) then (+ of-C strd-C)
+				   do (,blas-gemv-func fop-B nr-B nc-B
+						       alpha sto-B ld-B
+						       sto-A stp-A
+						       beta sto-C stp-C
+						       hd-B of-A of-C)))))
+		  (t
+		   (let-typed ((nr-C (nrows C) :type index-type)
+			       (nc-C (ncols C) :type index-type)
+			       (dotl (ecase job-A (:n (ncols A)) (:t (nrows A))) :type index-type)
+			       ;
+			       (rstp-A (row-stride A) :type index-type)
+			       (cstp-A (col-stride A) :type index-type)
+			       (hd-A (head A) :type index-type)
+			       (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+			       ;
+			       (rstp-B (row-stride B) :type index-type)
+			       (cstp-B (col-stride B) :type index-type)
+			       (hd-B (head B) :type index-type)
+			       (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+			       ;
+			       (rstp-C (row-stride C) :type index-type)
+			       (cstp-C (col-stride C) :type index-type)
+			       (hd-C (head C) :type index-type)
+			       (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
+			      (when (eq job-A :t)
+				(rotatef rstp-A cstp-A))
+			      (when (eq job-B :t)
+				(rotatef rstp-B cstp-B))
+			      (very-quickly
+				(loop repeat nr-C
+				   for rof-A of-type index-type = hd-A then (+ rof-A rstp-A)
+				   for rof-C of-type index-type = hd-C then (+ rof-C rstp-C)
+				   do (loop repeat nc-C
+					 for cof-B of-type index-type = hd-B then (+ cof-B cstp-B)
+					 for of-C of-type index-type = rof-C then (+ of-C cstp-C)
+					 do (let-typed ((val (* beta ,(funcall (getf opt :reader) 'sto-C 'of-C)) :type ,(getf opt :element-type)))
+						       (loop repeat dotl
+							  for of-A of-type index-type = rof-A then (+ of-A cstp-A)
+							  for of-B of-type index-type = cof-B then (+ of-B rstp-B)
+							  summing (* ,(funcall (getf opt :reader) 'sto-A 'of-A)
+								     ,(funcall (getf opt :reader) 'sto-B 'of-B)) into sum of-type ,(getf opt :element-type)
+							  finally ,(funcall (getf opt :value-writer) '(+ (* alpha sum) val) 'sto-C 'of-C)))))))))))
+       C)))
+
 ;;Tweakable
-(defparameter *gemm-fortran-call-lower-bound* 50
+(defparameter *real-gemm-fortran-call-lower-bound* 100
   "
   If the maximum dimension in the MM is lower than this
   parameter, then the lisp code is used by default, instead of
@@ -37,121 +161,20 @@
   MM with small matrices.
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 20 and 200.")
+(generate-typed-gemm! real-typed-gemm! (real-matrix) (dgemm dgemv)
+		      *real-gemm-fortran-call-lower-bound*)
 
-(defmacro generate-typed-gemm! (func (matrix-class) (blas-gemm-func blas-gemv-func))
-  (let* ((opt (get-tensor-class-optimization matrix-class)))
-    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
-    `(defun ,func (alpha A B beta C job)
-       (declare (type ,(getf opt :element-type) alpha beta)
-		(type ,matrix-class A B C)
-		(type symbol job))
-       (mlet* (((job-a job-b) (ecase job
-				(:nn (values :n :n))
-				(:nt (values :n :t))
-				(:tn (values :t :n))
-				(:tt (values :t :t)))
-		:type (symbol symbol))
-	       ((maj-a ld-a fop-a) (blas-matrix-compatible-p A job-a) :type (symbol index-type (string 1)))
-	       ((maj-b ld-b fop-b) (blas-matrix-compatible-p B job-b) :type (symbol index-type (string 1)))
-	       ((maj-c ld-c fop-c) (blas-matrix-compatible-p C :n) :type (symbol index-type nil)))
-	      (let ((call-fortran? (> (max (nrows C) (ncols C) (if (eq job-a :n) (ncols A) (nrows A)))
-				      *gemm-fortran-call-lower-bound*)))
-		(cond
-		  ((and maj-a maj-b maj-c call-fortran?)
-		   (let-typed ((nr-c (nrows C) :type index-type)
-			       (nc-c (ncols C) :type index-type)
-			       (dotl (ecase job-a (:n (ncols A)) (:t (nrows A))) :type index-type))
-			      (when (eq maj-c :row-major)
-				(rotatef A B)
-				(rotatef ld-a ld-b)
-				(rotatef maj-a maj-b)
-				(rotatef nr-c nc-c)
-				(setf (values fop-a fop-b)
-				      (values (fortran-snop fop-b) (fortran-snop fop-a))))
-			      (,blas-gemm-func fop-a fop-b nr-c nc-c dotl
-					       alpha (store A) ld-a (store B) ld-b
-					       beta (store C) ld-c
-					       (head A) (head B) (head C))))
-		  ((and maj-a call-fortran?)
-		   (let-typed ((nc-c (ncols C) :type index-type)
-			       (sto-c (store C) :type ,(linear-array-type (getf opt :store-type)))
-			       (stp-c (row-stride C) :type index-type)
-			       (nr-a (nrows A) :type index-type)
-			       (nc-a (ncols A) :type index-type)
-			       (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
-			       (hd-a (head A) :type index-type)
-			       (stp-b (if (eq job-b :n) (row-stride B) (col-stride B)) :type index-type)
-			       (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
-			       (strd-b (if (eq job-b :n) (col-stride B) (row-stride B)) :type index-type)
-			       (strd-c (col-stride C) :type index-type))
-			      (when (eq maj-a :row-major)
-				(rotatef nr-a nc-a))
-			      (very-quickly
-				(mod-dotimes (idx (idxv nc-c))
-				  with (linear-sums
-					(of-b (idxv strd-b) (head B))
-					(of-c (idxv strd-c) (head C)))
-				  do (,blas-gemv-func fop-a nr-a nc-a
-						      alpha sto-a ld-a
-						      sto-b stp-b
-						      beta sto-c stp-c
-						      hd-a of-b of-c)))))
-		  ((and maj-b call-fortran?)
-		   (let-typed ((nr-c (nrows C) :type index-type)
-			       (stp-c (col-stride C) :type index-type)
-			       (sto-c (store c) :type ,(linear-array-type (getf opt :store-type)))
-			       (stp-a (if (eq job-a :n) (col-stride A) (row-stride A)) :type index-type)
-			       (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
-			       (nr-b (nrows B) :type index-type)
-			       (nc-b (ncols B) :type index-type)
-			       (hd-b (head B) :type index-type)
-			       (fop-b (fortran-snop fop-b) :type (string 1))
-			       (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
-			       (strd-a (if (eq job-A :n) (row-stride A) (col-stride A)) :type index-type)
-			       (strd-c (row-stride C) :type index-type))
-			      (when (eq maj-b :row-major)
-				(rotatef nr-b nc-b))
-			      (very-quickly
-				(mod-dotimes (idx (idxv nr-c))
-				  with (linear-sums
-					(of-A (idxv strd-a) (head A))
-					(of-c (idxv strd-c) (head C)))
-				  do (,blas-gemv-func fop-b nr-b nc-b
-						      alpha sto-b ld-b
-						      sto-a stp-a
-						      beta sto-c stp-c
-						      hd-b of-a of-c)))))
-		  (t
-		   (let-typed ((dotl (ecase job-a (:n (ncols A)) (:t (nrows A))) :type index-type)
-			       (rstp-a (row-stride A) :type index-type)
-			       (cstp-a (col-stride A) :type index-type)
-			       (rstp-b (row-stride A) :type index-type)
-			       (cstp-b (col-stride A) :type index-type)
-			       (sto-a (store A) :type ,(linear-array-type (getf opt :store-type)))
-			       (sto-b (store B) :type ,(linear-array-type (getf opt :store-type)))
-			       (sto-c (store C) :type ,(linear-array-type (getf opt :store-type))))
-			      (when (eq job-a :t)
-				(rotatef rstp-a cstp-a))
-			      (when (eq job-b :t)
-				(rotatef rstp-b cstp-b))
-			      (very-quickly
-				(mod-dotimes (idx (dimensions C))
-				  with (loop-order :row-major)
-				  with (linear-sums
-					(of-a (idxv rstp-a 0) (head A))
-					(of-b (idxv 0 cstp-b) (head B))
-					(of-c (strides C) (head C)))
-				  do (let-typed ((val (* beta ,(funcall (getf opt :reader) 'sto-c 'of-c)) :type ,(getf opt :element-type)))
-						(loop repeat dotl
-						   for dof-a of-type index-type = of-a then (+ dof-a cstp-a)
-						   for dof-b of-type index-type = of-b then (+ dof-b rstp-b)
-						   summing (* ,(funcall (getf opt :reader) 'sto-a 'dof-a)
-							      ,(funcall (getf opt :reader) 'sto-b 'dof-b)) into tmp of-type ,(getf opt :element-type)
-						   finally ,(funcall (getf opt :value-writer) '(+ (* alpha tmp) val) 'sto-c 'of-c))))))))))
-       C)))
-
-(generate-typed-gemm! real-typed-gemm! (real-matrix) (dgemm dgemv))
-(generate-typed-gemm! complex-typed-gemm! (complex-matrix) (zgemm zgemv))
+;;Tweakable
+(defparameter *complex-gemm-fortran-call-lower-bound* 60
+  "
+  If the maximum dimension in the MM is lower than this
+  parameter, then the lisp code is used by default, instead of
+  calling BLAS. Used to avoid the FFI overhead when calling
+  MM with small matrices.
+  Default set with SBCL on x86-64 linux. A reasonable value
+  is something between 20 and 200.")
+(generate-typed-gemm! complex-typed-gemm! (complex-matrix) (zgemm zgemv)
+		      *complex-gemm-fortran-call-lower-bound*)
 ;;---------------------------------------------------------------;;
 
 (defgeneric gemm! (alpha A B beta C &optional job)

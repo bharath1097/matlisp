@@ -54,7 +54,7 @@
   Purpose
   =======
   Return T if X is either a row or a column matrix."
-  (or (row-vector-p matrix) (col-vector-p matrix)))
+  (or (row-matrix-p matrix) (col-matrix-p matrix)))
 
 (definline square-matrix-p (matrix)
   (and (square-p matrix) (matrix-p matrix)))
