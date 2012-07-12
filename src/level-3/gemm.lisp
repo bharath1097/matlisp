@@ -28,7 +28,7 @@
 
 (in-package #:matlisp)
 
-(defmacro generate-typed-gemm! (func (matrix-class) (blas-gemm-func blas-gemv-func) fortran-lb-parameter)
+(defmacro generate-typed-gemm! (func (matrix-class blas-gemm-func blas-gemv-func fortran-lb-parameter))
   (let* ((opt (get-tensor-class-optimization matrix-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
     `(defun ,func (alpha A B beta C job)
@@ -161,8 +161,9 @@
   MM with small matrices.
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 20 and 200.")
-(generate-typed-gemm! real-typed-gemm! (real-matrix) (dgemm dgemv)
-		      *real-gemm-fortran-call-lower-bound*)
+(generate-typed-gemm! real-typed-gemm! (real-matrix
+					dgemm dgemv
+					*real-gemm-fortran-call-lower-bound*))
 
 ;;Tweakable
 (defparameter *complex-gemm-fortran-call-lower-bound* 60
@@ -173,8 +174,9 @@
   MM with small matrices.
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 20 and 200.")
-(generate-typed-gemm! complex-typed-gemm! (complex-matrix) (zgemm zgemv)
-		      *complex-gemm-fortran-call-lower-bound*)
+(generate-typed-gemm! complex-typed-gemm! (complex-matrix
+					   zgemm zgemv
+					   *complex-gemm-fortran-call-lower-bound*))
 ;;---------------------------------------------------------------;;
 
 (defgeneric gemm! (alpha A B beta C &optional job)

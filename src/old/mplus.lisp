@@ -25,52 +25,7 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Raymond Toy.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: mplus.lisp,v 1.7 2011/01/25 18:36:56 rtoy Exp $
-;;;
-;;; $Log: mplus.lisp,v $
-;;; Revision 1.7  2011/01/25 18:36:56  rtoy
-;;; Merge changes from automake-snapshot-2011-01-25-1327 to get the new
-;;; automake build infrastructure.
-;;;
-;;; Revision 1.6.2.1  2011/01/25 18:16:53  rtoy
-;;; Use cl:real instead of real.
-;;;
-;;; Revision 1.6  2004/05/24 16:34:22  rtoy
-;;; More SBCL support from Robert Sedgewick.  The previous SBCL support
-;;; was incomplete.
-;;;
-;;; Revision 1.5  2002/07/29 01:06:59  rtoy
-;;; Don't use *1x1-real-array*.
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/05/08 17:19:18  rtoy
-;;; Changes to the STANDARD-MATRIX class:
-;;; o The slots N, M, and NXM have changed names.
-;;; o The accessors of these slots have changed:
-;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
-;;;   The old names aren't available anymore.
-;;; o The initargs of these slots have changed:
-;;;      :nrows, :ncols, :nels
-;;;
-;;; Revision 1.1  2000/04/14 00:11:12  simsek
-;;; o This file is adapted from obsolete files 'matrix-float.lisp'
-;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
-;;; o Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(in-package "MATLISP")
+(in-package #:matlisp)
 
 (defgeneric m+ (a b)
   (:documentation
@@ -84,7 +39,24 @@
   Create a new matrix which is the sum of A and B.
   A or B (but not both) may be a scalar, in which
   case the addition is element-wise.
-"))
+")
+  (:method ((a number) (b number))
+    (+ a b))
+  (:method ((a standard-tensor) (b standard-tensor))
+    (axpy 1 a b))
+  (:method (
+
+(definline m.+ (a b)
+  "
+  Syntax
+  ======
+  (M.+ a b)
+
+  Purpose
+  =======
+  Same as M+
+"
+  (m+ a b))
 
 (defgeneric m+! (a b)
   (:documentation
@@ -98,36 +70,20 @@
   Desctructive version of M+:
 
        B <- A + B
-"))
+")
+  (:method ((a number) (b number))
+    (+ a b)))
 
-(defgeneric m.+ (a b)
-  (:documentation
-   "
-  Syntax
-  ======
-  (M.+ a b)
-
-  Purpose
-  =======
-  Same as M+
-"))
-
-(defmethod m.+ (a b)
-  (m+ a b))
-
-(defgeneric m.+! (a b)
-  (:documentation
-   "
+(definline m.+! (a b)
+  "
   Syntax
   ======
   (M.+! a b)
 
   Purpose
   =======
-  Same as M.+!
-"))
-
-(defmethod m.+! (a b)
+  Same as M+!
+"
   (m+! a b))
 
 (defmethod m+ :before ((a standard-matrix) (b standard-matrix))
