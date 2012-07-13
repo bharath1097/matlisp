@@ -96,7 +96,7 @@
   "
   If the dimension of the arguments is less than this parameter,
   then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something about 1000.")
+  on x86-64 linux. A reasonable value would be something above 1000.")
 (generate-typed-copy! real-typed-copy! (real-tensor
 					dcopy
 					*real-copy-fortran-call-lower-bound*))

@@ -28,31 +28,43 @@
 
 (in-package #:matlisp)
 
-(defmacro generate-typed-scal! (func (tensor-class blas-func))
+(defmacro generate-typed-scal! (func (tensor-class blas-func fortran-lb))
   (let ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(defun ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
-       (if-let (min-stride (consecutive-store-p to))
-	 (,blas-func (number-of-elements to) alpha (store to) min-stride (head to))
-	 (let ((t-sto (store to)))
-	   (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
-	   (very-quickly
-	     ;;Can possibly make this faster (x2) by using ,blas-func in one of
-	     ;;the inner loops, but this is to me messy and as of now unnecessary.
-	     ;;SBCL can already achieve Fortran-ish speed inside this loop.
-	     (mod-dotimes (idx (dimensions to))
-	       with (linear-sums
-		     (t-of (strides to) (head to)))
-	       do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
-		    ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))
+       (let ((min-stride (consecutive-store-p to))
+	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
+	 (cond
+	   ((and min-stride call-fortran?)
+	    (,blas-func (number-of-elements to) alpha (store to) min-stride (head to)))
+	   (t
+	    (let ((t-sto (store to)))
+	      (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
+	      (very-quickly
+		(mod-dotimes (idx (dimensions to))
+		  with (linear-sums
+			(t-of (strides to) (head to)))
+		  do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
+		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
        to)))
 
 ;; TODO: Maybe add zdscal support ? Don't think the difference between
 ;; zdscal and zscal is significant, except for very large arrays.
-(generate-typed-scal! real-typed-scal! (real-tensor dscal))
-(generate-typed-scal! complex-typed-scal! (complex-tensor zscal))
+(defparameter *real-scal-fortran-call-lower-bound* 20000
+  "
+  If the dimension of the arguments is less than this parameter,
+  then the Lisp version of copy is used. Default set with SBCL running
+  on x86-64 linux. A reasonable value would be something above 1000.")
+(generate-typed-scal! real-typed-scal! (real-tensor dscal *real-scal-fortran-call-lower-bound*))
+
+(defparameter *complex-scal-fortran-call-lower-bound* 10000
+  "
+  If the dimension of the arguments is less than this parameter,
+  then the Lisp version of copy is used. Default set with SBCL running
+  on x86-64 linux. A reasonable value would be something above 1000.")
+(generate-typed-scal! complex-typed-scal! (complex-tensor zscal *complex-scal-fortran-call-lower-bound*))
 ;;---------------------------------------------------------------;;
 
 (defgeneric scal! (alpha x)

@@ -1,5 +1,6 @@
 (in-package #:matlisp)
 
+;;Complex-base-type must always equal real-type.
 (deftype complex-base-type ()
   "The type of the elements stored in a COMPLEX-MATRIX"
   'double-float)

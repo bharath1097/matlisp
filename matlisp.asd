@@ -109,13 +109,14 @@
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
 	    :components ((:file "tensor-maker")
 			 (:file "swap")
-			 (:file "dot")
 			 (:file "copy"
 				:depends-on ("tensor-maker"))
 			 (:file "scal"
 				:depends-on ("copy" "tensor-maker"))
 			 (:file "realimag"
 				:depends-on ("copy"))
+			 (:file "dot"
+				:depends-on ("realimag"))
 			 (:file "axpy"
 				:depends-on ("copy"))))
    (:module "matlisp-level-2"

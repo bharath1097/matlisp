@@ -27,6 +27,87 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
+(defparameter *real-dot-fortran-call-lower-bound* 20000
+  "
+  If the dimension of the arguments is less than this parameter,
+  then the Lisp version of copy is used. Default set with SBCL running
+  on x86-64 linux. A reasonable value would be something above 1000.")
+(defun real-typed-dot (x y conjugate-p)
+  (declare (type real-vector x y)
+	   (ignore conjugate-p))
+  (let ((call-fortran? (> (number-of-elements x)
+			  *real-dot-fortran-call-lower-bound*)))
+    (cond
+      (call-fortran?
+       (ddot (number-of-elements x)
+	     (store x) (aref (strides x) 0)
+	     (store y) (aref (strides y) 0)
+	     (head x) (head y)))
+      (t
+       (let-typed
+	((stp-x (aref (strides x) 0) :type index-type)
+	 (sto-x (store x) :type (real-array *))
+	 (stp-y (aref (strides y) 0) :type index-type)
+	 (sto-y (store y) :type (real-array *))
+	 (nele (number-of-elements x) :type index-type))
+	(very-quickly
+	  (loop repeat nele
+	     for of-x of-type index-type = (head x) then (+ of-x stp-x)
+	     for of-y of-type index-type = (head y) then (+ of-y stp-y)
+	     summing (* (aref sto-x of-x) (aref sto-y of-y)) into dot of-type real-type
+	     finally (return dot))))))))
+
+
+(defparameter *complex-dot-fortran-call-lower-bound* 10000
+  "
+  If the dimension of the arguments is less than this parameter,
+  then the Lisp version of copy is used. Default set with SBCL running
+  on x86-64 linux. A reasonable value would be something above 1000.")
+(defun complex-typed-dot (x y conjugate-p)
+  (declare (type complex-vector x y))
+  (let ((call-fortran? (> (number-of-elements x)
+			  *complex-dot-fortran-call-lower-bound*)))
+    (cond
+      (call-fortran?
+       (if conjugate-p
+	   (zdotc (number-of-elements x)
+		  (store x) (aref (strides x) 0)
+		  (store y) (aref (strides y) 0)
+		  (head x) (head y))
+	   (zdotu (number-of-elements x)
+		  (store x) (aref (strides x) 0)
+		  (store y) (aref (strides y) 0)
+		  (head x) (head y))))
+      (t
+       (let-typed
+	((stp-x (aref (strides x) 0) :type index-type)
+	 (sto-x (store x) :type (complex-base-array *))
+	 (stp-y (aref (strides y) 0) :type index-type)
+	 (sto-y (store y) :type (complex-base-array *))
+	 (nele (number-of-elements x) :type index-type))
+	(if conjugate-p
+	    (very-quickly
+	      (loop repeat nele
+		 for of-x of-type index-type = (head x) then (+ of-x stp-x)
+		 for of-y of-type index-type = (head y) then (+ of-y stp-y)
+		 summing (let-typed ((xval (complex (aref sto-x (* 2 of-x)) (- (aref sto-x (1+ (* 2 of-x))))) :type complex-type)
+				     (yval (complex (aref sto-y (* 2 of-y)) (aref sto-y (1+ (* 2 of-y)))) :type complex-type))
+				    (* xval yval))
+		         into dot of-type complex-type
+		 finally (return dot)))
+	    (very-quickly
+	      (loop repeat nele
+		 for of-x of-type index-type = (head x) then (+ of-x stp-x)
+		 for of-y of-type index-type = (head y) then (+ of-y stp-y)
+		 summing (let-typed ((xval (complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x)))) :type complex-type)
+				     (yval (complex (aref sto-y (* 2 of-y)) (aref sto-y (1+ (* 2 of-y)))) :type complex-type))
+				    (* xval yval))
+		         into dot of-type complex-type
+		 finally (return dot)))))))))
+
+;;---------------------------------------------------------------;;
+		  
+       
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
 "
@@ -71,21 +152,16 @@
 
 (defmethod dot ((x real-vector) (y real-vector) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (ddot (number-of-elements x)
-	(store x) (aref (strides x) 0)
-	(store y) (aref (strides y) 0)
-	(head x) (head y)))
+  (real-typed-dot x y nil))
 
 (defmethod dot ((x real-vector) (y complex-vector) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (let ((nele (number-of-elements x))
-	(std-x (aref (strides x) 0))
-	(hd-x (head x))
-	(std-y (aref (strides y) 0))
-	(hd-y (head y)))
-    (declare (type index-type nele std-x std-y hd-x hd-y))
-    (let ((rpart (ddot nele (store x) std-x (store y) (* 2 std-y) hd-x (* 2 hd-y)))
-	  (ipart (ddot nele (store x) std-x (store y) (* 2 std-y) hd-x (1+ (* 2 hd-y)))))
+  (let ((vw.y (tensor-realpart~ y)))
+    (declare (type real-vector vw.y))
+    (let ((rpart (prog1 (real-typed-dot x vw.y nil)
+		   ;;Move view to complex-part
+		   (incf (head vw.y))))
+	  (ipart (real-typed-dot x vw.y nil)))
       (declare (type complex-base-type rpart ipart))
       (if (zerop ipart)
 	  rpart
@@ -98,21 +174,4 @@
 	cres)))
 
 (defmethod dot ((x complex-vector) (y complex-vector) &optional (conjugate-p t))
-  (let ((nele (number-of-elements x))
-	(std-x (aref (strides x) 0))
-	(hd-x (head x))
-	(std-y (aref (strides y) 0))
-	(hd-y (head y)))
-    (declare (type index-type nele std-x hd-x std-y hd-y))
-    (let ((ret (if conjugate-p
-		   (zdotc nele
-			  (store x) std-x
-			  (store y) std-y
-			  hd-x hd-y)
-		   (zdotu nele
-			  (store x) std-x
-			  (store y) std-y
-			  hd-x hd-y))))
-      (if (zerop (imagpart ret))
-	  (realpart ret)
-	  ret))))
+  (complex-typed-dot x y conjugate-p))
