@@ -307,7 +307,7 @@
            The number of right hand sides, i.e., the number of columns
            of the matrix B.  NRHS >= 0.
 
-   A       (input) DOUBLE PRECISION array, dimension (LDA,N)
+   A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
            The factors L and U from the factorization A = P*L*U
            as computed by DGETRF.
 

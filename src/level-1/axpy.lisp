@@ -212,3 +212,16 @@
 (defmethod axpy ((alpha number) (x complex-tensor) (y complex-tensor))
   (let ((ret (copy y)))
     (axpy! alpha x ret)))
+
+(defmethod axpy ((alpha number) (x (eql nil)) (y complex-tensor))
+  (let ((ret (copy y)))
+    (axpy! alpha nil ret)))
+
+(defmethod axpy ((alpha number) (x (eql nil)) (y real-tensor))
+  (let ((ret (if (complexp alpha)
+		 (copy! y (apply #'make-complex-tensor (idx->list (dimensions y))))
+		 (copy y))))
+    (axpy! alpha nil ret)))
+
+(defmethod axpy ((alpha number) (x standard-tensor) (y (eql nil)))
+  (scal alpha x))

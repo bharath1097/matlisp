@@ -300,6 +300,7 @@
     (apply func-a (permute! (multiple-value-list (funcall func-b args)) perm))))
 ;;
 
+;;Optimize: pick different pivot.
 (defun idx-sort-permute (seq predicate)
   "
   (sort-permute seq predicate)

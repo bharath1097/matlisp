@@ -118,7 +118,7 @@
 			 (:file "dot"
 				:depends-on ("realimag"))
 			 (:file "axpy"
-				:depends-on ("copy"))))
+				:depends-on ("copy" "scal"))))
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
@@ -126,7 +126,15 @@
    (:module "matlisp-level-3"
 	    :pathname "level-3"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
-	    :components ((:file "gemm")))))
+	    :components ((:file "gemm")))
+   (:module "matlisp-lapack"
+	    :pathname "lapack"
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
+	    :components ((:file "gesv")))
+   (:module "matlisp-sugar"
+	    :pathname "sugar"
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
+	    :components ((:file "mplusminus")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

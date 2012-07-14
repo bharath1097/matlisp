@@ -31,6 +31,24 @@
 
 (definline idxv (&rest contents)
   (make-index-store contents))
+
+;;
+(deftype integer4 ()
+    '(signed-byte 32))
+
+(deftype integer4-array (size)
+  `(simple-array integer4-array (,size)))
+
+(make-array-allocator allocate-integer4-store 'integer4 0
+  "
+  Syntax
+  ======
+  (ALLOCATE-INTEGER4-STORE SIZE [INITIAL-ELEMENT 0])
+
+  Purpose
+  =======
+  Allocates integer4 (32-bits) storage.")
+
 ;;
 
 (defclass standard-tensor ()
