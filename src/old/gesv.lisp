@@ -25,10 +25,51 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Originally written by Raymond Toy
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; $Id: gesv.lisp,v 1.4 2000/07/11 18:02:03 simsek Exp $
+;;;
+;;; $Log: gesv.lisp,v $
+;;; Revision 1.4  2000/07/11 18:02:03  simsek
+;;; o Added credits
+;;;
+;;; Revision 1.3  2000/07/11 02:11:56  simsek
+;;; o Added support for Allegro CL
+;;;
+;;; Revision 1.2  2000/05/08 17:19:18  rtoy
+;;; Changes to the STANDARD-MATRIX class:
+;;; o The slots N, M, and NXM have changed names.
+;;; o The accessors of these slots have changed:
+;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
+;;;   The old names aren't available anymore.
+;;; o The initargs of these slots have changed:
+;;;      :nrows, :ncols, :nels
+;;;
+;;; Revision 1.1  2000/04/14 00:11:12  simsek
+;;; o This file is adapted from obsolete files 'matrix-float.lisp'
+;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
+;;; o Initial revision.
+;;;
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package #:matlisp)
+(in-package "MATLISP")
 
-(defgeneric gesv! (a  b)
+#+:nil (use-package "BLAS")
+#+:nil (use-package "LAPACK")
+#+:nil (use-package "FORTRAN-FFI-ACCESSORS")
+
+#+:nil (export '(gesv!
+		 gesv))
+
+
+#+:pre-allocate-workspaces
+(defvar *ipiv* (make-array *ipiv-size* :element-type '(unsigned-byte 32))) 
+
+(defgeneric gesv! (a  b &key ipiv)
   (:documentation
    "
   Syntax
@@ -67,19 +108,50 @@
                  used in the computation has been completed, 
                  but the factor U is exactly singular.
                  Solution could not be computed.
-")
-  (:before ((a standard-matrix) (b standard-matrix) &key ipiv)
-	   (assert (= (nrows a) (ncols a) (nrows b)) nil 'tensor-dimension-mismatch)))
+"))
 
-(defmethod gesv! ((a real-matrix) (b real-matrix))
+(defgeneric gesv (a b)
+  (:documentation
+ "
+  Sytnax
+  ======
+  (GESV a b)
 
-  (let* ((nrc-a (nrows a))
-	 (nc-b (ncols b))
-	 (ipiv (make-integer4-store nrc-a)))
-    (declare (type fixnum nrc-a nc-b)
-	     (type (integer4-array *) ipiv))
-    
-    (multiple-value-bind (lu ipiv x info)
+  Purpose
+  =======
+  Same as GESV! except that A,B are not overwritten.
+"))
+
+(defmethod gesv! :before ((a standard-matrix) (b standard-matrix) &key ipiv)
+  (let ((n-a (nrows a))
+	(m-a (ncols a))
+	(n-b (nrows b)))
+    (if (not (= n-a m-a n-b))
+	(error "dimensions of A,B given to GESV do not match"))
+    (if ipiv
+	(progn
+	  (check-type ipiv (simple-array (unsigned-byte 32) (*)))
+	  (if (< (length ipiv) n-a)
+	      (error "argument IPIV given to GESV! must dimension >= N,
+where NxN is the dimension of argument A given to GESV!"))))))
+
+
+(defmethod gesv! ((a real-matrix) (b real-matrix) &key ipiv)
+
+  (let* ((n (nrows a))
+	 (m (ncols b))
+	 (ipiv #+:pre-allocate-workspaces
+	       (or ipiv *ipiv*)
+	       #-:pre-allocate-workspaces
+	       (or ipiv (make-array n :element-type '(unsigned-byte 32)))))
+
+    (declare (type fixnum n m)
+	     (type (simple-array (unsigned-byte 32) (*)) ipiv))
+
+    (multiple-value-bind (factors 
+			  ipiv
+			  x
+			  info)
 	(dgesv n
 	       m
 	       (store a)
@@ -141,20 +213,6 @@
 	     (t (error "argument B given to GESV! is not a REAL-MATRIX or COMPLEX-MATRIX")))))
 
     (gesv! a b :ipiv ipiv)))
-
-
-(defgeneric gesv (a b)
-  (:documentation
- "
-  Sytnax
-  ======
-  (GESV a b)
-
-  Purpose
-  =======
-  Same as GESV! except that A,B are not overwritten.
-"))
-
 
 (defmethod gesv :before ((a standard-matrix) (b standard-matrix))
   (let ((n-a (nrows a))
