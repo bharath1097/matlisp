@@ -1,38 +1,40 @@
 (in-package #:matlisp)
 
-(defun id-action-repr (n)
+;;This must match the type used in LAPACK
+(deftype perrepr-type ()
+  '(unsigned-byte 32))
+
+(deftype perrepr-vector (&optional (size '*))
+  `(simple-array perrepr-type (,size)))
+
+(make-array-allocator allocate-perrepr-store 'perrepr-type 0
+  "
+  Syntax
+  ======
+  (ALLOCATE-PERREPR-STORE SIZE [INITIAL-ELEMENT 0])
+
+  Purpose
+  =======
+  Allocates integer4 (32-bits) storage.")
+;;
+
+(defun perrepr-id-action (n)
   (declare (type fixnum n))
-  (let ((ret (allocate-index-store n)))
-    (declare (type index-store-vector ret))
+  (let ((ret (allocate-perrepr-store n)))
+    (declare (type perrepr-vector ret))
     (very-quickly
       (loop
-	 for i of-type index-type from 0 below n
+	 for i of-type perrepr-type from 0 below n
 	 do (setf (aref ret i) i)))
     ret))
 
-(definline idx-max (seq)
-  (declare (type index-store-vector seq))
-  (reduce #'max seq))
+(definline perrepr-max (seq)
+  (declare (type perrepr-vector seq))
+  (very-quickly (reduce #'max seq)))
 
-(definline idx-min (seq)
-  (declare (type index-store-vector seq))
-  (reduce #'min seq))
-
-(defun idx= (a b)
-  (declare (type index-store-vector a b))
-  (when (= (length a) (length b))
-    (very-quickly
-      (loop
-	 for ele-a across a
-	 for ele-b across b
-	 unless (= ele-a ele-b)
-	 do (return nil)
-	 finally (return t)))))
-
-(definline idx->list (a)
-  (declare (type index-store-vector a))
-  (loop for ele across a
-       collect ele))
+(definline perrepr-min (seq)
+  (declare (type perrepr-vector seq))
+  (very-quickly (reduce #'min seq)))
 
 ;;Write a uniform randomiser
 (defun seqrnd (seq)
@@ -47,7 +49,7 @@
    (group-rank :accessor group-rank
 	       :type index-type)))
 
-(defparameter +permutation-identity+
+(defparameter +permutation-identity+ 
   (let ((ret (make-instance 'permutation :repr :id)))
     (setf (group-rank ret) 0)
     ret))
@@ -64,14 +66,14 @@
   Does a sorting operation to check for duplicate elements in
   the cycle representation of a permutation.
 "
-  (if (not (typep perm 'index-store-vector)) nil
+  (if (not (typep perm 'perrepr-vector)) nil
       (locally
-      	  (declare (type index-store-vector perm))
+      	  (declare (type perrepr-vector perm))
 	(let ((len (length perm)))
 	  (declare (type index-type len))
 	  (if (<= len 1) nil
 	      (let ((sort (very-quickly (sort (copy-seq perm) #'<))))
-		(declare (type index-store-vector sort))
+		(declare (type perrepr-vector sort))
 		(very-quickly
 		  (loop for i of-type index-type from 1 below len
 		     when (= (aref sort i) (aref sort (1- i)))
@@ -82,10 +84,10 @@
   (declare (ignore initargs))
   (very-quickly
     (loop
-       for cyc of-type index-store-vector in (repr per)
+       for cyc of-type perrepr-vector in (repr per)
        unless (cycle-repr-p cyc)
        do (error 'permutation-invalid-error)
-       maximizing (idx-max cyc) into g-rnk of-type index-type
+       maximizing (perrepr-max cyc) into g-rnk of-type index-type
        finally (setf (group-rank per) (the index-type (1+ g-rnk))))))
 
 (definline make-pcycle (&rest args)
@@ -93,7 +95,7 @@
 
 ;;
 (defclass permutation-action (permutation)
-  ((representation :type index-store-vector)))
+  ((representation :type perrepr-vector)))
 
 (defun action-repr-p (act)
   "
@@ -101,12 +103,12 @@
   is characterized by a vector containing the indices from 0,...,
   @function{length}(@arg{perm})-1 in some order.
 "
-  (if (not (typep act 'index-store-vector)) nil
+  (if (not (typep act 'perrepr-vector)) nil
       (locally
-	  (declare (type index-store-vector act))
+	  (declare (type perrepr-vector act))
 	(let* ((len (length act))
 	       (sort (very-quickly (sort (copy-seq act) #'<))))
-	  (declare (type index-store-vector sort)
+	  (declare (type perrepr-vector sort)
 		   (type index-type len))
 	  (very-quickly
 	    (loop for i of-type index-type from 0 below len
@@ -117,10 +119,10 @@
 (defmethod initialize-instance :after ((per permutation-action) &rest initargs)
   (declare (ignore initargs))
   (let ((act (repr per)))
-    (declare (type index-store-vector act))
+    (declare (type perrepr-vector act))
     (unless (action-repr-p act)
       (error 'permutation-invalid-error))
-    (setf (group-rank per) (1+ (idx-max act)))))
+    (setf (group-rank per) (1+ (perrepr-max act)))))
 
 (definline make-paction (pact)
   (make-instance 'permutation-action :repr pact))
@@ -140,14 +142,14 @@
 "
   (declare (type permutation-action act))
   (mlet*
-   ((arr (repr act) :type index-store-vector))
+   ((arr (repr act) :type perrepr-vector))
    (labels ((find-cycle (x0)
 	      ;; This function obtains the cycle starting from x_0.
-	      (declare (type index-type x0))
+	      (declare (type perrepr-type x0))
 	      (if (= (aref arr x0) x0) (values 0 nil)
 		  (very-quickly
 		    (loop
-		       for x of-type index-type = (aref arr x0) then (aref arr x)
+		       for x of-type perrepr-type = (aref arr x0) then (aref arr x)
 		       and ret of-type cons = (list x0) then (cons x ret)
 		       counting t into i of-type index-type
 		       when (= x x0)
@@ -162,7 +164,7 @@
 			       (type list clst))
 		      (cycle-walk
 		       (if (= clen 0) cyc
-			   (cons (make-array clen :element-type 'index-type :initial-contents clst) cyc))
+			   (cons (make-array clen :element-type 'perrepr-type :initial-contents clst) cyc))
 		       (nconc ignore (if (= clen 0) (list x0) clst))))))))
      (let ((cyc-lst (cycle-walk nil nil)))
        (if (null cyc-lst)
@@ -180,11 +182,11 @@
    permutation-cycle.
 "
   (declare (type permutation-cycle cyc))
-  (let ((act-repr (id-action-repr (group-rank cyc)))
+  (let ((act-repr (perrepr-id-action (group-rank cyc)))
 	(cycs-repr (repr cyc)))
-    (declare (type index-store-vector act-repr))
+    (declare (type perrepr-vector act-repr))
     (dolist (cyc cycs-repr)
-      (declare (type index-store-vector cyc))
+      (declare (type perrepr-vector cyc))
       (let ((xl (aref act-repr (aref cyc (1- (length cyc))))))
 	(very-quickly
 	  (loop
@@ -206,7 +208,7 @@
 
 (defmethod permute! ((seq sequence) (perm permutation-cycle))
   (labels ((apply-cycle! (seq pcyc)
-	     (declare (type index-store-vector pcyc))
+	     (declare (type perrepr-vector pcyc))
 	     (very-quickly
 	       (let ((xl (aref seq (aref pcyc (1- (length pcyc))))))
 		 (loop for i of-type index-type downfrom (1- (length pcyc)) to 0
@@ -221,13 +223,13 @@
 	  (etypecase seq
 	    (vector
 	     (dolist (cyc cycs-lst seq)
-	       (declare (type index-store-vector cyc))
+	       (declare (type perrepr-vector cyc))
 	       (apply-cycle! seq cyc)))
 	    (cons
 	     (let ((cseq (make-array len :initial-contents seq)))
 	       (declare (type (simple-vector *) cseq))
 	       (dolist (cyc cycs-lst)
-		 (declare (type index-store-vector cyc))
+		 (declare (type perrepr-vector cyc))
 		 (apply-cycle! cseq cyc))
 	       (mapl
 		(let ((i 0))
@@ -246,7 +248,7 @@
 	(let ((cseq (make-array len :initial-contents seq))
 	      (act (repr perm)))
 	  (declare (type (simple-vector *) cseq)
-		   (type index-store-vector act))
+		   (type perrepr-vector act))
 	  (etypecase seq
 	    (vector
 	     (very-quickly
@@ -315,9 +317,9 @@
   (declare (type index-store-vector seq)
 	   (type function predicate))
   (let* ((len (length seq))
-	 (perm (id-action-repr len)))
+	 (perm (perrepr-id-action len)))
     (declare (type index-type len)
-	     (type index-store-vector perm))
+	     (type perrepr-vector perm))
     (labels ((qsort-bounds (todo)
 	       (declare (type list todo))
 	       (if (null todo) t

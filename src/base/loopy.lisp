@@ -204,7 +204,7 @@
 				  (setf (aref ,idx ,lst-rec-count-sym) 0)
 				  ,@(loop
 				       for decl in (getf sdecl :linear-sums)
-				       collect `(decf ,(getf decl :offset-sym) (* (aref ,(getf decl :stride-sym) ,lst-rec-count-sym) (aref ,dims-sym ,lst-rec-count-sym))))
+				       collect `(decf ,(getf decl :offset-sym) (the index-type (* (aref ,(getf decl :stride-sym) ,lst-rec-count-sym) (aref ,dims-sym ,lst-rec-count-sym)))))
 				  ,@(if (null (getf sdecl :finally))`(nil)
 					`((when (= ,lst-rec-count-sym 0)
 					    ,(getf sdecl :finally)))))
@@ -221,6 +221,6 @@
 				  (incf (aref ,idx ,lst-rec-count-sym))
 				  ,@(loop
 				       for decl in (getf sdecl :linear-sums)
-				       collect `(incf ,(getf decl :offset-sym) (aref ,(getf decl :stride-sym) ,lst-rec-count-sym)))
+				       collect `(incf ,(getf decl :offset-sym) (the index-type (aref ,(getf decl :stride-sym) ,lst-rec-count-sym))))
 				  (,lst-rec-sym ,lst-rec-count-sym (cdr ,lst-rec-lst-sym))))))
 		   (,lst-rec-sym 0 ,lst-sym))))))))))

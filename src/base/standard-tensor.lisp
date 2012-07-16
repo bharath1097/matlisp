@@ -33,24 +33,31 @@
   (make-index-store contents))
 
 ;;
-(deftype integer4 ()
-  '(signed-byte 32))
+(definline idx-max (seq)
+  (declare (type index-store-vector seq))
+  (very-quickly (reduce #'max seq)))
 
-(deftype integer4-vector (&optional (size '*))
-  `(simple-array integer4-array (,size)))
+(definline idx-min (seq)
+  (declare (type index-store-vector seq))
+  (very-quickly (reduce #'min seq)))
 
-(make-array-allocator allocate-integer4-store 'integer4 0
-  "
-  Syntax
-  ======
-  (ALLOCATE-INTEGER4-STORE SIZE [INITIAL-ELEMENT 0])
+(defun idx= (a b)
+  (declare (type index-store-vector a b))
+  (when (= (length a) (length b))
+    (very-quickly
+      (loop
+	 for ele-a across a
+	 for ele-b across b
+	 unless (= ele-a ele-b)
+	 do (return nil)
+	 finally (return t)))))
 
-  Purpose
-  =======
-  Allocates integer4 (32-bits) storage.")
+(definline idx->list (a)
+  (declare (type index-store-vector a))
+  (loop for ele across a
+     collect ele))
 
 ;;
-
 (defclass standard-tensor ()
   ((rank
     :accessor rank

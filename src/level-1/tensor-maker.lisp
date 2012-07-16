@@ -30,7 +30,7 @@
 		    (very-quickly
 		      (list-loop (idx ele lst)
 				 with (linear-sums
-				       (of-r (strides ret)))
+				       (of-r (strides ret) (head ret)))
 				 do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) ele) 'st-r 'of-r)))
 		    ret)))
 	 (let ((largs (length args)))

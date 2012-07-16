@@ -25,44 +25,15 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Raymond Toy.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: getrf.lisp,v 1.3 2000/07/11 18:02:03 simsek Exp $
-;;;
-;;; $Log: getrf.lisp,v $
-;;; Revision 1.3  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.2  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.1  2000/04/14 00:11:12  simsek
-;;; o This file is adapted from obsolete files 'matrix-float.lisp'
-;;;   'matrix-complex.lisp' and 'matrix-extra.lisp'
-;;; o Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
+(in-package #:matlisp)	  
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-#+nil (export '(getrf!
-		lu))
-	  
-
-(defgeneric getrf! (a &optional ipiv)
+(defgeneric getrf! (A)
   (:documentation
 "
   Syntax
   ======
-  (GETRF a [ipiv])
+  (GETRF a)
 
   Purpose
   =======
@@ -96,7 +67,16 @@
   [2] IPIV
   [3] INFO = T: successful
              i:  U(i,i) is exactly zero. 
-"))
+")
+  (:method :before ((A standard-matrix) &optional ipiv)
+  (let ((n (ncols a))
+	(m (nrows a)))
+    (if ipiv
+	(progn
+	  (check-type ipiv (simple-array (unsigned-byte 32) (*)))
+	  (if (< (length ipiv) (min n m))
+	      (error "argument IPIV given to GETRF! must dimension >= (MIN N M),
+where N,M are the dimensions of argument A given to GETRF!"))))))
 
 (defgeneric lu (a &key with-l with-u with-p)
   (:documentation 
@@ -120,15 +100,7 @@
   By default WITH-L,WITH-U,WITH-P.
 "))
 
-(defmethod getrf! :before ((a standard-matrix) &optional ipiv)
-  (let ((n (ncols a))
-	(m (nrows a)))
-    (if ipiv
-	(progn
-	  (check-type ipiv (simple-array (unsigned-byte 32) (*)))
-	  (if (< (length ipiv) (min n m))
-	      (error "argument IPIV given to GETRF! must dimension >= (MIN N M),
-where N,M are the dimensions of argument A given to GETRF!"))))))
+(defmethod getrf! 
 
 (defmethod getrf! ((a real-matrix) &optional ipiv)
   (let* ((n (nrows a))

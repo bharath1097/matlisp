@@ -59,20 +59,27 @@
 	   (declare (ignore job-a))
 	   (assert (= (nrows A) (ncols A)
 		      (nrows B)) nil 'tensor-dimension-mismatch)
-    ;;(check-type ipiv (simple-array (unsigned-byte 32) (*)))
-    (if (< (length ipiv) n-a)
-        (error "The argument IPIV given to GETRS! must have dimension >= N,
-where NxN is the dimension of the argument A given to GETRS!"))))
+	   ;;Well, we can't re-implement every algorithm in LAPACK to work
+	   ;;with two strided matrices. Threw in the towel after BLAS.
+	   (assert (and (consecutive-store-p A)
+			(consecutive-store-p B))
+		   nil 'tensor-store-not-consecutive)))
 
+(defmacro generate-typed-getrs! (func-name (matrix-class lapack-func))
+  (let* ((opt (get-tensor-class-optimization matrix-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
+    `(defun ,func-name (A B job-A)
+       (declare (type ,matrix-class A B)
+		(type symbol job-A))
+       (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
+	       ((maj-B ld-B fop-B) (blas-matrix-compatible-p B :n) :type (symbol index-type (string 1))))
+	      (cond
+		((eq maj-A :col-major)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Method definitions
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmethod getrs! :before 
-(defmethod getrs! ((a real-matrix) ipiv (b real-matrix) &key trans)
+(defmethod getrs! ((A real-matrix) (B real-matrix) &optional (job-A :n)) 
+  (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
+	  ((maj-B ld-B fop-B) (blas-matrix-compatible-p B :n) :type (symbol index-type (string 1))))
+	  
   (let* ((n (nrows a))
          (m (ncols b)))
 

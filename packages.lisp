@@ -59,6 +59,7 @@
    #:tensor-cannot-find-counter-class #:tensor-class
    #:tensor-cannot-find-optimization #:tensor-class
    #:tensor-dimension-mismatch
+   #:tensor-store-not-consecutive
 ))
 
 ;;foreign-vector stuff must go to ffi-...
