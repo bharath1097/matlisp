@@ -349,3 +349,6 @@
 			   (qsort-bounds todo)))))))
       (qsort-bounds `((0 ,len)))
       (values seq (action->cycle (make-paction perm))))))
+
+;;Add a general sorter, this is a very useful thing to have.
+;;Add a function to apply permutations to a matrices, tensors.

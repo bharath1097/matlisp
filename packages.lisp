@@ -150,9 +150,9 @@
 	   #:standard-tensor
 	   #:rank #:dimensions #:number-of-elements
 	   #:head #:strides #:store-size #:store
-	   ;;Sub-tensor
-	   #:sub-tensor
 	   #:parent-tensor
+	   ;;Sub-tensor
+	   #:sub-tensor~ #:sub-tensor
 	   ;;Store indexers
 	   #:store-indexing
 	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst

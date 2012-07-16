@@ -124,8 +124,8 @@
     (let* ((tensor (get-idx-expr `(#\[ #\{ #\$)))
 	   (idx-char (pop-ichar))
 	   (sub-func (ecase idx-char
-		       (#\[ 'sub-tensor~)
-		       (#\{ 'sub-tensor)
+		       (#\[ 'matlisp:sub-tensor~)
+		       (#\{ 'matlisp:sub-tensor)
 		       (#\$ nil)))
 	   (cidx-char (case idx-char
 			(#\[ #\])
