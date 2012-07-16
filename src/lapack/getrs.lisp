@@ -25,40 +25,15 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Written by Nicolas Neuss (analogous to gesv.lisp by R. Toy)
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: getrs.lisp,v 1.1 2002/09/30 18:28:27 simsek Exp $
-;;;
-;;; $Log: getrs.lisp,v $
-;;; Revision 1.1  2002/09/30 18:28:27  simsek
-;;; o Added changes by N.Neuss for getrs functions
-;;;
-;;; o Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "MATLISP")
+(in-package #:matlisp)
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Generic function definitions
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defgeneric getrs! (a ipiv b &key trans)
+(defgeneric getrs! (A B &optional job-a)
   (:documentation
    "
   Syntax
   ======
-  (GETRS! a ipiv b [:trans :N])
+  (GETRS! a b [:trans :N])
 
   Purpose
   =======
@@ -79,19 +54,16 @@
                  used in the computation has been completed, 
                  but the factor U is exactly singular.
                  Solution could not be computed.
-"))
+")
+  (:method :before ((A standard-matrix) (B standard-matrix) &optional job-a)
+	   (declare (ignore job-a))
+	   (assert (= (nrows A) (ncols A)
+		      (nrows B)) nil 'tensor-dimension-mismatch)
+    ;;(check-type ipiv (simple-array (unsigned-byte 32) (*)))
+    (if (< (length ipiv) n-a)
+        (error "The argument IPIV given to GETRS! must have dimension >= N,
+where NxN is the dimension of the argument A given to GETRS!"))))
 
-(defgeneric getrs (a ipiv b &key trans)
-  (:documentation
- "
-  Sytnax
-  ======
-  (GETRS a ipiv b [:trans :N])
-
-  Purpose
-  =======
-  Same as GETRS! except that B is not overwritten.
-"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -99,18 +71,7 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod getrs! :before ((a standard-matrix) ipiv (b standard-matrix) &key trans)
-  (declare (ignore trans))
-  (let ((n-a (nrows a))
-        (m-a (ncols a))
-        (n-b (nrows b)))
-    (if (not (= n-a m-a n-b))
-        (error "Dimensions of A,B given to GETRS! do not match"))
-    ;;(check-type ipiv (simple-array (unsigned-byte 32) (*)))
-    (if (< (length ipiv) n-a)
-        (error "The argument IPIV given to GETRS! must have dimension >= N,
-where NxN is the dimension of the argument A given to GETRS!"))))
-
+(defmethod getrs! :before 
 (defmethod getrs! ((a real-matrix) ipiv (b real-matrix) &key trans)
   (let* ((n (nrows a))
          (m (ncols b)))
@@ -199,3 +160,14 @@ where NxN is the dimension of the argument A given to GETRS!"))))
              (t (error "argument B given to GETRS is not a REAL-MATRIX or COMPLEX-MATRIX")))))
     (getrs! a ipiv b :trans trans)))
 
+(defgeneric getrs (a b &optional job-a)
+  (:documentation
+ "
+  Sytnax
+  ======
+  (GETRS a ipiv b [:trans :N])
+
+  Purpose
+  =======
+  Same as GETRS! except that B is not overwritten.
+"))

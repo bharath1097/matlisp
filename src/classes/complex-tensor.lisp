@@ -5,7 +5,7 @@
   "The type of the elements stored in a COMPLEX-MATRIX"
   'double-float)
 
-(deftype complex-base-array (size)
+(deftype complex-store-vector (&optional (size '*))
   "The type of the storage structure for a COMPLEX-MATRIX"
   `(simple-array complex-base-type (,size)))
 
@@ -33,7 +33,7 @@
 (defclass complex-tensor (standard-tensor)
   ((store
     :initform nil
-    :type (complex-base-array *)))
+    :type complex-store-vector))
   (:documentation "Tensor class with complex elements."))
 
 (defclass complex-matrix (standard-matrix complex-tensor)

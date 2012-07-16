@@ -4,7 +4,7 @@
   "The type of the elements stored in a REAL-MATRIX"
   'double-float)
 
-(deftype real-array (size)
+(deftype real-store-vector (&optional (size '*))
   "The type of the storage structure for a REAL-MATRIX"
   `(simple-array real-type (,size)))
 ;;
@@ -20,7 +20,7 @@ Allocates real storage.  Default initial-element = 0d0.")
 (defclass real-tensor (standard-tensor)
   ((store
     :initform nil
-    :type (real-array *)))
+    :type real-store-vector))
   (:documentation "Tensor class with real elements."))
 
 (defclass real-matrix (standard-matrix real-tensor)

@@ -3,7 +3,7 @@
 (deftype index-type ()
   'fixnum)
 
-(deftype index-array (size)
+(deftype index-store-vector (&optional (size '*))
   `(simple-array index-type (,size)))
 
 (make-array-allocator allocate-index-store 'index-type 0
@@ -34,9 +34,9 @@
 
 ;;
 (deftype integer4 ()
-    '(signed-byte 32))
+  '(signed-byte 32))
 
-(deftype integer4-array (size)
+(deftype integer4-vector (&optional (size '*))
   `(simple-array integer4-array (,size)))
 
 (make-array-allocator allocate-integer4-store 'integer4 0
@@ -59,7 +59,7 @@
    (dimensions
     :accessor dimensions
     :initarg :dimensions
-    :type (index-array *)
+    :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    (number-of-elements
     :accessor number-of-elements
@@ -81,7 +81,7 @@
    (strides
     :initarg :strides
     :accessor strides
-    :type (index-array *)
+    :type index-store-vector
     :documentation "Strides for accesing elements of the tensor.")
    (store-size
     :accessor store-size
@@ -213,7 +213,7 @@
      i = 0
 "
   (declare (type index-type hd)
-	   (type (index-array *) idx strides dims))
+	   (type index-store-vector idx strides dims))
   (let ((rank (length strides)))
     (declare (type index-type rank))
     (if (not (= rank (length idx) (length dims)))
@@ -246,7 +246,7 @@
      i = 0
 "
   (declare (type index-type hd)
-	   (type (index-array *) strides dims)
+	   (type index-store-vector strides dims)
 	   (type cons idx))
   (let ((rank (length strides)))
     (declare (type index-type rank))
@@ -282,7 +282,7 @@
      i = 0
 "
   (declare (type standard-tensor tensor)
-	   (type (or (index-array *) cons) idx))
+	   (type (or index-store-vector cons) idx))
   (typecase idx
     (cons (store-indexing-lst idx (head tensor) (strides tensor) (dimensions tensor)))
     (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
@@ -292,7 +292,7 @@
   (declare (ignore initargs))
   (mlet*
    (((dims hd ss) (slot-values tensor '(dimensions head store-size))
-     :type ((index-array *) index-type index-type))
+     :type (index-store-vector index-type index-type))
     (rank (length dims) :type index-type))
    ;;Let the object be consistent.
    (setf (rank tensor) rank)
@@ -300,15 +300,15 @@
    (unless (and (slot-boundp tensor 'strides)
 		(= (length (strides tensor)) rank))
      (mlet* ((stds (allocate-index-store rank)
-		   :type (index-array *)))
+		   :type index-store-vector))
 	    (setf (strides tensor) stds)
 	    (do ((i (1- rank) (1- i))
 		 (st 1 (* st (aref dims i))))
 		((< i 0))
 	      (setf (aref stds i) st))))
    ;;
-   (mlet* ((stds (strides tensor) :type (index-array *))
-	   (L-idx (store-indexing-vec (map `(index-array *) #'1- dims) hd stds dims) :type index-type))
+   (mlet* ((stds (strides tensor) :type index-store-vector)
+	   (L-idx (store-indexing-vec (map `index-store-vector #'1- dims) hd stds dims) :type index-type))
 	  ;;Error checking is good if we use foreign-pointers as store types.
 	  (cond
 	    ((< hd 0) (error 'tensor-invalid-head-value :head hd :tensor tensor))
@@ -460,7 +460,7 @@
 "
   (declare (type standard-tensor tensor))
   (mlet* (((rank dims) (slot-values tensor '(rank dimensions))
-	   :type (index-type (index-array *))))
+	   :type (index-type index-store-vector)))
 	 (let ((syms->val (make-hash-table)))
 	   (labels ((parse-sub (lst i)
 		      (let ((val (car lst)))
@@ -534,7 +534,7 @@
 	(stds (strides tensor))
 	(hd (head tensor)))
     (declare (type index-type rank hd)
-	     (type (index-array *) dims stds))
+	     (type index-store-vector dims stds))
     (labels ((sub-tread (i subs nhd ndims nstds)
 	       (if (null subs)
 		   (progn

@@ -19,7 +19,7 @@
 (definline size (matrix)
   (declare (type standard-matrix matrix))
   (let ((dims (dimensions matrix)))
-    (declare (type (index-array 2) dims))
+    (declare (type (index-store-vector 2) dims))
     (list (aref dims 0) (aref dims 1))))
 
 ;;

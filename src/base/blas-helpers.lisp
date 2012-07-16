@@ -4,11 +4,11 @@
 (defun blas-copyable-p (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (mlet*
-   (((sort-std-a std-a-perm) (idx-sort-permute (copy-seq (strides ten-a)) #'<) :type ((index-array *) permutation))
-    (perm-a-dims (permute (dimensions ten-a) std-a-perm) :type (index-array *))
+   (((sort-std-a std-a-perm) (idx-sort-permute (copy-seq (strides ten-a)) #'<) :type (index-store-vector permutation))
+    (perm-a-dims (permute (dimensions ten-a) std-a-perm) :type index-store-vector)
     ;;If blas-copyable then the strides must have the same sorting permutation.
-    (sort-std-b (permute (strides ten-b) std-a-perm) :type (index-array *))
-    (perm-b-dims (permute (dimensions ten-b) std-a-perm) :type (index-array *)))
+    (sort-std-b (permute (strides ten-b) std-a-perm) :type index-store-vector)
+    (perm-b-dims (permute (dimensions ten-b) std-a-perm) :type index-store-vector))
    (very-quickly
      (loop
 	for i of-type index-type from 0 below (rank ten-a)
@@ -26,8 +26,8 @@
 
 (defun consecutive-store-p (tensor)
   (declare (type standard-tensor tensor))
-  (mlet* (((sort-std std-perm) (idx-sort-permute (copy-seq (strides tensor)) #'<) :type ((index-array *) permutation))
-	  (perm-dims (permute (dimensions tensor) std-perm) :type (index-array *)))
+  (mlet* (((sort-std std-perm) (idx-sort-permute (copy-seq (strides tensor)) #'<) :type (index-store-vector permutation))
+	  (perm-dims (permute (dimensions tensor) std-perm) :type index-store-vector))
       (very-quickly
 	(loop
 	   for so-st across sort-std

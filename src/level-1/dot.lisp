@@ -46,9 +46,9 @@
       (t
        (let-typed
 	((stp-x (aref (strides x) 0) :type index-type)
-	 (sto-x (store x) :type (real-array *))
+	 (sto-x (store x) :type real-store-vector)
 	 (stp-y (aref (strides y) 0) :type index-type)
-	 (sto-y (store y) :type (real-array *))
+	 (sto-y (store y) :type real-store-vector)
 	 (nele (number-of-elements x) :type index-type))
 	(very-quickly
 	  (loop repeat nele
@@ -81,9 +81,9 @@
       (t
        (let-typed
 	((stp-x (aref (strides x) 0) :type index-type)
-	 (sto-x (store x) :type (complex-base-array *))
+	 (sto-x (store x) :type complex-store-vector)
 	 (stp-y (aref (strides y) 0) :type index-type)
-	 (sto-y (store y) :type (complex-base-array *))
+	 (sto-y (store y) :type complex-store-vector)
 	 (nele (number-of-elements x) :type index-type))
 	(if conjugate-p
 	    (very-quickly

@@ -46,7 +46,7 @@
     (complex-tensor (make-instance 'real-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
-				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))
+				   :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (strides tensor))
 				   :head (the index-type (* 2 (head tensor)))))
     (number (realpart tensor))))
 
@@ -68,7 +68,7 @@
     (complex-tensor (make-instance 'real-tensor
 				   :parent-tensor tensor :store (store tensor)
 				   :dimensions (dimensions tensor)
-				   :strides (map '(index-array *) #'(lambda (x) (* 2 x)) (strides tensor))
+				   :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (strides tensor))
 				   :head (the index-type (+ 1 (* 2 (head tensor))))))
     (number (imagpart tensor))))
 

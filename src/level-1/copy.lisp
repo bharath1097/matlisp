@@ -173,7 +173,7 @@
   (let ((tmp (make-instance 'real-tensor
 			    :parent-tensor y :store (store y)
 			    :dimensions (dimensions y)
-			    :strides (map '(index-array *) #'(lambda (n) (* 2 n)) (strides y))
+			    :strides (map 'index-store-vector #'(lambda (n) (* 2 n)) (strides y))
 			    :head (the index-type (* 2 (head y))))))
     (declare (type real-tensor tmp))
     (real-typed-copy! x tmp)
@@ -227,7 +227,7 @@
 	 (ret (make-array (idx->list dims)
 			  :element-type (if-ret (getf (get-tensor-class-optimization (class-name (class-of tensor)))  :element-type)
 						(error 'tensor-cannot-find-optimization :tensor-class (class-name (class-of tensor)))))))
-    (declare (type (index-array *) dims))
+    (declare (type index-store-vector dims))
     (very-quickly
       (mod-dotimes (idx dims)
 	do (setf (apply #'aref ret (idx->list idx)) (tensor-ref tensor idx))))
