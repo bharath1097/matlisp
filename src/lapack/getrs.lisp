@@ -73,6 +73,8 @@
 		(type symbol job-A))
        (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
 	       ((maj-B ld-B fop-B) (blas-matrix-compatible-p B :n) :type (symbol index-type (string 1))))
+	      (if (eq (maj-B 
+
 	      (cond
 		((eq maj-A :col-major)
 

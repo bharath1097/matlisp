@@ -36,6 +36,9 @@
   (declare (type perrepr-vector seq))
   (very-quickly (reduce #'min seq)))
 
+(definline perv (&rest contents)
+  (make-array (length contents) :element-type 'perrepr-type :initial-contents contents))
+
 ;;Write a uniform randomiser
 (defun seqrnd (seq)
   "Randomize the elements of a sequence. Destructive on SEQ."
@@ -49,85 +52,127 @@
    (group-rank :accessor group-rank
 	       :type index-type)))
 
-(defparameter +permutation-identity+ 
-  (let ((ret (make-instance 'permutation :repr :id)))
-    (setf (group-rank ret) 0)
-    ret))
-
 (defmethod print-object ((per permutation) stream)
   (print-unreadable-object (per stream :type t)
-    (format stream "S_~a~%~a~%" (group-rank per) (repr per))))
+    (format stream "S_~a~%" (group-rank per))
+    (if (zerop (group-rank per))
+	(format stream "ID~%")
+	(format stream "~a~%" (repr per)))))
 ;;
-(defclass permutation-cycle (permutation)
-  ((representation :type cons)))
 
-(defun cycle-repr-p (perm)
-  "
-  Does a sorting operation to check for duplicate elements in
-  the cycle representation of a permutation.
-"
-  (if (not (typep perm 'perrepr-vector)) nil
-      (locally
-      	  (declare (type perrepr-vector perm))
-	(let ((len (length perm)))
-	  (declare (type index-type len))
-	  (if (<= len 1) nil
-	      (let ((sort (very-quickly (sort (copy-seq perm) #'<))))
-		(declare (type perrepr-vector sort))
-		(very-quickly
-		  (loop for i of-type index-type from 1 below len
-		     when (= (aref sort i) (aref sort (1- i)))
-		     do (return nil)
-		     finally (return t)))))))))
-
-(defmethod initialize-instance :after ((per permutation-cycle) &rest initargs)
-  (declare (ignore initargs))
-  (very-quickly
-    (loop
-       for cyc of-type perrepr-vector in (repr per)
-       unless (cycle-repr-p cyc)
-       do (error 'permutation-invalid-error)
-       maximizing (perrepr-max cyc) into g-rnk of-type index-type
-       finally (setf (group-rank per) (the index-type (1+ g-rnk))))))
-
-(definline make-pcycle (&rest args)
-  (make-instance 'permutation-cycle :repr args))
-
-;;
 (defclass permutation-action (permutation)
   ((representation :type perrepr-vector)))
 
-(defun action-repr-p (act)
-  "
+(defmethod initialize-instance :after ((per permutation-cycle) &rest initargs)
+  (declare (ignore initargs))
+  (labels ((cycle-repr-p (perm)
+	     "
+  Does a sorting operation to check for duplicate elements in
+  the cycle representation of a permutation.
+"
+	     (if (not (typep perm 'perrepr-vector)) nil
+		 (locally
+		     (declare (type perrepr-vector perm))
+		   (let ((len (length perm)))
+		     (declare (type index-type len))
+		     (if (<= len 1) nil
+			 (let ((sort (very-quickly (sort (copy-seq perm) #'<))))
+			   (declare (type perrepr-vector sort))
+			   (very-quickly
+			     (loop for i of-type index-type from 1 below len
+				when (= (aref sort i) (aref sort (1- i)))
+				do (return nil)
+				finally (return t))))))))))
+    (if (null (repr per)) (setf (group-rank per) 0)
+	(very-quickly
+	  (loop
+	     for cyc of-type perrepr-vector in (repr per)
+	     unless (cycle-repr-p cyc)
+	     do (error 'permutation-invalid-error)
+	     maximizing (perrepr-max cyc) into g-rnk of-type index-type
+	     finally (setf (group-rank per) (the index-type (1+ g-rnk))))))))
+;;
+
+(defclass permutation-cycle (permutation)
+  ((representation :type list)))
+
+(defmethod initialize-instance :after ((per permutation-action) &rest initargs)
+  (declare (ignore initargs))
+  (labels ((action-repr-p (act)
+	     "
   Checks if ARR is a possible permutation vector.  A permutation pi
   is characterized by a vector containing the indices from 0,...,
   @function{length}(@arg{perm})-1 in some order.
 "
-  (if (not (typep act 'perrepr-vector)) nil
-      (locally
-	  (declare (type perrepr-vector act))
-	(let* ((len (length act))
-	       (sort (very-quickly (sort (copy-seq act) #'<))))
-	  (declare (type perrepr-vector sort)
-		   (type index-type len))
-	  (very-quickly
-	    (loop for i of-type index-type from 0 below len
-	       unless (= (aref sort i) i)
-	       do (return nil)
-	       finally (return t)))))))
+	     (if (not (typep act 'perrepr-vector)) nil
+		 (locally
+		     (declare (type perrepr-vector act))
+		   (let* ((len (length act))
+			  (sort (very-quickly (sort (copy-seq act) #'<))))
+		     (declare (type perrepr-vector sort)
+			      (type index-type len))
+		     (very-quickly
+		       (loop for i of-type index-type from 0 below len
+			  unless (= (aref sort i) i)
+			  do (return nil)
+			  finally (return t))))))))
+    (assert (action-repr-p (repr per)) nil 'permutation-invalid-error)
+    (setf (group-rank per) (length (repr per)))))
+;;
 
-(defmethod initialize-instance :after ((per permutation-action) &rest initargs)
+(defclass permutation-pivot-flip (permutation)
+  ((representation :type perrepr-vector)))
+
+(defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)
   (declare (ignore initargs))
-  (let ((act (repr per)))
-    (declare (type perrepr-vector act))
-    (unless (action-repr-p act)
-      (error 'permutation-invalid-error))
-    (setf (group-rank per) (1+ (perrepr-max act)))))
+  (labels ((pivot-flip-p (idiv)
+	     "
+  Checks if ARR is a possible permutation pivot-flip. A pivot
+  flip is more algorithmic in its representation. If a sequence
+  is given, apply a pivot-flip on it is equivalent to running from
+  the left to the right of the permutation by flipping (pi(i), i)
+  sequentially.
+"
+	     (if (not (typep idiv 'perrepr-vector)) nil
+		 (let ((len (length idiv)))
+		   (declare (type perrepr-vector idiv)
+			    (type index-type len))
+		   (very-quickly
+		     (loop for i of-type index-type from 0 below len
+			do (unless (< -1 (aref idiv i) len)
+			     (return nil))
+			finally (return t)))))))
+    (assert (pivot-flip-p (repr per)) nil 'permutation-invalid-error)
+    (setf (group-rank per) (length (repr per)))))
+
+;;
+(defgeneric permute! (seq perm)
+  (:documentation "
+  (permute! seq perm)
+
+  Applies the permutation on the sequence.
+")
+  (:method :before ((seq sequence) (perm permutation))
+	   (let ((len (length seq)))
+	     (assert (< len (group-rank perm)) nil
+		     'permutation-permute-error :seq-len len :group-rank (group-rank perm)))))
+
+(defgeneric sort-permute (seq predicate)
+  (:documentation "
+  (sort-permute seq predicate)
+
+  Sorts the given sequence and return
+  the permutation required to move
+  from the given sequence to the sorted form.
+  "))
+;;
+(definline make-pcycle (&rest args)
+  (make-instance 'permutation-cycle :repr args))
 
 (definline make-paction (pact)
   (make-instance 'permutation-action :repr pact))
 
-;;Conversions and validation-------------------------------------;;
+;;Conversions----------------------------------------------------;;
 (defun action->cycle (act)
   "
   (action->cycle act)
@@ -196,16 +241,25 @@
 			  (aref act-repr (aref cyc (1- i)))))))))
     (make-instance 'permutation-action :repr act-repr)))
 
+(defun pivot-flip->action (pflip)
+  (declare (type permutation-pivot-flip pflip))
+  (let* ((idiv (repr pflip))
+	 (len (length idiv)))
+    (declare (type perrepr-vector idiv)
+	     (type index-type len))
+    (let ((act (perrepr-id-action len)))
+      (declare (type perrepr-vector act))
+      (very-quickly
+	(loop for i from 0 below len
+	   do (let ((val (aref idiv i)))
+		(unless (= val i)
+		  (rotatef (aref act i) (aref act val))))))
+      (make-instance 'permutation-action :repr act))))
+
+(defun cycle->pivot-flip (cycs)
+  (declare (type permutation-cycle cycs))
+
 ;;
-(defgeneric permute! (seq perm)
-  (:documentation "
-  (permute! seq perm)
-
-  Applies the permutation on the sequence.
-")
-  (:method ((seq sequence) (perm (eql +permutation-identity+)))
-    seq))
-
 (defmethod permute! ((seq sequence) (perm permutation-cycle))
   (labels ((apply-cycle! (seq pcyc)
 	     (declare (type perrepr-vector pcyc))

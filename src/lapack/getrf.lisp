@@ -28,7 +28,36 @@
 
 (in-package #:matlisp)	  
 
-(defgeneric getrf! (A)
+(defmacro generate-typed-getrf! (func-name (matrix-class lapack-func))
+  (let* ((opt (get-tensor-class-optimization matrix-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
+    `(defun ,func-name (A ipiv)
+       (declare (type ,matrix-class A)
+		(type permutation-action ipiv))
+       (mlet*
+	(((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
+	(assert maj-A nil 'tensor-not-consecutive-store)
+	(multiple-value-bind (new-a new-ipiv info)
+	    (,lapack-func
+	     (nrows A) (ncols A) (store A)
+	     ld-A (repr ipiv) 0)
+	  (declare (ignore new-a new-ipiv))
+	  ;;Convert from 1-based indexing to 0-based indexing, and fix
+	  ;;other Fortran-ic quirks
+	  (assert (= info 0) nil 'invalid-arguments)
+	  (format t "~a~%" ipiv)
+	  (let-typed ((ipiv-repr (repr ipiv) :type perrepr-vector))
+		     (loop for i of-type fixnum from 0 below (length ipiv-repr)
+			do (decf (aref ipiv-repr i)))
+		     (loop for i of-type fixnum from 0 below (length ipiv-repr)
+			do (let ((val (aref ipiv-repr i)))
+			     (setf (aref ipiv-repr val) i))))
+	  (values A ipiv info))))))
+
+(generate-typed-getrf! real-typed-getrf! (real-matrix dgetrf))
+	   
+       
+(defgeneric getrf! (A ipiv)
   (:documentation
 "
   Syntax
@@ -68,15 +97,32 @@
   [3] INFO = T: successful
              i:  U(i,i) is exactly zero. 
 ")
-  (:method :before ((A standard-matrix) &optional ipiv)
-  (let ((n (ncols a))
-	(m (nrows a)))
-    (if ipiv
-	(progn
-	  (check-type ipiv (simple-array (unsigned-byte 32) (*)))
-	  (if (< (length ipiv) (min n m))
-	      (error "argument IPIV given to GETRF! must dimension >= (MIN N M),
-where N,M are the dimensions of argument A given to GETRF!"))))))
+  (:method :before ((A standard-matrix) (ipiv permutation-action))
+	   (assert (>= (group-rank ipiv) (idx-min (dimensions A))) nil 'invalid-value
+		   :given (group-rank ipiv) :expected '(>= (group-rank ipiv) (idx-min (dimensions A))))))
+
+(defmethod getrf! ((a real-matrix) (ipiv permutation-action))
+  (let* ((n (nrows a))
+	 (m (ncols a))
+	 (ipiv #+:pre-allocate-workspaces
+	       (or ipiv *ipiv*)
+	       #-:pre-allocate-workspaces
+	       (or ipiv (make-array (min n m) :element-type '(unsigned-byte 32)))))
+
+    (declare (type fixnum n m))
+    (multiple-value-bind (new-a new-ipiv info)
+	(dgetrf n          ;; M
+		m          ;; N
+		(store a)  ;; A
+		n          ;; LDA
+		ipiv       ;; IPIV
+		0)         ;; INFO
+      (declare (ignore new-a new-ipiv))
+      (values a ipiv (if (zerop info)
+			 t
+		       info)))))
+
+
 
 (defgeneric lu (a &key with-l with-u with-p)
   (:documentation 
@@ -100,28 +146,7 @@ where N,M are the dimensions of argument A given to GETRF!"))))))
   By default WITH-L,WITH-U,WITH-P.
 "))
 
-(defmethod getrf! 
 
-(defmethod getrf! ((a real-matrix) &optional ipiv)
-  (let* ((n (nrows a))
-	 (m (ncols a))
-	 (ipiv #+:pre-allocate-workspaces
-	       (or ipiv *ipiv*)
-	       #-:pre-allocate-workspaces
-	       (or ipiv (make-array (min n m) :element-type '(unsigned-byte 32)))))
-
-    (declare (type fixnum n m))
-    (multiple-value-bind (new-a new-ipiv info)
-	(dgetrf n          ;; M
-		m          ;; N
-		(store a)  ;; A
-		n          ;; LDA
-		ipiv       ;; IPIV
-		0)         ;; INFO
-      (declare (ignore new-a new-ipiv))
-      (values a ipiv (if (zerop info)
-			 t
-		       info)))))
 
 (defmethod getrf! ((a complex-matrix) &optional ipiv)
   (let* ((n (nrows a))

@@ -34,7 +34,7 @@
 
 (defcondition invalid-arguments (generic-error)
   ()
-  (:documentation "Given invalid arguments to the function."))  
+  (:documentation "Given invalid arguments to the function."))
 
 (defcondition invalid-value (generic-error)
   ((given-value :reader given :initarg :given)
