@@ -77,6 +77,10 @@
 	    :components ((:file "ffi-cffi")
 			 (:file "ffi-cffi-implementation-specific")
 			 (:file "foreign-vector")
+			 (:file "fortran-ffi"
+				:depends-on ("ffi-cffi"
+					     "ffi-cffi-implementation-specific"
+					     "foreign-vector"))
 			 ))
    (:module "foreign-core"
 	    :pathname "foreign-core"
