@@ -552,4 +552,3 @@
 	       ,(if (eq hack-return-type :void)
 		     nil
 		     retvar))))))))
-
