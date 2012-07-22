@@ -233,22 +233,37 @@
 	(bin-append (car lsts) (apply #'recursive-append (cdr lsts))))))
 
 (defun unquote-args (lst args)
+  "
+  Makes list suitable for use inside macros (sort-of).
+  Example:
+  > (unquote-args '(+ x y z) '(x y))
+  (LIST '+ X Y 'Z)
+
+  DO NOT use backquotes!
+  "
   (labels ((replace-atoms (lst ret)
-	     (if (null lst) (reverse ret)
-		 (let ((fst (car lst)))
-		   (replace-atoms (cdr lst)
-				  (cond 
-				    ((atom fst)
-				     (if (member fst args)
-					 (cons fst ret)
-					 (append `(',fst) ret)))
-				    ((consp fst)
-				     (cons (replace-lst fst nil) ret)))))))
+	     (cond
+	       ((null lst) (reverse ret))
+	       ((atom lst)
+		(let ((ret (reverse ret)))
+		  (rplacd (last ret) lst)
+		  ret))
+	       ((consp lst)
+		(replace-atoms (cdr lst) (let ((fst (car lst)))
+					   (cond 
+					     ((atom fst)
+					      (if (member fst args)
+						  (cons fst ret)
+						  (append `(',fst) ret)))
+					     ((consp fst)
+					      (cons (replace-lst fst nil) ret))))))))
 	   (replace-lst (lst acc)
 	     (cond
 	       ((null lst) acc)
 	       ((consp lst)
-		(cons 'list (replace-atoms lst nil)))
+		(if (eq (car lst) 'quote)
+		    lst
+		    (cons 'list (replace-atoms lst nil))))
 	       ((atom lst) lst))))
     (replace-lst lst nil)))
 
@@ -262,9 +277,78 @@
     (rec x nil)))
 
 (defmacro macrofy (lambda-func)
+  "
+  Macrofies a lambda function, for use later inside macros (or for symbolic math ?).
+  Example:
+  > (macroexpand-1 `(macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))))
+  (LAMBDA (X Y Z)
+    (LIST '+ (LIST 'SIN X) Y (LIST 'APPLY (LIST 'FUNCTION 'COS) (LIST 'LIST Z))))
+  T
+  > (funcall (macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))) 'a 'b 'c)
+  (+ (SIN A) B (APPLY #'COS (LIST C)))
+
+  DO NOT USE backquotes in the lambda function!
+  "
   (destructuring-bind (labd args &rest body) lambda-func
     (assert (eq labd 'lambda))
     `(lambda ,args ,@(cdr (unquote-args body args)))))
+
+(defmacro looped-mapcar ((func lst) &rest body)
+  "
+  A macro to use when caught between the efficiency of imperative looping, and
+  the elegance of mapcar (in a dozen places).
+
+  Collects references to func and replaces them with a varible inside a loop.
+  Note that although we traverse through the list only once, the collected lists
+  aren't freed until the macro is closed.
+
+  Example:
+  > (macroexpand-1
+      `(looped-mapcar (lmap '(1 2 3 4 5 6 7 8 9 10))
+			(cons (lmap #'even) (lmap #'(lambda (x) (+ x 1))))))
+  (LET ((#:|lst1118| '(1 2 3 4 5 6 7 8 9 10)))
+    (LOOP FOR #:|ele1117| IN #:|lst1118|
+        COLLECT (FUNCALL #'(LAMBDA (X) (+ X 1))
+                         #:|ele1117|) INTO #:|collect1116|
+        COLLECT (FUNCALL #'EVEN #:|ele1117|) INTO #:|collect1115|
+        FINALLY (RETURN (PROGN (CONS #:|collect1115| #:|collect1116|)))))
+  "
+  (let ((ret nil))
+    (labels ((collect-funcs (code tf-code)
+	       (cond
+		 ((null code)
+		  (reverse tf-code))
+		 ((atom code)
+		  (let ((ret (reverse tf-code)))
+		    (rplacd (last ret) code)
+		    ret))
+		 ((consp code)
+		  (let ((carcode (car code)))
+		    (cond
+		      ((and (consp carcode)
+			    (eq (first carcode) func))
+		       (assert (null (cddr carcode)) nil 'invalid-arguments
+			       :message "The mapper only takes one argument.")
+		       (let ((col-sym (gensym "collect")))
+			 (push `(,col-sym ,(second carcode)) ret)
+			 (collect-funcs (cdr code) (cons col-sym tf-code))))
+		      ((consp carcode)
+		       (collect-funcs (cdr code) (cons (collect-funcs carcode nil) tf-code)))
+		      (t
+		       (collect-funcs (cdr code) (cons carcode tf-code)))))))))
+      (let ((tf-code (collect-funcs body nil))
+	    (ele-sym (gensym "ele"))
+	    (lst-sym (gensym "lst")))
+	(if (null ret)
+	    `(progn
+	       ,@tf-code)
+	    `(let ((,lst-sym ,lst))
+	       (loop for ,ele-sym in ,lst-sym
+		    ,@(loop for decl in ret
+			 append `(collect (funcall ,(second decl) ,ele-sym) into ,(first decl)))
+		  finally (return
+			    (progn
+			      ,@tf-code)))))))))
 
 (declaim (inline string+))
 (defun string+ (&rest strings)

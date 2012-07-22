@@ -228,4 +228,4 @@
 		     #'make-complex-tensor
 		     #'make-real-tensor)
 		 (list (ecase job (:n (nrows A)) (:t (ncols A)))))))
-    (gemv! alpha A x beta result job)))
+    (gemv! alpha A x 0 result job)))

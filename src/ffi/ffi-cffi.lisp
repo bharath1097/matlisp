@@ -11,8 +11,25 @@
 (in-package #:matlisp-ffi)
 
 (define-constant +ffi-styles+
-    '(:input :input-reference :input-value :workspace
-      :input-output :output :workspace-output))
+    '(:input :input-reference :input-value
+      :input-output :output :workspace-output
+      :workspace))
+
+(define-constant +ffi-types+
+    '(:single-float :double-float
+      :complex-single-float :complex-double-float
+      :integer :long
+      :string :character
+      :callback))
+
+;; Separte the body of code into documentation and parameter lists.
+(defun parse-doc-&-parameters (body &optional header footer)
+  (if (stringp (first body))
+      (values `(,(%cat% header (first body) footer)) (rest body))
+    (values (if (or header footer)
+		(%cat% header "" footer)
+	      nil)
+	    body)))
 
 ;; Create objects on the heap and run some stuff.
 (defmacro with-foreign-objects-heaped (declarations &rest body)

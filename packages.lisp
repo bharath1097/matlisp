@@ -77,7 +77,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator #:let-typed
 	   #:nconsc #:define-constant
-	   #:macrofy
+	   #:macrofy #:looped-mapcar
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))

@@ -85,9 +85,10 @@
 (defun pend-report (ts y)
   (format t "~A ~A ~A ~%" ts (aref y 0) (aref y 1)))
 
-(defvar y (make-array 2 :element-type 'double-float :initial-contents `(,(/ pi 2) 0d0)))
+#+nil
+(let ((y (make-array 2 :element-type 'double-float :initial-contents `(,(/ pi 2) 0d0))))
+  (lsode-evolve #'pend-field y #(0d0 1d0 2d0) #'pend-report))
 
-;; (lsode-evolve #'pend-field y #(0d0 1d0 2d0) #'pend-report)
 ;; Should return
 ;; 1.0d0 1.074911802207049d0 -0.975509986605856d0
 ;; 2.0d0 -0.20563950412081608d0 -1.3992359518735706d0
