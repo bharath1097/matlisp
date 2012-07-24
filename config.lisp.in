@@ -34,7 +34,7 @@
 ;;; $Id: config.lisp.in,v 1.2 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "MATLISP")
+(in-package #:matlisp)
 
 #+:allegro (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
 #+:allegro (setq excl:*enable-package-locked-errors* nil)
@@ -46,7 +46,8 @@
 ;;#-cmu (setf (find-class 'real) (find-class 'cl:real))
 
 
-(eval-when (load eval compile)
+(eval-when #+sbcl(:compile-toplevel :load-toplevel :execute)
+	   #-(or :sbcl) (load eval compile)
 (defparameter *matlisp-version*
   "@PACKAGE_VERSION@ @GIT_VERSION@")
 
@@ -65,4 +66,3 @@
 #+:cmu
 (setf (getf ext:*herald-items* :matlisp)
       (list (matlisp-herald))))
-

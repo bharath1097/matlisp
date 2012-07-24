@@ -39,6 +39,12 @@
   :components 
   ((:file "packages")))
 
+(asdf:defsystem matlisp-config
+      :pathname #.(translate-logical-pathname "matlisp:builddir;")
+      :depends-on ("matlisp-packages")
+      :components
+      ((:file "config")))
+
 (asdf:defsystem matlisp-conditions
   :depends-on ("matlisp-packages" "matlisp-config")
   :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
