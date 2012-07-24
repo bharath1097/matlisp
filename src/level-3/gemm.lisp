@@ -152,31 +152,36 @@
 							  finally ,(funcall (getf opt :value-writer) '(+ (* alpha sum) val) 'sto-C 'of-C)))))))))))
        C)))
 
-;;Tweakable
-(defparameter *real-gemm-fortran-call-lower-bound* 100
-  "
-  If the maximum dimension in the MM is lower than this
-  parameter, then the lisp code is used by default, instead of
-  calling BLAS. Used to avoid the FFI overhead when calling
-  MM with small matrices.
-  Default set with SBCL on x86-64 linux. A reasonable value
-  is something between 20 and 200.")
-(generate-typed-gemm! real-typed-gemm! (real-matrix
-					dgemm dgemv
-					*real-gemm-fortran-call-lower-bound*))
+;;Real
+(generate-typed-gemm! real-base-typed-gemm!
+  (real-matrix dgemm dgemv *real-l3-fcall-lb*))
 
-;;Tweakable
-(defparameter *complex-gemm-fortran-call-lower-bound* 60
-  "
-  If the maximum dimension in the MM is lower than this
-  parameter, then the lisp code is used by default, instead of
-  calling BLAS. Used to avoid the FFI overhead when calling
-  MM with small matrices.
-  Default set with SBCL on x86-64 linux. A reasonable value
-  is something between 20 and 200.")
-(generate-typed-gemm! complex-typed-gemm! (complex-matrix
-					   zgemm zgemv
-					   *complex-gemm-fortran-call-lower-bound*))
+(definline real-typed-gemm! (alpha A B beta C job)
+  (real-base-typed-gemv! alpha A B beta C
+			 (apply #'combine-jobs
+				(mapcar #'(lambda (x)
+					    (ecase x ((:n :t) x) (:h :t) (:c :n)))
+					(multiple-value-list (split-job job))))))
+
+;;Complex
+(generate-typed-gemm! complex-base-typed-gemm!
+  (complex-matrix zgemm zgemv *complex-l3-fcall-lb*))
+
+(defun complex-typed-gemm! (alpha A B beta C job)
+  (declare (type complex-matrix A B C)
+	   (type complex-type alpha beta)
+	   (type symbol job))
+  (multiple-value-bind (job-A job-B) (split-job job)
+    (if (and (member job-A '(:n :t))
+	     (member job-B '(:n :t)))
+	(complex-base-typed-gemm! alpha A B beta C job)
+	(let ((A (ecase job-A ((:h :c) (mconjugate A)) ((:n :t) A)))
+	      (B (ecase job-B ((:h :c) (mconjugate B)) ((:n :t) B)))
+	      (tjob (combine-jobs (ecase job-A ((:n :t) job-A) (:h :t) (:c :n))
+				  (ecase job-B ((:n :t) job-B) (:h :t) (:c :n)))))
+	  (complex-base-typed-gemm! alpha A B
+				    beta C tjob)))))
+
 ;;---------------------------------------------------------------;;
 
 (defgeneric gemm! (alpha A B beta C &optional job)
@@ -198,12 +203,20 @@
   alpha,beta are scalars and A,B,C are matrices.
   op(A) means either A or A'.
 
+  JOB must be a keyword with two of these alphabets
+     N                 Identity
+     T                 Transpose
+     C                 Complex conjugate
+     H                 Hermitian transpose {conjugate transpose}
+
+  so that (there are 4x4 operations in total).
+
      JOB                    Operation
   ---------------------------------------------------
      :NN (default)      alpha * A * B + beta * C
-     :TN                alpha * A'* B + beta * C
-     :NT                alpha * A * B'+ beta * C
-     :TT                alpha * A'* B'+ beta * C    
+     :TN                alpha * transpose(A) * B + beta * C
+     :NH                alpha * A * transpose o conjugate(B) + beta * C
+     :HC                alpha * transpose o conjugate(A) * conjugate(B) + beta * C
 ")
   (:method :before ((alpha number) (A standard-matrix) (B standard-matrix)
 		    (beta number) (C standard-matrix)
@@ -215,12 +228,10 @@
 	(nr-c (nrows C))
 	(nc-c (ncols C)))
     (declare (type index-type nr-a nc-a nr-b nc-b nr-c nc-c))
-    (case job
-      (:nn t)
-      (:tn (rotatef nr-a nc-a))
-      (:nt (rotatef nr-b nc-b))
-      (:tt (rotatef nr-a nc-a) (rotatef nr-b nc-b))
-      (t (error 'invalid-value :given job :expected '(member job '(:nn :tn :nt :tt)))))
+    (let ((sjobs (multiple-value-list (split-job job))))
+      (assert (= (length sjobs) 2) nil 'invalid-arguments :message "Ill formed job")
+      (ecase (first sjobs) ((:n :c) t) ((:t :h) (rotatef nr-a nc-a)))
+      (ecase (second sjobs) ((:n :c) t) ((:t :h) (rotatef nr-b nc-b))))
     (assert (not (or (eq A C) (eq B C))) nil 'invalid-arguments
 	    :message "GEMM!: C = {A or B} is not allowed.")
     (assert (and (= nr-c nr-a)
@@ -295,12 +306,20 @@
   alpha,beta are scalars and A,B,C are matrices.
   op(A) means either A or A'.
 
+  JOB must be a keyword with two of these alphabets
+     N                 Identity
+     T                 Transpose
+     C                 Complex conjugate
+     H                 Hermitian transpose {conjugate transpose}
+
+  so that (there are 4x4 operations in total).
+
      JOB                    Operation
   ---------------------------------------------------
      :NN (default)      alpha * A * B + beta * C
-     :TN                alpha * A'* B + beta * C
-     :NT                alpha * A * B'+ beta * C
-     :TT                alpha * A'* B'+ beta * C
+     :TN                alpha * transpose(A) * B + beta * C
+     :NH                alpha * A * transpose o conjugate(B) + beta * C
+     :HC                alpha * transpose o conjugate(A) * conjugate(B) + beta * C
 "))
 
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
@@ -324,16 +343,12 @@
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
 		 (beta (eql nil)) (c (eql nil))
 		 &optional (job :nn))
-  (multiple-value-bind (job-A job-B) (ecase job
-				       (:nn (values :n :n))
-				       (:nt (values :n :t))
-				       (:tn (values :t :n))
-				       (:tt (values :t :t)))
+  (multiple-value-bind (job-A job-B) (split-job job)
     (let ((result (apply
 		   (if (or (complexp alpha) (complexp beta)
 			   (typep a 'complex-matrix) (typep b 'complex-matrix))
 		       #'make-complex-tensor
 		       #'make-real-tensor)
-		   (list (if (eq job-A :n) (nrows A) (ncols A))
-			 (if (eq job-B :n) (ncols B) (nrows B))))))
+		   (list (if (member job-A '(:n :c)) (nrows A) (ncols A))
+			 (if (member job-B '(:n :c)) (ncols B) (nrows B))))))
       (gemm! alpha A B 0 result job))))

@@ -57,3 +57,12 @@
     ((string= sop "N") "T")
     ((string= sop "T") "N")
     (t (error "Unrecognised fortran-op."))))
+
+(defun split-job (job)
+  (values-list
+   (map 'list #'(lambda (x) (intern (string x) "KEYWORD")) (symbol-name job))))
+
+(defun combine-jobs (&rest jobs)
+  (let ((job (intern (apply #'concatenate 'string (mapcar #'symbol-name jobs)) "KEYWORD")))
+    job))
+  

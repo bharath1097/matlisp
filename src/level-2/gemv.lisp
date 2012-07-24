@@ -72,7 +72,9 @@
 
 (defun complex-typed-gemv! (alpha A x beta y job)
   (declare (type complex-matrix A)
-	   (type complex-vector x y))
+	   (type complex-vector x y)
+	   (type complex-type alpha beta)
+	   (type symbol job))
   (if (member job '(:n :t))
       (complex-base-typed-gemv! alpha A x beta y job)
       ;;The CBLAS way.
@@ -83,8 +85,6 @@
 
 ;;---------------------------------------------------------------;;
 
-;;Can't support "C" because its dual (complex-conjugate without transpose)
-;;isn't supported by BLAS (which'd be needed for row-major matrices).
 (defgeneric gemv! (alpha A x beta y &optional job)
   (:documentation
 "

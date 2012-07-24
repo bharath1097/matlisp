@@ -153,7 +153,7 @@
   =======
   Like mconjugate!, but non-destructive."
   (etypecase A
-    (standard-tensor (copy (mconjugate! A)))
+    (standard-tensor (mconjugate! (copy A)))
     (number (conjugate A))))
 
 ;;
