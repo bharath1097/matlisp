@@ -100,7 +100,9 @@
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
 			 (:file "print"
-				:depends-on ("standard-tensor"))))
+				:depends-on ("standard-tensor"))
+			 ;;Probably not the right place, but should do.
+			 (:file "tweakable")))
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
@@ -122,7 +124,9 @@
 			 (:file "dot"
 				:depends-on ("realimag"))
 			 (:file "axpy"
-				:depends-on ("copy" "scal"))))
+				:depends-on ("copy" "scal"))
+			 (:file "trans"
+				:depends-on ("scal" "copy"))))
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")

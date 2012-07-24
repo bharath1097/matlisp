@@ -22,6 +22,10 @@
       :string :character
       :callback))
 
+(define-constant +ffi-array-types+
+    '(:single-float :double-float
+      :integer :long))
+
 ;; Separte the body of code into documentation and parameter lists.
 (defun parse-doc-&-parameters (body &optional header footer)
   (if (stringp (first body))
@@ -144,13 +148,9 @@
        ;;
        (simple-array (signed-byte 64) *)
        (simple-array (signed-byte 32) *)
-       (simple-array (signed-byte 16) *)
-       (simple-array (signed-byte 8) *)
        ;;
        (simple-array (unsigned-byte 64) *)
        (simple-array (unsigned-byte 32) *)
-       (simple-array (unsigned-byte 16) *)
-       (simple-array (unsigned-byte 8) *)
        ;;
        cffi:foreign-pointer))
 

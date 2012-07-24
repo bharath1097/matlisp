@@ -53,19 +53,11 @@
 		  do ,(funcall (getf opt :swapper) 'f-sto 'f-of 't-sto 't-of)))))))
        y)))
 
-(defparameter *real-swap-fortran-call-lower-bound* 20000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
-(generate-typed-swap! real-typed-swap! (real-tensor dswap *real-swap-fortran-call-lower-bound*))
+(generate-typed-swap! real-typed-swap!
+  (real-tensor dswap *real-l1-fcall-lb*))
 
-(defparameter *complex-scal-fortran-call-lower-bound* 10000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
-(generate-typed-swap! complex-typed-swap! (complex-tensor zswap *complex-scal-fortran-call-lower-bound*))
+(generate-typed-swap! complex-typed-swap!
+  (complex-tensor zswap *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
 
 (defgeneric swap! (x y)

@@ -7,37 +7,47 @@
      (real ,base-type)
      (imag ,base-type)))
 
-(defccomplex c-complex-double :double)
-(defccomplex c-complex-float :float)
+(defccomplex %c.complex-double :double)R
+(defccomplex %c.complex-float :float)
 
 ;; Get the equivalent CFFI type.
 ;; If the type is an array, get the type of the array element type.
-(defun c->cffi-type (type)
+(defun %c.cffi-type (type)
   "Convert the given Fortran FFI type into a type understood by CFFI."
   (cond
-    ((and (listp type) (eq (first type) '*))
-     `(:pointer ,(c->cffi-type
-		  (case (second type)
-		    ;;CDR coding ?
-		    (:complex-single-float :single-float)
-		    (:complex-double-float :double-float)
-		    (t (second type))))))
+    ;; '* means arrays of a type, which isn't necessarily the same as pointer-to-type
+    ;; (* :complex-single-float) expands to (:pointer :float)
+    ;; (:pointer :complex-single-float) expands to (:pointer (:struct %c.complex-float))
+    ((consp type)
+     (cond
+       ((eq (first type) '*)
+       `(:pointer ,(%c.cffi-type
+		    (case (second type)
+		      ;;CDR coding ?
+		      (:complex-single-float :single-float)
+		      (:complex-double-float :double-float)
+		      (t (second type))))))
+       ;;We assume you what you're doing, and
+       ;;CFFI knows the type.
+       ((eq (first type) :pointer)
+	type)
     ((callback-type-p type)
-     `(:pointer ,(c->cffi-type :callback)))
+     `(:pointer ,(%c.cffi-type :callback)))
     ((eq type :complex-single-float)
-     `(:struct c-complex-float))
+     `(:struct %c.complex-float))
     ((eq type :complex-double-float)
-     `(:struct c-complex-double))
+     `(:struct %c.complex-double))
     (t (case type
 	 (:void :void)
 	 (:integer :int)
 	 (:long :long)
-	 (:single-float 'c-complex-float)
-	 (:double-float 'c-complex-double)
+	 (:single-float :float)
+	 (:double-float :double)
 	 (:string :string)
+	 (:character :char)
 	 ;; Pass a pointer to the function.
 	 (:callback :void)
-	 ;;We assume the type is known to CFFI.
+	 ;;We assume that the type is known to CFFI.
 	 (t type)))))
 
 ;; Check if given type is a string

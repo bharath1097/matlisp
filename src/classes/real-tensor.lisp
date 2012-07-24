@@ -13,8 +13,12 @@
 "(allocate-real-store size [initial-element])
 Allocates real storage.  Default initial-element = 0d0.")
 
-(definline coerce-real (x)
+(definline coerce-real-unforgiving (x)
   (coerce x 'real-type))
+
+(defun coerce-real (x)
+  (restart-case (coerce-real-unforgiving x)
+    (use-value (value) (coerce-real value))))
 
 ;;
 (defclass real-tensor (standard-tensor)
@@ -43,7 +47,7 @@ Allocates real storage.  Default initial-element = 0d0.")
 ;;
 (tensor-store-defs (real-tensor real-type real-type)
   :store-allocator allocate-real-store
-  :coercer coerce-real
+  :coercer coerce-real-unforgiving
   :reader
   (lambda (tstore idx)
     (aref tstore idx))
@@ -68,5 +72,3 @@ Allocates real storage.  Default initial-element = 0d0.")
 (defmethod print-element ((tensor real-tensor)
 			  element stream)
   (format stream "~11,5,,,,,'Eg" element))
-
-

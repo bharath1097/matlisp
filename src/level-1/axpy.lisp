@@ -99,26 +99,19 @@
 		     ,(funcall (getf opt :value-writer) '(+ num-from val) 't-sto 't-of))))))))
        to)))
 
-;;Tweakable
-(defparameter *real-axpy-fortran-call-lower-bound* 20000
-  "If the size of the array is less than this parameter, the
-   lisp version of axpy is called in order to avoid FFI overheads")
-(generate-typed-axpy! real-typed-axpy! (real-tensor
-					daxpy
-					*real-axpy-fortran-call-lower-bound*))
-(generate-typed-num-axpy! real-typed-num-axpy! (real-tensor
-						daxpy
-						*real-axpy-fortran-call-lower-bound*))
-;;Tweakable
-(defparameter *complex-axpy-fortran-call-lower-bound* 10000
-  "If the size of the array is less than this parameter, the
-   lisp version of axpy is called in order to avoid FFI overheads")
-(generate-typed-axpy! complex-typed-axpy! (complex-tensor
-					   zaxpy
-					   *complex-axpy-fortran-call-lower-bound*))
-(generate-typed-num-axpy! complex-typed-num-axpy! (complex-tensor
-						   zaxpy
-						   *complex-axpy-fortran-call-lower-bound*))
+;;Real
+(generate-typed-axpy! real-typed-axpy!
+  (real-tensor daxpy *real-l1-fcall-lb*))
+
+(generate-typed-num-axpy! real-typed-num-axpy!
+  (real-tensor daxpy *real-l1-fcall-lb*))
+
+;;Complex
+(generate-typed-axpy! complex-typed-axpy!
+ (complex-tensor zaxpy *complex-l1-fcall-lb*))
+
+(generate-typed-num-axpy! complex-typed-num-axpy!
+  (complex-tensor zaxpy *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
 
 (defgeneric axpy! (alpha x y)

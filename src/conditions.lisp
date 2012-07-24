@@ -24,6 +24,12 @@
   (:method print-object ((c generic-error) stream)
 	   (format stream (message c))))
 
+(defcondition assumption-violated (generic-error)
+  ()
+  (:method print-object ((c assumption-violated) stream)
+	   (format stream "An assumption assumed when writing the software has been violated. Proceed with caution.")
+	   (call-next-method)))
+
 (defcondition invalid-type (generic-error)
   ((given-type :reader given :initarg :given)
    (expected-type :reader expected :initarg :expected))

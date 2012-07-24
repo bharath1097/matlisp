@@ -59,34 +59,32 @@
 							       `(+ (* alpha dotp) val) 'sto-y 'of-y))))))))))
        y)))
 
-;;Tweakable
-(defparameter *real-gemv-fortran-call-lower-bound* 1000
-  "
-  If the maximum dimension in the MV is lower than this
-  parameter, then the lisp code is used by default, instead of
-  calling BLAS. Used to avoid the FFI overhead when calling
-  MM with small matrices.
-  Default set with SBCL on x86-64 linux. A reasonable value
-  is something between 800 and 2000.")
-(generate-typed-gemv! real-typed-gemv! (real-matrix real-vector
-					dgemv
-					*real-gemv-fortran-call-lower-bound*))
+;;Real
+(generate-typed-gemv! real-base-typed-gemv!
+  (real-matrix real-vector dgemv *real-l2-fcall-lb*))
 
-;;Tweakable
-(defparameter *complex-gemv-fortran-call-lower-bound* 600
-  "
-  If the maximum dimension in the MV is lower than this
-  parameter, then the lisp code is used by default, instead of
-  calling BLAS. Used to avoid the FFI overhead when calling
-  MM with small matrices.
-  Default set with SBCL on x86-64 linux. A reasonable value
-  is something between 400 and 1000.")
-(generate-typed-gemv! complex-typed-gemv! (complex-matrix complex-vector
-					   zgemv
-					   *complex-gemv-fortran-call-lower-bound*))
+(definline real-typed-gemv! (alpha A x beta y job)
+  (real-base-typed-gemv! alpha A x beta y (ecase job ((:n :t) job) (:h :t) (:c :n))))
+
+;;Complex
+(generate-typed-gemv! complex-base-typed-gemv!
+  (complex-matrix complex-vector zgemv *complex-l2-fcall-lb*))
+
+(defun complex-typed-gemv! (alpha A x beta y job)
+  (declare (type complex-matrix A)
+	   (type complex-vector x y))
+  (if (member job '(:n :t))
+      (complex-base-typed-gemv! alpha A x beta y job)
+      ;;The CBLAS way.
+      (let ((cx (mconjugate x)))
+	(complex-base-typed-gemv! (cl:conjugate alpha) A cx
+				  (cl:conjugate beta) (mconjugate! y) (ecase job (:h :t) (:c :n)))
+	(mconjugate! y))))
+
 ;;---------------------------------------------------------------;;
 
-;;Can't support "C" because the dual isn't supported by BLAS.
+;;Can't support "C" because its dual (complex-conjugate without transpose)
+;;isn't supported by BLAS (which'd be needed for row-major matrices).
 (defgeneric gemv! (alpha A x beta y &optional job)
   (:documentation
 "
@@ -111,13 +109,15 @@
      JOB                    Operation
   ---------------------------------------------------
      :N (default)      alpha * A * x + beta * y
-     :T                alpha * A'* x + beta * y
+     :T                alpha * transpose(A)* x + beta * y
+     :C                alpha * conjugate(A) * x + beta * y
+     :H                alpha * transpose o conjugate(A) + beta * y
 ")
   (:method :before ((alpha number) (A standard-matrix) (x standard-vector)
 		    (beta number) (y standard-vector)
 		    &optional (job :n))
-	   (assert (member job '(:n :t)) nil 'invalid-value
-		   :given job :expected `(member job '(:n :t))
+	   (assert (member job '(:n :t :c :h)) nil 'invalid-value
+		   :given job :expected `(member job '(:n :t :c :h))
 		   :message "Inside gemv!")
 	   (assert (not (eq x y)) nil 'invalid-arguments
 		   :message "GEMV!: x and y cannot be the same vector")
@@ -143,7 +143,7 @@
   (unless (= beta 1)
     (complex-typed-scal! (coerce-complex beta) y))
   (unless (= alpha 0)
-    (if (complexp alpha)
+    (if (not (zerop (imagpart alpha)))
 	(let ((A.x (make-real-tensor (aref (dimensions y) 0)))
 	      (vw-y (tensor-realpart~ y)))
 	  (real-typed-gemv! (coerce-real 1) A x (coerce-real 0) A.x job)
@@ -204,6 +204,8 @@
   ---------------------------------------------------
      :N (default)      alpha * A * x + beta * y
      :T                alpha * A'* x + beta * y
+     :C                alpha * conjugate(A) * x + beta * y
+     :H                alpha * transpose o conjugate(A) + beta * y
 "))
 
 (defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
@@ -227,5 +229,5 @@
 			 (typep A 'complex-matrix) (typep x 'complex-vector))
 		     #'make-complex-tensor
 		     #'make-real-tensor)
-		 (list (ecase job (:n (nrows A)) (:t (ncols A)))))))
+		 (list (ecase job ((:n :c) (nrows A)) ((:t :h) (ncols A)))))))
     (gemv! alpha A x 0 result job)))

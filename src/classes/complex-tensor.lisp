@@ -23,11 +23,19 @@
   (make-array (* 2 size) :element-type 'complex-base-type
 	      :initial-element (coerce 0 'complex-base-type)))
 
-(definline coerce-complex (x)
+(definline coerce-complex-unforgiving (x)
   (coerce x 'complex-type))
 
-(definline coerce-complex-base (x)
+(defun coerce-complex (x)
+  (restart-case (coerce-complex-unforgiving x)
+    (use-value (value) (coerce-complex value))))
+
+(definline coerce-complex-base-unforgiving (x)
   (coerce x 'complex-base-type))
+
+(defun coerce-complex-base (x)
+  (restart-case (coerce-complex-base-unforgiving x)
+    (use-value (value) (coerce-complex-base value))))
 
 ;;
 (defclass complex-tensor (standard-tensor)
@@ -62,7 +70,7 @@ Cannot hold complex numbers."))
 
 (tensor-store-defs (complex-tensor complex-type complex-base-type)
   :store-allocator allocate-complex-store
-  :coercer coerce-complex  
+  :coercer coerce-complex-unforgiving
   :reader
   (lambda (tstore idx)
     (complex (aref tstore (* 2 idx))

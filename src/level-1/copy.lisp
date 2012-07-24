@@ -91,40 +91,20 @@
        to)))
 
 
-;;Tweakable
-(defparameter *real-copy-fortran-call-lower-bound* 20000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
-(generate-typed-copy! real-typed-copy! (real-tensor
-					dcopy
-					*real-copy-fortran-call-lower-bound*))
-(generate-typed-num-copy! real-typed-num-copy! (real-tensor
-						dcopy
-						*real-copy-fortran-call-lower-bound*))
+;;Real
+(generate-typed-copy! real-typed-copy!
+  (real-tensor dcopy *real-l1-fcall-lb*))
 
-;;Tweakable
-(defparameter *complex-copy-fortran-call-lower-bound* 10000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL
-  running on x86-64 linux. A reasonable value would be something
-  above 1000.")
-			  
-(generate-typed-copy! complex-typed-copy! (complex-tensor
-					   zcopy
-					   *complex-copy-fortran-call-lower-bound*))
-(generate-typed-num-copy! complex-typed-num-copy! (complex-tensor
-						   zcopy
-						   *complex-copy-fortran-call-lower-bound*))
+(generate-typed-num-copy! real-typed-num-copy!
+  (real-tensor dcopy *real-l1-fcall-lb*))
+
+;;Complex
+(generate-typed-copy! complex-typed-copy!
+  (complex-tensor zcopy *complex-l1-fcall-lb*))
+
+(generate-typed-num-copy! complex-typed-num-copy!
+  (complex-tensor zcopy *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
-
-(defun test-copy (n r)
-  (let ((x (make-real-tensor n)))
-    (time (dotimes (i r)
-	    (copy! pi x)))
-    t))
 
 (defgeneric copy! (from-tensor to-tensor)
   (:documentation

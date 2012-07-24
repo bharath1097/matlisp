@@ -27,16 +27,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defparameter *real-dot-fortran-call-lower-bound* 20000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
 (defun real-typed-dot (x y conjugate-p)
   (declare (type real-vector x y)
 	   (ignore conjugate-p))
   (let ((call-fortran? (> (number-of-elements x)
-			  *real-dot-fortran-call-lower-bound*)))
+			  *real-l1-fcall-lb*)))
     (cond
       (call-fortran?
        (ddot (number-of-elements x)
@@ -57,16 +52,10 @@
 	     summing (* (aref sto-x of-x) (aref sto-y of-y)) into dot of-type real-type
 	     finally (return dot))))))))
 
-
-(defparameter *complex-dot-fortran-call-lower-bound* 10000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
 (defun complex-typed-dot (x y conjugate-p)
   (declare (type complex-vector x y))
   (let ((call-fortran? (> (number-of-elements x)
-			  *complex-dot-fortran-call-lower-bound*)))
+			  *complex-l1-fcall-lb*)))
     (cond
       (call-fortran?
        (if conjugate-p

@@ -50,21 +50,18 @@
 		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
        to)))
 
-;; TODO: Maybe add zdscal support ? Don't think the difference between
-;; zdscal and zscal is significant, except for very large arrays.
-(defparameter *real-scal-fortran-call-lower-bound* 20000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
-(generate-typed-scal! real-typed-scal! (real-tensor dscal *real-scal-fortran-call-lower-bound*))
+;;Real
+(generate-typed-scal! real-typed-scal!
+  (real-tensor dscal *real-l1-fcall-lb*))
 
-(defparameter *complex-scal-fortran-call-lower-bound* 10000
-  "
-  If the dimension of the arguments is less than this parameter,
-  then the Lisp version of copy is used. Default set with SBCL running
-  on x86-64 linux. A reasonable value would be something above 1000.")
-(generate-typed-scal! complex-typed-scal! (complex-tensor zscal *complex-scal-fortran-call-lower-bound*))
+;;Complex
+(definline zordscal (nele alpha x incx &optional hd-x)
+  (if (zerop (imagpart alpha))
+      (zdscal nele (realpart alpha) x incx hd-x)
+      (zscal nele alpha x incx hd-x)))
+
+(generate-typed-scal! complex-typed-scal!
+  (complex-tensor zordscal *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
 
 (defgeneric scal! (alpha x)

@@ -50,9 +50,9 @@
      `(:pointer ,(%f77.cffi-type :double-float)))
     (t (ecase type
 	 (:void :void)
-	 (:integer :int)
+	 (:integer :int32)
 	 (:character :char)
-	 (:long :long)
+	 (:long :int64)
 	 (:single-float :float)
 	 (:double-float :double)
 	 (:string :string)

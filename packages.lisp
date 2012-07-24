@@ -33,6 +33,7 @@
    ;;<conditon {accessors*}>
    ;;Generic errors
    #:generic-error #:message
+   #:assumption-violated
    #:invalid-type #:given #:expected
    #:invalid-arguments
    #:invalid-value #:given #:expected
