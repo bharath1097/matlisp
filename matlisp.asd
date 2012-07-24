@@ -40,7 +40,7 @@
   ((:file "packages")))
 
 (asdf:defsystem matlisp-conditions
-  :depends-on ("matlisp-packages")
+  :depends-on ("matlisp-packages" "matlisp-config")
   :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
   :components ((:file "conditions")))
 
@@ -51,7 +51,7 @@
 
 (asdf:defsystem lazy-loader
   :pathname #.(translate-logical-pathname "matlisp:lib;")
-  :depends-on (#:cffi #:matlisp-packages)
+  :depends-on (#:cffi "matlisp-packages" "matlisp-config")
   :components
   ((:file "lazy-loader"
 	  ;; you need the load-only here,

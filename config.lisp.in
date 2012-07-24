@@ -34,7 +34,7 @@
 ;;; $Id: config.lisp.in,v 1.2 2011/01/25 18:36:56 rtoy Exp $
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(in-package "COMMON-LISP-USER")
+(in-package "MATLISP")
 
 #+:allegro (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
 #+:allegro (setq excl:*enable-package-locked-errors* nil)
