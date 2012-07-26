@@ -158,22 +158,28 @@
   (make-instance 'permutation-pivot-flip :repr pact))
 
 ;;Generic permute! method.
-(defgeneric permute! (seq perm)
+(defgeneric permute! (thing permutation &optional argument)
   (:documentation "
-  (permute! seq perm)
+  (permute! thing permutation [argument 0])
 
-  Applies the permutation on the sequence.
-")
-  (:method :before ((seq sequence) (perm permutation))
+  Permutes the ARGUMENT index of the the array-like object THING, by
+  applying PERMUTATION on it.")
+  (:method :before ((seq sequence) (perm permutation) &optional (arg 0))
+	   (declare (ignore arg))
 	   (let ((len (length seq)))
 	     (assert (>= len (group-rank perm)) nil
+		     'permutation-permute-error :seq-len len :group-rank (group-rank perm))))
+  (:method :before ((ten standard-tensor) (perm permutation) &optional (arg 0))
+	   (let ((len (aref (dimensions ten) arg)))
+	     (assert (>= len (group-rank perm)) nil
 		     'permutation-permute-error :seq-len len :group-rank (group-rank perm)))))
-
-(definline permute (seq perm)
-  (permute! (copy-seq seq) perm))
+  
+(definline permute (thing perm &optional (arg 0))
+  (permute! (copy thing) perm arg))
 
 ;;Action
-(defmethod permute! ((seq cons) (perm permutation-action))
+(defmethod permute! ((seq cons) (perm permutation-action) &optional arg)
+  (declare (ignore arg))
   (let ((cseq (make-array (length seq) :initial-contents seq))
 	(act (repr perm))
 	(glen (group-rank perm)))
@@ -185,7 +191,8 @@
 	   (rplaca x (aref cseq (aref act i)))
 	   (incf i)))) seq)))
     
-(defmethod permute! ((seq vector) (perm permutation-action))
+(defmethod permute! ((seq vector) (perm permutation-action) &optional arg)
+  (declare (ignore arg))
   (let ((cseq (make-array (length seq) :initial-contents seq))
 	(act (repr perm)))
       (loop
@@ -205,7 +212,8 @@
 		(if (= i 0) xl
 		    (aref seq (aref pcyc (1- i))))))))
 
-(defmethod permute! ((seq cons) (perm permutation-cycle))
+(defmethod permute! ((seq cons) (perm permutation-cycle) &optional arg)
+  (declare (ignore arg))
   (let ((cseq (make-array (length seq) :initial-contents seq))
 	(glen (group-rank perm)))
     (dolist (cyc (repr perm))
@@ -218,20 +226,23 @@
 	   (rplaca x (aref cseq i))
 	   (incf i)))) seq)))
 
-(defmethod permute! ((seq vector) (perm permutation-cycle))
+(defmethod permute! ((seq vector) (perm permutation-cycle) &optional arg)
+  (declare (ignore arg))
   (dolist (cyc (repr perm) seq)
     (declare (type perrepr-vector cyc))
     (apply-cycle! seq cyc)))
 
 ;;Pivot idx
-(defmethod permute! ((seq vector) (perm permutation-pivot-flip))
+(defmethod permute! ((seq vector) (perm permutation-pivot-flip) &optional arg)
+  (declare (ignore arg))
   (let-typed ((pidx (repr perm) :type perrepr-vector))
      (loop for i of-type index-type from 0 below (group-rank perm)
 	unless (= i (aref pidx i))
 	do (rotatef (aref seq i) (aref seq (aref pidx i)))
 	finally (return seq))))
   
-(defmethod permute! ((seq cons) (perm permutation-pivot-flip))
+(defmethod permute! ((seq cons) (perm permutation-pivot-flip) &optional arg)
+  (declare (ignore arg))
   (let ((cseq (make-array (length seq) :initial-contents seq))
 	(glen (group-rank perm)))
     (permute! cseq perm)
@@ -241,6 +252,20 @@
 	 (when (< i glen)
 	   (rplaca x (aref cseq i))
 	   (incf i)))) seq)))
+
+(defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
+  (let ((idiv (repr perm)))
+    (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
+				       (rplaca (nthcdr arg slst) 0)
+				       (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
+      (let ((argstd (aref (strides A) arg)))
+	(loop for i from 0 below (length idiv)
+	   do (progn
+		(unless (= i (aref idiv i))
+		  (setf (head ttwo) (* (aref idiv i) argstd))
+		  (swap! tone ttwo))
+		(incf (head tone) argstd))))))
+  A)
 
 ;;Conversions----------------------------------------------------;;
 (defun action->cycle (act)
@@ -412,6 +437,5 @@
 			   (qsort-bounds todo)))))))
       (qsort-bounds `((0 ,len)))
       (values seq (action->cycle (make-paction perm))))))
-
 ;;Add a general sorter, this is a very useful thing to have.
 ;;Add a function to apply permutations to a matrices, tensors.

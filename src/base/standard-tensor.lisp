@@ -57,6 +57,13 @@
   (loop for ele across a
      collect ele))
 
+(definline idx->list! (a lst)
+  ;;No error checking!
+  (mapl (let ((i 0))
+	  #'(lambda (lst)
+	      (rplaca lst (aref a i))
+	      (incf i)))
+	lst))
 ;;
 (defclass standard-tensor ()
   ((rank
@@ -72,6 +79,10 @@
     :accessor number-of-elements
     :type index-type
     :documentation "Total number of elements in the tensor.")
+   (element-type
+    :accessor element-type
+    :type symbol
+    :documentation "Element type of the tensor")
    ;;
    (parent-tensor
     :accessor parent-tensor

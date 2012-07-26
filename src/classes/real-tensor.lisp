@@ -22,9 +22,8 @@ Allocates real storage.  Default initial-element = 0d0.")
 
 ;;
 (defclass real-tensor (standard-tensor)
-  ((store
-    :initform nil
-    :type real-store-vector))
+  ((store :type real-store-vector)
+   (element-type :initform 'real-type))
   (:documentation "Tensor class with real elements."))
 
 (defclass real-matrix (standard-matrix real-tensor)

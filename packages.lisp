@@ -33,9 +33,10 @@
    ;;<conditon {accessors*}>
    ;;Generic errors
    #:generic-error #:message
+   #:dimension-mismatch
    #:assumption-violated
    #:invalid-type #:given #:expected
-   #:invalid-arguments
+   #:invalid-arguments #:argnum
    #:invalid-value #:given #:expected
    #:unknown-token #:token
    #:parser-error

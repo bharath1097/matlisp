@@ -39,9 +39,8 @@
 
 ;;
 (defclass complex-tensor (standard-tensor)
-  ((store
-    :initform nil
-    :type complex-store-vector))
+  ((store :type complex-store-vector)
+   (element-type :initform 'complex-type))
   (:documentation "Tensor class with complex elements."))
 
 (defclass complex-matrix (standard-matrix complex-tensor)

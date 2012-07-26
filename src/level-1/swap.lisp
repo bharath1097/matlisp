@@ -59,31 +59,17 @@
 (generate-typed-swap! complex-typed-swap!
   (complex-tensor zswap *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
+;;Generic function in src;base;generic-swap.lisp
 
-(defgeneric swap! (x y)
-  (:documentation
-"
-  Sytnax
-  ======
-  (SWAP! x y)
+(defmethod swap! :before ((x standard-tensor) (y standard-tensor))
+  (assert (idx= (dimensions x) (dimensions y)) nil
+	  'tensor-dimension-mismatch))
 
-  Purpose
-  =======
-  Given tensors X,Y, performs:
+(defmethod swap! ((x complex-tensor) (y real-tensor))
+  (error 'coercion-error :from 'complex-tensor :to 'real-tensor))
 
-              X <-> Y
-
-  and returns Y.
-
-  X, Y must have the same dimensions.
-")
-  (:method :before ((x standard-tensor) (y standard-tensor))
-	   (unless (idx= (dimensions x) (dimensions y))
-	     (error 'tensor-dimension-mismatch)))
-  (:method ((x complex-tensor) (y real-tensor))
-    (error 'coercion-error :from 'complex-tensor :to 'real-tensor))
-  (:method ((x real-tensor) (y complex-tensor))
-    (error 'coercion-error :from 'complex-tensor :to 'real-tensor)))
+(defmethod swap! ((x real-tensor) (y complex-tensor))
+  (error 'coercion-error :from 'complex-tensor :to 'real-tensor))
 
 (defmethod swap! ((x real-tensor) (y real-tensor))
   (real-typed-swap! x y))

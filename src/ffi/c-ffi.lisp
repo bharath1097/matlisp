@@ -7,7 +7,7 @@
      (real ,base-type)
      (imag ,base-type)))
 
-(defccomplex %c.complex-double :double)R
+(defccomplex %c.complex-double :double)
 (defccomplex %c.complex-float :float)
 
 ;; Get the equivalent CFFI type.

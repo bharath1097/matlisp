@@ -1588,7 +1588,7 @@
   (work (* :double-float) :workspace-output)
   (lwork :integer :input)
   (info :integer :output))
-
+
 (def-fortran-routine dpotrf :void
   "
        SUBROUTINE DPOTRF( UPLO, N, A, LDA, INFO )

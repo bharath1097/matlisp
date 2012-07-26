@@ -40,10 +40,10 @@
   ((:file "packages")))
 
 (asdf:defsystem matlisp-config
-      :pathname #.(translate-logical-pathname "matlisp:builddir;")
-      :depends-on ("matlisp-packages")
-      :components
-      ((:file "config")))
+  :pathname #.(translate-logical-pathname "matlisp:builddir;")
+  :depends-on ("matlisp-packages")
+  :components
+  ((:file "config")))
 
 (asdf:defsystem matlisp-conditions
   :depends-on ("matlisp-packages" "matlisp-config")
@@ -101,8 +101,12 @@
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
+			 (:file "generic-copy"
+				:depends-on ("standard-tensor" "loopy"))
+			 (:file "generic-swap"
+				:depends-on ("standard-tensor" "loopy"))
 			 (:file "permutation"
-				:depends-on ("standard-tensor"))
+				:depends-on ("standard-tensor" "generic-copy" "generic-swap"))
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
 			 (:file "print"

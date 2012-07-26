@@ -157,7 +157,7 @@
   (real-matrix dgemm dgemv *real-l3-fcall-lb*))
 
 (definline real-typed-gemm! (alpha A B beta C job)
-  (real-base-typed-gemv! alpha A B beta C
+  (real-base-typed-gemm! alpha A B beta C
 			 (apply #'combine-jobs
 				(mapcar #'(lambda (x)
 					    (ecase x ((:n :t) x) (:h :t) (:c :n)))
