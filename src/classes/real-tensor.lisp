@@ -40,7 +40,11 @@ Allocates real storage.  Default initial-element = 0d0.")
 
 ;;
 (defmethod initialize-instance ((tensor real-tensor) &rest initargs)
-  (setf (store-size tensor) (length (getf initargs :store)))
+  (if (getf initargs :store)
+      (setf (store-size tensor) (length (getf initargs :store)))
+      (let ((size (reduce #'* (getf initargs :dimensions))))
+	(setf (store tensor) (allocate-real-store size)
+	      (store-size tensor) size)))
   (call-next-method))
 
 ;;

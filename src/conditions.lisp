@@ -55,7 +55,7 @@
   (:documentation "Given invalid arguments to the function.")
   (:method print-object ((c invalid-arguments) stream)
 	   (when (slot-boundp c 'argument-number)
-	     (format stream "The ~a'th argument given to the function is invalid." (argnum c)))
+	     (format stream "The argument ~a, given to the function is invalid (or has not been given)." (argnum c)))
 	   (call-next-method)))
 
 (defcondition invalid-value (generic-error)

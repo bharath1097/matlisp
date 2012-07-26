@@ -306,6 +306,13 @@
     (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
 
 ;;
+(defmethod initialize-instance :before ((tensor standard-tensor) &rest initargs)
+  (let ((dims (getf initargs :dimensions)))
+    (assert (getf initargs :dimensions) nil 'invalid-arguments :argnum :dimensions
+	    :message "Dimensions are necessary for creating the tensor object.")
+    (when (consp dims)
+      (setf (getf initargs :dimensions) (make-index-store dims)))))
+
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
   (mlet*

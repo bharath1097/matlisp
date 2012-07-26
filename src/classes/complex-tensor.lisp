@@ -57,13 +57,12 @@
 
 ;;
 (defmethod initialize-instance ((tensor complex-tensor) &rest initargs)
-  (mlet* ((2*ss (length (getf initargs :store)) :type index-type))
-	 (unless (evenp 2*ss)
-	   (error "Store is not of even length.
-Cannot hold complex numbers."))
-	 ;;Hold the effective Store-size.
-	 ;;Might have to have conversions when converting complex-tensors to real ones.
-	 (setf (store-size tensor) (/ 2*ss 2)))
+  (if (getf initargs :store)
+      ;;Two values count for one complex value.
+      (setf (store-size tensor) (floor (length (getf initargs :store)) 2))
+      (let ((size (reduce #'* (getf initargs :dimensions))))
+	(setf (store tensor) (allocate-complex-store size)
+	      (store-size tensor) size)))
   (call-next-method))
 ;;
 

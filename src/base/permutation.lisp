@@ -201,6 +201,10 @@
 	      (setf (aref seq i) (aref cseq (aref act i))))
 	 finally (return seq))))
 
+(defmethod permute! ((ten standard-tensor) (perm permutation-action) &option (arg 0))
+  (let ((cyc (action->cycle perm)))
+    (permute! ten cyc arg)))
+
 ;;Cycle
 ;;Might be useful ?
 (defun apply-cycle! (seq pcyc)
@@ -220,7 +224,7 @@
       (declare (type perrepr-vector cyc))
       (apply-cycle! cseq cyc))
     (mapl
-     (let ((i 0))	 
+     (let ((i 0))
        (lambda (x)
 	 (when (< i glen)
 	   (rplaca x (aref cseq i))
@@ -231,6 +235,30 @@
   (dolist (cyc (repr perm) seq)
     (declare (type perrepr-vector cyc))
     (apply-cycle! seq cyc)))
+
+(defmethod permute! ((A standard-tensor) (perm permutation-cycle) &optional (arg 0))
+  (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
+				       (rplaca (nthcdr arg slst) 0)
+				       (values (sub-tensor~ A slst) (sub-tensor~ A slst)))
+    (let-typed ((cyclst (repr perm) :type cons)
+		(cp-ten (make-instance (class-of tone)
+				       :dimensions (copy-seq (dimensions tone))))
+		(std-arg (aref (strides A) arg) :type index-type)
+		(hd-sl (head ttwo) :type index-type))
+      (dolist (cyc cyclst)
+	(declare (type perrepr-vector cyc))
+	(setf (head tone) (+ hd-sl (* std-arg (aref cyc (1- (length cyc))))))
+	(copy! tone cp-ten)
+	(loop for i of-type index-type downfrom (1- (length cyc)) to 0
+	   do (progn
+		(setf (head tone) (+ hd-sl (* std-arg (aref cyc i))))
+		(copy!
+		 (if (= i 0) cp-ten
+		     (progn
+		       (setf (head ttwo) (+ hd-sl (* std-arg (aref cyc (1- i)))))
+		       ttwo))
+		 tone))))))
+  A)
 
 ;;Pivot idx
 (defmethod permute! ((seq vector) (perm permutation-pivot-flip) &optional arg)
@@ -258,11 +286,12 @@
     (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
 				       (rplaca (nthcdr arg slst) 0)
 				       (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
-      (let ((argstd (aref (strides A) arg)))
+      (let ((argstd (aref (strides A) arg))
+	    (hd-sl (head ttwo)))
 	(loop for i from 0 below (length idiv)
 	   do (progn
 		(unless (= i (aref idiv i))
-		  (setf (head ttwo) (* (aref idiv i) argstd))
+		  (setf (head ttwo) (+ hd-sl (* (aref idiv i) argstd)))
 		  (swap! tone ttwo))
 		(incf (head tone) argstd))))))
   A)
