@@ -153,6 +153,7 @@
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "mplusminus")))
+   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"
 	    :components ((:file "slicing")))))

@@ -28,13 +28,29 @@
 	 do (setf (aref ret i) i)))
     ret))
 
-(definline perrepr-max (seq)
+(defun perrepr-max (seq)
   (declare (type perrepr-vector seq))
-  (very-quickly (reduce #'max seq)))
+  (very-quickly
+    (loop for ele of-type perrepr-type across seq
+       for idx of-type index-type = 0 then (+ idx 1)
+       with max of-type perrepr-type = (aref seq 0)
+       with max-idx of-type index-type = 0
+       do (when (> ele max)
+	    (setf max ele
+		  max-idx idx))
+       finally (return (values max max-idx)))))
 
-(definline perrepr-min (seq)
+(defun perrepr-min (seq)
   (declare (type perrepr-vector seq))
-  (very-quickly (reduce #'min seq)))
+  (very-quickly
+    (loop for ele of-type perrepr-type across seq
+       for idx of-type index-type = 0 then (+ idx 1)
+       with min of-type perrepr-type = (aref seq 0)
+       with min-idx of-type index-type = 0
+       do (when (< ele min)
+	    (setf min ele
+		  min-idx idx))
+       finally (return (values min min-idx)))))
 
 (definline perv (&rest contents)
   (make-array (length contents) :element-type 'perrepr-type :initial-contents contents))
@@ -133,7 +149,7 @@
   flip is more algorithmic in its representation. If a sequence
   is given, apply a pivot-flip on it is equivalent to running from
   the left to the right of the permutation by flipping (pi(i), i)
-  sequentially.
+  sequentially. This is the representation used in LAPACK.
 "
 	     (if (not (typep idiv 'perrepr-vector)) nil
 		 (let ((len (length idiv)))
@@ -201,7 +217,7 @@
 	      (setf (aref seq i) (aref cseq (aref act i))))
 	 finally (return seq))))
 
-(defmethod permute! ((ten standard-tensor) (perm permutation-action) &option (arg 0))
+(defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
   (let ((cyc (action->cycle perm)))
     (permute! ten cyc arg)))
 
@@ -376,18 +392,53 @@
 	   do (let ((val (aref idiv i)))
 		(unless (= val i)
 		  (rotatef (aref act i) (aref act val))))))
-      (make-instance 'permutation-action :repr act))))
+      (make-instance 'permutation-action :repr act))))       
 
-;; (defun cycle->pivot-flip (cycs)
-;;   (declare (type permutation-cycle cycs)))
-;;
+(defun mod-max (seq lidx uidx)
+  (declare (type perrepr-vector seq))
+  (let ((len (length seq)))
+    (very-quickly
+      (loop :for idx :of-type index-type :downfrom uidx :above lidx
+	 with max of-type perrepr-type = (aref seq uidx)
+	 with max-idx of-type index-type = uidx
+	 do (let ((ele (aref seq (mod idx len))))
+	      (when (> ele max)
+		(setf max ele
+		      max-idx idx)))
+	 finally (return (values max max-idx))))))
+
+#|
+
+(defun cycle->pivot-flip (cyc)
+  (let ((cp-cyc (copy-seq cyc)))
+    (let
+    (labels ((mod-max (seq lidx uidx)
+	       (declare (type perrepr-vector seq))
+	       (let ((len (length cyc)))
+		 (very-quickly
+		   (loop :for idx :of-type index-type :downfrom uidx :above lidx
+		      with max of-type perrepr-type = (aref seq uidx)
+		      with max-idx of-type index-type = uidx
+		      do (let ((ele (aref seq (mod idx len))))
+			   (when (> ele max)
+			     (setf max ele
+				   max-idx idx)))
+		      finally (return (values max max-idx))))))
+	     (get-flip (lidx uidx)
+	       (multiple-value-bind (max max-idx) (mod-max cyc lidx uidx)
+		 (let ((ele-0 (aref cyc (mod max-idx len)))
+		       (ele-1 (aref cyc (mod (1- max-idx) len))))
+		   (setf (aref pidx (max ele-0 ele-1))
+			 (min ele-0 ele-1))
+|#
+
 #+nil
 (defun permute-argument (func-symbol perm)
   (declare (type symbol func-symbol)
 	   (type permutation perm))
   (let* ((glen (group-rank perm))
 	 (args (loop for i from 0 below glen
-		  collect (gensym))))
+		  collect (gensym))))    
     (eval `(lambda (,@args &rest rest)
 	     (apply ',func-symbol (append (list ,@(permute! args perm)) rest))))))
 

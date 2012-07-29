@@ -127,22 +127,6 @@
       (rplaca ret A))
     (values-list ret)))
 
-(defun permute-idx (A arg perm)
-  (declare (type standard-matrix A)
-	   (type permutation-pivot-flip perm))
-  (let* ((idiv (repr perm)))
-    (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
-				       (rplaca (nthcdr arg slst) 0)
-				       (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
-      (let ((argstd (aref (strides A) arg)))
-	(loop for i from 0 below (length idiv)
-	   do (progn
-		(unless (= i (aref idiv i))
-		  (setf (head ttwo) (* (aref idiv i) argstd))
-		  (swap! tone ttwo))
-		(incf (head tone) argstd))))))
-  A)
-
 (defun split-lu (A op-info)
   (declare (type standard-matrix A))
   (destructuring-bind (&key decomposition-type row-permutation col-permutation) op-info

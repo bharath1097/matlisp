@@ -345,7 +345,7 @@
 
 (defun same-token-p (x y)
   (and (symbolp x)
-       (symbolp y) 
+       (symbolp y)
        (string-equal (symbol-name x) (symbol-name y))))
 
 ;;; Peeking Token Reader

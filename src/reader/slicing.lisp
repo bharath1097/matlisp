@@ -26,18 +26,39 @@
       (unread-char char stream))
     char))
 
-(defun read-interesting-char (&optional (stream *standard-input*) (eof-error t) eof-value recursive-p)
+(defun read-interesting-char (ignored-characters interesting-characters &optional (stream *standard-input*) (eof-error t) eof-value recursive-p)
   (symbol-macrolet ((pop-char (read-char-no-hang stream eof-error eof-value recursive-p)))
     (loop
        for char = pop-char then pop-char
        and c-prev = nil then char
        until (cond
-	       ((member char +parser-ignored-characters+) nil)
-	       (t t))
+	       ((member char ignored-characters) nil)
+	       ((or (null interesting-characters)
+		    (member char interesting-characters)) t)
+	       ((null char) t)
+	       (t nil))
        finally (return char))))
 
+(defun read-until (break-chars &optional (stream *standard-input*)  (eof-error t) eof-value recursive-p)
+  (symbol-macrolet ((pop-char (read-char-no-hang stream eof-error eof-value recursive-p)))
+    (loop
+       :for char = pop-char :then pop-char
+       :counting t :into n
+       :if (and char (not (member char break-chars)))
+         :collect char into ret
+       :else
+         :do (let ((out (read-from-string
+			 (make-array (1- n) :element-type 'character
+				     :initial-contents ret))))
+	       (return (values out char))))))
 
 ;;Array slicer---------------------------------------------------;;
+(defun slicing-sym? (x)
+  (or (consp x)
+      (and (symbolp x)
+	   (not (member x '(t nil))))
+      (numberp x)))
+
 (defun get-slicing-subscript (lst)
   (flet ((idxp (x)
 	   (or (consp x)
@@ -97,7 +118,7 @@
 	     (error 'parser-error))))))
       (t
        (error 'parser-error)))))
-	  
+
 (defun parse-indexing-expression (stream macro-char)
   (declare (ignore macro-char))
   ;;macro-char is assumed to be #\$
@@ -111,15 +132,17 @@
 			      (not (member x '(t nil))))
 			 (numberp x)))
 	   (get-idx-expr (limlst)
+	     (format t "~a~%" limlst)
 	     (loop
 		for char = (pop-char) then (pop-char)
-		counting t into n
+		counting t into n		
 		if (not (member char limlst))
 		  collect char into ret
 		else
-		do (progn
-		     (unread-char char stream)
-		     (return (read-from-string (make-array (1- n) :element-type 'character :initial-contents ret) nil nil)))
+		  do (progn		       
+		       (unread-char char stream)
+		       (format t "~a ~%" ret)
+		       (return (read-from-string (make-array (1- n) :element-type 'character :initial-contents ret) nil nil)))
 		end)))
     (let* ((tensor (get-idx-expr `(#\[ #\{ #\$)))
 	   (idx-char (pop-ichar))
@@ -171,6 +194,7 @@
 
 (set-macro-character #\$ #'parse-indexing-expression)
 
+(set-dispatch-macro-character #\# #\d #'msco
 #+nil(with-input-from-string (ostr "x[0:5, 0, 0]$ ")
   (parse-indexing-expression ostr #\$))
 
