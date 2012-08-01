@@ -113,7 +113,7 @@
   the type of Y.  For example,
   a COMPLEX-MATRIX cannot be copied to a
   REAL-MATRIX but the converse is possible."
-  (assert (idx= (dimensions x) (dimensions y)) nil
+  (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	  'tensor-dimension-mismatch))
 
 (defmethod copy! ((x standard-tensor) (y standard-tensor))
@@ -164,14 +164,14 @@
 "
   (declare (type standard-tensor tensor))
   (let* ((dims (dimensions tensor))
-	 (ret (make-array (idx->list dims)
+	 (ret (make-array (lvec->list dims)
 			  :element-type (if-ret (getf (get-tensor-class-optimization (class-name (class-of tensor)))  :element-type)
 						(error 'tensor-cannot-find-optimization :tensor-class (class-name (class-of tensor)))))))
     (declare (type index-store-vector dims))
     (let ((lst (make-list (rank tensor))))
       (very-quickly
 	(mod-dotimes (idx dims)
-	  do (setf (apply #'aref ret (idx->list! idx lst)) (tensor-ref tensor idx))))
+	  do (setf (apply #'aref ret (lvec->list! idx lst)) (tensor-ref tensor idx))))
       ret)))
 
 (defmethod copy! :before ((x standard-tensor) (y array))
@@ -183,7 +183,7 @@
   (assert (and
 	   (= (rank x) (array-rank y))
 	   (reduce #'(lambda (x y) (and x y))
-		   (mapcar #'= (idx->list (dimensions x)) (array-dimensions y))))
+		   (mapcar #'= (lvec->list (dimensions x)) (array-dimensions y))))
 	  nil 'dimension-mismatch))
 
 (defmethod copy! ((x real-tensor) (y array))
@@ -193,7 +193,7 @@
       (mod-dotimes (idx (dimensions x))
 	with (linear-sums
 	      (of-x (strides x) (head x)))
-	do (setf (apply #'aref y (idx->list! idx lst))
+	do (setf (apply #'aref y (lvec->list! idx lst))
 		 (aref sto-x of-x)))))
   y)
 
@@ -204,7 +204,7 @@
       (mod-dotimes (idx (dimensions x))
 	with (linear-sums
 	      (of-x (strides x) (head x)))
-	do (setf (apply #'aref y (idx->list! idx lst))
+	do (setf (apply #'aref y (lvec->list! idx lst))
 		 (complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x))))))))
   y)
 
@@ -216,8 +216,8 @@
 	  :given (array-element-type x) :expected (element-type y))
   (assert (and
 	   (= (array-rank x) (rank y))
-	   (reduce #'(lambda (x y) (and x y))
-		   (mapcar #'= (array-dimensions x) (idx->list (dimensions y)))))
+	   (reduce #'(lambda (x y) (= x y))
+		   (mapcar #'= (array-dimensions x) (lvec->list (dimensions y)))))
 	  nil 'dimension-mismatch))
 
 (defmethod copy! ((x array) (y real-tensor))
@@ -227,7 +227,7 @@
       (mod-dotimes (idx (dimensions y))
 	with (linear-sums
 	      (of-y (strides y) (head y)))
-	do (setf (aref sto-y of-y) (apply #'aref x (idx->list! idx lst))))))
+	do (setf (aref sto-y of-y) (apply #'aref x (lvec->list! idx lst))))))
   y)
 
 (defmethod copy! ((x array) (y complex-tensor))
@@ -237,7 +237,7 @@
       (mod-dotimes (idx (dimensions y))
 	with (linear-sums
 	      (of-y (strides y) (head y)))
-	do (let-typed ((ele (apply #'aref x (idx->list! idx lst)) :type complex-type))
+	do (let-typed ((ele (apply #'aref x (lvec->list! idx lst)) :type complex-type))
 	     (setf (aref sto-y (* 2 of-y)) (realpart ele)
 		   (aref sto-y (1+ (* 2 of-y))) (imagpart ele))))))
   y)
@@ -246,12 +246,12 @@
 ;;Generic function defined in src;base;generic-copy.lisp
 
 (defmethod copy ((tensor real-tensor))
-  (let* ((ret (apply #'make-real-tensor (idx->list (dimensions tensor)))))
+  (let* ((ret (apply #'make-real-tensor (lvec->list (dimensions tensor)))))
     (declare (type real-tensor ret))
     (copy! tensor ret)))
 
 (defmethod copy ((tensor complex-tensor))
-  (let* ((ret (apply #'make-complex-tensor (idx->list (dimensions tensor)))))
+  (let* ((ret (apply #'make-complex-tensor (lvec->list (dimensions tensor)))))
     (declare (type complex-tensor ret))
     (copy! tensor ret)))
 

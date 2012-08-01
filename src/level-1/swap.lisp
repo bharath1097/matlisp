@@ -62,7 +62,7 @@
 ;;Generic function in src;base;generic-swap.lisp
 
 (defmethod swap! :before ((x standard-tensor) (y standard-tensor))
-  (assert (idx= (dimensions x) (dimensions y)) nil
+  (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	  'tensor-dimension-mismatch))
 
 (defmethod swap! ((x complex-tensor) (y real-tensor))

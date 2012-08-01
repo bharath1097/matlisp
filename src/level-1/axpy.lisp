@@ -133,7 +133,7 @@
   is stored in Y and Y is returned.
 ")
   (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
-	   (assert (idx= (dimensions x) (dimensions y)) nil
+	   (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 		   'tensor-dimension-mismatch))
   (:method ((alpha number) (x complex-tensor) (y real-tensor))
     (error 'coercion-error :from 'complex-tensor :to 'real-tensor)))
@@ -185,17 +185,17 @@
  X,Y must have the same dimensions.
 ")
   (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
-	   (unless (idx= (dimensions x) (dimensions y))
+	   (unless (lvec-eq (dimensions x) (dimensions y) #'=)
 	     (error 'tensor-dimension-mismatch))))
 
 (defmethod axpy ((alpha number) (x real-tensor) (y real-tensor))
   (let ((ret (if (complexp alpha)
-		 (copy! y (apply #'make-complex-tensor (idx->list (dimensions y))))
+		 (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))
 		 (copy y))))
     (axpy! alpha x ret)))
 
 (defmethod axpy ((alpha number) (x complex-tensor) (y real-tensor))
-  (let ((ret (copy! y (apply #'make-complex-tensor (idx->list (dimensions y))))))
+  (let ((ret (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))))
     (axpy! alpha y ret)))
 
 (defmethod axpy ((alpha number) (x real-tensor) (y complex-tensor))
@@ -212,7 +212,7 @@
 
 (defmethod axpy ((alpha number) (x (eql nil)) (y real-tensor))
   (let ((ret (if (complexp alpha)
-		 (copy! y (apply #'make-complex-tensor (idx->list (dimensions y))))
+		 (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))
 		 (copy y))))
     (axpy! alpha nil ret)))
 

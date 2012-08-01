@@ -13,14 +13,15 @@
 		(make-from-array (arr)
 		  (declare (type (array * *) arr))
 		  (let* ((ret (make-dims (array-dimensions arr)))
-			 (st-r (store ret)))
+			 (st-r (store ret))
+			 (lst (make-list (rank ret))))
 		    (declare (type ,tensor-class ret)
 			     (type ,(linear-array-type (getf opt :store-type)) st-r))
 		    (very-quickly
 		      (mod-dotimes (idx (dimensions ret))
 			with (linear-sums
 			      (of-r (strides ret) (head ret)))
-			do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) (apply #'aref arr (idx->list idx))) 'st-r 'of-r)))
+			do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) (apply #'aref arr (lvec->list! idx lst))) 'st-r 'of-r)))
 		    ret))
 		(make-from-list (lst)
 		  (let* ((ret (make-dims (list-dimensions lst)))
@@ -50,3 +51,4 @@
 ;;Had to move it here in the wait for copy!
 (definline sub-tensor (tensor subscripts)
   (copy (sub-tensor~ tensor subscripts)))
+

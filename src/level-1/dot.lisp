@@ -131,7 +131,7 @@
 ")
   (:method :before ((x standard-vector) (y standard-vector) &optional (conjugate-p t))
   (declare (ignore conjugate-p))
-  (unless (idx= (dimensions x) (dimensions y))
+  (unless (lvec-eq (dimensions x) (dimensions y) #'=)
     (error 'tensor-dimension-mismatch))))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))

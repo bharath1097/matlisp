@@ -75,6 +75,8 @@
 	   #:format-to-string #:string+
 	   #:linear-array-type
 	   #:list-dimensions
+	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
+	   #:lvec->list #:lvec->list!
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator #:let-typed

@@ -59,6 +59,13 @@
 	`(progn
 	   ,@body))))
 
+(defmacro make-array-allocator (allocator-name type init &optional doc)
+  `(definline ,allocator-name (size &optional (initial-element ,init))
+     ,@(unless (null doc)
+	       `(,doc))
+     (make-array size
+		 :element-type ,type :initial-element initial-element)))
+
 (defmacro let-typed (bindings &rest body)
   "
   This macro works basically like let, but also allows type-declarations
@@ -182,7 +189,7 @@
        `(with-gensyms (a b c)
            `(let ((,a 1) (,b 2) (,c 3))
                  (+ ,a ,b ,c))))
-  => (LET ((A (GENSYM "A")) (B (GENSYM "B")) (C (GENSYM "C")))
+  => (LET ((A (GENSYM \"A\")) (B (GENSYM \"B\")) (C (GENSYM \"C\")))
       `(LET ((,A 1) (,B 2) (,C 3))
           (+ ,A ,B ,C)))
   @end lisp
@@ -318,42 +325,7 @@
   (destructuring-bind (labd args &rest body) lambda-func
     (assert (eq labd 'lambda))
     `(lambda ,args ,@(cdr (unquote-args body args)))))
-
-(defmacro defun-compiler-macro (func-name (&rest args) &body body)
-  "
-  Creates a compiler macro mirroring the function definition, this helps
-  the compiler produce leaner code when argument types are better known in the
-  local environment during compile time.
-  DO NOT USE backquotes in the function definition, it will likely be mucked up.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(defun-compiler-macro lvec->list (va)
-         (declare (type vector va))
-           (loop :for ele :across va
-             :collect ele)))
-  => (PROGN
-       (DEFUN LVEC->LIST (VA)
-         (DECLARE (TYPE VECTOR VA))
-         (LOOP :FOR ELE :ACROSS VA
-            :COLLECT ELE))
-       (DEFINE-COMPILER-MACRO LVEC->LIST (VA)
-         (LIST 'LOCALLY (LIST 'DECLARE (LIST 'TYPE 'VECTOR VA))
-            (LIST 'LOOP ':FOR 'ELE ':ACROSS VA ':COLLECT 'ELE))))
-  T
-  @end lisp
- "
-  `(progn
-     (defun ,func-name (,@args)
-       ,@body)
-     (define-compiler-macro ,func-name (,@args)
-       (list 'locally
-	     ,@(cdr (unquote-args body (loop
-					  :for arg :in args
-					  :unless (and (symbolp arg) (string= (aref (symbol-name arg) 0) #\&))
-					  :collect (if (consp arg) (first arg) arg))))))))
-
+    
 (defmacro looped-mapcar ((func lst) &rest body)
   "
   A macro to use when caught between the efficiency of imperative looping, and
@@ -491,3 +463,5 @@
   "
   `(with-optimization (:speed 1)
      ,@forms))
+
+

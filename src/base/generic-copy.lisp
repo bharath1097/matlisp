@@ -48,7 +48,7 @@
   (let ((lst (make-list (array-rank to))))
     (mod-dotimes (idx (make-index-store (array-dimensions to)))
       do (progn
-	   (idx->list! idx lst)
+	   (lvec->list! idx lst)
 	   (setf (apply #'aref to lst) (apply #'aref from lst)))))
   to)
 

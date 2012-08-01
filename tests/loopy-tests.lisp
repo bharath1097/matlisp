@@ -32,6 +32,9 @@
     (time (axpy! 1d0 x y))
     t))
 
+(definline idxv (&rest dims)
+  (make-array (length dims) :element-type 'index-type :initial-contents dims))
+
 (defun test-mm-lisp (n)
   (let ((t-a (make-real-tensor n n))
 	(t-b (make-real-tensor n n))
@@ -52,7 +55,7 @@
 	  (hd-a (head t-a))
 	  (hd-b (head t-b))
 	  (hd-c (head t-c)))
-      (declare (type (real-array *) st-a st-b st-c)
+      (declare (type real-store-vector st-a st-b st-c)
 	       (type index-type rstrd-a cstrd-a rstrd-b cstrd-b rstrd-c cstrd-c nr-c
 		     nc-c nc-a hd-a hd-b hd-c))
       (mod-dotimes (idx (dimensions t-a))
@@ -63,7 +66,7 @@
 	do (setf (aref st-a of-a) (random 1d0)
 		 (aref st-b of-b) (random 1d0)
 		 (aref st-c of-c) 0d0))
-      (time      
+      (time       
        (very-quickly
 	 (loop repeat nr-c
 	    for rof-a of-type index-type = hd-a then (+ rof-a rstrd-a)
@@ -76,14 +79,27 @@
 			for of-b of-type index-type = cof-b then (+ of-b rstrd-b)
 			summing (* (aref st-a of-a) (aref st-b of-b)) into sum of-type real-type
 			finally (setf (aref st-c of-c) sum))))
-      	 #+nil(mod-dotimes (idx (dimensions t-c))
+	 #+nil
+      	 (mod-dotimes (idx (dimensions t-c))
       	   with (loop-order :row-major)
       	   with (linear-sums
-      		 (of-a (idxv (row-stride t-a) 0) (head t-a))
-      		 (of-b (idxv 0 (col-stride t-b)) (head t-b))
+      		 (rof-a (idxv rstrd-a 0) (head t-a))
+      		 (cof-b (idxv 0 cstrd-b) (head t-b))
       		 (of-c (strides t-c) (head t-c)))
-      	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b)))))))))
-
+      	   do (loop repeat nc-a
+		 for of-a of-type index-type = rof-a then (+ of-a cstrd-a)
+		 for of-b of-type index-type = cof-b then (+ of-b rstrd-b)
+		 summing (* (aref st-a of-a) (aref st-b of-b)) into sum of-type real-type
+		 finally (setf (aref st-c of-c) sum)))
+	 #+nil
+	 (mod-dotimes (idx (idxv n n n))
+	   with (loop-order :row-major)
+	   with (linear-sums
+		 (of-a (idxv n 0 1))
+		 (of-b (idxv 0 1 n))
+		 (of-c (idxv n 1 0)))
+	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b))))))
+      (values t-a t-b t-c))))
 
 
 (defun test-mm-ddot (n)

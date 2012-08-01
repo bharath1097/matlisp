@@ -17,18 +17,18 @@
   =======
   Allocates index storage.")
 
-(defun make-index-store (&rest contents)
-"
+(definline make-index-store (contents)
+  "
   Syntax
   ======
   (MAKE-INDEX-STORE &rest CONTENTS)
 
   Purpose
   =======
-  Allocates index storage with initial elements from the list CONTENTS."
-  (let ((size (length contents)))
-    (make-array size :element-type 'index-type
-		:initial-contents contents)))
+  Allocates index storage with initial elements from the list CONTENTS.
+  "
+  (make-array (length contents) :element-type 'index-type
+	      :initial-contents contents))
 
 ;;
 (defclass standard-tensor ()
@@ -273,14 +273,14 @@
 
 ;;
 (defmethod initialize-instance :before ((tensor standard-tensor) &rest initargs)
-  (let ((dims (getf initargs :dimensions)))
-    (assert (getf initargs :dimensions) nil 'invalid-arguments :argnum :dimensions
-	    :message "Dimensions are necessary for creating the tensor object.")
-    (when (consp dims)
-      (setf (getf initargs :dimensions) (apply #'make-index-store dims)))))
+  (assert (getf initargs :dimensions) nil 'invalid-arguments :argnum :dimensions
+	  :message "Dimensions are necessary for creating the tensor object."))
 
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
+  (let ((dims (dimensions tensor)))
+    (when (consp dims)
+      (setf (slot-value tensor 'dimensions) (make-index-store dims))))
   (mlet*
    (((dims hd ss) (slot-values tensor '(dimensions head store-size))
      :type (index-store-vector index-type index-type))
@@ -290,13 +290,12 @@
    ;;Row-ordered by default.
    (unless (and (slot-boundp tensor 'strides)
 		(= (length (strides tensor)) rank))
-     (mlet* ((stds (allocate-index-store rank)
-		   :type index-store-vector))
-	    (setf (strides tensor) stds)
-	    (do ((i (1- rank) (1- i))
-		 (st 1 (* st (aref dims i))))
-		((< i 0))
-	      (setf (aref stds i) st))))
+     (let-typed ((stds (allocate-index-store rank) :type index-store-vector))
+         (setf (strides tensor) stds)
+	 (very-quickly
+	   (loop :for i :downfrom (1- rank) :to 0
+	      :for st = 1 :then (the index-type (* st (aref dims i)))
+	      :do (setf (aref stds i) st)))))
    ;;
    (mlet* ((stds (strides tensor) :type index-store-vector)
 	   (L-idx (store-indexing-vec (map `index-store-vector #'1- dims) hd stds dims) :type index-type))
@@ -569,12 +568,12 @@
 			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
 			  (make-instance cocl
 					 :parent-tensor tensor :store (store tensor) :head nhd
-					 :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd))))
+					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))
 	    ((= nrnk 2) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :matrix)))
 			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
 			  (make-instance cocl
 					 :parent-tensor tensor :store (store tensor) :head nhd
-					 :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd))))
+					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))
 	     (t (make-instance (class-name (class-of tensor))
 			       :parent-tensor tensor :store (store tensor) :head nhd
-			       :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd)))))))))
+			       :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))))
