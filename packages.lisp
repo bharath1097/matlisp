@@ -79,7 +79,7 @@
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator #:let-typed
 	   #:nconsc #:define-constant
-	   #:macrofy #:looped-mapcar
+	   #:macrofy #:looped-mapcar #:defun-compiler-macro
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))

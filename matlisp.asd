@@ -51,9 +51,14 @@
   :components ((:file "conditions")))
 
 (asdf:defsystem matlisp-utilities
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
+  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;utilities;")
   :depends-on ("matlisp-packages" "matlisp-conditions")
-  :components ((:file "utilities")))
+  :components ((:file "functions")
+	       (:file "string")
+	       (:file "macros"
+		      :depends-on ("functions"))
+	       (:file "lvec"
+		      :depends-on ("macros" "functions"))))
 
 (asdf:defsystem lazy-loader
   :pathname #.(translate-logical-pathname "matlisp:lib;")

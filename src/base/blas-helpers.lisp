@@ -65,4 +65,3 @@
 (defun combine-jobs (&rest jobs)
   (let ((job (intern (apply #'concatenate 'string (mapcar #'symbol-name jobs)) "KEYWORD")))
     job))
-  

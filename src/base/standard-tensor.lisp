@@ -1,5 +1,6 @@
 (in-package #:matlisp)
 
+;;Alias for fixnum.
 (deftype index-type ()
   'fixnum)
 
@@ -16,11 +17,11 @@
   =======
   Allocates index storage.")
 
-(defun make-index-store (contents)
+(defun make-index-store (&rest contents)
 "
   Syntax
   ======
-  (MAKE-INDEX-STORE CONTENTS)
+  (MAKE-INDEX-STORE &rest CONTENTS)
 
   Purpose
   =======
@@ -29,41 +30,6 @@
     (make-array size :element-type 'index-type
 		:initial-contents contents)))
 
-(definline idxv (&rest contents)
-  (make-index-store contents))
-
-;;
-(definline idx-max (seq)
-  (declare (type index-store-vector seq))
-  (very-quickly (reduce #'max seq)))
-
-(definline idx-min (seq)
-  (declare (type index-store-vector seq))
-  (very-quickly (reduce #'min seq)))
-
-(defun idx= (a b)
-  (declare (type index-store-vector a b))
-  (when (= (length a) (length b))
-    (very-quickly
-      (loop
-	 for ele-a across a
-	 for ele-b across b
-	 unless (= ele-a ele-b)
-	 do (return nil)
-	 finally (return t)))))
-
-(definline idx->list (a)
-  (declare (type index-store-vector a))
-  (loop for ele across a
-     collect ele))
-
-(definline idx->list! (a lst)
-  ;;No error checking!
-  (mapl (let ((i 0))
-	  #'(lambda (lst)
-	      (rplaca lst (aref a i))
-	      (incf i)))
-	lst))
 ;;
 (defclass standard-tensor ()
   ((rank
@@ -311,7 +277,7 @@
     (assert (getf initargs :dimensions) nil 'invalid-arguments :argnum :dimensions
 	    :message "Dimensions are necessary for creating the tensor object.")
     (when (consp dims)
-      (setf (getf initargs :dimensions) (make-index-store dims)))))
+      (setf (getf initargs :dimensions) (apply #'make-index-store dims)))))
 
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
@@ -603,12 +569,12 @@
 			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
 			  (make-instance cocl
 					 :parent-tensor tensor :store (store tensor) :head nhd
-					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))
+					 :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd))))
 	    ((= nrnk 2) (let ((cocl (getf (get-tensor-counterclass (class-name (class-of tensor))) :matrix)))
 			  (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
 			  (make-instance cocl
 					 :parent-tensor tensor :store (store tensor) :head nhd
-					 :dimensions (make-index-store ndim) :strides (make-index-store nstd))))	     
+					 :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd))))
 	     (t (make-instance (class-name (class-of tensor))
 			       :parent-tensor tensor :store (store tensor) :head nhd
-			       :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))))
+			       :dimensions (apply #'make-index-store ndim) :strides (apply #'make-index-store nstd)))))))))
