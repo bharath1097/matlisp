@@ -38,8 +38,8 @@
 
 (defun blas-matrix-compatible-p (matrix op)
   (declare (type standard-matrix matrix))
-  (let ((rs (row-stride matrix))
-	(cs (col-stride matrix)))
+  (let ((rs (aref (strides matrix) 0))
+	(cs (aref (strides matrix) 1)))
     (declare (type index-type rs cs))
     (cond
       ((= cs 1) (values :row-major rs (fortran-nop op)))
