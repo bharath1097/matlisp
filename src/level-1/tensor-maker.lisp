@@ -8,10 +8,10 @@
     `(defun ,func-name (&rest args)
        (labels ((make-dims (dims)
 		  (declare (type cons dims))
-		  (let* ((vdim (make-index-store dims))
-			 (ss (reduce #'* vdim))
-			 (store (,(getf opt :store-allocator) ss))
-			 (rnk (length vdim)))
+		  (let*-typed ((vdim (make-index-store dims) :type index-store-vector)
+			       (ss (very-quickly (lvec-foldl #'(lambda (x y) (the index-type (* x y))) vdim)))
+			       (store (,(getf opt :store-allocator) ss))
+			       (rnk (length vdim)))
 		    (make-instance (case rnk (2 ',(getf cocl :matrix)) (1 ',(getf cocl :vector)) (t ',tensor-class))
 				   :store store :dimensions vdim)))
 		(make-from-array (arr)
@@ -21,22 +21,20 @@
 			 (lst (make-list (rank ret))))
 		    (declare (type ,tensor-class ret)
 			     (type ,(linear-array-type (getf opt :store-type)) st-r))
-		    (very-quickly
-		      (mod-dotimes (idx (dimensions ret))
-			with (linear-sums
-			      (of-r (strides ret) (head ret)))
-			do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) (apply #'aref arr (lvec->list! idx lst))) 'st-r 'of-r)))
+		    (mod-dotimes (idx (dimensions ret))
+		      with (linear-sums
+			    (of-r (strides ret) (head ret)))
+		      do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) (apply #'aref arr (lvec->list! idx lst))) 'st-r 'of-r))
 		    ret))
 		(make-from-list (lst)
 		  (let* ((ret (make-dims (list-dimensions lst)))
 			 (st-r (store ret)))
 		    (declare (type ,tensor-class ret)
 			     (type ,(linear-array-type (getf opt :store-type)) st-r))
-		    (very-quickly
-		      (list-loop (idx ele lst)
-				 with (linear-sums
-				       (of-r (strides ret) (head ret)))
-				 do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) ele) 'st-r 'of-r)))
+		    (list-loop (idx ele lst)
+			       with (linear-sums
+				     (of-r (strides ret) (head ret)))
+			       do ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) ele) 'st-r 'of-r))
 		    ret)))
 	 (let ((largs (length args)))
 	   (if (= largs 1)
@@ -55,4 +53,3 @@
 ;;Had to move it here in the wait for copy!
 (definline sub-tensor (tensor subscripts)
   (copy (sub-tensor~ tensor subscripts)))
-

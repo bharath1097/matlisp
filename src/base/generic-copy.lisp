@@ -27,11 +27,7 @@
 		    (= (array-rank x) (array-rank y))
 		    (reduce #'(lambda (x y) (and x y))
 			    (mapcar #'= (array-dimensions x) (array-dimensions y))))
-		   nil 'dimension-mismatch))
-  (:method :before (x (y array))
-	   (assert (subtypep (type-of x) (array-element-type y))
-		   nil 'invalid-type
-		   :given (type-of x) :expected (array-element-type x))))
+		   nil 'dimension-mismatch)))
 
 (defmethod copy! ((from cons) (to cons))
   (let-rec cdr-writer ((flst from) (tlst to))
@@ -40,7 +36,7 @@
 		 (rplaca tlst (car flst))
 		 (cdr-writer (cdr flst) (cdr tlst))))))
 
-(defmethod copy! ((from t) (to cons))
+(defmethod copy! (from (to cons))
   (mapl #'(lambda (lst) (rplaca lst from)) to)
   to)
 
@@ -51,6 +47,14 @@
 	   (lvec->list! idx lst)
 	   (setf (apply #'aref to lst) (apply #'aref from lst)))))
   to)
+
+(defmethod copy! (from (to array))
+  (let ((lst (make-list (array-rank to))))
+    (mod-dotimes (idx (make-index-store (array-dimensions to)))
+      do (progn
+	   (lvec->list! idx lst)
+	   (setf (apply #'aref to lst) from)))
+  to))
 
 ;;
 (defgeneric copy (object)

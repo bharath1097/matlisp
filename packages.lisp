@@ -79,7 +79,7 @@
 	   #:lvec->list #:lvec->list!
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
-	   #:mlet* #:make-array-allocator #:let-typed
+	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant
 	   #:macrofy #:looped-mapcar #:defun-compiler-macro
 	   ;;

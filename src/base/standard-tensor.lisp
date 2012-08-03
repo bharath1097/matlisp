@@ -31,7 +31,7 @@
 	      :initial-contents contents))
 
 (definline idxv (&rest contents)
-  (apply #'make-index-store contents))
+  (make-index-store contents))
 
 ;;
 (defclass standard-tensor ()
@@ -123,7 +123,7 @@
     (error 'tensor-not-vector :rank (rank old))))
 
 ;;
-(defparameter *tensor-counterclass* (make-hash-table)
+(defvar *tensor-counterclass* (make-hash-table)
   "
   Contains the CLOS counterpart classes of every tensor class.
   This is used to change the tensor class automatically to a matrix
@@ -146,7 +146,7 @@
 	:vector standard-vector))
 
 ;;
-(defparameter *tensor-class-optimizations* (make-hash-table)
+(defvar *tensor-class-optimizations* (make-hash-table)
   "
   Contains a either:
   o A property list containing:

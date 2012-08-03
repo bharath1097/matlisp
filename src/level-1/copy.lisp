@@ -182,8 +182,8 @@
 	  :expected (array-element-type y))
   (assert (and
 	   (= (rank x) (array-rank y))
-	   (reduce #'(lambda (x y) (and x y))
-		   (mapcar #'= (lvec->list (dimensions x)) (array-dimensions y))))
+	   (dolist (ele (mapcar #'= (lvec->list (dimensions x)) (array-dimensions y)) t)
+	     (unless ele (return nil))))
 	  nil 'dimension-mismatch))
 
 (defmethod copy! ((x real-tensor) (y array))
@@ -216,8 +216,8 @@
 	  :given (array-element-type x) :expected (element-type y))
   (assert (and
 	   (= (array-rank x) (rank y))
-	   (reduce #'(lambda (x y) (= x y))
-		   (mapcar #'= (array-dimensions x) (lvec->list (dimensions y)))))
+	   (dolist (ele (mapcar #'= (array-dimensions x) (lvec->list (dimensions y))) t)
+	     (unless ele (return nil))))
 	  nil 'dimension-mismatch))
 
 (defmethod copy! ((x array) (y real-tensor))
