@@ -30,6 +30,9 @@
   (make-array (length contents) :element-type 'index-type
 	      :initial-contents contents))
 
+(definline idxv (&rest contents)
+  (apply #'make-index-store contents))
+
 ;;
 (defclass standard-tensor ()
   ((rank
