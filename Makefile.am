@@ -3,7 +3,7 @@ if !EXT_BLAPACK
 SUBDIRS += lib/blas lib/lapack
 endif
 
-ACLOCAL_AMFLAGS = -I m4
+#ACLOCAL_AMFLAGS = -I m4
 
 #AM_FFLAGS=
 
