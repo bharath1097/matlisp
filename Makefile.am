@@ -1,6 +1,6 @@
 SUBDIRS = lib/matlisp lib/dfftpack lib/toms715 lib/odepack lib/colnew
 if !EXT_BLAPACK
-SUBDIRS += lib/lapack lib/blas
+SUBDIRS += lib/blas lib/lapack
 endif
 
 ACLOCAL_AMFLAGS = -I m4
