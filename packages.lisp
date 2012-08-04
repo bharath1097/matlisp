@@ -145,10 +145,17 @@
   (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
   (:documentation "FFT routines"))
 
+(defpackage "MATLISP-LIBMATLISP"
+  (:use #:common-lisp #:matlisp-ffi)
+  (:export
+   #:descal #:dediv
+   #:zescal #:zediv)
+  (:documentation "BLAS routines"))
+
 (defpackage "MATLISP"
   (:use #:common-lisp
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi
-	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack)
+	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
   (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor

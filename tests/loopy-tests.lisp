@@ -122,7 +122,7 @@
 	  (hd-a (head t-a))
 	  (hd-b (head t-b))
 	  (hd-c (head t-c)))
-      (declare (type (real-array *) st-a st-b st-c)
+      (declare (type real-store-vector st-a st-b st-c)
 	       (type index-type rstrd-a cstrd-a rstrd-b cstrd-b rstrd-c cstrd-c nr-c
 		     nc-c nc-a hd-a hd-b hd-c))
       (mod-dotimes (idx (dimensions t-a))

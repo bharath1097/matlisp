@@ -98,7 +98,8 @@
 	    :depends-on ("foreign-interface")
 	    :components ((:file "blas")
 			 (:file "lapack")
-			 (:file "dfftpack")))
+			 (:file "dfftpack")
+			 (:file "libmatlisp")))
    (:module "matlisp-base"
 	    :depends-on ("foreign-core")
 	    :pathname "base"
