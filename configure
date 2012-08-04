@@ -719,6 +719,7 @@ AMTAR
 am__leading_dot
 SET_MAKE
 AWK
+mkdir_p
 MKDIR_P
 INSTALL_STRIP_PROGRAM
 STRIP
@@ -2747,6 +2748,12 @@ AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
 
 
 MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
+
+# For better backward compatibility.  To be removed once Automake 1.9.x
+# dies out for good.  For more background, see:
+# <http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html>
+# <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
+mkdir_p='$(MKDIR_P)'
 
 # We need awk for the "check" target.  The system "awk" is bad on
 # some platforms.
@@ -15408,7 +15415,7 @@ case $host in
   *) share_ext=so ;;
 esac
 
-ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp src/ffi/f77-mangling.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/compat/Makefile lib-src/odepack/Makefile lib-src/colnew/Makefile"
+ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp src/ffi/f77-mangling.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/compat/Makefile lib-src/odepack/Makefile lib-src/colnew/Makefile lib-src/scaldiv/Makefile"
 
 
 echo FLIBS = $FLIBS
@@ -16541,6 +16548,7 @@ do
     "lib-src/compat/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/compat/Makefile" ;;
     "lib-src/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/odepack/Makefile" ;;
     "lib-src/colnew/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/colnew/Makefile" ;;
+    "lib-src/scaldiv/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/scaldiv/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

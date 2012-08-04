@@ -429,6 +429,7 @@ AC_CONFIG_FILES([
   lib-src/compat/Makefile
   lib-src/odepack/Makefile
   lib-src/colnew/Makefile
+  lib-src/scaldiv/Makefile
 ])
 
 echo FLIBS = $FLIBS
