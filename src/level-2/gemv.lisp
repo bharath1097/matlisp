@@ -9,7 +9,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization matrix-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
-    `(defun ,func (alpha A x beta y job)
+    `(definline ,func (alpha A x beta y job)
        (declare (type ,(getf opt :element-type) alpha beta)
 		(type ,matrix-class A)
 		(type ,vector-class x y)
@@ -70,7 +70,7 @@
 (generate-typed-gemv! complex-base-typed-gemv!
   (complex-matrix complex-vector zgemv *complex-l2-fcall-lb*))
 
-(defun complex-typed-gemv! (alpha A x beta y job)
+(definline complex-typed-gemv! (alpha A x beta y job)
   (declare (type complex-matrix A)
 	   (type complex-vector x y)
 	   (type complex-type alpha beta)
@@ -78,10 +78,14 @@
   (if (member job '(:n :t))
       (complex-base-typed-gemv! alpha A x beta y job)
       ;;The CBLAS way.
-      (let ((cx (mconjugate x)))
+      (let-typed ((cx (let-typed ((ret (apply #'make-real-tensor (lvec->list (dimensions x))) :type complex-vector))
+				 (complex-typed-axpy! #c(-1d0 0d0) x ret))
+		      :type complex-vector))
+	(complex-typed-num-scal! #c(-1d0 0d0) (tensor-realpart~ y))
 	(complex-base-typed-gemv! (cl:conjugate alpha) A cx
-				  (cl:conjugate beta) (mconjugate! y) (ecase job (:h :t) (:c :n)))
-	(mconjugate! y))))
+				  (cl:conjugate beta) y (ecase job (:h :t) (:c :n)))
+	(complex-typed-num-scal! #c(-1d0 0d0) (tensor-realpart~ y))
+	y)))
 
 ;;---------------------------------------------------------------;;
 

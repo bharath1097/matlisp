@@ -31,7 +31,7 @@
 (defmacro generate-typed-scal! (func (tensor-class fortran-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (from to)
+    `(definline ,func (from to)
        (declare (type ,tensor-class from to))
        (let ((strd-p (blas-copyable-p from to))
 	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
@@ -56,10 +56,32 @@
 		         ,(funcall (getf opt :value-writer) 'mul 't-sto 't-of))))))))
        to)))
 
+(defmacro generate-typed-num-scal! (func (tensor-class blas-func fortran-lb))
+  (let ((opt (get-tensor-class-optimization tensor-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    `(definline ,func (alpha to)
+       (declare (type ,tensor-class to)
+		(type ,(getf opt :element-type) alpha))
+       (let ((min-stride (consecutive-store-p to))
+	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
+	 (cond
+	   ((and min-stride call-fortran?)
+	    (,blas-func (number-of-elements to) alpha (store to) min-stride (head to)))
+	   (t
+	    (let ((t-sto (store to)))
+	      (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
+	      (very-quickly
+		(mod-dotimes (idx (dimensions to))
+		  with (linear-sums
+			(t-of (strides to) (head to)))
+		  do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
+		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
+       to)))
+
 (defmacro generate-typed-div! (func (tensor-class fortran-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (from to)
+    `(definline ,func (from to)
        (declare (type ,tensor-class from to))
        (let ((strd-p (blas-copyable-p from to))
 	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
@@ -80,21 +102,25 @@
 			(t-of (strides to) (head to)))
 		  do (let*-typed ((val-f ,(funcall (getf opt :reader) 'f-sto 'f-of) :type ,(getf opt :element-type))
 				  (val-t ,(funcall (getf opt :reader) 't-sto 't-of) :type ,(getf opt :element-type))
-				  (mul (/ val-t val-f) :type ,(getf opt :element-type)))
+				  (mul (/ val-f val-t) :type ,(getf opt :element-type)))
 		         ,(funcall (getf opt :value-writer) 'mul 't-sto 't-of))))))))
        to)))
 
-(defmacro generate-typed-num-scal! (func (tensor-class blas-func fortran-lb))
+(defmacro generate-typed-num-div! (func (tensor-class fortran-func fortran-lb))
   (let ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (alpha to)
+    `(definline ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
        (let ((min-stride (consecutive-store-p to))
 	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
 	 (cond
 	   ((and min-stride call-fortran?)
-	    (,blas-func (number-of-elements to) alpha (store to) min-stride (head to)))
+	    (let ((num-array (,(getf opt :store-allocator) 1)))
+	      (declare (type ,(linear-array-type (getf opt :store-type)) num-array))
+	      (let-typed ((id (,(getf opt :coercer) 1) :type ,(getf opt :element-type)))
+		,(funcall (getf opt :value-writer) `id 'num-array 0))
+	      (,fortran-func (number-of-elements to) num-array 0 (store to) min-stride (head to))))
 	   (t
 	    (let ((t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
@@ -102,7 +128,7 @@
 		(mod-dotimes (idx (dimensions to))
 		  with (linear-sums
 			(t-of (strides to) (head to)))
-		  do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
+		  do (let-typed ((scal-val (/ alpha ,(funcall (getf opt :reader) 't-sto 't-of)) :type ,(getf opt :element-type)))
 		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
        to)))
 
@@ -114,6 +140,9 @@
   (real-tensor descal *real-l1-fcall-lb*))
 
 (generate-typed-div! real-typed-div!
+  (real-tensor dediv *real-l1-fcall-lb*))
+
+(generate-typed-num-div! real-typed-num-div!
   (real-tensor dediv *real-l1-fcall-lb*))
 
 ;;Complex
@@ -128,7 +157,10 @@
 (generate-typed-scal! complex-typed-scal!
   (complex-tensor zescal *complex-l1-fcall-lb*))
 
-(generate-typed-scal! complex-typed-div!
+(generate-typed-div! complex-typed-div!
+  (complex-tensor zediv *complex-l1-fcall-lb*))
+
+(generate-typed-num-div! complex-typed-num-div!
   (complex-tensor zediv *complex-l1-fcall-lb*))
 ;;---------------------------------------------------------------;;
 
@@ -175,32 +207,28 @@
 
   Purpose
   =======
-  X <- X ./ alpha
-
-  Yes the calling order is twisted.
+  X <- alpha ./ X
 ")
   (:method :before ((x standard-tensor) (y standard-tensor))
 	   (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 		   'tensor-dimension-mismatch)))
 
 (defmethod div! ((alpha number) (x real-tensor))
-  (real-typed-num-scal! (coerce-real (/ 1 alpha)) x))
+  (real-typed-num-div! (coerce-real alpha) x))
 
 (defmethod div! ((x real-tensor) (y real-tensor))
   (real-typed-div! x y))
 
 (defmethod div! ((alpha number) (x complex-tensor))
-  (complex-typed-num-scal! (coerce-complex (/ 1 alpha)) x))
+  (complex-typed-num-div! (coerce-complex alpha) x))
 
 (defmethod div! ((x complex-tensor) (y complex-tensor))
   (complex-typed-div! x y))
 
 (defmethod div! ((x real-tensor) (y complex-tensor))
-  (let ((tmp (tensor-realpart~ y)))
-    (real-typed-div! x tmp)
-    ;;Move view to the imaginary part
-    (incf (head tmp))
-    (real-typed-div! x tmp)))
+  ;;The alternative is worse!
+  (let ((tmp (copy! x (apply #'make-complex-tensor (lvec->list (dimensions x))))))
+    (complex-typed-div! tmp y)))
 
 ;;
 (defgeneric scal (alpha x)
@@ -223,6 +251,9 @@
 (defmethod scal ((alpha number) (x number))
   (* alpha x))
 
+(defmethod scal ((x standard-tensor) (alpha number))
+  (scal alpha x))
+
 (defmethod scal ((alpha number) (x real-tensor))
   (let ((result (if (complexp alpha)
 		    (copy! x (apply #'make-complex-tensor (lvec->list (dimensions x))))
@@ -240,7 +271,11 @@
   (let ((result (copy x)))
     (scal! alpha result)))
 
-(defmethod scal ((x standard-tensor) (y complex-tensor))
+(defmethod scal ((x real-tensor) (y complex-tensor))
+  (let ((result (copy y)))
+    (scal! x result)))
+
+(defmethod scal ((x complex-tensor) (y complex-tensor))
   (let ((result (copy y)))
     (scal! x result)))
 
@@ -253,7 +288,7 @@
 
   Purpose
   =======
-  X <- X ./ alpha
+  alpha ./ X
 
   Yes the calling order is twisted.
 "))  
@@ -261,14 +296,22 @@
 (defmethod div ((alpha number) (x number))
   (/ x alpha))
 
+(defmethod div ((x standard-tensor) (y number))
+  (let ((result (copy x)))
+    (scal! (/ 1 y) result)))
+
+(defmethod div ((x (eql nil)) (y standard-tensor))
+  (let ((result (copy y)))
+    (div! 1 result)))
+
+(defmethod div ((x real-tensor) (y real-tensor))
+  (div! x (copy y)))
+
 (defmethod div ((alpha number) (x real-tensor))
   (let ((result (if (complexp alpha)
 		    (copy! x (apply #'make-complex-tensor (lvec->list (dimensions x))))
 		    (copy x))))
     (div! alpha result)))
-
-(defmethod div ((x real-tensor) (y real-tensor))
-  (div! x (copy y)))
 
 (defmethod div ((x complex-tensor) (y real-tensor))
   (let ((result (copy! y (apply #'make-complex-tensor (lvec->list (dimensions x))))))
@@ -278,14 +321,11 @@
   (let ((result (copy x)))
     (div! alpha result)))
 
-(defmethod div ((x standard-tensor) (y complex-tensor))
+(defmethod div ((x real-tensor) (y complex-tensor))
   (let ((result (copy y)))
     (div! x result)))
 
-(defmethod div ((x real-tensor) (y (eql nil)))
-  (let ((result (copy! 1 (apply #'make-real-tensor (lvec->list (dimensions x))))))
+(defmethod div ((x complex-tensor) (y complex-tensor))
+  (let ((result (copy y)))
     (div! x result)))
 
-(defmethod div ((x complex-tensor) (y (eql nil)))
-  (let ((result (copy! 1 (apply #'make-complex-tensor (lvec->list (dimensions x))))))
-    (div! x result)))

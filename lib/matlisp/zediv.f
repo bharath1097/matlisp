@@ -26,7 +26,7 @@
 *       code for both increments equal to 1
 *
    20 do 30 i = 1,n
-         dy(i) = dy(i) / dx(i)
+         dy(i) = dx(i) / dy(i)
 
    30 continue
       

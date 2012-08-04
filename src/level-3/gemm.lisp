@@ -31,7 +31,7 @@
 (defmacro generate-typed-gemm! (func (matrix-class blas-gemm-func blas-gemv-func fortran-lb-parameter))
   (let* ((opt (get-tensor-class-optimization matrix-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
-    `(defun ,func (alpha A B beta C job)
+    `(definline ,func (alpha A B beta C job)
        (declare (type ,(getf opt :element-type) alpha beta)
 		(type ,matrix-class A B C)
 		(type symbol job))
@@ -167,7 +167,7 @@
 (generate-typed-gemm! complex-base-typed-gemm!
   (complex-matrix zgemm zgemv *complex-l3-fcall-lb*))
 
-(defun complex-typed-gemm! (alpha A B beta C job)
+(definline complex-typed-gemm! (alpha A B beta C job)
   (declare (type complex-matrix A B C)
 	   (type complex-type alpha beta)
 	   (type symbol job))
@@ -175,8 +175,16 @@
     (if (and (member job-A '(:n :t))
 	     (member job-B '(:n :t)))
 	(complex-base-typed-gemm! alpha A B beta C job)
-	(let ((A (ecase job-A ((:h :c) (mconjugate A)) ((:n :t) A)))
-	      (B (ecase job-B ((:h :c) (mconjugate B)) ((:n :t) B)))
+	(let ((A (ecase job-A
+		   ((:n :t) A)
+		   ((:h :c)
+		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions A)))))
+		      (complex-typed-axpy! #c(-1d0 0d0) A ret)))))
+	      (B (ecase job-B
+		   ((:n :t) B)
+		   ((:h :c)
+		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions B)))))
+		      (complex-typed-axpy! #c(-1d0 0d0) B ret)))))
 	      (tjob (combine-jobs (ecase job-A ((:n :t) job-A) (:h :t) (:c :n))
 				  (ecase job-B ((:n :t) job-B) (:h :t) (:c :n)))))
 	  (complex-base-typed-gemm! alpha A B

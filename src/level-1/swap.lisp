@@ -34,7 +34,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (x y)
+    `(definline ,func (x y)
        (declare (type ,tensor-class x y))
        (let ((strd-p (blas-copyable-p x y))
 	     (call-fortran? (> (number-of-elements x) ,fortran-lb)))

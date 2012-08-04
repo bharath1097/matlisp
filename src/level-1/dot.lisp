@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defun real-typed-dot (x y conjugate-p)
+(definline real-typed-dot (x y conjugate-p)
   (declare (type real-vector x y)
 	   (ignore conjugate-p))
   (let ((call-fortran? (> (number-of-elements x)
@@ -52,7 +52,7 @@
 	     summing (* (aref sto-x of-x) (aref sto-y of-y)) into dot of-type real-type
 	     finally (return dot))))))))
 
-(defun complex-typed-dot (x y conjugate-p)
+(definline complex-typed-dot (x y conjugate-p)
   (declare (type complex-vector x y))
   (let ((call-fortran? (> (number-of-elements x)
 			  *complex-l1-fcall-lb*)))
@@ -144,7 +144,8 @@
   (real-typed-dot x y nil))
 
 (defmethod dot ((x real-vector) (y complex-vector) &optional (conjugate-p t))
-  (declare (ignore conjugate-p))
+  (declare (ignore conjugate-p)
+	   (type complex-vector y))
   (let ((vw.y (tensor-realpart~ y)))
     (declare (type real-vector vw.y))
     (let ((rpart (prog1 (real-typed-dot x vw.y nil)

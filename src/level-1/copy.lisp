@@ -34,7 +34,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (from to)
+    `(definline ,func (from to)
        (declare (type ,tensor-class from to))
        (let ((strd-p (blas-copyable-p from to))
 	     (call-fortran? (> (number-of-elements to) ,fortran-lb)))
@@ -66,7 +66,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (num-from to)
+    `(definline ,func (num-from to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) num-from))
        (let ((min-stride (consecutive-store-p to))

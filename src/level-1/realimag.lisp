@@ -28,7 +28,7 @@
 
 (in-package #:matlisp)
 
-(defun tensor-realpart~ (tensor)
+(definline tensor-realpart~ (tensor)
 "
   Syntax
   ======
@@ -50,7 +50,7 @@
 				   :head (the index-type (* 2 (head tensor)))))
     (number (realpart tensor))))
 
-(defun tensor-imagpart~ (tensor)
+(definline tensor-imagpart~ (tensor)
 "
   Syntax
   ======

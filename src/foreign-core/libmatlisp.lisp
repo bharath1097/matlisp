@@ -5,7 +5,7 @@
   (DESCAL n dx incx dy incy)
 
   Multiplies the vector X and Y element-wise.
-  Y <- Y .* E
+  Y <- Y .* X 
   "
   (n :integer :input)
   (dx (* :double-float :inc head-x) :input)
@@ -18,7 +18,7 @@
   (ZESCAL n dx incx dy incy)
 
   Multiplies the vector X and Y element-wise.
-  Y <- Y .* E
+  Y <- Y .* X
   "
   (n :integer :input)
   (dx (* :complex-double-float :inc head-x) :input)
@@ -31,7 +31,7 @@
   (DEDIV n dx incx dy incy)
 
   Divides the vector Y by X element-wise.
-  Y <- Y .* E
+  Y <- X ./ Y
   "
   (n :integer :input)
   (dx (* :double-float :inc head-x) :input)
@@ -44,7 +44,7 @@
   (ZEDIV n dx incx dy incy)
 
   Divide the vector Y by X element-wise.
-  Y <- Y .* E
+  Y <- X ./ Y
   "
   (n :integer :input)
   (dx (* :complex-double-float :inc head-x) :input)

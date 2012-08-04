@@ -34,7 +34,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (alpha from to)
+    `(definline ,func (alpha from to)
        (declare (type ,tensor-class from to)
 		(type ,(getf opt :element-type) alpha))
        (let ((strd-p (blas-copyable-p from to))
@@ -73,7 +73,7 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(defun ,func (num-from to)
+    `(definline ,func (num-from to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) num-from))
        (let ((min-strd (consecutive-store-p to))
@@ -82,7 +82,8 @@
 	   ((and min-strd call-fortran?)
 	    (let ((num-array (,(getf opt :store-allocator) 1)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) num-array))
-	      ,(funcall (getf opt :value-writer) `(,(getf opt :coercer) 1) 'num-array 0)
+	      (let-typed ((id (,(getf opt :coercer) 1) :type ,(getf opt :element-type)))
+		,(funcall (getf opt :value-writer) `id 'num-array 0))
 	      (,blas-func (number-of-elements to) num-from
 			  num-array 0
 			  (store to) min-strd
@@ -148,6 +149,8 @@
   (real-typed-axpy! (coerce-real alpha) x y))
 
 (defmethod axpy! ((alpha number) (x real-tensor) (y complex-tensor))
+  ;;Weird, shouldn't SBCL know this already ?
+  (declare (type complex-tensor y))
   (let ((tmp (tensor-realpart~ y)))
     (declare (type real-tensor tmp))
     (etypecase alpha

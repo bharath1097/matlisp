@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defun transpose! (A &optional permutation)
+(definline transpose! (A &optional permutation)
   "
   Syntax
   ======
@@ -58,10 +58,10 @@
 	(rotatef (aref strd-A (1- rnk)) (aref strd-A 0))))
   A)
 
-(defun (setf transpose!) (value A &optional permutation)
+(definline (setf transpose!) (value A &optional permutation)
   (copy! value (transpose! A permutation)))
 
-(defun transpose~ (A &optional permutation)
+(definline transpose~ (A &optional permutation)
   "
   Syntax
   ======
@@ -86,7 +86,7 @@
 				  :parent-tensor A)))
     (transpose! displaced permutation)))
 
-(defun (setf transpose~) (value A &optional permutation)
+(definline (setf transpose~) (value A &optional permutation)
   (declare (type standard-tensor A))
   (copy! value (transpose~ A permutation)))
 
@@ -109,7 +109,7 @@
   (declare (type standard-tensor A))
   (copy (transpose~ A permutation)))
 
-(defun (setf transpose) (value A &optional permutation)
+(definline (setf transpose) (value A &optional permutation)
   (declare (type standard-tensor A))
   (copy! value (transpose~ A permutation)))
 
@@ -125,7 +125,7 @@
 
 
 ;;
-(defun mconjugate! (A)
+(definline mconjugate! (A)
   "
   Syntax
   ======
@@ -154,7 +154,7 @@
   Like mconjugate!, but non-destructive."
   (etypecase A
     (standard-tensor (mconjugate! (copy A)))
-    (number (conjugate A))))
+    (number (cl:conjugate A))))
 
 ;;
 (defun htranspose! (A &optional permutation)
