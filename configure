@@ -646,14 +646,12 @@ LISPEVAL
 F77_EXTRA_UNDERSCORE
 F77_UNDERSCORE
 F77_LOWER_CASE
-ATLAS_P
-ATLAS_LIBS
-ATLAS_DIR
-NO_ATLAS_LAPACK_OBJS
+BLAS_LAPACK_DIR
+EXTERNAL_BLAS_LAPACK_P
 BLAS_OBJS
 LISPEXEC
-ATLAS_FALSE
-ATLAS_TRUE
+EXT_BLAPACK_FALSE
+EXT_BLAPACK_TRUE
 LIB32_FALSE
 LIB32_TRUE
 CPP
@@ -791,7 +789,7 @@ enable_fast_install
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
-with_atlas
+with_blas_lapack
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1446,7 +1444,8 @@ Optional Packages:
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-sysroot=DIR Search for dependent libraries within DIR
                         (or the compiler's sysroot if not specified).
-  --with-atlas=libpath    Location of the ATLAS libraries
+  --with-blas-lapack=libpath
+                          Location of the BLAS/LAPACK libraries
 
 Some influential environment variables:
   CC          C compiler command
@@ -8908,6 +8907,10 @@ _lt_linker_boilerplate=`cat conftest.err`
 $RM -r conftest*
 
 
+## CAVEAT EMPTOR:
+## There is no encapsulation within the following macros, do not change
+## the running order or otherwise move them around unless you know exactly
+## what you are doing...
 if test -n "$compiler"; then
 
 lt_prog_compiler_no_builtin_flag=
@@ -15281,46 +15284,45 @@ $as_echo "no" >&6; }
 fi
 
 
-# Allow user to use ATLAS if available.
-# We assume the standard names for the ATLAS libraries.
+# Allow user to use external BLAS/LAPACK library if available.
+# We assume the standard names for the libraries: lib{blas, lapack}
 
-# Check whether --with-atlas was given.
-if test "${with_atlas+set}" = set; then :
-  withval=$with_atlas;
-  # Building with ATLAS
-  ATLAS_DIR="$withval/"
-  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
-  atlas=true
-  ATLAS_P=t
+# Check whether --with-blas-lapack was given.
+if test "${with_blas_lapack+set}" = set; then :
+  withval=$with_blas_lapack;
+  # Building with external BLAS
+  ext_blapack=true
+  BLAS_LAPACK_DIR="$withval/"
+  EXTERNAL_BLAS_LAPACK_P=t
 
 else
 
-  # Building without ATLAS.  Need these objects from our own copy of
+  # Building without external BLAS.  Need these objects from our own copy of
   # LAPACK.
-  atlas=false
-  ATLAS_P=nil
+  ext_blapack=false
+  EXTERNAL_BLAS_LAPACK_P=nil
 
 fi
 
- if test x$atlas = xtrue; then
-  ATLAS_TRUE=
-  ATLAS_FALSE='#'
+ if test x$ext_blapack = xtrue; then
+  EXT_BLAPACK_TRUE=
+  EXT_BLAPACK_FALSE='#'
 else
-  ATLAS_TRUE='#'
-  ATLAS_FALSE=
+  EXT_BLAPACK_TRUE='#'
+  EXT_BLAPACK_FALSE=
 fi
 
 
-# Check to see if the ATLAS libraries are compatible with matlisp's
+# Check to see if the BLAS library is compatible with matlisp's
 # ffi.  Basically the same test as above that checks to see if -ff2c
 # is needed.  We call zdotu which is a Fortran function returning a
 # complex number.  Matlisp assumes such functions return the result by
 # storing the answer at address given by a hidden first parameter to
 # the function.
 
-if test x"$atlas" = xtrue; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ATLAS is compatible with f2c calling conventions" >&5
-$as_echo_n "checking if ATLAS is compatible with f2c calling conventions... " >&6; }
+if test x"$ext_blapack" = xtrue; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if BLAS is compatible with f2c calling conventions" >&5
+$as_echo_n "checking if BLAS is compatible with f2c calling conventions... " >&6; }
   # From the value of f77_name, figure out the actual name for
   # Fortran's zdotu.
   case $f77_name in
@@ -15374,7 +15376,7 @@ int main()
 
 EOF
   $CC $CFLAGS -c conftest.c
-  $F77 $FFLAGS -o a.out conftest.o -L${ATLAS_DIR} -latlas -lcblas -lf77blas -llapack
+  $F77 $FFLAGS -o a.out conftest.o -L${BLAS_LAPACK_DIR} -lblas -llapack
   if a.out; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -15405,8 +15407,6 @@ fi
 
 
 
-
-
 echo host = $host
 
 # Set the extension for shared libraries.  This is not very robust.
@@ -15415,7 +15415,7 @@ case $host in
   *) share_ext=so ;;
 esac
 
-ac_config_files="$ac_config_files matlisp.mk Makefile start.lisp config.lisp lib/lazy-loader.lisp src/ffi/f77-mangling.lisp LAPACK/SRC/Makefile LAPACK/BLAS/SRC/Makefile dfftpack/Makefile lib-src/toms715/Makefile lib-src/compat/Makefile lib-src/odepack/Makefile lib-src/colnew/Makefile lib-src/scaldiv/Makefile"
+ac_config_files="$ac_config_files Makefile start.lisp config.lisp lib/lazy-loader.lisp src/ffi/f77-mangling.lisp lib/blas/Makefile lib/lapack/Makefile lib/dfftpack/Makefile lib/toms715/Makefile lib/matlisp/Makefile lib/odepack/Makefile lib/colnew/Makefile"
 
 
 echo FLIBS = $FLIBS
@@ -15605,8 +15605,8 @@ if test -z "${LIB32_TRUE}" && test -z "${LIB32_FALSE}"; then
   as_fn_error $? "conditional \"LIB32\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ATLAS_TRUE}" && test -z "${ATLAS_FALSE}"; then
-  as_fn_error $? "conditional \"ATLAS\" was never defined.
+if test -z "${EXT_BLAPACK_TRUE}" && test -z "${EXT_BLAPACK_FALSE}"; then
+  as_fn_error $? "conditional \"EXT_BLAPACK\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
@@ -16535,20 +16535,18 @@ do
   case $ac_config_target in
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
-    "matlisp.mk") CONFIG_FILES="$CONFIG_FILES matlisp.mk" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "start.lisp") CONFIG_FILES="$CONFIG_FILES start.lisp" ;;
     "config.lisp") CONFIG_FILES="$CONFIG_FILES config.lisp" ;;
     "lib/lazy-loader.lisp") CONFIG_FILES="$CONFIG_FILES lib/lazy-loader.lisp" ;;
     "src/ffi/f77-mangling.lisp") CONFIG_FILES="$CONFIG_FILES src/ffi/f77-mangling.lisp" ;;
-    "LAPACK/SRC/Makefile") CONFIG_FILES="$CONFIG_FILES LAPACK/SRC/Makefile" ;;
-    "LAPACK/BLAS/SRC/Makefile") CONFIG_FILES="$CONFIG_FILES LAPACK/BLAS/SRC/Makefile" ;;
-    "dfftpack/Makefile") CONFIG_FILES="$CONFIG_FILES dfftpack/Makefile" ;;
-    "lib-src/toms715/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/toms715/Makefile" ;;
-    "lib-src/compat/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/compat/Makefile" ;;
-    "lib-src/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/odepack/Makefile" ;;
-    "lib-src/colnew/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/colnew/Makefile" ;;
-    "lib-src/scaldiv/Makefile") CONFIG_FILES="$CONFIG_FILES lib-src/scaldiv/Makefile" ;;
+    "lib/blas/Makefile") CONFIG_FILES="$CONFIG_FILES lib/blas/Makefile" ;;
+    "lib/lapack/Makefile") CONFIG_FILES="$CONFIG_FILES lib/lapack/Makefile" ;;
+    "lib/dfftpack/Makefile") CONFIG_FILES="$CONFIG_FILES lib/dfftpack/Makefile" ;;
+    "lib/toms715/Makefile") CONFIG_FILES="$CONFIG_FILES lib/toms715/Makefile" ;;
+    "lib/matlisp/Makefile") CONFIG_FILES="$CONFIG_FILES lib/matlisp/Makefile" ;;
+    "lib/odepack/Makefile") CONFIG_FILES="$CONFIG_FILES lib/odepack/Makefile" ;;
+    "lib/colnew/Makefile") CONFIG_FILES="$CONFIG_FILES lib/colnew/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

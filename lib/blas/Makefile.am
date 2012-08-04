@@ -8,7 +8,7 @@ endif
 libblas_la_LDFLAGS = $(FLIBS) -version-info 3:3:0
 libblas_la_LIBADD = $(FLIBS)
 
-if !ATLAS
+if !EXT_BLAPACK
 libblas_la_SOURCES = \
 	scabs1.f \
 	dasum.f \

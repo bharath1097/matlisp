@@ -9,4 +9,8 @@ libmatlisp_la_LDFLAGS =  $(FLIBS_OPTS)
 libmatlisp_la_LIBADD = $(FLIBS_LIBS)
 
 libmatlisp_la_SOURCES = \
-compat.f
+compat.f\
+descal.f\
+zescal.f\
+dediv.f\
+zediv.f

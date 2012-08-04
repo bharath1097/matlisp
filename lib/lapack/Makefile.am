@@ -5,10 +5,10 @@ if LIB32
 AM_FFLAGS += -m32
 endif
 
-liblapack_la_LIBADD = ../BLAS/SRC/libblas.la $(FLIBS)
+liblapack_la_LIBADD = ../blas/libblas.la $(FLIBS)
 liblapack_la_LDFLAGS = $(FLIBS_OPTS) -version-info 3:3:0
 
-if !ATLAS
+if !EXT_BLAPACK
 liblapack_la_SOURCES = \
 	dlasq5.f dlasq6.f ieeeck.f zdrot.f dlabad.f \
 	dlarf.f   dorglq.f  zhetd2.f  zlatrs.f \
