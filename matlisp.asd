@@ -45,6 +45,17 @@
   :components
   ((:file "config")))
 
+(asdf:defsystem lazy-loader
+  :pathname #.(translate-logical-pathname "matlisp:builddir;src;foreign-core;")
+  :depends-on (#:cffi "matlisp-packages" "matlisp-config")
+  :components
+  ((:file "lazy-loader"
+	  ;; you need the load-only here,
+	  ;; otherwise, Allegro tries to
+	  ;; load the DLL (SO)'s twice
+	  ;; and fails.
+	  )))
+
 (asdf:defsystem matlisp-conditions
   :depends-on ("matlisp-packages" "matlisp-config")
   :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
@@ -60,19 +71,8 @@
 	       (:file "lvec"
 		      :depends-on ("macros" "functions"))))
 
-(asdf:defsystem lazy-loader
-  :pathname #.(translate-logical-pathname "matlisp:lib;")
-  :depends-on (#:cffi "matlisp-packages" "matlisp-config")
-  :components
-  ((:file "lazy-loader"
-	  ;; you need the load-only here,
-	  ;; otherwise, Allegro tries to
-	  ;; load the DLL (SO)'s twice
-	  ;; and fails.
-	  )))
-
 (asdf:defsystem fortran-names
-  :pathname #.(translate-logical-pathname "matlisp:src;ffi;")
+  :pathname #.(translate-logical-pathname "matlisp:builddir;src;ffi;")
   :depends-on ("matlisp-packages" "matlisp-conditions")
   :components
   ((:file "f77-mangling")))

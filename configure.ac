@@ -297,8 +297,8 @@ dnl fi
 dnl 
 # Allow user to use external BLAS/LAPACK library if available.
 # We assume the standard names for the libraries: lib{blas, lapack}
-AC_ARG_WITH([blas-lapack],
-AC_HELP_STRING([--with-blas-lapack=libpath], [Location of the BLAS/LAPACK libraries]),
+AC_ARG_WITH([external-blas-lapack],
+AC_HELP_STRING([--with-external-blas-lapack=libpath], [Location of the BLAS/LAPACK libraries]),
 [
   # Building with external BLAS
   ext_blapack=true
@@ -416,15 +416,15 @@ AC_CONFIG_FILES([
   Makefile
   start.lisp
   config.lisp
-  lib/lazy-loader.lisp
+  src/foreign-core/lazy-loader.lisp
   src/ffi/f77-mangling.lisp
-  lib/blas/Makefile
-  lib/lapack/Makefile
-  lib/dfftpack/Makefile
-  lib/toms715/Makefile
-  lib/matlisp/Makefile
-  lib/odepack/Makefile
-  lib/colnew/Makefile
+  lib-src/blas/Makefile
+  lib-src/lapack/Makefile
+  lib-src/dfftpack/Makefile
+  lib-src/toms715/Makefile
+  lib-src/matlisp/Makefile
+  lib-src/odepack/Makefile
+  lib-src/colnew/Makefile
 ])
 
 echo FLIBS = $FLIBS
