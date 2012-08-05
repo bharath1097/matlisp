@@ -328,4 +328,3 @@
 (defmethod div ((x complex-tensor) (y complex-tensor))
   (let ((result (copy y)))
     (div! x result)))
-
