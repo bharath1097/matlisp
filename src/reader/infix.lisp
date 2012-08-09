@@ -250,13 +250,8 @@
 ;;; Package Cruft ******************
 ;;; ********************************
 
-(defpackage #:infix (:use #-:lucid #:common-lisp
-			  #+:lucid "LISP" #+:lucid "LUCID-COMMON-LISP")
-            (:export #:test-infix #:string->prefix))
-
-(in-package #:infix)
-
-(pushnew :infix *features*)
+(in-package #:matlisp-infix)
+(pushnew :matlisp-infix *features*)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *version* "1.3  28-JUN-96")
@@ -294,7 +289,7 @@
 
 (defmacro infix-error (format-string &rest args)
   `(let ((*readtable* *normal-readtable*))
-     (error ,format-string ,@args)))
+     (error 'parser-error (format-to-string ,format-string ,@args))))
 
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."

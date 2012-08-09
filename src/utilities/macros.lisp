@@ -1,5 +1,8 @@
 (in-package #:matlisp-utilities)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+;;Note to self: do not indent!
+  
 (defmacro define-constant (name value &optional doc)
   "
   Keeps the lisp implementation from defining constants twice.
@@ -464,4 +467,4 @@
   `(with-optimization (:speed 1)
      ,@forms))
 
-
+)

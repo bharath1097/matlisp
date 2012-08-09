@@ -160,10 +160,9 @@
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "mplusminus")
 			 (:file "mtimesdivide")))
-   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"
-	    :components ((:file "slicing")))))
+	    :components ((:file "infix")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

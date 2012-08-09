@@ -64,7 +64,6 @@
    #:tensor-store-not-consecutive
 ))
 
-;;foreign-vector stuff must go to ffi-...
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:matlisp-conditions)
   (:export #:ensure-list
@@ -85,6 +84,11 @@
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
+
+;;Modified version of Mark Kantrowitz' infix package.
+(defpackage "MATLISP-INFIX"
+  (:use #:common-lisp #:matlisp-conditions #:matlisp-utilities)
+  (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
   (:use #:common-lisp #:cffi #:matlisp-utilities #:matlisp-conditions)
