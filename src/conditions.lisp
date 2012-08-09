@@ -31,14 +31,14 @@
 
 (defcondition dimension-mismatch (generic-error)
   ()
-  (:method print-object ((c generic-error) stream)
-	   (format stream "Dimension mismatch.")
+  (:method print-object ((c dimension-mismatch) stream)
+	   (format stream "Dimension mismatch.~%")
 	   (call-next-method)))
 
 (defcondition assumption-violated (generic-error)
   ()
   (:method print-object ((c assumption-violated) stream)
-	   (format stream "An assumption assumed when writing the software has been violated. Proceed with caution.")
+	   (format stream "An assumption assumed when writing the software has been violated. Proceed with caution.~%")
 	   (call-next-method)))
 
 (defcondition invalid-type (generic-error)
@@ -55,7 +55,7 @@
   (:documentation "Given invalid arguments to the function.")
   (:method print-object ((c invalid-arguments) stream)
 	   (when (slot-boundp c 'argument-number)
-	     (format stream "The argument ~a, given to the function is invalid (or has not been given)." (argnum c)))
+	     (format stream "The argument ~a, given to the function is invalid (or has not been given).~%" (argnum c)))
 	   (call-next-method)))
 
 (defcondition invalid-value (generic-error)
@@ -77,7 +77,10 @@
 
 (defcondition parser-error (generic-error)
   ()
-  (:documentation "Macro reader encountered an error while parsing the stream."))
+  (:documentation "Macro reader encountered an error while parsing the stream.")
+  (:method print-object ((c parser-error) stream)
+	   (format stream "Macro reader encountered an error while parsing the stream.~%")
+	   (call-next-method)))
 
 (defcondition coercion-error (generic-error)
   ((from :reader from :initarg :from)
@@ -115,14 +118,14 @@
   (:documentation "Object is not a permutation.")
   (:report (lambda (c stream)
 	     (declare (ignore c))
-	     (format stream "Object is not a permutation."))))
+	     (format stream "Object is not a permutation.~%"))))
 
 (define-condition permutation-permute-error (permutation-error)
   ((sequence-length :reader seq-len :initarg :seq-len)
    (group-rank :reader group-rank :initarg :group-rank))
   (:documentation "Cannot permute sequence.")
   (:report (lambda (c stream)	     
-	     (format stream "Cannot permute sequence.")
+	     (format stream "Cannot permute sequence.~%")
 	     (when (slots-boundp c 'sequence-length 'group-rank)
 	       (format stream "~%sequence-length : ~a group-rank: ~a" (seq-len c) (group-rank c))))))
 
