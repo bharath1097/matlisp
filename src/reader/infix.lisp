@@ -289,7 +289,7 @@
 
 (defmacro infix-error (format-string &rest args)
   `(let ((*readtable* *normal-readtable*))
-     (error 'parser-error (format-to-string ,format-string ,@args))))
+     (error 'parser-error :message (format-to-string ,format-string ,@args))))
 
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
@@ -427,7 +427,7 @@
   (let ((operator (get-token-prefix-operator token)))
     (if operator
 	(funcall operator stream)
-	(infix-error "~A is not a prefix operator" token))))
+	(infix-error "\"~A\" is not a prefix operator" token))))
 
 (defun get-next-token (stream left)
   (let ((token (read-token stream)))
@@ -437,14 +437,15 @@
   (let ((operator (get-token-infix-operator token)))
     (if operator
 	(funcall operator stream left)
-	(infix-error "~A is not an infix operator" token))))
+	(infix-error "\"~A\" is not an infix operator" token))))
 
 ;;; Fix to read-delimited-list so that it works with tokens, not
 ;;; characters.
 
 (defun infix-read-delimited-list (end-token delimiter-token stream)
   (do ((next-token (peek-token stream) (peek-token stream))
-       (list nil))
+       (list nil)
+       (count 0 (1+ count)))
       ((same-token-p next-token end-token)
        ;; We've hit the end. Remove the end-token from the stream.
        (read-token stream)
@@ -452,7 +453,7 @@
        ;; Note that this does the right thing with [] and ().
        (nreverse list))
     ;; Ignore the delimiters.
-    (when (same-token-p next-token delimiter-token)
+    (when (and (same-token-p next-token delimiter-token) (> count 0))
       (read-token stream))
     ;; Gather the expression until the next delimiter.
     (push (gather-superiors delimiter-token stream) list)))
@@ -464,7 +465,7 @@
 
 (defparameter *operator-ordering* 
     '(( \[ \( \! )			; \[ is array reference
-      ( ^^ )				; exponentiation
+      ( ** )				; exponentiation
       ( ~ )				; lognot 
       ( * /  % )			; % is mod
       ( + - )
@@ -492,7 +493,7 @@
 	  ((find op2 ops :test #'same-token-p)
 	   (return t)))))
 
-(defparameter *right-associative-operators* '(^^ =))
+(defparameter *right-associative-operators* '(** =))
 (defun operator-right-associative-p (operator)
   (find operator *right-associative-operators*))
 
@@ -582,6 +583,7 @@
 (define-token-operator else
     :prefix (infix-error "ELSE clause without an IF."))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\+
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -596,6 +598,7 @@
 (define-token-operator +=
     :infix `(incf ,left ,(gather-superiors '+= stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\-
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -610,16 +613,24 @@
 (define-token-operator -=
     :infix `(decf ,left ,(gather-superiors '-= stream)))
 
+;;*--------------------------------------------------------------;;
 (define-character-tokenization #\*
     #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '*=)
-	      (t
-	       '*))))
+	(declare (ignore char))       
+	(let ((pchar (peek-char nil stream t nil t)))
+	  (case pchar
+	    (#\=
+	     (read-char stream t nil t)
+	     '*=)
+	    (#\*
+	     (read-char stream t nil t)
+	     '**)
+	    (t
+	     '*)))))
+
 (define-token-operator *
     :infix `(* ,left ,(gather-superiors '* stream)))
+
 (define-token-operator *=
     :infix `(,(if (symbolp left) 
 		  'setq
@@ -627,6 +638,10 @@
 	      ,left 
 	      (* ,left ,(gather-superiors '*= stream))))
 
+(define-token-operator **
+    :infix `(expt ,left ,(gather-superiors '** stream)))
+
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\/
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -635,9 +650,11 @@
 	       '/=)
 	      (t
 	       '/))))
+
 (define-token-operator /
     :infix `(/ ,left ,(gather-superiors '/ stream))
     :prefix `(/ ,(gather-superiors '/ stream)))
+
 (define-token-operator /=
     :infix `(,(if (symbolp left) 
 		  'setq
@@ -645,19 +662,16 @@
 	      ,left 
 	      (/ ,left ,(gather-superiors '/= stream))))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\^
     #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\^)
-	       (read-char stream t nil t)
-	       '^^)
-	      (t
-	       '^))))
-(define-token-operator ^^
-    :infix `(expt ,left ,(gather-superiors '^^ stream)))
+	(declare (ignore stream char))
+	'^))
+
 (define-token-operator ^
     :infix `(logxor ,left ,(gather-superiors '^ stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\|
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -669,6 +683,7 @@
 (define-token-operator \|
     :infix `(logior ,left ,(gather-superiors '\| stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\&
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -680,26 +695,34 @@
 (define-token-operator \&
     :infix `(logand ,left ,(gather-superiors '\& stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\%
     #'(lambda (stream char)
 	(declare (ignore stream char))
 	'\%))
+
 (define-token-operator \%
     :infix `(mod ,left ,(gather-superiors '\% stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\~
     #'(lambda (stream char)
 	(declare (ignore stream char))
 	'\~))
+
 (define-token-operator \~
     :prefix `(lognot ,(gather-superiors '\~ stream)))
 
+;;---------------------------------------------------------------;;
 (define-character-tokenization #\,
     #'(lambda (stream char)
 	(declare (ignore stream char))
 	'\,))
+
 (define-token-operator \,
     :infix `(progn ,left ,(gather-superiors '\, stream)))
+
+;;---------------------------------------------------------------;;
 
 (define-character-tokenization #\=
     #'(lambda (stream char)
@@ -816,6 +839,7 @@
     #'(lambda (stream char)
 	(declare (ignore stream char))
 	'\)))
+
 (define-token-operator \)
     :infix (infix-error "Extra close paren \")\" in infix expression"))
 
@@ -931,14 +955,14 @@
       ("a*b*c"         (* a b c))
       ("a*b+c"         (+ (* a b) c))
       ("a/b"           (/ a b))
-      ("a^^b"          (expt a b))
+      ("a**b"          (expt a b))
       ("foo/-bar"      (/ foo (- bar)))
-      ("1+2*3^^4"       (+ 1 (* 2 (expt 3 4))))
-      ("1+2*3^^4+5"     (+ 1 (* 2 (expt 3 4)) 5))
-      ("2*3^^4+1"       (+ (* 2 (expt 3 4)) 1))
-      ("2+3^^4*5"       (+ 2 (* (expt 3 4) 5)))
-      ("2^^3^^4"        (expt 2 (expt 3 4)))
-      ("x^^2 + y^^2"    (+ (expt x 2) (expt y 2)))
+      ("1+2*3**4"       (+ 1 (* 2 (expt 3 4))))
+      ("1+2*3**4+5"     (+ 1 (* 2 (expt 3 4)) 5))
+      ("2*3**4+1"       (+ (* 2 (expt 3 4)) 1))
+      ("2+3**4*5"       (+ 2 (* (expt 3 4) 5)))
+      ("2**3**4"        (expt 2 (expt 3 4)))
+      ("x**2 + y**2"    (+ (expt x 2) (expt y 2)))
       ("(1+2)/3"       (/ (+ 1 2) 3))
       ("(a=b)"         (setq a b))
       ("(a=b,b=c)"     (progn (setq a b) (setq b c)))
@@ -1014,8 +1038,8 @@
       ("a/b*c"         (* (/ a b) c))
       ("a/b/c"         (/ a b c))
       ("/a/b"          (/ (* a b)))
-      ("a^^b^^c"         (expt a (expt b c)))
-      ("a(d)^^b^^c"      (expt (a d) (expt b c)))
+      ("a**b**c"         (expt a (expt b c)))
+      ("a(d)**b**c"      (expt (a d) (expt b c)))
       ("a<b+c<d"       (< a (+ b c) d))
       ("1*~2+3"        (+ (* 1 (lognot 2)) 3)) 
       ("1+~2*3"        (+ 1 (* (lognot 2) 3))) 
@@ -1035,10 +1059,10 @@
       ("a%b"           (mod a b))
 
       ;; Comment character -- must have carriage return after semicolon.
-      ("x^^2   ; the x coordinate
-        + y^^2 ; the y coordinate" :error)
-      ("x^^2   ; the x coordinate
-        + y^^2 ; the y coordinate
+      ("x**2   ; the x coordinate
+        + y**2 ; the y coordinate" :error)
+      ("x**2   ; the x coordinate
+        + y**2 ; the y coordinate
         "              (+ (expt x 2) (expt y 2)))
 
       ;; Errors
