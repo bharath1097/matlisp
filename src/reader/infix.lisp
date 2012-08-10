@@ -253,33 +253,6 @@
 (in-package #:matlisp-infix)
 (pushnew :matlisp-infix *features*)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *version* "1.3  28-JUN-96")
-  (defparameter *print-infix-copyright* t
-    "If non-NIL, prints a copyright notice upon loading this file.")
-
-  (defun infix-copyright (&optional (stream *standard-output*))
-    "Prints an INFIX copyright notice and header upon startup."
-    (format stream "~%;;; ~V,,,'*A" 73 "*")
-    (format stream "~%;;;   Infix notation for Common Lisp.")
-    (format stream "~%;;;   Version ~A." *version*)
-    (format stream "~%;;;   Written by Mark Kantrowitz, ~
-                            CMU School of Computer Science.")
-    (format stream "~%;;;   Copyright (c) 1993-95. All rights reserved.")
-    (format stream "~%;;;   May be freely redistributed, provided this ~
-                            notice is left intact.")
-    (format stream "~%;;;   This software is made available AS IS, without ~
-                            any warranty.")
-    (format stream "~%;;; ~V,,,'*A~%" 73 "*")
-    (force-output stream))
-
-  ;; What this means is you can either turn off the copyright notice
-  ;; by setting the parameter, or you can turn it off by including
-  ;; (setf (get :infix :dont-print-copyright) t) in your lisp init file.
-  (when (and *print-infix-copyright* 
-	     (not (get :infix :dont-print-copyright)))
-    (infix-copyright)))
-
 ;;; ********************************
 ;;; Readtable **********************
 ;;; ********************************
@@ -291,23 +264,30 @@
   `(let ((*readtable* *normal-readtable*))
      (error 'parser-error :message (format-to-string ,format-string ,@args))))
 
+
+(define-constant +blank-characters+ '(#\^m #\space #\tab #\return #\newline))
+(define-constant +newline-characters+ '(#\newline #\^m #\linefeed #\return))
+
+(defun ignore-characters (ignore stream)
+  (let ((ret nil))
+    (do ((char (peek-char nil stream t nil t)
+	       (peek-char nil stream t nil t)))
+	((not (member char ignore :test #'char=)))
+      (push (read-char stream t nil t) ret))
+    ret))
+
+(defun unread-characters (chars stream)
+  (mapcar #'(lambda (x) (unread-char x stream)) chars))
+
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
   (declare (ignore arg subchar))
-  (let ((first-char (peek-char nil stream t nil t)))
-    (cond ((char= first-char #\space)
-	   (read-char stream)		; skip over whitespace
-	   (infix-reader stream nil nil))
-	  ((char= first-char #\")
-	   ;; Read double-quote-delimited infix expressions.
-	   (string->prefix (read stream t nil t)))
-	  ((char= first-char #\()
-	   (read-char stream)		; get rid of opening left parenthesis
-	   (let ((*readtable* *infix-readtable*)
-		 (*normal-readtable* *readtable*))
-	     (read-infix stream)))
-	  (t
-	   (infix-error "Infix expression starts with ~A" first-char)))))
+  (ignore-characters +blank-characters+ stream)
+  (when (char= (peek-char nil stream t nil t) #\()
+    (read-char stream))
+  (let ((*readtable* *infix-readtable*)
+	(*normal-readtable* *readtable*))
+    (read-infix stream)))
 
 (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*) ; was #\# #\$
 
@@ -316,6 +296,12 @@
   If the argument is not a string, just return it as is."
   (if (stringp string)
       (with-input-from-string (stream (concatenate 'string "#I(" string ")"))
+	(read stream))
+      string))
+
+(defun infix-expand (string)
+  (if (stringp string)
+      (with-input-from-string (stream string)
 	(read stream))
       string))
 
@@ -343,8 +329,7 @@
        (symbolp y)
        (string-equal (symbol-name x) (symbol-name y))))
 
-;;; Peeking Token Reader
-
+;;; Peeking Token Reade
 (defvar *peeked-token* nil)
 (defun read-token (stream)
   (if *peeked-token*
@@ -479,7 +464,7 @@
       ( or )
       ;; Where should setf and friends go in the precedence?
       ( = |:=| += -= *= /= )
-      ( \, )				; progn (statement delimiter)
+      ( \, newline )			; progn (statement delimiter)
       ( if )
       ( then else )
       ( \] \) )
@@ -616,7 +601,7 @@
 ;;*--------------------------------------------------------------;;
 (define-character-tokenization #\*
     #'(lambda (stream char)
-	(declare (ignore char))       
+	(declare (ignore char))
 	(let ((pchar (peek-char nil stream t nil t)))
 	  (case pchar
 	    (#\=
@@ -719,9 +704,41 @@
 	(declare (ignore stream char))
 	'\,))
 
+;;Get rid of this
 (define-token-operator \,
     :infix `(progn ,left ,(gather-superiors '\, stream)))
 
+(define-character-tokenization #\Newline
+    #'(lambda (stream char)
+	(declare (ignore char stream))
+	'newline))
+
+(define-token-operator newline
+    :infix (let* ((ign (ignore-characters +parser-ignored-characters+ stream))
+		  (pchar (peek-char nil stream t nil t)))
+	     (case pchar
+	       (#\)
+		left)
+	       (#\I
+		(read-char stream t nil t)
+		(if (char= (peek-char nil stream t nil t) #\#)
+		    (progn
+		      (unread-char #\I stream)
+		      left)
+		    (progn
+		      (unread-characters (cons #\I ign) stream)
+		      `(progn ,left ,(gather-superiors 'newline stream)))))
+	       (t
+		`(progn ,left ,(gather-superiors 'newline stream))))))
+
+(define-character-tokenization #\I
+    #'(lambda (stream char)
+	(let ((pchar (peek-char nil stream t nil t)))
+	  (if (char= pchar #\#)
+	      (progn
+		(read-char stream t nil t)
+		(funcall (get-macro-character #\)) stream char))
+	      'i))))
 ;;---------------------------------------------------------------;;
 
 (define-character-tokenization #\=
@@ -749,7 +766,7 @@
                '|:=|)
               (t
                '|:|))))
-(define-token-operator |:=|		
+(define-token-operator |:=|
     :infix `(,(if (symbolp left)
                   'setq
                   'setf)
@@ -842,17 +859,6 @@
 
 (define-token-operator \)
     :infix (infix-error "Extra close paren \")\" in infix expression"))
-
-#|
-;;; Commented out because no longer using $ as the macro character.
-(define-character-tokenization #\$
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'%infix-end-token%))
-(define-token-operator %infix-end-token%
-    :infix (infix-error "Prematurely terminated infix expression")
-    :prefix (infix-error "Prematurely terminated infix expression"))
-|#
 
 (define-character-tokenization #\;
     #'(lambda (stream char)
@@ -1112,10 +1118,10 @@
 	  ((not (equal value result))
 	   (format t "~&Test #I(~A) failed. ~
                            ~&   Expected ~A ~
-                           ~&   but got ~A." 
+                           ~&   but got ~A."
 		   string result value)
 	   nil)
 	  (t
-	   t))))  
+	   t))))
 
 ;;; *EOF*
