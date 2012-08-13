@@ -28,30 +28,6 @@
 	 do (setf (aref ret i) i)))
     ret))
 
-(defun perrepr-max (seq)
-  (declare (type perrepr-vector seq))
-  (very-quickly
-    (loop for ele of-type perrepr-type across seq
-       for idx of-type index-type = 0 then (+ idx 1)
-       with max of-type perrepr-type = (aref seq 0)
-       with max-idx of-type index-type = 0
-       do (when (> ele max)
-	    (setf max ele
-		  max-idx idx))
-       finally (return (values max max-idx)))))
-
-(defun perrepr-min (seq)
-  (declare (type perrepr-vector seq))
-  (very-quickly
-    (loop for ele of-type perrepr-type across seq
-       for idx of-type index-type = 0 then (+ idx 1)
-       with min of-type perrepr-type = (aref seq 0)
-       with min-idx of-type index-type = 0
-       do (when (< ele min)
-	    (setf min ele
-		  min-idx idx))
-       finally (return (values min min-idx)))))
-
 (definline perv (&rest contents)
   (make-array (length contents) :element-type 'perrepr-type :initial-contents contents))
 
@@ -133,7 +109,7 @@
 	     for cyc of-type perrepr-vector in (repr per)
 	     unless (cycle-repr-p cyc)
 	     do (error 'permutation-invalid-error)
-	     maximizing (perrepr-max cyc) into g-rnk of-type index-type
+	     maximizing (lvec-max cyc) into g-rnk of-type index-type
 	     finally (setf (group-rank per) (the index-type (1+ g-rnk))))))))
 
 ;;
@@ -392,7 +368,7 @@
 	   do (let ((val (aref idiv i)))
 		(unless (= val i)
 		  (rotatef (aref act i) (aref act val))))))
-      (make-instance 'permutation-action :repr act))))       
+      (make-instance 'permutation-action :repr act))))
 
 (defun mod-max (seq lidx uidx)
   (declare (type perrepr-vector seq))
@@ -460,62 +436,67 @@
   (lambda (&rest args)
     (apply func-a (permute! (multiple-value-list (funcall func-b args)) perm))))
 ;;
-
-;;Optimize: pick different pivot.
-(defgeneric sort-permute (seq predicate)
-  (:documentation "
-  (sort-permute seq predicate)
-
-  Sorts the given sequence and return
-  the permutation required to move
-  from the given sequence to the sorted form.
-  "))
-
-(defun idx-sort-permute (seq predicate)
+  
+(definline sort-permute (seq predicate)
   "
-  (sort-permute seq predicate)
-
-  Sorts a index-array and also returns
-  the permutation-action required to move
-  from the given sequence to the sorted form.
-
-  Takes about 10x the running time which can be
-  achieved with cl:sort.
+  Sorts a lisp-vector in-place, by using the function @arg{predicate} as the
+  order. Also computes the permutation which would sort the original sequence
+  @arg{seq}.
   "
-  (declare (type index-store-vector seq)
-	   (type function predicate))
-  (let* ((len (length seq))
-	 (perm (perrepr-id-action len)))
-    (declare (type index-type len)
-	     (type perrepr-vector perm))
-    (labels ((qsort-bounds (todo)
-	       (declare (type list todo))
-	       (if (null todo) t
-		   (destructuring-bind (lb ub) (pop todo)
-		     (declare (type index-type lb ub))
-		     #+nil(format t "~a lb:~a ub:~a ~%" seq lb ub)
-		     (if (= ub (1+ lb)) t
-			 (let* ((ele (aref seq lb))
-				(ele-idx (very-quickly
-					   (loop
-					      for i of-type index-type from (1+ lb) below ub
-					      with ele-idx of-type index-type = lb
-					      do (unless (funcall predicate ele (aref seq i))
-						   (when (> i (1+ ele-idx))
-						     (rotatef (aref seq ele-idx) (aref seq (1+ ele-idx)))
-						     (rotatef (aref perm ele-idx) (aref perm (1+ ele-idx))))
-						   (rotatef (aref seq ele-idx) (aref seq i))
-						   (rotatef (aref perm ele-idx) (aref perm i))
-						   (incf ele-idx)
-						   #+nil(format t "       ~a ~%" seq))
-					      finally (return ele-idx)))))
-			   ;;The things we do for tail recursion!
-			   (when (> (- ub ele-idx) 2)
-			     (push (list (1+ ele-idx) ub) todo))
-			   (when (> (- ele-idx lb) 1)
-			     (push (list lb ele-idx) todo))
-			   (qsort-bounds todo)))))))
-      (qsort-bounds `((0 ,len)))
-      (values seq (action->cycle (make-paction perm))))))
-;;Add a general sorter, this is a very useful thing to have.
-;;Add a function to apply permutations to a matrices, tensors.
+  (declare (type vector seq))
+  ;;This function is ugly of-course, but is also very very quick!
+  (let*-typed ((len (length seq) :type fixnum)
+	       (perm (perrepr-id-action len) :type perrepr-vector)
+	       (jobs (list `(0 ,len))))
+    (loop ;;:repeat 10
+       :for bounds := (pop jobs) :then (pop jobs)
+       :until (null bounds)
+       :finally (return (values seq (make-instance 'permutation-action :repr perm)))
+       :do (let*-typed ((below-idx (first bounds) :type fixnum)
+			(above-idx (second bounds) :type fixnum)
+			(piv (+ below-idx (floor (- above-idx below-idx) 2)) :type fixnum))
+              (loop ;;:repeat 10
+		 :with ele :=  (aref seq piv)
+		 :with lbound :of-type fixnum := below-idx
+		 :with ubound :of-type fixnum := (1- above-idx)
+		 :until (progn
+			  ;;(format t "~%~a ~%" (list lbound piv ubound))
+			  (loop :for i :of-type fixnum :from lbound :to piv
+			     :until (or (= i piv) (funcall predicate ele (aref seq i)))
+			     :finally (setq lbound i))
+			  (loop :for i :of-type fixnum :downfrom ubound :to piv
+			     :until (or (= i piv) (funcall predicate (aref seq i) ele))
+			     :finally (setq ubound i))
+			  ;;(format t "~a ~%" (list lbound piv ubound))
+			  (cond
+			    ((= ubound lbound piv)
+			     (when (> (- piv below-idx) 1)
+			       (push `(,below-idx ,piv) jobs))
+			     (when (> (- above-idx (1+ piv)) 1)
+			       (push `(,(1+ piv) ,above-idx) jobs))
+			     ;;(format t "~a~%" jobs)
+			     t)
+			    ((< lbound piv ubound)
+			     (rotatef (aref seq lbound) (aref seq ubound))
+			     (rotatef (aref perm lbound) (aref perm ubound))
+			     (incf lbound)
+			     (decf ubound)
+			     nil)
+			    ((= lbound piv)
+			     (rotatef (aref seq piv) (aref seq (1+ piv)))
+			     (rotatef (aref perm piv) (aref perm (1+ piv)))
+			     (unless (= ubound (1+ piv))
+			       (rotatef (aref seq piv) (aref seq ubound))
+			       (rotatef (aref perm piv) (aref perm ubound)))
+			     (incf piv)
+			     (incf lbound)
+			     nil)
+			    ((= ubound piv)
+			     (rotatef (aref seq (1- piv)) (aref seq piv))
+			     (rotatef (aref perm (1- piv)) (aref perm piv))
+			     (unless (= lbound (1- piv))
+			       (rotatef (aref seq lbound) (aref seq piv))
+			       (rotatef (aref perm lbound) (aref perm piv)))
+			     (decf piv)
+			     (decf ubound)
+			     nil))))))))

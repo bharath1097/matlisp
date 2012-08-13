@@ -36,8 +36,8 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(definline ,func (x y)
        (declare (type ,tensor-class x y))
-       (let ((strd-p (blas-copyable-p x y))
-	     (call-fortran? (> (number-of-elements x) ,fortran-lb)))
+       (let* ((call-fortran? (> (number-of-elements x) ,fortran-lb))
+	      (strd-p (when call-fortran? (blas-copyable-p x y))))
 	 (cond
 	   ((and strd-p call-fortran?)
 	    (,blas-func (number-of-elements x) (store x) (first strd-p) (store y) (second strd-p) (head x) (head y)))
