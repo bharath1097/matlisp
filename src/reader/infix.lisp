@@ -253,6 +253,33 @@
 (in-package #:matlisp-infix)
 (pushnew :matlisp-infix *features*)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *version* "1.3  28-JUN-96")
+  (defparameter *print-infix-copyright* nil
+    "If non-NIL, prints a copyright notice upon loading this file.")
+
+  (defun infix-copyright (&optional (stream *standard-output*))
+    "Prints an INFIX copyright notice and header upon startup."
+    (format stream "~%;;; ~V,,,'*A" 73 "*")
+    (format stream "~%;;;   Infix notation for Common Lisp.")
+    (format stream "~%;;;   Version ~A." *version*)
+    (format stream "~%;;;   Written by Mark Kantrowitz, ~
+                            CMU School of Computer Science.")
+    (format stream "~%;;;   Copyright (c) 1993-95. All rights reserved.")
+    (format stream "~%;;;   May be freely redistributed, provided this ~
+                            notice is left intact.")
+    (format stream "~%;;;   This software is made available AS IS, without ~
+                            any warranty.")
+    (format stream "~%;;; ~V,,,'*A~%" 73 "*")
+    (force-output stream))
+
+  ;; What this means is you can either turn off the copyright notice
+  ;; by setting the parameter, or you can turn it off by including
+  ;; (setf (get :infix :dont-print-copyright) t) in your lisp init file.
+  (when (and *print-infix-copyright* 
+	     (not (get :infix :dont-print-copyright)))
+    (infix-copyright)))
+
 ;;; ********************************
 ;;; Readtable **********************
 ;;; ********************************
@@ -714,7 +741,7 @@
 	'newline))
 
 (define-token-operator newline
-    :infix (let* ((ign (ignore-characters +parser-ignored-characters+ stream))
+    :infix (let* ((ign (ignore-characters +blank-characters+ stream))
 		  (pchar (peek-char nil stream t nil t)))
 	     (case pchar
 	       (#\)
