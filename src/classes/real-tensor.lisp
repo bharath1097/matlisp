@@ -7,8 +7,61 @@
 (deftype real-store-vector (&optional (size '*))
   "The type of the storage structure for a REAL-MATRIX"
   `(simple-array real-type (,size)))
-;;
 
+;;Field definitions
+(definline real-type.f+ (a b)
+  (declare (type real-type a b))
+  (+ a b))
+
+(definline real-type.f- (a b)
+  (declare (type real-type a b))
+  (- a b))
+
+(definline real-type.finv+ (a)
+  (declare (type real-type a))
+  (- a))
+
+(definline real-type.fid+ ()
+  0.0d0)
+
+(definline real-type.f* (a b)
+  (declare (type real-type a b))
+  (* a b))
+
+(definline real-type.f/ (a b)
+  (declare (type real-type a b))
+  (/ a b))
+
+(definline real-type.finv* (a)
+  (declare (type real-type a))
+  (/ a))
+
+(definline real-type.fid* ()
+  1.0d0)
+
+;;Store definitions
+(definline real-type.reader (tstore idx)
+  (declare (type index-type idx)
+	   (type real-store-vector tstore))
+  (aref tstore idx))
+
+(definline real-type.value-writer (value store idx)
+  (declare (type index-type idx)
+	   (type real-store-vector store)
+	   (type real-type value))
+  (setf (aref store idx) value))
+
+(definline real-type.reader-writer (fstore fidx tstore tidx)
+  (declare (type index-type fidx tidx)
+	   (type real-store-vector fstore tstore))
+  (setf (aref tstore tidx) (aref fstore fidx)))
+
+(definline real-type.swapper (fstore fidx tstore tidx)
+  (declare (type index-type fidx tidx)
+	   (type real-store-vector fstore tstore))
+  (rotatef (aref tstore tidx) (aref fstore fidx)))
+
+;;
 (make-array-allocator allocate-real-store 'real-type 0d0
 "(allocate-real-store size [initial-element])
 Allocates real storage.  Default initial-element = 0d0.")
@@ -21,22 +74,28 @@ Allocates real storage.  Default initial-element = 0d0.")
     (use-value (value) (coerce-real value))))
 
 ;;
-(defclass real-tensor (standard-tensor)
-  ((store :type real-store-vector)
-   (element-type :initform 'real-type))
-  (:documentation "Tensor class with real elements."))
-
-(defclass real-matrix (standard-matrix real-tensor)
-  ()
-  (:documentation "A class of matrices with real elements."))
-
-(defclass real-vector (standard-vector real-tensor)
-  ()
-  (:documentation "A class of vector with real elements."))
-
-(setf (get-tensor-counterclass 'real-tensor) '(:matrix real-matrix :vector real-vector)
-      (get-tensor-counterclass 'real-matrix) 'real-tensor
-      (get-tensor-counterclass 'real-vector) 'real-tensor)
+(define-tensor (real-tensor real-type real-type real-store-vector)
+  :matrix real-matrix :vector real-vector
+  ;;
+  :f+ real-type.f+
+  :f- real-type.f-
+  :finv+ real-type.finv+
+  :fid+ real-type.fid+
+  :f* real-type.f*
+  :f/ real-type.f/
+  :finv* real-type.finv*
+  :fid* real-type.fid*
+  ;;
+  :store-allocator allocate-real-store
+  :coercer coerce-real
+  :coercer-unforgiving coerce-real-unforgiving
+  ;;
+  :matrix real-matrix :vector real-vector
+  ;;
+  :reader real-type.reader
+  :value-writer real-type.value-writer
+  :reader-writer real-type.reader-writer
+  :swapper real-type.swapper)
 
 ;;
 (defmethod initialize-instance ((tensor real-tensor) &rest initargs)
@@ -46,23 +105,6 @@ Allocates real storage.  Default initial-element = 0d0.")
 	(setf (slot-value tensor 'store) (allocate-real-store size)
 	      (slot-value tensor 'store-size) size)))
   (call-next-method))
-
-;;
-(tensor-store-defs (real-tensor real-type real-type)
-  :store-allocator allocate-real-store
-  :coercer coerce-real-unforgiving
-  :reader
-  (lambda (tstore idx)
-    (aref tstore idx))
-  :value-writer
-  (lambda (value store idx)
-    (setf (aref store idx) value))
-  :reader-writer
-  (lambda (fstore fidx tstore tidx)
-    (setf (aref tstore tidx) (aref fstore fidx)))
-  :swapper
-  (lambda (fstore fidx tstore tidx)
-    (rotatef (aref tstore tidx) (aref fstore fidx))))
 
 (setf (get-tensor-class-optimization 'real-matrix) 'real-tensor
       (get-tensor-class-optimization 'real-vector) 'real-tensor)

@@ -48,10 +48,6 @@
     :accessor number-of-elements
     :type index-type
     :documentation "Total number of elements in the tensor.")
-   (element-type
-    :accessor element-type
-    :type symbol
-    :documentation "Element type of the tensor")
    ;;
    (parent-tensor
     :accessor parent-tensor
@@ -83,6 +79,7 @@
 (defclass standard-matrix (standard-tensor)
   ((rank
     :accessor rank
+    :allocation :class
     :type index-type
     :initform 2
     :documentation "For a matrix, rank = 2."))
@@ -91,7 +88,7 @@
 ;;
 (defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
   (declare (ignore initargs))
-  (mlet*
+  (let-typed
    ((rank (rank matrix) :type index-type))
    (unless (= rank 2)
      (error 'tensor-not-matrix :rank rank :tensor matrix))))
@@ -105,6 +102,7 @@
 (defclass standard-vector (standard-tensor)
   ((rank
     :accessor rank
+    :allocation :class
     :type index-type
     :initform 1
     :documentation "For a vector, rank = 1."))
@@ -149,10 +147,21 @@
 (defvar *tensor-class-optimizations* (make-hash-table)
   "
   Contains a either:
-  o A property list containing:
+  o A property list containing:  
+  :field-type -> Field type
+  :f+ (a b) -> a + b
+  :f- (a b) -> a + (- b)
+  :finv+ (a) -> -a
+  :fid+ () -> + identity
+  :f* (a b) -> a * b
+  :f/ (a b) -> a * b^{-1}
+  :finv* (a) -> 1/a
+  :fid* () -> * identity
+
+  :coercer (ele) -> Coerced to store-type, with error checking
+  :coercer-unforgiving (ele) -> Coerced to store-type, no error checking
+
   :store-allocator (n) -> Allocates a store of size n
-  :coercer (ele) -> Coerced to store-type
-  :element-type
   :store-type
   :reader (store idx) => result
   :value-writer (value store idx) => (store idx) <- value
@@ -340,40 +349,57 @@
 	   (unless (< -1 idx (store-size tensor))
 	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
 
-(defmacro tensor-store-defs ((tensor-class element-type store-element-type) &key  store-allocator coercer reader value-writer reader-writer swapper)
-  (let ((tensym  (gensym "tensor")))
-    (assert store-allocator)
-    (assert coercer)
-    (assert (eq (first reader-writer) 'lambda))
-    (assert swapper)
-    `(progn
-       ,(destructuring-bind (lbd args &rest body) reader
-	  (assert (eq lbd 'lambda))
-	  (destructuring-bind (tstore idx) args
-	    `(defmethod tensor-store-ref ((,tensym ,tensor-class) ,idx)
-	       (declare (type index-type ,idx))
-	       (let ((,tstore (store ,tensym)))
-		 (declare (type ,(linear-array-type store-element-type) ,tstore))
-		 ,@body))))
-       ,(destructuring-bind (lbd args &rest body) value-writer
-	  (assert (eq lbd 'lambda))
-	  (destructuring-bind (value tstore tidx) args
-	    `(defmethod (setf tensor-store-ref) (,value (,tensym ,tensor-class) ,tidx)
-	       (declare (type index-type ,tidx)
-			(type ,element-type ,value))
-	       (let ((,tstore (store ,tensym)))
-		 (declare (type ,(linear-array-type store-element-type) ,tstore))
-		 ,@body))))
-       (let ((hst (list
-		   :reader (macrofy ,reader)
-		   :value-writer (macrofy ,value-writer)
-		   :reader-writer (macrofy ,reader-writer)
-		   :swapper (macrofy ,swapper)
-		   :store-allocator ',store-allocator
-		   :coercer ',coercer
-		   :element-type ',element-type
-		   :store-type ',store-element-type)))
-	 (setf (get-tensor-class-optimization ',tensor-class) hst)))))
+(defmacro define-tensor
+  ((tensor-class element-type store-element-type store-type &rest class-decls) &key
+    f+ f- finv+ fid+ f* f/ finv* fid*
+    matrix vector
+    store-allocator coercer coercer-unforgiving reader value-writer reader-writer swapper)
+  ;;Error checking
+  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* store-allocator coercer coercer-unforgiving matrix vector reader value-writer reader-writer swapper))
+  ;;
+  `(progn
+     ;;Class definitions
+     (defclass ,tensor-class (standard-tensor)
+       ((store :type ,store-type))
+       ,@class-decls)
+     (defclass ,matrix (standard-matrix ,tensor-class)
+       ())
+     (defclass ,vector (standard-vector ,tensor-class)
+       ())
+     (setf (get-tensor-counterclass ',tensor-class) (list :matrix ',matrix :vector ',vector)
+	   (get-tensor-counterclass ',matrix) ',tensor-class
+	   (get-tensor-counterclass ',vector) ',tensor-class)
+     ;;Store refs
+     (defmethod tensor-store-ref ((tensor ,tensor-class) idx)
+       (declare (type index-type idx))
+       (let-typed ((store (store tensor) :type ,store-type))
+		  (,reader store idx)))
+     (defmethod (setf tensor-store-ref) (value (tensor ,tensor-class) idx)
+       (declare (type index-type idx)
+		(type ,element-type value))
+       (let-typed ((store (store tensor) :type ,store-type))
+		  (,value-writer value store idx)))
+     ;;
+     (let ((hst (list
+		 :field-type ',element-type
+		 :f+ ',f+
+		 :f- ',f-
+		 :finv+ ',finv+
+		 :fid+ ',fid+
+		 :f* ',f*
+		 :f/ ',f/
+		 :finv* ',finv*
+		 :fid* ',fid*
+		 :reader ',reader
+		 :value-writer ',value-writer
+		 :reader-writer ',reader-writer
+		 :swapper ',swapper
+		 :store-allocator ',store-allocator
+		 :coercer ',coercer
+		 :coercer-unforgiving ',coercer-unforgiving
+		 :element-type ',element-type
+		 :store-type ',store-element-type)))
+       (setf (get-tensor-class-optimization ',tensor-class) hst))))
 
 ;;
 (defgeneric tensor-ref (tensor subscripts)
@@ -420,11 +446,11 @@
 
 ;;
 
-(defun tensor-type-p (tensor subscripts)
+(defun tensor-typep (tensor subscripts)
   "
   Syntax
   ======
-  (tensor-type-p tensor subscripts)
+  (tensor-typep tensor subscripts)
 
   Purpose
   =======
@@ -434,14 +460,14 @@
   Examples
   ========
   Checking for a vector:
-  > (tensor-type-p ten '(*))
+  > (tensor-typep ten '(*))
 
   Checking for a matrix with 2 columns:
-  > (tensor-type-p ten '(* 2))
+  > (tensor-typep ten '(* 2))
 
   Also does symbolic association; checking for
   a square matrix:
-  > (tensor-type-p ten '(a a))
+  > (tensor-typep ten '(a a))
   "
   (declare (type standard-tensor tensor))
   (mlet* (((rank dims) (slot-values tensor '(rank dimensions))
