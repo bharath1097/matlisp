@@ -28,8 +28,7 @@
 
 (defun consecutive-store-p (tensor)
   (declare (type standard-tensor tensor))
-  (mlet* (((sort-std std-perm) (let-typed ((strd (strides tensor) :type index-store-vector))
-				  (very-quickly (sort-permute (copy-seq (strides tensor)) #'<)))
+  (mlet* (((sort-std std-perm) (very-quickly (sort-permute (copy-seq (strides tensor)) #'<))
 	   :type (index-store-vector permutation))
 	  (perm-dims (permute (dimensions tensor) std-perm) :type index-store-vector))
       (very-quickly

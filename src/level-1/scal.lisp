@@ -29,20 +29,13 @@
 (in-package #:matlisp)
 
 (defmacro generate-typed-scal! (func (tensor-class fortran-func fortran-lb))
-  (let* ((opt (get-tensor-class-optimization tensor-class)))
+  (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(definline ,func (from to)
        (declare (type ,tensor-class from to))
-       (let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
-	      (strd-p (when call-fortran? (blas-copyable-p from to))))
-	 (cond
-	   ((and strd-p call-fortran?)
-	    (,fortran-func (number-of-elements from)
-			(store from) (first strd-p)
-			(store to) (second strd-p)
-			(head from) (head to)))
-	   (t
-	    (let ((f-sto (store from))
+       ,(let
+	 ((lisp-routine
+	   `(let ((f-sto (store from))
 		  (t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
 	      (very-quickly
@@ -50,49 +43,59 @@
 		  with (linear-sums
 			(f-of (strides from) (head from))
 			(t-of (strides to) (head to)))
-		  do (let*-typed ((val-f ,(funcall (getf opt :reader) 'f-sto 'f-of) :type ,(getf opt :element-type))
-				  (val-t ,(funcall (getf opt :reader) 't-sto 't-of) :type ,(getf opt :element-type))
+		  do (let*-typed ((val-f (,(getf opt :reader) f-sto f-of) :type ,(getf opt :element-type))
+				  (val-t (,(getf opt :reader) t-sto t-of) :type ,(getf opt :element-type))
 				  (mul (* val-f val-t) :type ,(getf opt :element-type)))
-		         ,(funcall (getf opt :value-writer) 'mul 't-sto 't-of))))))))
+				 (,(getf opt :value-writer) mul t-sto t-of)))))))
+	 (if fortran-func
+	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
+		     (strd-p (when call-fortran? (blas-copyable-p from to))))
+		(cond
+		    ((and strd-p call-fortran?)
+		     (,fortran-func (number-of-elements from)
+				    (store from) (first strd-p)
+				    (store to) (second strd-p)
+				    (head from) (head to)))
+		    (t
+		     ,lisp-routine)))
+	     lisp-routine))
        to)))
 
 (defmacro generate-typed-num-scal! (func (tensor-class blas-func fortran-lb))
-  (let ((opt (get-tensor-class-optimization tensor-class)))
+  (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(definline ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
-       (let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
-	      (min-stride (when call-fortran? (consecutive-store-p to))))
-	 (cond
-	   ((and call-fortran? min-stride)
-	    (,blas-func (number-of-elements to) alpha (store to) min-stride (head to)))
-	   (t
-	    (let ((t-sto (store to)))
+       ,(let
+	 ((lisp-routine
+	   `(let ((t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
 	      (very-quickly
 		(mod-dotimes (idx (dimensions to))
 		  with (linear-sums
 			(t-of (strides to) (head to)))
-		  do (let ((scal-val (* ,(funcall (getf opt :reader) 't-sto 't-of) alpha)))
-		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
+		  do (let ((scal-val (* (,(getf opt :reader) t-sto t-of) alpha)))
+		       (,(getf opt :value-writer) scal-val t-sto t-of)))))))
+	 (if blas-func
+	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
+		     (min-stride (when call-fortran? (consecutive-store-p to))))
+		(cond
+		  ((and call-fortran? min-stride)
+		   (,blas-func (number-of-elements to) alpha (store to) min-stride (head to)))
+		  (t
+		   ,lisp-routine)))
+	     lisp-routine))
        to)))
 
 (defmacro generate-typed-div! (func (tensor-class fortran-func fortran-lb))
-  (let* ((opt (get-tensor-class-optimization tensor-class)))
+  (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(definline ,func (from to)
        (declare (type ,tensor-class from to))
-       (let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
-	      (strd-p (when call-fortran? (blas-copyable-p from to))))
-	 (cond
-	   ((and strd-p call-fortran?)
-	    (,fortran-func (number-of-elements from)
-			(store from) (first strd-p)
-			(store to) (second strd-p)
-			(head from) (head to)))
-	   (t
-	    (let ((f-sto (store from))
+       ,(let
+	 ((lisp-routine
+	   `(let ((f-sto (store from))
 		  (t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
 	      (very-quickly
@@ -100,10 +103,22 @@
 		  with (linear-sums
 			(f-of (strides from) (head from))
 			(t-of (strides to) (head to)))
-		  do (let*-typed ((val-f ,(funcall (getf opt :reader) 'f-sto 'f-of) :type ,(getf opt :element-type))
-				  (val-t ,(funcall (getf opt :reader) 't-sto 't-of) :type ,(getf opt :element-type))
+		  do (let*-typed ((val-f (,(getf opt :reader) f-sto f-of) :type ,(getf opt :element-type))
+				  (val-t (,(getf opt :reader) t-sto t-of) :type ,(getf opt :element-type))
 				  (mul (/ val-f val-t) :type ,(getf opt :element-type)))
-		         ,(funcall (getf opt :value-writer) 'mul 't-sto 't-of))))))))
+		         (,(getf opt :value-writer) mul t-sto t-of)))))))
+	 (if fortran-func	     
+	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
+		     (strd-p (when call-fortran? (blas-copyable-p from to))))
+		(cond
+		  ((and strd-p call-fortran?)
+		   (,fortran-func (number-of-elements from)
+				  (store from) (first strd-p)
+				  (store to) (second strd-p)
+				  (head from) (head to)))
+		  (t
+		   ,lisp-routine)))
+	     lisp-routine))
        to)))
 
 (defmacro generate-typed-num-div! (func (tensor-class fortran-func fortran-lb))
@@ -112,24 +127,29 @@
     `(definline ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
-       (let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
-	      (min-stride (when call-fortran? (consecutive-store-p to))))
-	 (cond
-	   ((and call-fortran? min-stride)
-	    (let ((num-array (,(getf opt :store-allocator) 1)))
-	      (declare (type ,(linear-array-type (getf opt :store-type)) num-array))
-	      (let-typed ((id (,(getf opt :coercer) 1) :type ,(getf opt :element-type)))
-		,(funcall (getf opt :value-writer) `id 'num-array 0))
-	      (,fortran-func (number-of-elements to) num-array 0 (store to) min-stride (head to))))
-	   (t
-	    (let ((t-sto (store to)))
+       ,(let
+	 ((lisp-routine
+	   `(let ((t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) t-sto))
 	      (very-quickly
 		(mod-dotimes (idx (dimensions to))
 		  with (linear-sums
 			(t-of (strides to) (head to)))
-		  do (let-typed ((scal-val (/ alpha ,(funcall (getf opt :reader) 't-sto 't-of)) :type ,(getf opt :element-type)))
-		       ,(funcall (getf opt :value-writer) 'scal-val 't-sto 't-of))))))))
+		  do (let-typed ((scal-val (/ alpha (,(getf opt :reader) t-sto t-of)) :type ,(getf opt :element-type)))
+		       (,(getf opt :value-writer) scal-val t-sto t-of)))))))
+	 (if fortran-func
+	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
+		     (min-stride (when call-fortran? (consecutive-store-p to))))
+		(cond
+		  ((and call-fortran? min-stride)
+		   (let ((num-array (,(getf opt :store-allocator) 1)))
+		     (declare (type ,(linear-array-type (getf opt :store-type)) num-array))
+		     (let-typed ((id (,(getf opt :coercer) 1) :type ,(getf opt :element-type)))
+				(,(getf opt :value-writer) id num-array 0))
+		     (,fortran-func (number-of-elements to) num-array 0 (store to) min-stride (head to))))
+		  (t
+		   ,lisp-routine)))
+	     lisp-routine))
        to)))
 
 ;;Real

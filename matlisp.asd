@@ -133,20 +133,22 @@
 			 (:file "swap")
 			 (:file "copy"
 				:depends-on ("tensor-maker"))
-			 (:file "scal"
+			 #+nil(:file "scal"
 				:depends-on ("copy" "tensor-maker"))
-			 (:file "realimag"
+			 #+nil(:file "realimag"
 				:depends-on ("copy"))
-			 (:file "dot"
+			 #+nil(:file "dot"
 				:depends-on ("realimag"))
-			 (:file "axpy"
+			 #+nil(:file "axpy"
 				:depends-on ("copy" "scal"))
-			 (:file "trans"
+			 #+nil(:file "trans"
 				:depends-on ("scal" "copy"))))
+   #+nil
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
 	    :components ((:file "gemv")))
+   #+nil
    (:module "matlisp-level-3"
 	    :pathname "level-3"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
@@ -155,11 +157,13 @@
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "gesv")))
+   #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "mplusminus")
 			 (:file "mtimesdivide")))
+   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"
 	    :components ((:file "infix")))))

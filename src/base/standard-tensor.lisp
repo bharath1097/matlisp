@@ -121,29 +121,6 @@
     (error 'tensor-not-vector :rank (rank old))))
 
 ;;
-(defvar *tensor-counterclass* (make-hash-table)
-  "
-  Contains the CLOS counterpart classes of every tensor class.
-  This is used to change the tensor class automatically to a matrix
-  and vector")
-
-(defun get-tensor-counterclass (clname)
-  (declare (type symbol clname))
-  (let ((opt (gethash clname *tensor-counterclass*)))
-    (cond
-      ((null opt) nil)
-      ((symbolp opt)
-       (get-tensor-counterclass opt))
-      (t (values opt clname)))))
-
-(defun (setf get-tensor-counterclass) (value clname)
-  (setf (gethash clname *tensor-counterclass*) value))
-
-(setf (get-tensor-counterclass 'standard-tensor)
-      '(:matrix standard-matrix
-	:vector standard-vector))
-
-;;
 (defvar *tensor-class-optimizations* (make-hash-table)
   "
   Contains a either:
@@ -170,8 +147,14 @@
   o class-name (symbol) of the superclass whose optimizations
   are to be made use of.")
 
-(defun get-tensor-class-optimization (clname)
+(definline get-tensor-class-optimization (clname)
   (declare (type symbol clname))
+  (symbol-plist clname))
+
+(definline get-tensor-object-optimization (obj)
+  (symbol-plist (class-name (class-of obj))))
+
+(defun get-tensor-class-optimization-hashtable (clname)
   (let ((opt (gethash clname *tensor-class-optimizations*)))
     (cond
       ((null opt) nil)
@@ -180,7 +163,10 @@
       (t (values opt clname)))))
 
 (defun (setf get-tensor-class-optimization) (value clname)
-  (setf (gethash clname *tensor-class-optimizations*) value))
+  (setf (gethash clname *tensor-class-optimizations*) value
+	(symbol-plist clname) (if (symbolp value)
+				  (get-tensor-class-optimization-hashtable clname)
+				  value)))
 
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp
@@ -366,9 +352,6 @@
        ())
      (defclass ,vector (standard-vector ,tensor-class)
        ())
-     (setf (get-tensor-counterclass ',tensor-class) (list :matrix ',matrix :vector ',vector)
-	   (get-tensor-counterclass ',matrix) ',tensor-class
-	   (get-tensor-counterclass ',vector) ',tensor-class)
      ;;Store refs
      (defmethod tensor-store-ref ((tensor ,tensor-class) idx)
        (declare (type index-type idx))
@@ -381,7 +364,10 @@
 		  (,value-writer value store idx)))
      ;;
      (let ((hst (list
-		 :field-type ',element-type
+		 :tensor ',tensor-class
+		 :matrix ',matrix
+		 :vector ',vector
+		 :element-type ',element-type
 		 :f+ ',f+
 		 :f- ',f-
 		 :finv+ ',finv+
@@ -397,9 +383,11 @@
 		 :store-allocator ',store-allocator
 		 :coercer ',coercer
 		 :coercer-unforgiving ',coercer-unforgiving
-		 :element-type ',element-type
 		 :store-type ',store-element-type)))
-       (setf (get-tensor-class-optimization ',tensor-class) hst))))
+       (setf (get-tensor-class-optimization ',tensor-class) hst
+	     (get-tensor-class-optimization ',matrix) ',tensor-class
+	     (get-tensor-class-optimization ',vector) ',tensor-class)
+       (setf (symbol-plist ',tensor-class) hst))))
 
 ;;
 (defgeneric tensor-ref (tensor subscripts)
@@ -499,11 +487,9 @@
   (declare (type standard-tensor ten))
   (= (slot-value ten 'rank) 1))
 
-(defun square-p (tensor)
-  (let* ((rank (rank tensor))
-	 (sym (gensym))
-	 (lst (make-list rank :initial-element sym)))
-    (apply #'tensor-type-p (list tensor lst))))
+(definline square-p (tensor)
+  (let-typed ((dims (dimensions tensor) :type index-store-vector))
+    (lvec-foldr #'(lambda (a b) (if (eq a b) a nil)) dims)))
 
 ;;---------------------------------------------------------------;;
 
@@ -585,8 +571,9 @@
 	    (make-instance
 	     (let ((nrnk (length ndim)))
 	       (if (> nrnk 2) (class-name (class-of tensor))
-		   (let ((cocl (get-tensor-counterclass (class-name (class-of tensor)))))
-		     (assert cocl nil 'tensor-cannot-find-counter-class :tensor-class (class-name (class-of tensor)))
-		     (ecase nrnk (2 (getf cocl :matrix)) (1 (getf cocl :vector))))))
+		   (let ((cocl (getf (symbol-plist (class-name (class-of tensor))) (ecase nrnk (2 :matrix) (1 :vector)))))
+		     (assert cocl nil 'tensor-cannot-find-optimization :tensor-class (class-name (class-of tensor)))
+		     cocl)))
 	     :parent-tensor tensor :store (store tensor) :head nhd
 	     :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))
+

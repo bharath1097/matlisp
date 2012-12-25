@@ -32,7 +32,7 @@
   Purpose
   =======
   Return T if X is a row matrix (number of columns is 1)"
-  (tensor-type-p matrix '(1 *)))
+  (tensor-typep matrix '(1 *)))
 
 (definline col-matrix-p (matrix)
   "
@@ -43,7 +43,7 @@
   Purpose
   =======
   Return T if X is a column matrix (number of rows is 1)"
-  (tensor-type-p matrix '(* 1)))
+  (tensor-typep matrix '(* 1)))
 
 (definline row-or-col-matrix-p (matrix)
 "

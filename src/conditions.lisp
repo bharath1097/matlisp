@@ -204,13 +204,6 @@
 	     (when (slots-boundp c 'argument 'argument-stride)
 	       (format stream "Stride of argument ~A must be >= 0, initialized with ~A." (argument c) (stride c))))))
 
-(define-condition tensor-cannot-find-counter-class (tensor-error)
-  ((tensor-class :reader tensor-class :initarg :tensor-class))
-  (:documentation "Cannot find the counter-class list of the given tensor class")
-  (:report (lambda (c stream)
-	     (when (slots-boundp c 'tensor-class)
-	       (format stream "Cannot find the counter-class list of the given tensor class: ~a." (tensor-class c))))))
-
 (define-condition tensor-cannot-find-optimization (tensor-error)
   ((tensor-class :reader tensor-class :initarg :tensor-class))
   (:documentation "Cannot find optimization information for the given tensor class")

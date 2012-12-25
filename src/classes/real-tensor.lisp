@@ -74,7 +74,8 @@ Allocates real storage.  Default initial-element = 0d0.")
     (use-value (value) (coerce-real value))))
 
 ;;
-(define-tensor (real-tensor real-type real-type real-store-vector)
+(define-tensor (real-tensor real-type real-type real-store-vector
+		(:documentation "Tensor class with real double elements."))
   :matrix real-matrix :vector real-vector
   ;;
   :f+ real-type.f+
@@ -105,9 +106,6 @@ Allocates real storage.  Default initial-element = 0d0.")
 	(setf (slot-value tensor 'store) (allocate-real-store size)
 	      (slot-value tensor 'store-size) size)))
   (call-next-method))
-
-(setf (get-tensor-class-optimization 'real-matrix) 'real-tensor
-      (get-tensor-class-optimization 'real-vector) 'real-tensor)
 
 ;;
 (defmethod (setf tensor-ref) ((value number) (tensor real-tensor) subscripts)
