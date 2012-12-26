@@ -133,11 +133,11 @@
 			 (:file "swap")
 			 (:file "copy"
 				:depends-on ("tensor-maker"))
-			 #+nil(:file "scal"
-				:depends-on ("copy" "tensor-maker"))
-			 #+nil(:file "realimag"
+			 (:file "realimag"
 				:depends-on ("copy"))
-			 #+nil(:file "dot"
+			 (:file "scal"
+				:depends-on ("copy" "tensor-maker" "realimag"))
+			 (:file "dot"
 				:depends-on ("realimag"))
 			 #+nil(:file "axpy"
 				:depends-on ("copy" "scal"))

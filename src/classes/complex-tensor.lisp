@@ -44,6 +44,10 @@
 (definline complex-type.fid* ()
   #c(1.0d0 0.0d0))
 
+(definline complex-type.fconj (a)
+  (declare (type complex-type a))
+  (conjugate a))
+
 ;;Store operations
 (definline allocate-complex-store (size)
   "

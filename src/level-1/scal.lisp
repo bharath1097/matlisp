@@ -45,7 +45,7 @@
 			(t-of (strides to) (head to)))
 		  do (let*-typed ((val-f (,(getf opt :reader) f-sto f-of) :type ,(getf opt :element-type))
 				  (val-t (,(getf opt :reader) t-sto t-of) :type ,(getf opt :element-type))
-				  (mul (* val-f val-t) :type ,(getf opt :element-type)))
+				  (mul (,(getf opt :f*) val-f val-t) :type ,(getf opt :element-type)))
 				 (,(getf opt :value-writer) mul t-sto t-of)))))))
 	 (if fortran-func
 	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
@@ -75,7 +75,7 @@
 		(mod-dotimes (idx (dimensions to))
 		  with (linear-sums
 			(t-of (strides to) (head to)))
-		  do (let ((scal-val (* (,(getf opt :reader) t-sto t-of) alpha)))
+		  do (let ((scal-val (,(getf opt :f*) (,(getf opt :reader) t-sto t-of) alpha)))
 		       (,(getf opt :value-writer) scal-val t-sto t-of)))))))
 	 (if blas-func
 	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
@@ -105,7 +105,7 @@
 			(t-of (strides to) (head to)))
 		  do (let*-typed ((val-f (,(getf opt :reader) f-sto f-of) :type ,(getf opt :element-type))
 				  (val-t (,(getf opt :reader) t-sto t-of) :type ,(getf opt :element-type))
-				  (mul (/ val-f val-t) :type ,(getf opt :element-type)))
+				  (mul (,(getf opt :f/) val-f val-t) :type ,(getf opt :element-type)))
 		         (,(getf opt :value-writer) mul t-sto t-of)))))))
 	 (if fortran-func	     
 	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
@@ -135,7 +135,7 @@
 		(mod-dotimes (idx (dimensions to))
 		  with (linear-sums
 			(t-of (strides to) (head to)))
-		  do (let-typed ((scal-val (/ alpha (,(getf opt :reader) t-sto t-of)) :type ,(getf opt :element-type)))
+		  do (let-typed ((scal-val (,(getf opt :f/) alpha (,(getf opt :reader) t-sto t-of)) :type ,(getf opt :element-type)))
 		       (,(getf opt :value-writer) scal-val t-sto t-of)))))))
 	 (if fortran-func
 	     `(let* ((call-fortran? (> (number-of-elements to) ,fortran-lb))
@@ -144,7 +144,7 @@
 		  ((and call-fortran? min-stride)
 		   (let ((num-array (,(getf opt :store-allocator) 1)))
 		     (declare (type ,(linear-array-type (getf opt :store-type)) num-array))
-		     (let-typed ((id (,(getf opt :coercer) 1) :type ,(getf opt :element-type)))
+		     (let-typed ((id (,(getf opt :fid*)) :type ,(getf opt :element-type)))
 				(,(getf opt :value-writer) id num-array 0))
 		     (,fortran-func (number-of-elements to) num-array 0 (store to) min-stride (head to))))
 		  (t

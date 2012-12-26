@@ -27,72 +27,66 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(definline real-typed-dot (x y conjugate-p)
-  (declare (type real-vector x y)
-	   (ignore conjugate-p))
-  (let ((call-fortran? (> (number-of-elements x)
-			  *real-l1-fcall-lb*)))
-    (cond
-      (call-fortran?
-       (ddot (number-of-elements x)
-	     (store x) (aref (strides x) 0)
-	     (store y) (aref (strides y) 0)
-	     (head x) (head y)))
-      (t
-       (let-typed
-	((stp-x (aref (strides x) 0) :type index-type)
-	 (sto-x (store x) :type real-store-vector)
-	 (stp-y (aref (strides y) 0) :type index-type)
-	 (sto-y (store y) :type real-store-vector)
-	 (nele (number-of-elements x) :type index-type))
-	(very-quickly
-	  (loop repeat nele
-	     for of-x of-type index-type = (head x) then (+ of-x stp-x)
-	     for of-y of-type index-type = (head y) then (+ of-y stp-y)
-	     summing (* (aref sto-x of-x) (aref sto-y of-y)) into dot of-type real-type
-	     finally (return dot))))))))
+(defmacro generate-typed-dot (func (tensor-class blas-func blasc-func conj-func fortran-lb))
+  (let* ((opt (get-tensor-class-optimization-hashtable tensor-class))
+	 (conj? (and blasc-func conj-func))
+	 (blas? (or blas-func blasc-func)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    `(definline ,func (x y conjugate-p)
+       (declare (type ,tensor-class x y)
+		,(if conj?
+		     `(type boolean conjugate-p)
+		     `(ignore conjugate-p)))
+       ,(let
+	 ((lisp-routine
+	   `(let-typed
+	     ((stp-x (aref (strides x) 0) :type index-type)
+	      (sto-x (store x) :type complex-store-vector)
+	      (stp-y (aref (strides y) 0) :type index-type)
+	      (sto-y (store y) :type complex-store-vector)
+	      (nele (number-of-elements x) :type index-type))
+	     ,(labels ((main-loop (conjp)
+				  `(very-quickly
+				     (loop :repeat nele
+					:for of-x :of-type index-type = (head x) :then (+ of-x stp-x)
+					:for of-y :of-type index-type = (head y) :then (+ of-y stp-y)
+					:with dot :of-type ,(getf opt :element-type) = (,(getf opt :fid+))
+					:do (let-typed ((xval ,(recursive-append
+								(when conjp `(,conj-func))
+								`(,(getf opt :reader) sto-x of-x)) :type ,(getf opt :element-type))
+							(yval (,(getf opt :reader) sto-y of-y) :type ,(getf opt :element-type)))
+						       (setf dot (,(getf opt :f+) dot (,(getf opt :f*) xval yval))))
+					:finally (return dot)))))
+		      (if conj?
+			  `(if conjugate-p
+			       ,(main-loop t)
+			       ,(main-loop nil))
+			  (main-loop nil))))))
+	 (if blas?
+	     `(let ((call-fortran? (> (number-of-elements x)
+				      ,fortran-lb)))
+		(cond
+		  (call-fortran?
+		   ,(recursive-append
+		     (when conj?
+			    `(if conjugate-p
+				 (,blasc-func (number-of-elements x)
+					      (store x) (aref (strides x) 0)
+					      (store y) (aref (strides y) 0)
+					      (head x) (head y))))
+		     `(,blas-func (number-of-elements x)
+				  (store x) (aref (strides x) 0)
+				  (store y) (aref (strides y) 0)
+				  (head x) (head y))))
+		  (t
+		   ,lisp-routine)))
+	     lisp-routine)))))
 
-(definline complex-typed-dot (x y conjugate-p)
-  (declare (type complex-vector x y))
-  (let ((call-fortran? (> (number-of-elements x)
-			  *complex-l1-fcall-lb*)))
-    (cond
-      (call-fortran?
-       (if conjugate-p
-	   (zdotc (number-of-elements x)
-		  (store x) (aref (strides x) 0)
-		  (store y) (aref (strides y) 0)
-		  (head x) (head y))
-	   (zdotu (number-of-elements x)
-		  (store x) (aref (strides x) 0)
-		  (store y) (aref (strides y) 0)
-		  (head x) (head y))))
-      (t
-       (let-typed
-	((stp-x (aref (strides x) 0) :type index-type)
-	 (sto-x (store x) :type complex-store-vector)
-	 (stp-y (aref (strides y) 0) :type index-type)
-	 (sto-y (store y) :type complex-store-vector)
-	 (nele (number-of-elements x) :type index-type))
-	(if conjugate-p
-	    (very-quickly
-	      (loop repeat nele
-		 for of-x of-type index-type = (head x) then (+ of-x stp-x)
-		 for of-y of-type index-type = (head y) then (+ of-y stp-y)
-		 summing (let-typed ((xval (complex (aref sto-x (* 2 of-x)) (- (aref sto-x (1+ (* 2 of-x))))) :type complex-type)
-				     (yval (complex (aref sto-y (* 2 of-y)) (aref sto-y (1+ (* 2 of-y)))) :type complex-type))
-				    (* xval yval))
-		         into dot of-type complex-type
-		 finally (return dot)))
-	    (very-quickly
-	      (loop repeat nele
-		 for of-x of-type index-type = (head x) then (+ of-x stp-x)
-		 for of-y of-type index-type = (head y) then (+ of-y stp-y)
-		 summing (let-typed ((xval (complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x)))) :type complex-type)
-				     (yval (complex (aref sto-y (* 2 of-y)) (aref sto-y (1+ (* 2 of-y)))) :type complex-type))
-				    (* xval yval))
-		         into dot of-type complex-type
-		 finally (return dot)))))))))
+(generate-typed-dot real-typed-dot
+  (real-tensor ddot nil nil *real-l1-fcall-lb*))
+
+(generate-typed-dot complex-typed-dot
+  (complex-tensor zdotu zdotc complex-type.fconj *complex-l1-fcall-lb*))
 
 ;;---------------------------------------------------------------;;
 		  
