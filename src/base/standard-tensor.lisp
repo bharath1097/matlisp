@@ -337,7 +337,7 @@
 
 (defmacro define-tensor
   ((tensor-class element-type store-element-type store-type &rest class-decls) &key
-    f+ f- finv+ fid+ f* f/ finv* fid*
+    f+ f- finv+ fid+ f* f/ finv* fid* fconj
     matrix vector
     store-allocator coercer coercer-unforgiving reader value-writer reader-writer swapper)
   ;;Error checking
@@ -376,6 +376,7 @@
 		 :f/ ',f/
 		 :finv* ',finv*
 		 :fid* ',fid*
+		 :fconj ',fconj
 		 :reader ',reader
 		 :value-writer ',value-writer
 		 :reader-writer ',reader-writer

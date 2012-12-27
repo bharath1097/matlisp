@@ -110,6 +110,7 @@
   :f/ complex-type.f/
   :finv* complex-type.finv*
   :fid* complex-type.fid*
+  :fconj complex-type.fconj
   ;;
   :store-allocator allocate-complex-store
   :coercer coerce-complex

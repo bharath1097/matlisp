@@ -27,10 +27,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defmacro generate-typed-dot (func (tensor-class blas-func blasc-func conj-func fortran-lb))
+(defmacro generate-typed-dot (func (tensor-class blas-func blasc-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class))
-	 (conj? (and blasc-func conj-func))
-	 (blas? (or blas-func blasc-func)))
+	 (conj? (getf opt :fconj))
+	 (blas? (and blas-func (if conj? blasc-func t))))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     `(definline ,func (x y conjugate-p)
        (declare (type ,tensor-class x y)
@@ -41,9 +41,9 @@
 	 ((lisp-routine
 	   `(let-typed
 	     ((stp-x (aref (strides x) 0) :type index-type)
-	      (sto-x (store x) :type complex-store-vector)
+	      (sto-x (store x) :type ,(linear-array-type (getf opt :store-type)))
 	      (stp-y (aref (strides y) 0) :type index-type)
-	      (sto-y (store y) :type complex-store-vector)
+	      (sto-y (store y) :type ,(linear-array-type (getf opt :store-type)))
 	      (nele (number-of-elements x) :type index-type))
 	     ,(labels ((main-loop (conjp)
 				  `(very-quickly
@@ -52,7 +52,7 @@
 					:for of-y :of-type index-type = (head y) :then (+ of-y stp-y)
 					:with dot :of-type ,(getf opt :element-type) = (,(getf opt :fid+))
 					:do (let-typed ((xval ,(recursive-append
-								(when conjp `(,conj-func))
+								(when conjp `(,conj?))
 								`(,(getf opt :reader) sto-x of-x)) :type ,(getf opt :element-type))
 							(yval (,(getf opt :reader) sto-y of-y) :type ,(getf opt :element-type)))
 						       (setf dot (,(getf opt :f+) dot (,(getf opt :f*) xval yval))))
@@ -83,10 +83,13 @@
 	     lisp-routine)))))
 
 (generate-typed-dot real-typed-dot
-  (real-tensor ddot nil nil *real-l1-fcall-lb*))
+  (real-tensor ddot nil *real-l1-fcall-lb*))
 
 (generate-typed-dot complex-typed-dot
-  (complex-tensor zdotu zdotc complex-type.fconj *complex-l1-fcall-lb*))
+  (complex-tensor zdotu zdotc *complex-l1-fcall-lb*))
+
+(generate-typed-dot symbolic-typed-dot
+  (symbolic-tensor nil nil 0))
 
 ;;---------------------------------------------------------------;;
 		  

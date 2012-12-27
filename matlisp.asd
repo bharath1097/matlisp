@@ -139,9 +139,9 @@
 				:depends-on ("copy" "tensor-maker" "realimag"))
 			 (:file "dot"
 				:depends-on ("realimag"))
-			 #+nil(:file "axpy"
+			 (:file "axpy"
 				:depends-on ("copy" "scal"))
-			 #+nil(:file "trans"
+			 (:file "trans"
 				:depends-on ("scal" "copy"))))
    #+nil
    (:module "matlisp-level-2"

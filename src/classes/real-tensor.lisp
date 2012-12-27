@@ -86,12 +86,11 @@ Allocates real storage.  Default initial-element = 0d0.")
   :f/ real-type.f/
   :finv* real-type.finv*
   :fid* real-type.fid*
+  :fconj nil
   ;;
   :store-allocator allocate-real-store
   :coercer coerce-real
   :coercer-unforgiving coerce-real-unforgiving
-  ;;
-  :matrix real-matrix :vector real-vector
   ;;
   :reader real-type.reader
   :value-writer real-type.value-writer
