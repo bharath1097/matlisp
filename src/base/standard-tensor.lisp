@@ -163,10 +163,13 @@
       (t (values opt clname)))))
 
 (defun (setf get-tensor-class-optimization) (value clname)
-  (setf (gethash clname *tensor-class-optimizations*) value
-	(symbol-plist clname) (if (symbolp value)
-				  (get-tensor-class-optimization-hashtable clname)
-				  value)))
+  (setf (gethash clname *tensor-class-optimizations*) value)
+  (let ((opt (if (symbolp value)
+		 (get-tensor-class-optimization-hashtable clname)
+		 value)))
+    (setf (symbol-plist clname) opt
+	  (symbol-plist (getf opt :matrix)) opt
+	  (symbol-plist (getf opt :vector)) opt)))
 
 ;; Akshay: I have no idea what this does, or why we want it
 ;; (inherited from standard-matrix.lisp

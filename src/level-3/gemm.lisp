@@ -33,6 +33,8 @@
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
 	 (matrix-class (getf opt :matrix))
 	 (blas? (and blas-gemm-func blas-gemv-func)))
+    (setf (getf opt :gemm) func
+	  (get-tensor-class-optimization tensor-class) opt)
     `(definline ,func (alpha A B beta C job)
        (declare (type ,(getf opt :element-type) alpha beta)
 		(type ,matrix-class A B C)

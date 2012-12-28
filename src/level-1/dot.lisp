@@ -32,6 +32,8 @@
 	 (conj? (getf opt :fconj))
 	 (blas? (and blas-func (if conj? blasc-func t))))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    (setf (getf opt :dot) func
+	  (get-tensor-class-optimization tensor-class) opt)
     `(definline ,func (x y conjugate-p)
        (declare (type ,tensor-class x y)
 		,(if conj?

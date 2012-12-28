@@ -34,6 +34,8 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    (setf (getf opt :copy) func
+	  (get-tensor-class-optimization tensor-class) opt)
     `(definline ,func (from to)
        (declare (type ,tensor-class from to))
        ,(let
@@ -71,6 +73,8 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    (setf (getf opt :num-copy) func
+	  (get-tensor-class-optimization tensor-class) opt)
     `(definline ,func (num-from to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) num-from))

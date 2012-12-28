@@ -3,6 +3,8 @@
 (defmacro make-tensor-maker (func-name (tensor-class))
   (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    (setf (getf opt :maker) func-name
+	  (get-tensor-class-optimization tensor-class) opt)
     `(progn
        (declaim (ftype (function (&rest t) ,tensor-class) ,func-name))
        (defun ,func-name (&rest args)
