@@ -145,12 +145,10 @@
 				:depends-on ("copy" "scal"))
 			 (:file "trans"
 				:depends-on ("scal" "copy"))))
-   #+nil
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
 	    :components ((:file "gemv")))
-   #+nil
    (:module "matlisp-level-3"
 	    :pathname "level-3"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
