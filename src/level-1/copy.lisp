@@ -113,6 +113,15 @@
 
 (generate-typed-num-copy! complex-typed-num-copy!
   (complex-tensor zcopy *complex-l1-fcall-lb*))
+
+;;Symbolic
+#+maxima
+(progn
+(generate-typed-copy! symbolic-typed-copy!
+  (symbolic-tensor nil 0))
+
+(generate-typed-num-copy! symbolic-typed-num-copy!
+  (symbolic-tensor nil 0)))
 ;;---------------------------------------------------------------;;
 ;;Generic function defined in src;base;generic-copy.lisp
 

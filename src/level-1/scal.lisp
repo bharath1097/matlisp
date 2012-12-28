@@ -182,6 +182,21 @@
 
 (generate-typed-num-div! complex-typed-num-div!
   (complex-tensor zediv *complex-l1-fcall-lb*))
+
+;;Symbolic
+#+maxima
+(progn
+  (generate-typed-num-scal! symbolic-typed-num-scal!
+    (real-tensor nil 0))
+
+  (generate-typed-scal! symbolic-typed-scal!
+    (real-tensor nil 0))
+
+  (generate-typed-div! symbolic-typed-div!
+    (real-tensor nil 0))
+
+  (generate-typed-num-div! symbolic-typed-num-div!
+    (real-tensor nil 0)))
 ;;---------------------------------------------------------------;;
 
 (defgeneric scal! (alpha x)

@@ -124,6 +124,8 @@
 	    :depends-on ("matlisp-base")
 	    :components ((:file "real-tensor")
 			 (:file "complex-tensor")
+			 #+maxima
+			 (:file "symbolic-tensor")
 			 (:file "matrix"
 				:depends-on ("real-tensor" "complex-tensor"))))
    (:module "matlisp-level-1"

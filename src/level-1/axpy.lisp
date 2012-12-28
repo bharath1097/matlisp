@@ -123,6 +123,16 @@
 
 (generate-typed-num-axpy! complex-typed-num-axpy!
   (complex-tensor zaxpy *complex-l1-fcall-lb*))
+
+;;Symbolic
+#+maxima
+(progn
+  (generate-typed-axpy! symbolic-typed-axpy!
+    (symbolic-tensor nil 0))
+  
+  (generate-typed-num-axpy! symbolic-typed-num-axpy!
+    (symbolic-tensor nil 0)))
+
 ;;---------------------------------------------------------------;;
 
 (defgeneric axpy! (alpha x y)

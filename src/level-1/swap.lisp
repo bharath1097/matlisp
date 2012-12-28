@@ -63,6 +63,11 @@
 
 (generate-typed-swap! complex-typed-swap!
   (complex-tensor zswap *complex-l1-fcall-lb*))
+
+#+maxima
+(generate-typed-swap! symbolic-typed-swap!
+  (symbolic-tensor nil 0))
+
 ;;---------------------------------------------------------------;;
 ;;Generic function in src;base;generic-swap.lisp
 

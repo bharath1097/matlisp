@@ -49,7 +49,7 @@
   
 (make-tensor-maker make-real-tensor (real-tensor))
 (make-tensor-maker make-complex-tensor (complex-tensor))
-
+#+maxima
 (make-tensor-maker make-symbolic-tensor (symbolic-tensor))
 
 ;;Had to move it here in the wait for copy!

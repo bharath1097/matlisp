@@ -88,6 +88,7 @@
 (generate-typed-dot complex-typed-dot
   (complex-tensor zdotu zdotc *complex-l1-fcall-lb*))
 
+#+maxima
 (generate-typed-dot symbolic-typed-dot
   (symbolic-tensor nil nil 0))
 
