@@ -165,3 +165,34 @@
 
 (defmethod dot ((x complex-vector) (y complex-vector) &optional (conjugate-p t))
   (complex-typed-dot x y conjugate-p))
+
+#+nil
+(defmethod dot ((x standard-vector) (y standard-vector) &optional (conjugate-p t))
+  (let ((xcl (class-of x))
+	(ycl (class-of y)))
+    (unless (and (eq xcl (find-class (get (class-name xcl) :vector)))
+		 (eq ycl (find-class (get (class-name ycl) :vector))))
+      (error "Arguments are not vectors!"))
+    (cond
+      ((eq (class-of x) (class-of y))
+       ;;Generate method
+       (let* ((classn (get (class-name xcl) :vector))
+	      (dot-func (if-ret (get classn :dot)
+				(let ((dot-name (gensym (string+ (symbol-name classn) "-dot-"))))
+				  (compile-and-eval
+				   `(generate-typed-dot ,dot-name
+							(,classn nil nil 0)))
+				  dot-name))))
+	 (compile-and-eval
+	  `(defmethod dot ((x ,classn) (y ,classn) &optional (conjugate-p t))
+	     ,@(unless (get classn :fconj)
+		       `((declare (ignore conjugate-p))))
+	     ,(if (get classn :fconj)
+		  `(,dot-func x y conjugate-p)
+		  `(,dot-func x y t))))
+       ;;Call method
+	 (dot x y conjugate-p)))
+      ((coercable? (class-name xcl) (class-name ycl))
+       ...)
+      ((coercable? (class-name xcl) (class-name ycl))
+       ...))))

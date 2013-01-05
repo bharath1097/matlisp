@@ -217,3 +217,10 @@
 		       (lst-tread (cons 0 idx) (car lst))
 		       (reverse idx))))))
     (lst-tread (list 0) lst)))
+
+(defun compile-and-eval (source)
+  "
+  Compiles and evaluates the given @arg{source}.  This should be
+  an ANSI compatible way of ensuring method compilation."
+  (funcall (compile nil `(lambda () ,source))))
+

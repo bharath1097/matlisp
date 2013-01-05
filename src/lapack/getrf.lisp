@@ -25,46 +25,51 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(in-package #:matlisp)
 
-(in-package #:matlisp)	  
-
-(defmacro generate-typed-getrf! (func-name (matrix-class lapack-func))
-  (let* ((opt (get-tensor-class-optimization matrix-class)))
-    (assert opt nil 'tensor-cannot-find-optimization :tensor-class matrix-class)
+(defmacro generate-typed-getrf! (func-name (tensor-class lapack-func))
+  (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
+		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
+	 (matrix-class (getf opt :matrix)))
     `(defun ,func-name (A ipiv)
        (declare (type ,matrix-class A)
 		(type permutation-pivot-flip ipiv))
        (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
-	   (assert maj-A nil 'tensor-store-not-consecutive)
-	   (multiple-value-bind (new-A new-ipiv info)
-	    (,lapack-func
-	     (nrows A) (ncols A) (store A)
-	     ld-A (repr ipiv) 0)
-	  (declare (ignore new-A new-ipiv))
-	  ;;Convert from 1-based indexing to 0-based indexing, and fix
-	  ;;other Fortran-ic quirks
-	  (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
-	  (let-typed ((pidv (repr ipiv) :type perrepr-vector))
-		     (very-quickly
-		       (loop for i from 0 below (length pidv)
-			  do (decf (aref pidv i)))))
-	   (if (eq maj-A :row-major)
-	       ;;Crout's decomposition
-	       (values A (list :decomposition-type :|U_ii=1| :column-permutation ipiv))
-	       ;;Dolittle's decomposition
-	       (values A (list :decomposition-type :|L_ii=1| :row-permutation ipiv))))))))
+	      (if (not (eq maj-A :col-major))
+		  (let*-typed ((dims (dimensions A) :type index-store-vector)			       
+			       ;;Column major
+			       (stds (let*-typed ((rank (rank A) :type fixnum)
+						  (stds (allocate-index-store rank) :type index-store-vector))
+				       (very-quickly
+					 (loop
+					    :for i :from 0 :below rank
+					    :and st = 1 :then (the index-type (* st (aref dims i)))
+					    :do (setf (aref stds i) st)))
+				       stds)
+				     :type index-store-vector)
+			       (tmp (,(get tensor-class :copy) A (make-instance (class-of A) :dimensions dims :strides stds :store (,(get tensor-class :store-allocator) (lvec-foldr #'* dims))))))
+			      (mlet* (((maj-tmp ld-tmp fop-tmp) (blas-matrix-compatible-p tmp :n) :type (nil index-type nil))
+				      ((new-tmp new-ipiv info) (,lapack-func
+								 (nrows tmp) (ncols tmp) (store tmp)
+								 ld-tmp (repr ipiv) 0) :type (nil nil integer)))
+				     (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
+				     (,(get tensor-class :copy) tmp A)))
+		  (mlet* (((new-A new-ipiv info) (,lapack-func
+						   (nrows A) (ncols A) (store A)
+						   ld-A (repr ipiv) 0) :type (nil nil integer)))
+			 (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))))
+	      ;;Convert from 1-based indexing to 0-based indexing, and fix
+	      ;;other Fortran-ic quirks
+	      (let-typed ((pidv (repr ipiv) :type perrepr-vector))
+			 (very-quickly
+			   (loop for i from 0 below (length pidv)
+			      do (decf (aref pidv i)))))
+	      (values A ipiv)))))
 
-(generate-typed-getrf! real-typed-getrf! (real-matrix dgetrf))
-(generate-typed-getrf! complex-typed-getrf! (complex-matrix zgetrf))
+(generate-typed-getrf! real-typed-getrf! (real-tensor dgetrf))
+(generate-typed-getrf! complex-typed-getrf! (complex-tensor zgetrf))
 
-#+nil
-(let ((A (make-real-tensor '((1 2)
-			     (3 4))))
-      (idiv (make-pidx (perv 0 1))))
-  (real-typed-getrf! A idiv))
-
-
-(defgeneric getrf! (A ipiv)
+(defgeneric getrf! (A)
   (:documentation
 "
   Syntax
@@ -92,9 +97,9 @@
 
   IPIV is filled with the pivot indices that define the permutation
   matrix P:
-           
+
         row i of the matrix was interchanged with row IPIV(i).
- 
+
   If IPIV is not provided, it is allocated by GESV.
 
   Return Values

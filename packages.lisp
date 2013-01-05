@@ -76,6 +76,7 @@
 	   #:list-dimensions
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec->list #:lvec->list!
+	   #:compile-and-eval
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed

@@ -167,7 +167,7 @@
   (let ((opt (if (symbolp value)
 		 (get-tensor-class-optimization-hashtable clname)
 		 value)))
-    (setf (symbol-plist clname) opt
+    (setf (symbol-plist (getf opt :tensor)) opt
 	  (symbol-plist (getf opt :matrix)) opt
 	  (symbol-plist (getf opt :vector)) opt)))
 
