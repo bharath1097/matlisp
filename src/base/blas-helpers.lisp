@@ -41,9 +41,10 @@
 
 (defun blas-matrix-compatible-p (matrix op)
   (declare (type standard-matrix matrix))
-  (let ((rs (aref (strides matrix) 0))
-	(cs (aref (strides matrix) 1)))
-    (declare (type index-type rs cs))
+  (let*-typed ((stds (strides matrix) :type index-store-vector)
+	       (rs (aref stds 0) :type index-type)
+	       (cs (aref stds 1) :type index-type))
+    ;;Note that it is not required that (rs = nc * cs) or (cs = nr * rs)
     (cond
       ((= cs 1) (values :row-major rs (fortran-nop op)))
       ((= rs 1) (values :col-major cs (fortran-op op)))
@@ -68,3 +69,9 @@
 (defun combine-jobs (&rest jobs)
   (let ((job (intern (apply #'concatenate 'string (mapcar #'symbol-name jobs)) "KEYWORD")))
     job))
+
+(definline flip-major (job)
+  (declare (type symbol job))
+  (case job
+    (:row-major :col-major)
+    (:col-major :row-major)))

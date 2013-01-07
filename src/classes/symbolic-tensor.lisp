@@ -39,6 +39,10 @@
 (definline symbolic-type.fid* ()
   1)
 
+(definline symbolic-type.f= (a b)
+  (declare (type symbolic-type a b))
+  (maxima::equal a b))
+
 (definline symbolic-type.fconj (a)
   (maxima::meval `((maxima::$conjugate maxima::simp) ,a)))
 
@@ -97,6 +101,7 @@ Allocates symbolic storage.  Default initial-element = 0.")
   :f/ symbolic-type.f/
   :finv* symbolic-type.finv*
   :fid* symbolic-type.fid*
+  :f= symbolic-type.f=
   :fconj symbolic-type.fconj
   ;;
   :store-allocator allocate-symbolic-store

@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -39,6 +39,7 @@
        (declare (type ,(getf opt :element-type) alpha beta)
 		(type ,matrix-class A B C)
 		(type symbol job))
+       ;;The big done-in-lisp-gemm, loop-ordering was inspired by the BLAS dgemm reference implementation.
        ,(let
 	 ((lisp-routine
 	   `(let-typed ((nr-C (nrows C) :type index-type)
@@ -59,39 +60,51 @@
 			(cstp-C (col-stride C) :type index-type)
 			(hd-C (head C) :type index-type)
 			(sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-		      (when (eq job-A :t)
-			(rotatef rstp-A cstp-A))
-		      (when (eq job-B :t)
-			(rotatef rstp-B cstp-B))
-		      (very-quickly
-			(loop :repeat nr-C
-			   :for rof-A :of-type index-type := hd-A :then (+ rof-A rstp-A)
-			   :for rof-C :of-type index-type := hd-C :then (+ rof-C rstp-C)
-			   :do (loop :repeat nc-C
-				  :for cof-B :of-type index-type := hd-B :then (+ cof-B cstp-B)
-				  :for of-C :of-type index-type := rof-C :then (+ of-C cstp-C)
-				  :do (let-typed ((val (,(getf opt :f*) beta (,(getf opt :reader) sto-C of-C)) :type ,(getf opt :element-type)))
-						 (loop :repeat dotl
-						    :for of-A :of-type index-type := rof-A :then (+ of-A cstp-A)
-						    :for of-B :of-type index-type := cof-B :then (+ of-B rstp-B)
-						    :with sum :of-type ,(getf opt :element-type) := (,(getf opt :fid+))
-						    :do (let-typed ((A-val (,(getf opt :reader) sto-A of-A) :type ,(getf opt :element-type))
-								    (B-val (,(getf opt :reader) sto-B of-B) :type ,(getf opt :element-type)))
-							  (setf sum (,(getf opt :f+) sum (,(getf opt :f*) A-val B-val))))
-						    :finally (,(getf opt :value-writer) (,(getf opt :f+) (,(getf opt :f*) alpha sum) val) sto-C of-C)))))))))
-	 `(mlet* ,(recursive-append
-		   '(((job-A job-B) (ecase job
-				      (:nn (values :n :n))
-				      (:nt (values :n :t))
-				      (:tn (values :t :n))
-				      (:tt (values :t :t)))
-		      :type (symbol symbol)))
-		   (when blas?
-		     `((call-fortran? (> (max (nrows C) (ncols C) (if (eq job-A :n) (ncols A) (nrows A)))
-					 ,fortran-lb-parameter))
-		       ((maj-A ld-A fop-A) (if call-fortran? (blas-matrix-compatible-p A job-A) (values nil 0 "?")) :type (symbol index-type (string 1)))
-		       ((maj-B ld-B fop-B) (if call-fortran? (blas-matrix-compatible-p B job-B) (values nil 0 "?")) :type (symbol index-type (string 1)))
-		       ((maj-C ld-C fop-C) (if call-fortran? (blas-matrix-compatible-p C :n) (values nil 0 "?")) :type (symbol index-type nil)))))
+		       ;;Replace with separate loops to maximize Row-ordered MM performance
+		       (when (eq job-A :t)
+			 (rotatef rstp-A cstp-A))
+		       (when (eq job-B :t)
+			 (rotatef rstp-B cstp-B))
+		       ;;
+		       (let-typed ((of-A hd-A :type index-type)
+				   (of-B hd-B :type index-type)
+				   (of-C hd-C :type index-type)
+				   (r.cstp-C (* cstp-C nc-C) :type index-type)
+				   (d.rstp-B (- rstp-B (* cstp-B nc-C)) :type index-type)
+				   (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type))
+			 (very-quickly
+			   (loop :repeat nr-C
+			      :do (progn
+				    (loop :repeat dotl
+				       :do (let-typed ((ele-A (,(getf opt :f*) alpha (,(getf opt :reader) sto-A of-A)) :type ,(getf opt :element-type)))
+					     (loop :repeat nc-C
+						:do (progn
+						      (,(getf opt :value-writer)
+							(,(getf opt :f+)
+							  (,(getf opt :reader) sto-C of-C)
+							  (,(getf opt :f*) ele-A (,(getf opt :reader) sto-B of-B)))
+							sto-C of-C)
+						      (incf of-C cstp-C)
+						      (incf of-B cstp-B)))
+					     (decf of-C r.cstp-C)
+					     (incf of-A cstp-A)
+					     (incf of-B d.rstp-B)))
+				    (incf of-C rstp-C)
+				    (incf of-A d.rstp-A)
+				    (setf of-B hd-B))))))))
+	 ;;Tie together Fortran and lisp-routines.
+	 `(mlet* (((job-A job-B) (ecase job
+				   (:nn (values :n :n))
+				   (:nt (values :n :t))
+				   (:tn (values :t :n))
+				   (:tt (values :t :t)))
+		   :type (symbol symbol))
+		  ,@(when blas?
+			  `((call-fortran? (> (max (nrows C) (ncols C) (if (eq job-A :n) (ncols A) (nrows A)))
+					      ,fortran-lb-parameter))
+			    ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
+			    ((maj-B ld-B fop-B) (blas-matrix-compatible-p B job-B) :type (symbol index-type (string 1)))
+			    ((maj-C ld-C fop-C) (blas-matrix-compatible-p C :n) :type (symbol index-type nil)))))
 		 ,(if blas?
 		      `(cond
 			 ((and call-fortran? maj-A maj-B maj-C)
@@ -164,7 +177,6 @@
 			  ,lisp-routine))
 		      lisp-routine)))
        C)))
-
 ;;Real
 (generate-typed-gemm! real-base-typed-gemm!
   (real-tensor dgemm dgemv *real-l3-fcall-lb*))
@@ -191,11 +203,15 @@
 	(let ((A (ecase job-A
 		   ((:n :t) A)
 		   ((:h :c)
+		    ;;BUG!
+		    ;;Multiplication does not yield the complex conjugate!
 		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions A)))))
 		      (complex-typed-axpy! #c(-1d0 0d0) A ret)))))
 	      (B (ecase job-B
 		   ((:n :t) B)
 		   ((:h :c)
+		    ;;BUG!
+		    ;;Multiplication does not yield the complex conjugate!
 		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions B)))))
 		      (complex-typed-axpy! #c(-1d0 0d0) B ret)))))
 	      (tjob (combine-jobs (ecase job-A ((:n :t) job-A) (:h :t) (:c :n))
@@ -206,7 +222,7 @@
 ;;Symbolic
 #+maxima
 (generate-typed-gemm! symbolic-base-typed-gemm!
-  (symbolic-tensor nil nil 0))		      
+  (symbolic-tensor nil nil 0))
 
 ;;---------------------------------------------------------------;;
 
@@ -220,10 +236,10 @@
   Purpose
   =======
   Performs the GEneral Matrix Multiplication given by
-               --      -      -
+	       --      -      -
 
-            C <- alpha * op(A) * op(B) + beta * C
-     
+	    C <- alpha * op(A) * op(B) + beta * C
+
   and returns C.
 
   alpha,beta are scalars and A,B,C are matrices.
@@ -288,7 +304,7 @@
 	  (real-typed-gemm! (coerce-real 1) A B (coerce-real 0) A.x job)
 	  ;;Re
 	  (axpy! (realpart alpha) A.x vw.c)
-	  ;;Im 
+	  ;;Im
 	  (incf (head vw.c))
 	  (axpy! (imagpart alpha) A.x vw.c))
 	(let ((vw.c (tensor-realpart~ c)))
@@ -323,10 +339,10 @@
   Purpose
   =======
   Performs the GEneral Matrix Multiplication given by
-               --      -      -
+	       --      -      -
 
-             alpha * op(A) * op(B) + beta * C
-     
+	     alpha * op(A) * op(B) + beta * C
+
   and returns the result in a new matrix.
 
   alpha,beta are scalars and A,B,C are matrices.

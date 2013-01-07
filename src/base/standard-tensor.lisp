@@ -134,6 +134,8 @@
   :f/ (a b) -> a * b^{-1}
   :finv* (a) -> 1/a
   :fid* () -> * identity
+  :f= (a b) -> (= a b)
+  :fconj (a) -> a^* {if nil, Field does not have a conjugation op}
 
   :coercer (ele) -> Coerced to store-type, with error checking
   :coercer-unforgiving (ele) -> Coerced to store-type, no error checking
@@ -340,11 +342,11 @@
 
 (defmacro define-tensor
   ((tensor-class element-type store-element-type store-type &rest class-decls) &key
-    f+ f- finv+ fid+ f* f/ finv* fid* fconj
+    f+ f- finv+ fid+ f* f/ finv* fid* fconj f=
     matrix vector
     store-allocator coercer coercer-unforgiving reader value-writer reader-writer swapper)
   ;;Error checking
-  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* store-allocator coercer coercer-unforgiving matrix vector reader value-writer reader-writer swapper))
+  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer reader-writer swapper))
   ;;
   `(progn
      ;;Class definitions
@@ -379,6 +381,7 @@
 		 :f/ ',f/
 		 :finv* ',finv*
 		 :fid* ',fid*
+		 :f= ',f=
 		 :fconj ',fconj
 		 :reader ',reader
 		 :value-writer ',value-writer

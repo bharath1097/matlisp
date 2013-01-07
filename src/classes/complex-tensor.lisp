@@ -48,6 +48,10 @@
   (declare (type complex-type a))
   (conjugate a))
 
+(definline complex-type.f= (a b)
+  (declare (type complex-type a b))
+  (= a b))
+
 ;;Store operations
 (definline allocate-complex-store (size)
   "
@@ -110,7 +114,8 @@
   :f/ complex-type.f/
   :finv* complex-type.finv*
   :fid* complex-type.fid*
-  :fconj complex-type.fconj
+  :f= complex-type.f=
+  :fconj complex-type.fconj  
   ;;
   :store-allocator allocate-complex-store
   :coercer coerce-complex

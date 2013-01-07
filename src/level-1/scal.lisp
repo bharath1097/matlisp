@@ -195,16 +195,16 @@
 #+maxima
 (progn
   (generate-typed-num-scal! symbolic-typed-num-scal!
-    (real-tensor nil 0))
+    (symbolic-tensor nil 0))
 
   (generate-typed-scal! symbolic-typed-scal!
-    (real-tensor nil 0))
+    (symbolic-tensor nil 0))
 
   (generate-typed-div! symbolic-typed-div!
-    (real-tensor nil 0))
+    (symbolic-tensor nil 0))
 
   (generate-typed-num-div! symbolic-typed-num-div!
-    (real-tensor nil 0)))
+    (symbolic-tensor nil 0)))
 ;;---------------------------------------------------------------;;
 
 (defgeneric scal! (alpha x)

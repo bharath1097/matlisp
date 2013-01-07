@@ -376,7 +376,7 @@ int main()
 EOF
   $CC $CFLAGS -c conftest.c
   $F77 $FFLAGS -o a.out conftest.o -L${BLAS_LAPACK_DIR} -lblas -llapack
-  if a.out; then
+  if ./a.out; then
     AC_MSG_RESULT([yes])
     F2C=-ff2c
   else

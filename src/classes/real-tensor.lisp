@@ -39,6 +39,10 @@
 (definline real-type.fid* ()
   1.0d0)
 
+(definline real-type.fid= (a b)
+  (declare (type real-type a b))
+  (= a b))
+
 ;;Store definitions
 (definline real-type.reader (tstore idx)
   (declare (type index-type idx)
@@ -86,6 +90,7 @@ Allocates real storage.  Default initial-element = 0d0.")
   :f/ real-type.f/
   :finv* real-type.finv*
   :fid* real-type.fid*
+  :f= real-type.fid=
   :fconj nil
   ;;
   :store-allocator allocate-real-store
