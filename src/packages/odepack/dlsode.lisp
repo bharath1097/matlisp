@@ -61,7 +61,7 @@
 	 (tout (aref t-array 0))
 	 (itol 1)
 	 (atol (make-array 1 :element-type 'double-float :initial-element 1d-8))
-	 (rtol (make-array 1 :element-type 'double-float :initial-element 0d0))
+	 (rtol (make-array 1 :element-type 'double-float :initial-element 1d-12))
 	 (itask 1)
 	 (istate 1)
 	 (iopt 0)
@@ -85,9 +85,30 @@
 (defun pend-report (ts y)
   (format t "~A ~A ~A ~%" ts (aref y 0) (aref y 1)))
 
+
+(defun pcart-field (neq time y ydot)
+  (declare (ignore neq time))
+  (very-quickly
+  (destructuring-bind (x theta xdot thetadot) (mapcar #'(lambda (n) (fv-ref y n)) '(0 1 2 3))
+    (declare (type double-float x theta xdot thetadot))
+    (setf (fv-ref ydot 0) xdot
+	  (fv-ref ydot 1) thetadot
+	  (fv-ref ydot 2) (/ (+ (* (cos theta) (sin theta)) (* (sin theta) (expt thetadot 2))) (- 2 (expt (cos theta) 2)))
+          (fv-ref ydot 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2))))))
+			
+(defun pcart-report (ts y)
+  (declare (ignore ts y))
+  #+nil
+  (format t "~A ~A ~A ~A ~A ~%" ts (aref y 0) (aref y 1) (aref y 2) (aref y 3)))
+
 #+nil
 (let ((y (make-array 2 :element-type 'double-float :initial-contents `(,(/ pi 2) 0d0))))
   (lsode-evolve #'pend-field y #(0d0 1d0 2d0) #'pend-report))
+
+(let ((y (make-array 4 :element-type 'double-float :initial-contents `(0d0 ,(/ pi 3) 0d0 0d0)))
+      (ts (make-array 200 :element-type 'double-float :initial-contents (loop :for i :from 0 :below 200
+									  :collect (coerce i 'double-float)))))
+  (time (lsode-evolve #'pcart-field y ts #'pcart-report)))
 
 ;; Should return
 ;; 1.0d0 1.074911802207049d0 -0.975509986605856d0

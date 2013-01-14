@@ -152,31 +152,31 @@
 
 (defun test-mm-lisp-lin (n)
   (declare (type fixnum n))
-  (let ((A (make-real-tensor n n))
-	(B (make-real-tensor n n))
-	(C (make-real-tensor n n)))
-    (let*-typed ((sto-A (store A) :type real-store-vector)
-		 (sto-B (store B) :type real-store-vector)
-		 (sto-C (store C) :type real-store-vector))
-       (time
-	(let-typed ((of-A 0 :type index-type)
-		    (of-B 0 :type index-type)
-		    (of-C 0 :type index-type))
-	  (very-quickly
-	    (loop :repeat n
-	       :do (progn
-		     (loop :repeat n
-			:do (let-typed ((ele-A (aref sto-A of-A) :type real-type))
-			      (loop :repeat n
-				 :do (progn
-				       (incf (aref sto-C of-C) (* ele-A (aref sto-B of-B)))
-				       (incf of-C)
-				       (incf of-B)))
-			      (decf of-C n)
-			      (incf of-A)))
-		     (incf of-C n)
-		     (setf of-B 0))))))
-       t)))
+  (let*-typed ((A (make-real-tensor n n))
+	       (B (make-real-tensor n n))
+	       (C (make-real-tensor n n))
+	       (sto-A (store A) :type real-store-vector)
+	       (sto-B (store B) :type real-store-vector)
+	       (sto-C (store C) :type real-store-vector))
+    (time
+     (let-typed ((of-A 0 :type index-type)
+		 (of-B 0 :type index-type)
+		 (of-C 0 :type index-type))
+       (very-quickly
+	 (loop :repeat n
+	    :do (progn
+		  (loop :repeat n
+		     :do (let-typed ((ele-A (aref sto-A of-A) :type real-type))
+				    (loop :repeat n
+				       :do (progn
+					     (incf (aref sto-C of-C) (* ele-A (aref sto-B of-B)))
+					     (incf of-C)
+					     (incf of-B)))
+				    (decf of-C n)
+				    (incf of-A)))
+		  (incf of-C n)
+		  (setf of-B 0))))))
+    t))
 
 (defun test-mm-ddot (n)
   (let ((t-a (make-real-tensor n n))
