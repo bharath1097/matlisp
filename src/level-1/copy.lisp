@@ -210,23 +210,21 @@
 (defmethod copy! ((x real-tensor) (y array))
   (let-typed ((sto-x (store x) :type real-store-vector)
 	      (lst (make-list (rank x)) :type cons))
-    (very-quickly
-      (mod-dotimes (idx (dimensions x))
-	with (linear-sums
-	      (of-x (strides x) (head x)))
-	do (setf (apply #'aref y (lvec->list! idx lst))
-		 (aref sto-x of-x)))))
+    (mod-dotimes (idx (dimensions x))
+      with (linear-sums
+	    (of-x (strides x) (head x)))
+      do (setf (apply #'aref y (lvec->list! idx lst))
+	       (aref sto-x of-x))))
   y)
 
 (defmethod copy! ((x complex-tensor) (y array))
   (let-typed ((sto-x (store x) :type complex-store-vector)
 	      (lst (make-list (rank x)) :type cons))
-    (very-quickly
-      (mod-dotimes (idx (dimensions x))
-	with (linear-sums
-	      (of-x (strides x) (head x)))
-	do (setf (apply #'aref y (lvec->list! idx lst))
-		 (complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x))))))))
+    (mod-dotimes (idx (dimensions x))
+      with (linear-sums
+	    (of-x (strides x) (head x)))
+      do (setf (apply #'aref y (lvec->list! idx lst))
+	       (complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x)))))))
   y)
 
 ;;

@@ -52,7 +52,7 @@
 		  do (let ((f-val (,(getf opt :reader) f-sto f-of))
 			   (t-val (,(getf opt :reader) t-sto t-of)))
 		       (declare (type ,(getf opt :element-type) f-val t-val))
-		       (let ((t-new (+ (* f-val alpha) t-val)))
+		       (let ((t-new (,(getf opt :f+) (,(getf opt :f*) f-val alpha) t-val)))
 			 (declare (type ,(getf opt :element-type) t-new))
 			 (,(getf opt :value-writer) t-new t-sto t-of))))))))
 	 (if blas-func
