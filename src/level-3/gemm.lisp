@@ -60,11 +60,14 @@
 			(cstp-C (col-stride C) :type index-type)
 			(hd-C (head C) :type index-type)
 			(sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-		       ;;Replace with separate loops to maximize Row-ordered MM performance
+		       ;;Replace with separate loops to maximize Row-ordered MM performance		       
 		       (when (eq job-A :t)
 			 (rotatef rstp-A cstp-A))
 		       (when (eq job-B :t)
 			 (rotatef rstp-B cstp-B))
+		       ;;
+		       (unless (,(getf opt :f=) beta (,(getf opt :fid*)))
+			 (,(getf opt :num-scal) beta C))
 		       ;;
 		       (let-typed ((of-A hd-A :type index-type)
 				   (of-B hd-B :type index-type)

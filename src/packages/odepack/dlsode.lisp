@@ -9,7 +9,8 @@
 (cffi:use-foreign-library libodepack)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#+nil(def-fortran-routine testde :void
+#+nil
+(def-fortran-routine testde :void
   (field (:callback :void
 		    (c-neq :integer :input)
 		    (c-t :double-float :input)
@@ -72,7 +73,7 @@
        do (progn
 	    (setq tout (aref t-array i))
 	    (multiple-value-bind (y-out ts-out istate-out rwork-out iwork-out)
-		(dlsode field neq y ts tout itol rtol atol itask istate iopt rwork lrw iwork liw (cffi:null-pointer) mf)
+		(dlsode field neq y ts tout itol rtol atol itask istate iopt rwork lrw iwork liw #'(lambda (&rest th) (declare (ignore th))) mf)
 	      (setq ts ts-out)
 	      (setq istate istate-out))
 	    (funcall report ts y)))))

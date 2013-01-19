@@ -75,6 +75,7 @@
 	   #:linear-array-type
 	   #:list-dimensions
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
+	   #:lvec-map-foldl! #:lvec-map-foldr!
 	   #:lvec->list #:lvec->list!
 	   #:compile-and-eval
 	   ;;Macros

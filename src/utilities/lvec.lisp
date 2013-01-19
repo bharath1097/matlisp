@@ -14,6 +14,22 @@
      :for ret = (aref vec (1- (length vec))) :then (funcall func (aref vec i) ret)
      :finally (return ret)))
 
+(definline lvec-map-foldl! (func vec)
+  (declare (type vector))
+  (loop
+     :for i :of-type fixnum :from 0 :below (length vec)
+     :for ret = (aref vec 0) :then (funcall func (aref vec i) ret)
+     :do (setf (aref vec i) ret)
+     :finally (return (values ret vec))))
+
+(definline lvec-map-foldr! (func vec)
+  (declare (type vector))
+  (loop
+     :for i :of-type fixnum :downfrom (1- (length vec)) :to 0
+     :for ret = (aref vec (1- (length vec))) :then (funcall func (aref vec i) ret)
+     :do (setf (aref vec i) ret)
+     :finally (return (values ret vec))))
+
 (definline lvec-max (vec)
   (declare (type vector vec))
   (loop :for ele :across vec

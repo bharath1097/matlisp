@@ -151,7 +151,7 @@
 	    :components ((:file "gemv")))
    (:module "matlisp-level-3"
 	    :pathname "level-3"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
+	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1" "matlisp-level-2")
 	    :components ((:file "gemm")))
    #+nil(:module "matlisp-lapack"
 	    :pathname "lapack"
