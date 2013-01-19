@@ -129,6 +129,7 @@
   :swapper complex-type.swapper)
 
 ;;
+#+nil
 (defmethod initialize-instance ((tensor complex-tensor) &rest initargs)
   (if (getf initargs :store)
       ;;Two values count for one complex value.
@@ -148,6 +149,3 @@
 		       "#C(~11,4,,,,,'Ee ~11,4,,,,,'Ee)")
 	    realpart imagpart)))
 
-(defmethod (setf tensor-ref) ((value number) (tensor complex-tensor) subscripts)
-  (let ((sto-idx (store-indexing subscripts tensor)))
-    (setf (tensor-store-ref tensor sto-idx) (coerce-complex value))))

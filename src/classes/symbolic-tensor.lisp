@@ -121,11 +121,6 @@ Allocates symbolic storage.  Default initial-element = 0.")
 	      (slot-value tensor 'store-size) size)))
   (call-next-method))
 
-;;
-(defmethod (setf tensor-ref) ((value number) (tensor symbolic-tensor) subscripts)
-  (let ((sto-idx (store-indexing subscripts tensor)))
-    (setf (tensor-store-ref tensor sto-idx) (coerce-symbolic value))))
-
 (defmethod print-element ((tensor symbolic-tensor)
 			  element stream)
   (format stream "~a" element))

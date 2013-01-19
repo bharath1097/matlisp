@@ -25,8 +25,7 @@
 
   Purpose
   =======
-  Allocates index storage with initial elements from the list CONTENTS.
-  "
+  Allocates index storage with initial elements from the list CONTENTS."
   (make-array (length contents) :element-type 'index-type
 	      :initial-contents contents))
 
@@ -39,7 +38,7 @@
     :accessor rank
     :type index-type
     :documentation "Rank of the tensor: number of arguments for the tensor")
-   (dimensions
+   (dimensions    
     :accessor dimensions
     :initarg :dimensions
     :type index-store-vector
@@ -67,6 +66,7 @@
     :type index-store-vector
     :documentation "Strides for accesing elements of the tensor.")
    (store-size
+    :initarg :store-size
     :accessor store-size
     :type index-type
     :documentation "Size of the store.")
@@ -76,6 +76,7 @@
     :documentation "The actual storage for the tensor."))
   (:documentation "Basic tensor class."))
 
+;;
 (defclass standard-matrix (standard-tensor)
   ((rank
     :accessor rank
@@ -85,18 +86,13 @@
     :documentation "For a matrix, rank = 2."))
   (:documentation "Basic matrix class."))
 
-;;
 (defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
   (declare (ignore initargs))
-  (let-typed
-   ((rank (rank matrix) :type index-type))
-   (unless (= rank 2)
-     (error 'tensor-not-matrix :rank rank :tensor matrix))))
+  (assert (= (rank matrix) 2) nil 'tensor-not-matrix :rank (rank matrix) :tensor matrix))
 
 (defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-matrix) &rest initargs)
   (declare (ignore initargs))
-  (unless (= (rank old) 2)
-    (error 'tensor-not-matrix :rank (rank old))))
+  (assert (= (rank old) 2) nil 'tensor-not-matrix :rank (rank old)))
 
 ;;
 (defclass standard-vector (standard-tensor)
@@ -110,18 +106,14 @@
 
 (defmethod initialize-instance :after ((vector standard-vector) &rest initargs)
   (declare (ignore initargs))
-  (mlet*
-   ((rank (rank vector) :type index-type))
-   (unless (= rank 1)
-     (error 'tensor-not-vector :rank rank :tensor vector))))
+  (assert (= (rank vector) 1) nil 'tensor-not-vector :rank (rank vector) :tensor vector))
 
 (defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-vector) &rest initargs)
   (declare (ignore initargs))
-  (unless (= (rank old) 1)
-    (error 'tensor-not-vector :rank (rank old))))
+  (assert (= (rank old) 1) nil 'tensor-not-vector :rank (rank old)))
 
 ;;
-(defvar *tensor-class-optimizations* (make-hash-table)
+(defparameter *tensor-class-optimizations* (make-hash-table)
   "
   Contains a either:
   o A property list containing:  
@@ -201,19 +193,17 @@
 "
   (declare (type index-type hd)
 	   (type index-store-vector idx strides dims))
-  (let ((rank (length strides)))
-    (declare (type index-type rank))
-    (if (not (= rank (length idx) (length dims)))
-	(error 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank)
-	(very-quickly
-	  (loop
-	     for i of-type index-type from 0 below rank
-	     for cidx across idx
-	     with sto-idx of-type index-type = hd
-	     do (if (< -1 cidx (aref dims i))
-		    (incf sto-idx (the index-type (* (aref strides i) cidx)))
-		    (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))
-	     finally (return sto-idx))))))
+  (let-typed ((rank (length strides) :type index-type))
+    (assert (= rank (length idx) (length dims)) nil 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank)
+    (very-quickly
+      (loop
+	 :for i :of-type index-type :from 0 :below rank
+	 :for cidx :across idx
+	 :with sto-idx :of-type index-type := hd
+	 :do (progn
+	       (assert (< -1 cidx (aref dims i)) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i))
+	       (incf sto-idx (the index-type (* (aref strides i) cidx))))
+	 :finally (return sto-idx)))))
 
 (defun store-indexing-lst (idx hd strides dims)
 "
@@ -235,22 +225,20 @@
   (declare (type index-type hd)
 	   (type index-store-vector strides dims)
 	   (type cons idx))
-  (let ((rank (length strides)))
-    (declare (type index-type rank))
-    (labels ((rec-sum (sum i lst)
-	       (cond
-		 ((consp lst)
-		  (let ((cidx (car lst)))
-		    (declare (type index-type cidx))
-		    (unless (< -1 cidx (aref dims i))
-		      (error 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i)))
-		    (rec-sum (+ sum (* (aref strides i) cidx)) (1+ i) (cdr lst))))
-		 ((and (null lst) (= i rank)) sum)
-		 (t
-		  (error 'tensor-index-rank-mismatch :index-rank (length idx) :rank rank)))))
-      (rec-sum (the index-type hd) (the index-type 0) idx))))
+  (let-typed ((rank (length strides) :type index-type))
+    (assert (= rank (length dims)) nil 'tensor-dimension-mismatch)
+    (very-quickly
+      (loop :for cidx :of-type index-type :in idx
+	 :for i :of-type index-type := 0 :then (1+ i)
+	 :with sto-idx :of-type index-type := hd
+	 :do (progn
+	       (assert (< -1 cidx (aref dims i)) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i))
+	       (incf sto-idx (the index-type (* (aref strides i) cidx))))
+	 :finally (progn
+		    (assert (= (1+ i) rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
+		    (return sto-idx))))))
 
-(defun store-indexing (idx tensor)
+(definline store-indexing (idx tensor)
 "
   Syntax
   ======
@@ -274,72 +262,91 @@
     (cons (store-indexing-lst idx (head tensor) (strides tensor) (dimensions tensor)))
     (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
 
-;;
-(defmethod initialize-instance :before ((tensor standard-tensor) &rest initargs)
-  (assert (getf initargs :dimensions) nil 'invalid-arguments :argnum :dimensions
-	  :message "Dimensions are necessary for creating the tensor object."))
+;;You have to love lexical scoping :)
+(defparameter *default-stride-ordering* :row-major
+  "
+  Determines whether strides are row or column major by default.
+  Doing:
+  > (let ((*default-stride-ordering* :col-major))
+      (make-real-tensor 10 10))
+  returns a 10x10 matrix with Column major order.
+")
 
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
-  (let ((dims (dimensions tensor)))
-    (when (consp dims)
-      (setf (slot-value tensor 'dimensions) (make-index-store dims))))
-  (mlet*
-   (((dims hd ss) (slot-values tensor '(dimensions head store-size))
-     :type (index-store-vector index-type index-type))
-    (rank (length dims) :type index-type))
-   ;;Let the object be consistent.
-   (setf (rank tensor) rank)
-   ;;Row-ordered by default.
-   (unless (and (slot-boundp tensor 'strides)
-		(= (length (strides tensor)) rank))
-     (let-typed ((stds (allocate-index-store rank) :type index-store-vector))
-         (setf (strides tensor) stds)
-	 (very-quickly
-	   (loop
-	      :for i :downfrom (1- rank) :to 0
-	      :and st = 1 :then (the index-type (* st (aref dims i)))
-	      :do (setf (aref stds i) st)))))
-   ;;
-   (mlet* ((stds (strides tensor) :type index-store-vector)
-	   (L-idx (store-indexing-vec (map `index-store-vector #'1- dims) hd stds dims) :type index-type))
-	  ;;Error checking is good if we use foreign-pointers as store types.
-	  (cond
-	    ((< hd 0) (error 'tensor-invalid-head-value :head hd :tensor tensor))
-	    ((<= ss L-idx) (error 'tensor-insufficient-store :store-size ss :max-idx L-idx :tensor tensor)))
-	  ;;
-	  ;;--*TODO: Add checks to see if there is index-collision.*--
-	  ;;   This is a hard (NP ?) search problem
-	  ;;   Note to future self: Come back here after experience with AI.
-	  (dotimes (i rank)
-	    (let ((ns (aref dims i))
-		  (st (aref stds i)))
-	      (cond
-		((<= ns 0) (error 'tensor-invalid-dimension-value :argument i :dimension ns :tensor tensor))
-		((< st 0) (error 'tensor-invalid-stride-value :argument i :stride st :tensor tensor))))))
-   (setf (number-of-elements tensor) (reduce #'* dims))))
+  (let-typed ((dims (dimensions tensor) :type index-store-vector))
+    (setf (rank tensor) (length dims))
+    (assert (>= (head tensor) 0) nil 'tensor-invalid-head-value :head (head tensor) :tensor tensor)
+    (if (not (slot-boundp tensor 'strides))
+	(multiple-value-bind (stds size) (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims)))
+	  (declare (type index-store-vector stds)
+		   (type index-type size))
+	  (setf (number-of-elements tensor) size
+		(strides tensor) stds)
+	  (assert (<= (+ (head tensor) (1- (number-of-elements tensor))) (store-size tensor)) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (+ (head tensor) (1- (number-of-elements tensor))) :tensor tensor))
+	(very-quickly
+	  (let-typed ((stds (strides tensor) :type index-store-vector))
+	    (loop :for i :of-type index-type :from 0 :below (rank tensor)
+	       :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
+	       :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
+	       :do (progn
+		     (assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
+		     (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
+	       :finally (progn
+			  (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor)
+			  (setf (number-of-elements tensor) sz))))))))
+
+;;
+(defgeneric tensor-ref (tensor subscripts)
+  (:documentation "
+  Syntax
+  ======
+  (tensor-ref store subscripts)
+
+  Purpose
+  =======
+  Return the element:
+
+    (rank - 1)
+       __
+  hd + \   stride  * sub
+       /_        i      i
+      i = 0
+
+  of the store."))
+
+(defgeneric (setf tensor-ref) (value tensor subscripts))
 
 ;;
 (defgeneric tensor-store-ref (tensor store-idx)
   (:documentation "
   Syntax
   ======
-  (tensor-ref-1d store store-idx)
+  (tensor-store-ref store store-idx)
 
   Purpose
   =======
-  Return the element store-idx of the tensor store.")
-  (:method :before ((tensor standard-tensor) idx)
-	   (declare (type index-type idx))
-	   (unless (< -1 idx (store-size tensor))
-	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
+  Return the element store-idx of the tensor store."))
 
-(defgeneric (setf tensor-store-ref) (value tensor idx)
-  (:method :before (value (tensor standard-tensor) idx)
-	   (declare (type index-type idx))
-	   (unless (< -1 idx (store-size tensor))
-	     (error 'tensor-store-index-out-of-bounds :index idx :store-size (store-size tensor) :tensor tensor))))
+(defgeneric (setf tensor-store-ref) (value tensor idx))
 
+;;
+(defgeneric print-element (tensor
+			   element stream)
+  (:documentation "
+  Syntax
+  ======
+  (PRINT-ELEMENT tensor element stream)
+
+  Purpose
+  =======
+  This generic function is specialized to TENSOR to
+  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
+  to format a tensor into the STREAM.")
+  (:method (tensor element stream)
+    (format stream "~a" element)))
+
+;;
 (defmacro define-tensor
   ((tensor-class element-type store-element-type store-type &rest class-decls) &key
     f+ f- finv+ fid+ f* f/ finv* fid* fconj f=
@@ -358,15 +365,22 @@
      (defclass ,vector (standard-vector ,tensor-class)
        ())
      ;;Store refs
-     (defmethod tensor-store-ref ((tensor ,tensor-class) idx)
-       (declare (type index-type idx))
-       (let-typed ((store (store tensor) :type ,store-type))
-		  (,reader store idx)))
-     (defmethod (setf tensor-store-ref) (value (tensor ,tensor-class) idx)
-       (declare (type index-type idx)
-		(type ,element-type value))
-       (let-typed ((store (store tensor) :type ,store-type))
-		  (,value-writer value store idx)))
+     (defmethod tensor-ref ((tensor ,tensor-class) subs)
+       (let-typed ((lidx (store-indexing subs tensor) :type index-type)
+		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
+	 (,reader sto-x lidx)))
+     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) subs)
+       (let-typed ((lidx (store-indexing subs tensor) :type index-type)
+		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
+	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
+     (defmethod tensor-store-ref ((tensor ,tensor-class) lidx)
+       (declare (type index-type lidx))
+       (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
+	 (,reader sto-x lidx)))
+     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) lidx)
+       (declare (type index-type lidx))
+       (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
+	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
      ;;
      (let ((hst (list
 		 :tensor ',tensor-class
@@ -397,50 +411,6 @@
        (setf (symbol-plist ',tensor-class) hst))))
 
 ;;
-(defgeneric tensor-ref (tensor subscripts)
-  (:documentation "
-  Syntax
-  ======
-  (tensor-ref store subscripts)
-
-  Purpose
-  =======
-  Return the element:
-
-    (rank - 1)
-       __
-  hd + \   stride  * sub
-       /_        i      i
-      i = 0
-
-  of the store.")
-  (:method ((tensor standard-tensor) subscripts)
-    (let ((sto-idx (store-indexing subscripts tensor)))
-      (tensor-store-ref tensor sto-idx))))
-
-(defgeneric (setf tensor-ref) (value tensor subscripts)
-  (:method ((value t) (tensor standard-tensor) subscripts)
-    (let ((sto-idx (store-indexing subscripts tensor)))
-      (setf (tensor-store-ref tensor sto-idx) value))))
-
-;;
-(defgeneric print-element (tensor
-			   element stream)
-  (:documentation "
-  Syntax
-  ======
-  (PRINT-ELEMENT tensor element stream)
-
-  Purpose
-  =======
-  This generic function is specialized to TENSOR to
-  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
-  to format a tensor into the STREAM.")
-  (:method (tensor element stream)
-    (format stream "~a" element)))
-
-;;
-
 (defun tensor-typep (tensor subscripts)
   "
   Syntax
@@ -460,31 +430,16 @@
   Checking for a matrix with 2 columns:
   > (tensor-typep ten '(* 2))
 
-  Also does symbolic association; checking for
-  a square matrix:
-  > (tensor-typep ten '(a a))
   "
   (declare (type standard-tensor tensor))
-  (mlet* (((rank dims) (slot-values tensor '(rank dimensions))
-	   :type (index-type index-store-vector)))
-	 (let ((syms->val (make-hash-table)))
-	   (labels ((parse-sub (lst i)
-		      (let ((val (car lst)))
-			(cond
-			  ((= i rank) t)
-			  ((null val) nil)
-			  ((eq val '*) (parse-sub (cdr lst) (1+ i)))
-			  (t (progn
-			       (when (symbolp val)
-				 (multiple-value-bind (hash-val existp) (gethash val syms->val)
-				   (if existp
-				       (setq val hash-val)
-				       (setf (gethash val syms->val) (aref dims i)
-					     val (aref dims i)))))
-			       (if (= val (aref dims i))
-				   (parse-sub (cdr lst) (1+ i))
-				   nil)))))))
-	     (parse-sub subscripts 0)))))
+  (let-typed ((rank (rank tensor) :type index-type)
+	      (dims (dimensions tensor) :type index-store-vector))
+    (very-quickly 
+      (loop :for val :in subscripts
+	 :for i :of-type index-type := 0 :then (1+ i)
+	 :do (unless (or (eq val '*) (eq val (aref dims i)))
+	       (return nil))
+	 :finally (return (when (= (1+ i) rank) t))))))
 
 (definline matrix-p (ten)
   (declare (type standard-tensor ten))
@@ -499,13 +454,8 @@
     (lvec-foldr #'(lambda (a b) (if (eq a b) a nil)) dims)))
 
 ;;---------------------------------------------------------------;;
-
-(define-constant +array-slicing-symbols+ '(\:)
-"
-  Symbols which are used to refer to slicing operations.")
-
 (defun sub-tensor~ (tensor subscripts &optional (preserve-rank nil))
-"
+  "
   Syntax
   ======
   (SUB-TENSOR~ TENSOR SUBSCRIPTS)
@@ -521,66 +471,73 @@
   > (defvar X (make-real-tensor 10 10 10))
   X
 
-  ;; Get [:, 0, 0]
-  > (sub-tensor~ X '(\: 0 0))
+  ;; Get (:, 0, 0)
+  > (sub-tensor~ X '((* * *) (0 * 1) (0 * 1)))
 
-  ;; Get [:, 2:5, :]
-  > (sub-tensor~ X '(\: (\: 2 5) \:))
+  ;; Get (:, 2:5, :)
+  > (sub-tensor~ X '((* * *) (2 * 5)))
 
-  ;; Get [:, :, 0:10:2] (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
-  > (sub-tensor~ X '(\: \: ((\: 2) 0 *)))
+  ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
+  > (sub-tensor~ X '((* * *) (* * *) (0 2 10)))
+
+  Commentary
+  ==========
+  Sadly in our parentheses filled world, this function has to be necessarily
+  verbose (unlike MATLAB, Python). However, this function has been designed with the
+  express purpose of using it with a Lisp reader macro. The slicing semantics is
+  essentially the same as MATLAB except for the zero-based indexing.
 "
   (declare (type standard-tensor tensor)
 	   (type list subscripts)
 	   (type boolean preserve-rank))
-  (let ((rank (rank tensor))
-	(dims (dimensions tensor))
-	(stds (strides tensor))
-	(hd (head tensor)))
-    (declare (type index-type rank hd)
-	     (type index-store-vector dims stds))
-    (labels ((sub-tread (i subs nhd ndims nstds)
-	       (if (null subs)
-		   (progn
-		     (assert (= i rank) nil 'tensor-index-rank-mismatch
-			     :index-rank i :rank rank)
-		     (values nhd (nreverse ndims) (nreverse nstds)))
-		   (let ((csub (car subs)))
-		     (cond
-		       ((or (consp csub)
-			    (and (symbolp csub) (member csub +array-slicing-symbols+)))
-			(destructuring-bind ((op &optional (step 1)) &optional (ori 0) (end (aref dims i))) (if (consp csub)
-														(cons (ensure-list (car csub)) (cdr csub))
-														(list (ensure-list csub)))
-			  (assert (and (typep ori 'index-type) (< -1 ori (aref dims i))) nil 'tensor-index-out-of-bounds
-				  :argument i :index ori :dimension (aref dims i))
-			  (assert (and (typep ori 'index-type) (< ori end (1+ (aref dims i)))) nil 'invalid-value
-				  :given end :expected `(> ,ori end ,(1+ (aref dims i))) :message "END is outside allowed bounds.")
-			  (assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value
-				  :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
-			  (assert (member op +array-slicing-symbols+) nil 'invalid-value
-				  :message "Cannot find OP in +array-slicing-symbols+"
-				  :given op :expected `(member op ,+array-slicing-symbols+))
-			  (let ((dim (ceiling (- end ori) step)))
-			    (sub-tread (1+ i) (cdr subs) (+ nhd (* ori (aref stds i)))
-				       (if (and (= dim 1) (not preserve-rank)) ndims (cons dim ndims))
-				       (if (and (= dim 1) (not preserve-rank)) nstds (cons (* step (aref stds i)) nstds))))))
-		       ((typep csub 'index-type)
-			(assert (< -1 csub (aref dims i)) nil 'tensor-index-out-of-bounds
-				:argument i :index csub :dimension (aref dims i))
-			(sub-tread (1+ i) (cdr subs) (+ nhd (* csub (aref stds i)))
-				   (if (not preserve-rank) ndims (cons 1 ndims))
-				   (if (not preserve-rank) nstds (cons (aref stds i) nstds))))
-		       (t
-			(error 'parser-error :message "Error parsing subscript-list.")))))))
-      (multiple-value-bind (nhd ndim nstd) (sub-tread 0 subscripts hd nil nil)
-	(if (null ndim) (tensor-store-ref tensor nhd)
-	    (make-instance
-	     (let ((nrnk (length ndim)))
-	       (if (> nrnk 2) (class-name (class-of tensor))
-		   (let ((cocl (getf (symbol-plist (class-name (class-of tensor))) (ecase nrnk (2 :matrix) (1 :vector)))))
-		     (assert cocl nil 'tensor-cannot-find-optimization :tensor-class (class-name (class-of tensor)))
-		     cocl)))
-	     :parent-tensor tensor :store (store tensor) :head nhd
-	     :dimensions (make-index-store ndim) :strides (make-index-store nstd)))))))
-
+  (labels ((prune-index-vector! (vec n)
+	     (declare (type index-store-vector vec)
+		      (type index-type n))
+	     (if (= n (length vec)) vec
+		 (very-quickly
+		   (loop :for i :of-type index-type :from 0 :below n
+		      :with ret :of-type index-store-vector := (allocate-index-store n)
+		      :do (setf (aref ret i) (aref vec i))
+		      :finally (return ret))))))
+    (let-typed ((dims (dimensions tensor) :type index-store-vector)
+		(stds (strides tensor) :type index-store-vector)
+		(rank (rank tensor) :type index-type))
+      (loop :for (start step end) :in subscripts
+	 :for i :of-type index-type := 0 :then (1+ i)
+	 :with ndims :of-type index-store-vector := (allocate-index-store rank)
+	 :with nstds :of-type index-store-vector := (allocate-index-store rank)
+	 :with nrank :of-type index-type := 0
+	 :with nhd :of-type index-type := (head tensor)
+	 :do (assert (< i rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
+	 :do (let* ((start (if (eq start '*) 0
+			       (progn
+				 (assert (and (typep start 'index-type) (< -1 start (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
+				 start)))
+		    (step (if (eq step '*) 1
+			      (progn
+				(assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
+				step)))
+		    (end (if (eq end '*) (aref dims i)
+			     (progn
+			       (assert (and (typep end 'index-type) (<= 0 end (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
+			       end))))	     
+	       (declare (type index-type start step end))
+	       ;;
+	       (let-typed ((dim (ceiling (the index-type (- end start)) step) :type index-type))
+	         (unless (and (= dim 1) (not preserve-rank))
+		   (setf (aref ndims nrank) dim
+			 (aref nstds nrank) (* step (aref stds i)))
+		   (incf nrank))
+		 (when (/= start 0)
+		   (incf nhd (the index-type (* start (aref stds i)))))))
+	 :finally (return
+		    (if (= nrank 0) (tensor-store-ref tensor nhd)
+			(make-instance (cond
+					 ((or preserve-rank (> nrank 2)) (class-of tensor))
+					 ((= nrank 2) (get (class-name (class-of tensor)) :matrix))
+					 ((= nrank 1) (get (class-name (class-of tensor)) :vector)))
+				       :head nhd
+				       :dimensions (prune-index-vector! ndims nrank)
+				       :strides (prune-index-vector! nstds nrank)
+				       :store (store tensor) :store-size (store-size tensor)
+				       :parent-tensor tensor)))))))

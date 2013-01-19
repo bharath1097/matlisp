@@ -75,3 +75,27 @@
   (case job
     (:row-major :col-major)
     (:col-major :row-major)))
+
+(definline make-stride-rmj (dims)
+  (declare (type index-store-vector dims))
+  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
+    (very-quickly
+      (loop
+	 :for i  :of-type index-type :downfrom (1- (length dims)) :to 0
+	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))	 
+	 :do (progn
+	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
+	       (setf (aref stds i) st))
+	 :finally (return (values stds st))))))
+
+(definline make-stride-cmj (dims)
+  (declare (type index-store-vector dims))
+  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
+    (very-quickly
+      (loop
+	 :for i :of-type index-type :from 0 :below (length dims)
+	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))
+	 :do (progn
+	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
+	       (setf (aref stds i) st))
+	 :finally (return (values stds st))))))

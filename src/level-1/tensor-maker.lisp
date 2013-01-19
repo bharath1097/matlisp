@@ -15,7 +15,7 @@
 				 (store (,(getf opt :store-allocator) ss))
 				 (rnk (length vdim)))
 				(make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
-					       :store store :dimensions vdim)))
+					       :store store :store-size ss :dimensions vdim)))
 		  (make-from-array (arr)
 		    (declare (type (array * *) arr))
 		    (let* ((ret (make-dims (array-dimensions arr)))

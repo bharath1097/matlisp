@@ -171,7 +171,7 @@
 	   #:sub-tensor~ #:sub-tensor
 	   ;;Store indexers
 	   #:store-indexing
-	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
+	   #:store-indexing-vec #:store-indexing-lst
 	   ;;Store accessors
 	   #:tensor-store-ref
 	   #:tensor-ref

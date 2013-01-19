@@ -102,20 +102,6 @@ Allocates real storage.  Default initial-element = 0d0.")
   :reader-writer real-type.reader-writer
   :swapper real-type.swapper)
 
-;;
-(defmethod initialize-instance ((tensor real-tensor) &rest initargs)
-  (if (getf initargs :store)
-      (setf (slot-value tensor 'store-size) (length (getf initargs :store)))
-      (let ((size (reduce #'* (getf initargs :dimensions))))
-	(setf (slot-value tensor 'store) (allocate-real-store size)
-	      (slot-value tensor 'store-size) size)))
-  (call-next-method))
-
-;;
-(defmethod (setf tensor-ref) ((value number) (tensor real-tensor) subscripts)
-  (let ((sto-idx (store-indexing subscripts tensor)))
-    (setf (tensor-store-ref tensor sto-idx) (coerce-real value))))
-
 (defmethod print-element ((tensor real-tensor)
 			  element stream)
   (format stream "~11,5,,,,,'Eg" element))
