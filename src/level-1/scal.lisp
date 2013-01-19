@@ -33,7 +33,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :scal) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (from to)
+    `(defun ,func (from to)
        (declare (type ,tensor-class from to))
        ,(let
 	 ((lisp-routine
@@ -68,7 +68,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :num-scal) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (alpha to)
+    `(defun ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
        ,(let
@@ -97,7 +97,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :div) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (from to)
+    `(defun ,func (from to)
        (declare (type ,tensor-class from to))
        ,(let
 	 ((lisp-routine
@@ -132,7 +132,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :num-div) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (alpha to)
+    `(defun ,func (alpha to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) alpha))
        ,(let

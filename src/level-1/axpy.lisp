@@ -36,7 +36,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :axpy) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (alpha from to)
+    `(defun ,func (alpha from to)
        (declare (type ,tensor-class from to)
 		(type ,(getf opt :element-type) alpha))
        ,(let
@@ -45,9 +45,6 @@
 		  (t-sto (store to)))
 	      (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
 	      (very-quickly
-		;;One would question the wisdom in calling the Fortran method here.
-		;;Simple benchmarks proved that SBCL is as quick as or better than
-		;;OpenBLAS's methods
 		(mod-dotimes (idx (dimensions from))
 		  with (linear-sums
 			(f-of (strides from) (head from))
@@ -82,7 +79,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :num-axpy) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (num-from to)
+    `(defun ,func (num-from to)
        (declare (type ,tensor-class to)
 		(type ,(getf opt :element-type) num-from))
        ,(let

@@ -36,7 +36,7 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :swap) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(definline ,func (x y)
+    `(defun ,func (x y)
        (declare (type ,tensor-class x y))
        ,(let
 	 ((lisp-routine

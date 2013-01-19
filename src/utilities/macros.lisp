@@ -439,9 +439,9 @@
 						       :else
 						         :collect (progn (assert (member ele '(0 1 2 3))) ele) into val
 						       :finally (return (values key val))))))
-	 (when (eq (caar forms) 'declare)
+	 (when (and (consp (car forms)) (eq (caar forms) 'declare))
 	   (cdar forms)))
-     ,@(if (eq (caar forms) 'declare) (cdr forms) forms)))
+     ,@(if (and (consp (car forms)) (eq (caar forms) 'declare)) (cdr forms) forms)))
 
 (defmacro quickly (&body forms)
   "
@@ -456,7 +456,11 @@
   Macro which encloses @arg{forms} inside
   (declare (optimize (speed 3) (safety 0) (space 0)))
   "
-  `(with-optimization (:safety 0 :space 0 :speed 3)
+  `(with-optimization
+       #+lispworks
+       (:safety 0 :space 0 :speed 3 :float 0 :fixnum-safety 0)
+       #-lispworks
+       (:safety 0 :space 0 :speed 3)
      ,@forms))
 
 (defmacro slowly (&body forms)
