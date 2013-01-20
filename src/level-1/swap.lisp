@@ -34,41 +34,44 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    (setf (getf opt :swap) func
-	  (get-tensor-class-optimization tensor-class) opt)
-    `(defun ,func (x y)
-       (declare (type ,tensor-class x y))
-       ,(let
-	 ((lisp-routine
-	   `(let ((f-sto (store x))
-		  (t-sto (store y)))
-		(declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
-		(very-quickly
-		  (mod-dotimes (idx (dimensions x))
-		    with (linear-sums
-			  (f-of (strides x) (head x))
-			  (t-of (strides y) (head y)))
-		    do (,(getf opt :swapper) f-sto f-of t-sto t-of))))))
-	 (if blas-func
-	     `(let* ((call-fortran? (> (number-of-elements x) ,fortran-lb))
-		     (strd-p (when call-fortran? (blas-copyable-p x y))))
-		(cond
-		  ((and strd-p call-fortran?)
-		   (,blas-func (number-of-elements x) (store x) (first strd-p) (store y) (second strd-p) (head x) (head y)))
-		  (t
-		   ,lisp-routine)))
-	     lisp-routine))
-       y)))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	 (setf (getf opt :swap) ',func
+	       (get-tensor-class-optimization ',tensor-class) opt))
+       (defun ,func (x y)
+	 (declare (type ,tensor-class x y))
+	 ,(let
+	      ((lisp-routine
+		 `(let ((f-sto (store x))
+			(t-sto (store y)))
+		    (declare (type ,(linear-array-type (getf opt :store-type)) f-sto t-sto))
+		    (very-quickly
+		      (mod-dotimes (idx (dimensions x))
+			with (linear-sums
+			      (f-of (strides x) (head x))
+			      (t-of (strides y) (head y)))
+			do (,(getf opt :swapper) f-sto f-of t-sto t-of))))))
+	    (if blas-func
+		`(let* ((call-fortran? (> (number-of-elements x) ,fortran-lb))
+			(strd-p (when call-fortran? (blas-copyable-p x y))))
+		   (cond
+		     ((and strd-p call-fortran?)
+		      (,blas-func (number-of-elements x) (store x) (first strd-p) (store y) (second strd-p) (head x) (head y)))
+		     (t
+		      ,lisp-routine)))
+		lisp-routine))
+	 y))))
 
 (generate-typed-swap! real-typed-swap!
-  (real-tensor dswap *real-l1-fcall-lb*))
+    (real-tensor dswap *real-l1-fcall-lb*))
 
 (generate-typed-swap! complex-typed-swap!
-  (complex-tensor zswap *complex-l1-fcall-lb*))
+    (complex-tensor zswap *complex-l1-fcall-lb*))
 
 #+maxima
 (generate-typed-swap! symbolic-typed-swap!
-  (symbolic-tensor nil 0))
+    (symbolic-tensor nil 0))
 
 ;;---------------------------------------------------------------;;
 ;;Generic function in src;base;generic-swap.lisp

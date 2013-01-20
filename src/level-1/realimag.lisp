@@ -29,7 +29,7 @@
 (in-package #:matlisp)
 
 (definline tensor-realpart~ (tensor)
-"
+  "
   Syntax
   ======
   (tensor-realpart~ tensor)
@@ -51,7 +51,7 @@
     (number (realpart tensor))))
 
 (definline tensor-imagpart~ (tensor)
-"
+  "
   Syntax
   ======
   (tensor-imagpart~ tensor)
@@ -73,7 +73,7 @@
     (number (imagpart tensor))))
 
 (definline tensor-realpart (tensor)
-"
+  "
   Syntax
   ======
   (tensor-realpart tensor)
@@ -89,7 +89,7 @@
   (copy (tensor-realpart~ tensor)))
 
 (definline tensor-imagpart (tensor)
-"
+  "
   Syntax
   ======
   (tensor-imagpart matrix)

@@ -34,22 +34,27 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :dot) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(defun ,func (x y conjugate-p)
-       (declare (type ,tensor-class x y)
-		,(if conj?
-		     `(type boolean conjugate-p)
-		     `(ignore conjugate-p)))
-       ,(let
-	 ((lisp-routine
-	   `(let-typed
-	     ((stp-x (aref (strides x) 0) :type index-type)
-	      (sto-x (store x) :type ,(linear-array-type (getf opt :store-type)))
-	      (stp-y (aref (strides y) 0) :type index-type)
-	      (sto-y (store y) :type ,(linear-array-type (getf opt :store-type)))
-	      (nele (number-of-elements x) :type index-type))
-	     ,(labels ((main-loop (conjp)
-				  `(very-quickly
-				     (loop :repeat nele
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	 (setf (getf opt :axpy) ',func
+	       (get-tensor-class-optimization ',tensor-class) opt))
+       (defun ,func (x y conjugate-p)
+	 (declare (type ,tensor-class x y)
+		  ,(if conj?
+		       `(type boolean conjugate-p)
+		       `(ignore conjugate-p)))
+	 ,(let
+	      ((lisp-routine
+		 `(let-typed
+		   ((stp-x (aref (strides x) 0) :type index-type)
+		    (sto-x (store x) :type ,(linear-array-type (getf opt :store-type)))
+		    (stp-y (aref (strides y) 0) :type index-type)
+		    (sto-y (store y) :type ,(linear-array-type (getf opt :store-type)))
+		    (nele (number-of-elements x) :type index-type))
+		   ,(labels ((main-loop (conjp)
+			       `(very-quickly
+				  (loop :repeat nele
 					:for of-x :of-type index-type = (head x) :then (+ of-x stp-x)
 					:for of-y :of-type index-type = (head y) :then (+ of-y stp-y)
 					:with dot :of-type ,(getf opt :element-type) = (,(getf opt :fid+))
@@ -64,42 +69,42 @@
 			       ,(main-loop t)
 			       ,(main-loop nil))
 			  (main-loop nil))))))
-	 (if blas?
-	     `(let ((call-fortran? (> (number-of-elements x)
-				      ,fortran-lb)))
-		(cond
-		  (call-fortran?
-		   ,(recursive-append
-		     (when conj?
-			    `(if conjugate-p
-				 (,blasc-func (number-of-elements x)
-					      (store x) (aref (strides x) 0)
-					      (store y) (aref (strides y) 0)
-					      (head x) (head y))))
-		     `(,blas-func (number-of-elements x)
-				  (store x) (aref (strides x) 0)
-				  (store y) (aref (strides y) 0)
-				  (head x) (head y))))
-		  (t
-		   ,lisp-routine)))
-	     lisp-routine)))))
+	    (if blas?
+		`(let ((call-fortran? (> (number-of-elements x)
+					 ,fortran-lb)))
+		   (cond
+		     (call-fortran?
+		      ,(recursive-append
+			(when conj?
+			  `(if conjugate-p
+			       (,blasc-func (number-of-elements x)
+					    (store x) (aref (strides x) 0)
+					    (store y) (aref (strides y) 0)
+					    (head x) (head y))))
+			`(,blas-func (number-of-elements x)
+				     (store x) (aref (strides x) 0)
+				     (store y) (aref (strides y) 0)
+				     (head x) (head y))))
+		     (t
+		      ,lisp-routine)))
+		lisp-routine))))))
 
 (generate-typed-dot real-typed-dot
-  (real-tensor ddot nil *real-l1-fcall-lb*))
+    (real-tensor ddot nil *real-l1-fcall-lb*))
 
 (generate-typed-dot complex-typed-dot
-  (complex-tensor zdotu zdotc *complex-l1-fcall-lb*))
+    (complex-tensor zdotu zdotc *complex-l1-fcall-lb*))
 
 #+maxima
 (generate-typed-dot symbolic-typed-dot
-  (symbolic-tensor nil nil 0))
+    (symbolic-tensor nil nil 0))
 
 ;;---------------------------------------------------------------;;
-		  
-       
+
+
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation
-"
+   "
   Sytnax
   ======
   (DOT x y [conjugate-p])
@@ -130,9 +135,9 @@
   otherwise.
 ")
   (:method :before ((x standard-vector) (y standard-vector) &optional (conjugate-p t))
-  (declare (ignore conjugate-p))
-  (unless (lvec-eq (dimensions x) (dimensions y) #'=)
-    (error 'tensor-dimension-mismatch))))
+    (declare (ignore conjugate-p))
+    (unless (lvec-eq (dimensions x) (dimensions y) #'=)
+      (error 'tensor-dimension-mismatch))))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
   (if conjugate-p
@@ -181,16 +186,16 @@
 				(let ((dot-name (gensym (string+ (symbol-name classn) "-dot-"))))
 				  (compile-and-eval
 				   `(generate-typed-dot ,dot-name
-							(,classn nil nil 0)))
+					(,classn nil nil 0)))
 				  dot-name))))
 	 (compile-and-eval
 	  `(defmethod dot ((x ,classn) (y ,classn) &optional (conjugate-p t))
 	     ,@(unless (get classn :fconj)
-		       `((declare (ignore conjugate-p))))
+		 `((declare (ignore conjugate-p))))
 	     ,(if (get classn :fconj)
 		  `(,dot-func x y conjugate-p)
 		  `(,dot-func x y t))))
-       ;;Call method
+	 ;;Call method
 	 (dot x y conjugate-p)))
       ((coercable? (class-name xcl) (class-name ycl))
        ...)

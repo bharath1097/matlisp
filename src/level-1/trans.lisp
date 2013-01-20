@@ -54,8 +54,8 @@
       (let-typed ((rnk (rank A) :type index-type)
 		  (dim-A (dimensions A) :type index-store-vector)
 		  (strd-A (strides A) :type index-store-vector))
-	(rotatef (aref dim-A (1- rnk)) (aref dim-A 0))
-	(rotatef (aref strd-A (1- rnk)) (aref strd-A 0))))
+		 (rotatef (aref dim-A (1- rnk)) (aref dim-A 0))
+		 (rotatef (aref strd-A (1- rnk)) (aref strd-A 0))))
   A)
 
 (definline (setf transpose!) (value A &optional permutation)
@@ -81,9 +81,9 @@
   (copy! value (TRANSPOSE~ tensor permutation))"
   (declare (type standard-tensor A))
   (let ((displaced (make-instance (class-of A) :store (store A)
-				  :dimensions (copy-seq (dimensions A))
-				  :strides (copy-seq (strides A))
-				  :parent-tensor A)))
+					       :dimensions (copy-seq (dimensions A))
+					       :strides (copy-seq (strides A))
+					       :parent-tensor A)))
     (transpose! displaced permutation)))
 
 (definline (setf transpose~) (value A &optional permutation)
@@ -158,7 +158,7 @@
 
 ;;
 (defun htranspose! (A &optional permutation)
-"
+  "
    Syntax
    ======
    (HTRANSPOSE! A [permutation])
@@ -186,7 +186,7 @@
   (htranspose! A permutation))
 
 (definline htranspose (A &optional permutation)
-"
+  "
   Syntax
   ======
   (HTRANSPOSE A [permutation])

@@ -355,7 +355,7 @@
   ;;Error checking
   (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer reader-writer swapper))
   ;;
-  `(progn
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      ;;Class definitions
      (defclass ,tensor-class (standard-tensor)
        ((store :type ,store-type))
