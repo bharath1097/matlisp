@@ -10,116 +10,338 @@
 
 (in-package #:matlisp-ffi)
 
-
-(definline %f77.string-p (type)
-  "
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (definline %f77.string-p (type)
+    "
   Checks if the given type is a string."
-  (eq type :string))
+    (eq type :string))
 
-(definline %f77.array-p (type)
-  "
+  (definline %f77.array-p (type)
+    "
   Checks if the given type is an array."
-  (and (listp type) (eq (car type) '*)))
+    (and (listp type) (eq (car type) '*)))
 
-(definline %f77.cast-as-array-p (type)
-  "
+  (definline %f77.cast-as-array-p (type)
+    "
   Checks if the given type is - or has to be passed as - an array."
-  (or (when (listp type)
-	(eq (car type) '*))
-      (eq type :complex-single-float)
-      (eq type :complex-double-float)))
+    (or (when (listp type)
+	  (eq (car type) '*))
+	(eq type :complex-single-float)
+	(eq type :complex-double-float)))
 
-;; Check if the given type is a callback.
-(definline %f77.callback-type-p (type)
-  "
+  ;; Check if the given type is a callback.
+  (definline %f77.callback-type-p (type)
+    "
   Checks if the given type is a callback"
-  (and (listp type) (eq (first type) :callback)))
+    (and (listp type) (eq (first type) :callback)))
 
-;; Get the equivalent CFFI type.
-;; If the type is an array, get the type of the array element type.
-(defun %f77.cffi-type (type)
-  "Convert the given matlisp-ffi type into one understood by CFFI."
-  (cond
-    ((and (listp type) (eq (first type) '*))
-     `(:pointer ,(%f77.cffi-type (second type))))
-    ((%f77.callback-type-p type)
-     `(:pointer ,(%f77.cffi-type :callback)))
-    ((eq type :complex-single-float)
-     `(:pointer ,(%f77.cffi-type :single-float)))
-    ((eq type :complex-double-float)
-     `(:pointer ,(%f77.cffi-type :double-float)))
-    (t (ecase type
-	 (:void :void)
-	 (:integer :int32)
-	 (:character :char)
-	 (:long :int64)
-	 (:single-float :float)
-	 (:double-float :double)
-	 (:string :string)
-	 ;; Pass a pointer to the function.
-	 (:callback :void)
-	 (t (error 'unknown-token :token type
-		   :message "Don't know the given Fortran type."))))))
+  ;; Get the equivalent CFFI type.
+  ;; If the type is an array, get the type of the array element type.
+  (defun %f77.cffi-type (type)
+    "Convert the given matlisp-ffi type into one understood by CFFI."
+    (cond
+      ((and (listp type) (eq (first type) '*))
+       `(:pointer ,(%f77.cffi-type (second type))))
+      ((%f77.callback-type-p type)
+       `(:pointer ,(%f77.cffi-type :callback)))
+      ((eq type :complex-single-float)
+       `(:pointer ,(%f77.cffi-type :single-float)))
+      ((eq type :complex-double-float)
+       `(:pointer ,(%f77.cffi-type :double-float)))
+      (t (ecase type
+	   (:void :void)
+	   (:integer :int32)
+	   (:character :char)
+	   (:long :int64)
+	   (:single-float :float)
+	   (:double-float :double)
+	   (:string :string)
+	   ;; Pass a pointer to the function.
+	   (:callback :void)
+	   (t (error 'unknown-token :token type
+				    :message "Don't know the given Fortran type."))))))
 
-(defun %f77.get-return-type (type)
-  "
+  (defun %f77.get-return-type (type)
+    "
   Return type understood by CFFI. Note that unlike arguments fortran
   functions return-by-value."
-  (if (or (%f77.cast-as-array-p type) (%f77.callback-type-p type))
-      (error 'invalid-type :given type :expected '(not (or (%f77.cast-as-array-p type)
-							(%f77.callback-type-p type)))
-	     :message "A Fortran function cannot return the given type.")
-      (%f77.cffi-type type)))
+    (if (or (%f77.cast-as-array-p type) (%f77.callback-type-p type))
+	(error 'invalid-type :given type :expected '(not (or (%f77.cast-as-array-p type)
+							  (%f77.callback-type-p type)))
+			     :message "A Fortran function cannot return the given type.")
+	(%f77.cffi-type type)))
 
-(definline %f77.output-p (style)
-  "
+  (definline %f77.output-p (style)
+    "
   Checks if style implies output."
-  (member style '(:output :input-output :workspace-output)))
+    (member style '(:output :input-output :workspace-output)))
 
-(definline %f77.input-p (style)
-  "
+  (definline %f77.input-p (style)
+    "
   Checks if style implies input."
-  (member style '(:input :input-value :input-reference :workspace)))
+    (member style '(:input :input-value :input-reference :workspace)))
 
-(defun %f77.get-read-in-type (type &optional (style :input))
-  "
+  (defun %f77.get-read-in-type (type &optional (style :input))
+    "
   Get the input type to be passed to CFFI."
-  (assert (member style +ffi-styles+) nil 'unknown-token :token style
-	  :message "Don't know how to handle style.")
-  (cond
-    ;; Can't do much else if type is an array/complex or input is passed-by-value.
-    ((or (%f77.callback-type-p type)
-	 (%f77.cast-as-array-p type)
-	 (eq style :input-value))
-     (%f77.cffi-type type))
-    ;; else pass-by-reference
-    (t
-     `(:pointer ,(%f77.cffi-type type)))))
+    (assert (member style +ffi-styles+) nil 'unknown-token :token style
+							   :message "Don't know how to handle style.")
+    (cond
+      ;; Can't do much else if type is an array/complex or input is passed-by-value.
+      ((or (%f77.callback-type-p type)
+	   (%f77.cast-as-array-p type)
+	   (eq style :input-value))
+       (%f77.cffi-type type))
+      ;; else pass-by-reference
+      (t
+       `(:pointer ,(%f77.cffi-type type)))))
 
-(defun %f77.parse-fortran-parameters (body)
-  "
+  (defun %f77.parse-fortran-parameters (body)
+    "
   Parse fortran parameters and convert parameters to native C90 types (and
   add additional function parameters)."
+    (multiple-value-bind (doc pars)
+	(parse-doc-&-parameters body)
+      (declare (ignore doc))
+
+      (let* ((aux-pars nil)
+	     (new-pars
+	       (mapcar #'(lambda (decl)
+			   (destructuring-bind (name type &optional (style :input-reference)) decl
+			     (case type
+			       (:string
+				;; String lengths are appended to the function arguments,
+				;; passed by value.
+				(nconsc aux-pars `((,(scat "LEN-" name) ,(%f77.cffi-type :integer))))
+				`(,name ,(%f77.cffi-type :string)))
+			       (t
+				`(,name ,(%f77.get-read-in-type type style))))))
+		       pars)))
+	`( ;; don't want documentation for direct interface, not useful
+	  ;; ,@doc
+	  ,@new-pars ,@aux-pars))))
+
+  ;; Create a form specifying a simple Lisp function that calls the
+;; underlying Fortran routine of the same name.
+(defun %f77.def-fortran-interface (name return-type body hidden-var-name)
   (multiple-value-bind (doc pars)
       (parse-doc-&-parameters body)
-    (declare (ignore doc))
+    (let ((ffi-fn (make-fortran-ffi-name name))
+	  (return-vars nil)
+	  (array-vars nil)
+	  (ref-vars nil)
+	  (callback-code nil)
+	  ;;
+	  (defun-args nil)
+	  (defun-keyword-args nil)
+	  ;;
+	  (aux-args nil)
+	  ;;
+	  (ffi-args nil)
+	  (aux-ffi-args nil))
+      (dolist (decl pars)
+	(destructuring-bind (var type &optional style) decl
+	  (let ((ffi-var nil)
+		(aux-var nil))
+	    (cond
+	      ;; Callbacks are tricky.
+	      ((%f77.callback-type-p type)
+	       (let* ((callback-name (gensym (symbol-name var)))
+		      (c-callback-code (%f77.def-fortran-callback var callback-name (second type) (cddr type))))
+		 (nconsc callback-code c-callback-code)
+		 (setq ffi-var `(cffi:callback ,callback-name))))
+	      ;; Can't really enforce "style" when given an array.
+	      ;; Complex numbers do not latch onto this case, they
+	      ;; are passed by value.
+	      ((%f77.array-p type)
+	       (setq ffi-var (scat "ADDR-" var))
+	       (nconsc array-vars `((,ffi-var ,var)))
+	       ;;
+	       (when-let (arg (getf type :inc))
+		 (nconsc defun-keyword-args
+			 `((,arg 0)))
+		 (nconc (car (last array-vars)) `(:inc-type ,(cadr type) :inc ,arg))))
+	      ;; Strings
+	      ((%f77.string-p type)
+	       (setq ffi-var var)
+	       (setq aux-var (scat "LEN-" var))
+	       (nconsc aux-args `((,aux-var (length (the string ,var))))))
+	      ;; Pass-by-value variables
+	      ((eq style :input-value)
+	       (setq ffi-var var))
+	      ;; Pass-by-reference variables
+	      (t
+	       (cond
+		 ;; Makes more sense to copy complex numbers into
+		 ;; arrays, rather than twiddling around with lisp
+		 ;; memory internals.
+		 ((member type '(:complex-single-float :complex-double-float))
+		  (setq ffi-var (scat "ADDR-REAL-CAST-" var))
+		  (nconsc ref-vars
+			  `((,ffi-var ,(second (%f77.cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
+		 (t
+		  (setq ffi-var (scat "REF-" var))
+		  (nconsc ref-vars
+			  `((,ffi-var ,(%f77.cffi-type type) :initial-element ,var)))))))
+	    ;; Output variables
+	    (when (and (%f77.output-p style) (not (eq type :string)))
+	      (nconsc return-vars
+		      `((,ffi-var ,var ,type))))
+	    ;; Arguments for the lisp wrapper
+	    (unless (eq var hidden-var-name)
+	      (nconsc defun-args
+		      `(,var)))
+	    ;; Arguments for the FFI function
+	    (nconsc ffi-args
+		    `(,ffi-var))
+	    ;; Auxillary arguments for FFI
+	    (unless (null aux-var)
+	      (nconsc aux-ffi-args
+		      `(,aux-var))))))
+      ;;Complex returns through hidden variable.
+      (unless (null hidden-var-name)
+	(nconsc aux-args `((,hidden-var-name ,(ecase (second (first pars))
+						     (:complex-single-float #c(0e0 0e0))
+						     (:complex-double-float #c(0d0 0d0)))))))
+      ;;Keyword argument list
+      (unless (null defun-keyword-args)
+	(setq defun-keyword-args (cons '&optional defun-keyword-args)))
+      ;;Return the function definition
+      (let ((retvar (gensym)))
+	`(
+	  ,(recursive-append
+	    `(defun ,name ,(append defun-args defun-keyword-args)
+	       ,@doc)
+	    ;;
+	    (unless (null aux-args)
+	      `(let (,@aux-args)))
+	    ;;Don't use with-foreign.. if ref-vars is nil
+	    (unless (null ref-vars)
+	      `(with-foreign-objects-stacked (,@ref-vars)))
+	    ;;Don't use with-vector-dat.. if array-vars is nil
+	    (unless (null array-vars)
+	      `(with-vector-data-addresses (,@array-vars)))
+	    ;;Declare callbacks
+	    callback-code
+	    ;;Call the foreign-function
+	    `(let ((,retvar (,ffi-fn ,@ffi-args ,@aux-ffi-args)))
+	       ;;Ignore return if type is :void
+	       ,@(when (eq return-type :void)
+		       `((declare (ignore ,retvar))))
+	       ;; Copy values in reference pointers back to local
+	       ;; variables.  Lisp has local scope; its safe to
+	       ;; modify variables in parameter lists.
+	       ,@(mapcar #'(lambda (decl)
+			     (destructuring-bind (ffi-var var type) decl
+			       (if (member type '(:complex-single-float :complex-double-float))
+				   `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0)
+							(cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1)))
+				   `(setq ,var (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type))))))
+			 (remove-if-not #'(lambda (x)
+					    (member (first x) ref-vars :key #'car))
+					return-vars))
+	       (values
+		,@(unless (eq return-type :void)
+			  `(,retvar))
+		,@(mapcar #'second return-vars)))))))))
 
-    (let* ((aux-pars nil)
-	   (new-pars
-	     (mapcar #'(lambda (decl)
-			 (destructuring-bind (name type &optional (style :input-reference)) decl
-			   (case type
-			     (:string
-			      ;; String lengths are appended to the function arguments,
-			      ;; passed by value.
-			      (nconsc aux-pars `((,(scat "LEN-" name) ,(%f77.cffi-type :integer))))
-			      `(,name ,(%f77.cffi-type :string)))
-			     (t
-			      `(,name ,(%f77.get-read-in-type type style))))))
-		     pars)))
-      `( ;; don't want documentation for direct interface, not useful
-	;; ,@doc
-	,@new-pars ,@aux-pars))))
+;;TODO: Outputs are messed up inside the callback
+;;TODO: Define callbacks outside the function call and lexically bind functions inside the
+;;      call. Callbacks allocate memory in some non-GC'ed part of the heap. Runs out of memory
+;;      quite quickly.
+(defun %f77.def-fortran-callback (func callback-name return-type parm)
+  (let* ((hack-return-type `,return-type)
+	 (hack-parm `(,@parm))
+	 (hidden-var-name nil))
+    ;;
+    (when (member hack-return-type '(:complex-single-float :complex-double-float))
+      (setq hidden-var-name (gensym "HIDDEN-COMPLEX-RETURN-"))
+      (setq hack-parm `((,hidden-var-name ,hack-return-type :output)
+			,@parm))
+      (setq hack-return-type :void))
+    ;;
+    (let* ((new-pars nil)
+	   (aux-pars nil)
+	   (func-pars nil)
+	   (array-vars nil)
+	   (return-vars nil)
+	   (ref-vars nil))
+      (dolist (decl hack-parm)
+	(destructuring-bind (var type &optional (style :input)) decl
+	  (let ((ffi-var nil)
+		(func-var nil))
+	    (cond
+	      ;; Callbacks are tricky.
+	      ((%f77.callback-type-p type)
+	       (setq ffi-var var)
+	       (setq func-var var))
+	      ;;
+	      ((%f77.array-p type)
+	       (setq ffi-var (scat "ADDR-" var))
+	       (setq func-var var)
+	       (nconsc array-vars `((,func-var (make-foreign-vector :pointer ,ffi-var :type ,(second (%f77.cffi-type type))
+								    :size ,(if-let (size (getf type :size))
+										   size
+										   1))))))
+	      ;;
+	      ((%f77.string-p type)
+	       (setq ffi-var var)
+	       (setq func-var var)
+	       (nconsc aux-pars
+		       `((,(scat "LEN-" var) ,(%f77.cffi-type :integer)))))
+	      ;;
+	      ((eq style :input-value)
+	       (setq ffi-var var)
+	       (setq func-var var))
+	      ;; Pass-by-reference variables
+	      (t
+	       (cond
+		 ((member type '(:complex-single-float :complex-double-float))
+		  (setq ffi-var (scat "ADDR-REAL-CAST-" var))
+		  (setq func-var var)
+		  (nconsc ref-vars
+			  `((,func-var (complex (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0)
+						(cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1))))))
+		 (t
+		  (setq ffi-var (scat "REF-" var))
+		  (setq func-var var)
+		  (nconsc ref-vars
+			  `((,func-var (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type)))))))))
+	    ;;
+	    (nconsc new-pars `((,ffi-var ,(%f77.get-read-in-type type style))))
+	    (nconsc func-pars `(,func-var))
+	    (when (and (%f77.output-p style) (not (eq type :string)))
+	      (nconsc return-vars
+		      `((,func-var ,ffi-var ,type)))))))
+      
+      (let ((retvar (gensym)))
+	`(
+	  ,(recursive-append
+	    `(cffi:defcallback ,callback-name ,(%f77.get-return-type hack-return-type)
+		 (,@new-pars ,@aux-pars))
+	    ;;
+	    (when ref-vars
+	      `(let (,@ref-vars)))
+	    ;;
+	    (when array-vars
+	      `(let (,@array-vars)))
+	    ;;
+	    `(multiple-value-bind (,retvar ,@(mapcar #'car return-vars)) (funcall ,func ,@func-pars)
+	       ,@(when (eq hack-return-type :void)
+		       `((declare (ignore ,retvar))))
+	       ,@(mapcar #'(lambda (decl)
+			     (destructuring-bind (func-var ffi-var type) decl
+			       (if (member type '(:complex-single-float :complex-double-float))
+				   `(setf (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0) (realpart ,func-var)
+					  (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1) (imagpart ,func-var))
+				   `(setf (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type)) ,func-var))))
+			 (remove-if-not #'(lambda (x)
+					(member (first x) ref-vars :key #'car))
+				    return-vars))
+	       ,(if (eq hack-return-type :void)
+		     nil
+		     retvar))))))))
+)
 
 (defmacro def-fortran-routine (name-and-options return-type &rest body)
   "
@@ -324,221 +546,3 @@
 	 (cffi:defcfun (,fortran-name ,lisp-name) ,(%f77.get-return-type hack-return-type)
 	   ,@(%f77.parse-fortran-parameters hack-body))
 	 ,@(%f77.def-fortran-interface name hack-return-type hack-body hidden-var-name)))))
-
-;; Create a form specifying a simple Lisp function that calls the
-;; underlying Fortran routine of the same name.
-(defun %f77.def-fortran-interface (name return-type body hidden-var-name)
-  (multiple-value-bind (doc pars)
-      (parse-doc-&-parameters body)
-    (let ((ffi-fn (make-fortran-ffi-name name))
-	  (return-vars nil)
-	  (array-vars nil)
-	  (ref-vars nil)
-	  (callback-code nil)
-	  ;;
-	  (defun-args nil)
-	  (defun-keyword-args nil)
-	  ;;
-	  (aux-args nil)
-	  ;;
-	  (ffi-args nil)
-	  (aux-ffi-args nil))
-      (dolist (decl pars)
-	(destructuring-bind (var type &optional style) decl
-	  (let ((ffi-var nil)
-		(aux-var nil))
-	    (cond
-	      ;; Callbacks are tricky.
-	      ((%f77.callback-type-p type)
-	       (let* ((callback-name (gensym (symbol-name var)))
-		      (c-callback-code (%f77.def-fortran-callback var callback-name (second type) (cddr type))))
-		 (nconsc callback-code c-callback-code)
-		 (setq ffi-var `(cffi:callback ,callback-name))))
-	      ;; Can't really enforce "style" when given an array.
-	      ;; Complex numbers do not latch onto this case, they
-	      ;; are passed by value.
-	      ((%f77.array-p type)
-	       (setq ffi-var (scat "ADDR-" var))
-	       (nconsc array-vars `((,ffi-var ,var)))
-	       ;;
-	       (when-let (arg (getf type :inc))
-		 (nconsc defun-keyword-args
-			 `((,arg 0)))
-		 (nconc (car (last array-vars)) `(:inc-type ,(cadr type) :inc ,arg))))
-	      ;; Strings
-	      ((%f77.string-p type)
-	       (setq ffi-var var)
-	       (setq aux-var (scat "LEN-" var))
-	       (nconsc aux-args `((,aux-var (length (the string ,var))))))
-	      ;; Pass-by-value variables
-	      ((eq style :input-value)
-	       (setq ffi-var var))
-	      ;; Pass-by-reference variables
-	      (t
-	       (cond
-		 ;; Makes more sense to copy complex numbers into
-		 ;; arrays, rather than twiddling around with lisp
-		 ;; memory internals.
-		 ((member type '(:complex-single-float :complex-double-float))
-		  (setq ffi-var (scat "ADDR-REAL-CAST-" var))
-		  (nconsc ref-vars
-			  `((,ffi-var ,(second (%f77.cffi-type type)) :count 2 :initial-contents (list (realpart ,var) (imagpart ,var))))))
-		 (t
-		  (setq ffi-var (scat "REF-" var))
-		  (nconsc ref-vars
-			  `((,ffi-var ,(%f77.cffi-type type) :initial-element ,var)))))))
-	    ;; Output variables
-	    (when (and (%f77.output-p style) (not (eq type :string)))
-	      (nconsc return-vars
-		      `((,ffi-var ,var ,type))))
-	    ;; Arguments for the lisp wrapper
-	    (unless (eq var hidden-var-name)
-	      (nconsc defun-args
-		      `(,var)))
-	    ;; Arguments for the FFI function
-	    (nconsc ffi-args
-		    `(,ffi-var))
-	    ;; Auxillary arguments for FFI
-	    (unless (null aux-var)
-	      (nconsc aux-ffi-args
-		      `(,aux-var))))))
-      ;;Complex returns through hidden variable.
-      (unless (null hidden-var-name)
-	(nconsc aux-args `((,hidden-var-name ,(ecase (second (first pars))
-						     (:complex-single-float #c(0e0 0e0))
-						     (:complex-double-float #c(0d0 0d0)))))))
-      ;;Keyword argument list
-      (unless (null defun-keyword-args)
-	(setq defun-keyword-args (cons '&optional defun-keyword-args)))
-      ;;Return the function definition
-      (let ((retvar (gensym)))
-	`(
-	  ,(recursive-append
-	    `(defun ,name ,(append defun-args defun-keyword-args)
-	       ,@doc)
-	    ;;
-	    (unless (null aux-args)
-	      `(let (,@aux-args)))
-	    ;;Don't use with-foreign.. if ref-vars is nil
-	    (unless (null ref-vars)
-	      `(with-foreign-objects-stacked (,@ref-vars)))
-	    ;;Don't use with-vector-dat.. if array-vars is nil
-	    (unless (null array-vars)
-	      `(with-vector-data-addresses (,@array-vars)))
-	    ;;Declare callbacks
-	    callback-code
-	    ;;Call the foreign-function
-	    `(let ((,retvar (,ffi-fn ,@ffi-args ,@aux-ffi-args)))
-	       ;;Ignore return if type is :void
-	       ,@(when (eq return-type :void)
-		       `((declare (ignore ,retvar))))
-	       ;; Copy values in reference pointers back to local
-	       ;; variables.  Lisp has local scope; its safe to
-	       ;; modify variables in parameter lists.
-	       ,@(mapcar #'(lambda (decl)
-			     (destructuring-bind (ffi-var var type) decl
-			       (if (member type '(:complex-single-float :complex-double-float))
-				   `(setq ,var (complex (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0)
-							(cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1)))
-				   `(setq ,var (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type))))))
-			 (remove-if-not #'(lambda (x)
-					    (member (first x) ref-vars :key #'car))
-					return-vars))
-	       (values
-		,@(unless (eq return-type :void)
-			  `(,retvar))
-		,@(mapcar #'second return-vars)))))))))
-
-;;TODO: Outputs are messed up inside the callback
-(defun %f77.def-fortran-callback (func callback-name return-type parm)
-  (let* ((hack-return-type `,return-type)
-	 (hack-parm `(,@parm))
-	 (hidden-var-name nil))
-    ;;
-    (when (member hack-return-type '(:complex-single-float :complex-double-float))
-      (setq hidden-var-name (gensym "HIDDEN-COMPLEX-RETURN-"))
-      (setq hack-parm `((,hidden-var-name ,hack-return-type :output)
-			,@parm))
-      (setq hack-return-type :void))
-    ;;
-    (let* ((new-pars nil)
-	   (aux-pars nil)
-	   (func-pars nil)
-	   (array-vars nil)
-	   (return-vars nil)
-	   (ref-vars nil))
-      (dolist (decl hack-parm)
-	(destructuring-bind (var type &optional (style :input)) decl
-	  (let ((ffi-var nil)
-		(func-var nil))
-	    (cond
-	      ;; Callbacks are tricky.
-	      ((%f77.callback-type-p type)
-	       (setq ffi-var var)
-	       (setq func-var var))
-	      ;;
-	      ((%f77.array-p type)
-	       (setq ffi-var (scat "ADDR-" var))
-	       (setq func-var var)
-	       (nconsc array-vars `((,func-var (make-foreign-vector :pointer ,ffi-var :type ,(second (%f77.cffi-type type))
-								    :size ,(if-let (size (getf type :size))
-										   size
-										   1))))))
-	      ;;
-	      ((%f77.string-p type)
-	       (setq ffi-var var)
-	       (setq func-var var)
-	       (nconsc aux-pars
-		       `((,(scat "LEN-" var) ,(%f77.cffi-type :integer)))))
-	      ;;
-	      ((eq style :input-value)
-	       (setq ffi-var var)
-	       (setq func-var var))
-	      ;; Pass-by-reference variables
-	      (t
-	       (cond
-		 ((member type '(:complex-single-float :complex-double-float))
-		  (setq ffi-var (scat "ADDR-REAL-CAST-" var))
-		  (setq func-var var)
-		  (nconsc ref-vars
-			  `((,func-var (complex (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0)
-						(cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1))))))
-		 (t
-		  (setq ffi-var (scat "REF-" var))
-		  (setq func-var var)
-		  (nconsc ref-vars
-			  `((,func-var (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type)))))))))
-	    ;;
-	    (nconsc new-pars `((,ffi-var ,(%f77.get-read-in-type type style))))
-	    (nconsc func-pars `(,func-var))
-	    (when (and (%f77.output-p style) (not (eq type :string)))
-	      (nconsc return-vars
-		      `((,func-var ,ffi-var ,type)))))))
-      
-      (let ((retvar (gensym)))
-	`(
-	  ,(recursive-append
-	    `(cffi:defcallback ,callback-name ,(%f77.get-return-type hack-return-type)
-		 (,@new-pars ,@aux-pars))
-	    ;;
-	    (when ref-vars
-	      `(let (,@ref-vars)))
-	    ;;
-	    (when array-vars
-	      `(let (,@array-vars)))
-	    ;;
-	    `(multiple-value-bind (,retvar ,@(mapcar #'car return-vars)) (funcall ,func ,@func-pars)
-	       ,@(when (eq hack-return-type :void)
-		       `((declare (ignore ,retvar))))
-	       ,@(mapcar #'(lambda (decl)
-			     (destructuring-bind (func-var ffi-var type) decl
-			       (if (member type '(:complex-single-float :complex-double-float))
-				   `(setf (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 0) (realpart ,func-var)
-					  (cffi:mem-aref ,ffi-var ,(second (%f77.cffi-type type)) 1) (imagpart ,func-var))
-				   `(setf (cffi:mem-aref ,ffi-var ,(%f77.cffi-type type)) ,func-var))))
-			 (remove-if-not #'(lambda (x)
-					(member (first x) ref-vars :key #'car))
-				    return-vars))
-	       ,(if (eq hack-return-type :void)
-		     nil
-		     retvar))))))))

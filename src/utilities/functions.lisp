@@ -1,8 +1,11 @@
 (in-package #:matlisp-utilities)
 
-(declaim (inline slot-values))
-(defun slot-values (obj slots)
-  "
+;;These functions are used all over the place inside Matlisp's macros.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  
+  (declaim (inline slot-values))
+  (defun slot-values (obj slots)
+    "
   Returns the slots of the @arg{obj} corresponding to symbols in the list @arg{slots}.
 
   Example:
@@ -15,13 +18,13 @@
   => 1 2
   @end lisp
   "
-  (values-list
-   (loop :for slt :in slots
-      :collect (slot-value obj slt))))
+    (values-list
+     (loop :for slt :in slots
+	   :collect (slot-value obj slt))))
 
-(declaim (inline linear-array-type))
-(defun linear-array-type (type-sym &optional (size '*))
-  "
+  (declaim (inline linear-array-type))
+  (defun linear-array-type (type-sym &optional (size '*))
+    "
   Creates the list representing simple-array with type @arg{type-sym}.
 
   Example:
@@ -30,11 +33,11 @@
   => (simple-array double-float (10))
   @end lisp
   "
-  `(simple-array ,type-sym (,size)))
+    `(simple-array ,type-sym (,size)))
 
-(declaim (inline ensure-list))
-(defun ensure-list (lst)
-  "
+  (declaim (inline ensure-list))
+  (defun ensure-list (lst)
+    "
   Ensconses @arg{lst} inside a list if it is an atom.
 
   Example:
@@ -43,10 +46,10 @@
   => (a)
   @end lisp
   "
-  (if (listp lst) lst `(,lst)))
+    (if (listp lst) lst `(,lst)))
 
-(defun cut-cons-chain! (lst test)
-  "
+  (defun cut-cons-chain! (lst test)
+    "
   Destructively cuts @arg{lst} into two parts, at the element where the function
   @arg{test} returns a non-nil value.
 
@@ -57,20 +60,20 @@
   => (3 5) (3 5) (2 1 7 9)
   @end lisp
   "    
-  (declare (type list lst))
-  (labels ((cut-cons-chain-tin (lst test parent-lst)
-	     (cond
-	       ((null lst) nil)
-	       ((funcall test (cadr lst))
-		(let ((keys (cdr lst)))
-		  (setf (cdr lst) nil)
-		  (values parent-lst keys)))
-	       (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
-    (cut-cons-chain-tin lst test lst)))
+    (declare (type list lst))
+    (labels ((cut-cons-chain-tin (lst test parent-lst)
+	       (cond
+		 ((null lst) nil)
+		 ((funcall test (cadr lst))
+		  (let ((keys (cdr lst)))
+		    (setf (cdr lst) nil)
+		    (values parent-lst keys)))
+		 (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
+      (cut-cons-chain-tin lst test lst)))
 
-(declaim (inline zip))
-(defun zip (&rest args)
-  "
+  (declaim (inline zip))
+  (defun zip (&rest args)
+    "
   Zips the elements of @arg{args}.
 
   Example:
@@ -79,10 +82,10 @@
   => ((2 A J) (3 B H) (4 C C))
   @end lisp
   "
-  (apply #'map 'list #'list args))
+    (apply #'map 'list #'list args))
 
-(defun recursive-append (&rest lsts)
-  "
+  (defun recursive-append (&rest lsts)
+    "
   Appends lists in a nested manner, mostly used to bring in the charm of
   non-lispy languages into macros.
 
@@ -129,15 +132,15 @@
        X)
   @end lisp
   "
-  (labels ((bin-append (x y)
-	     (if (null x)
-		 (if (typep (car y) 'symbol) y (car y))
-		 (append x (if (null y) nil
-			       (if (typep (car y) 'symbol) `(,y) y))))))
-    (reduce #'bin-append lsts :from-end t)))
+    (labels ((bin-append (x y)
+	       (if (null x)
+		   (if (typep (car y) 'symbol) y (car y))
+		   (append x (if (null y) nil
+				 (if (typep (car y) 'symbol) `(,y) y))))))
+      (reduce #'bin-append lsts :from-end t)))
 
-(defun unquote-args (lst args)
-  "
+  (defun unquote-args (lst args)
+    "
   Makes a list suitable for use inside macros (sort-of), by building a
   new list quoting every symbol in @arg{lst} other than those in @arg{args}.
   CAUTION: DO NOT use backquotes!
@@ -151,34 +154,34 @@
   => (LIST 'LET (LIST (LIST X '1)) (LIST '+ X '1))
   @end lisp
   "
-  (labels ((replace-atoms (lst ret)
-	     (cond
-	       ((null lst) (reverse ret))
-	       ((atom lst)
-		(let ((ret (reverse ret)))
-		  (rplacd (last ret) lst)
-		  ret))
-	       ((consp lst)
-		(replace-atoms (cdr lst) (let ((fst (car lst)))
-					   (cond 
-					     ((atom fst)
-					      (if (member fst args)
-						  (cons fst ret)
-						  (append `(',fst) ret)))
-					     ((consp fst)
-					      (cons (replace-lst fst nil) ret))))))))
-	   (replace-lst (lst acc)
-	     (cond
-	       ((null lst) acc)
-	       ((consp lst)
-		(if (eq (car lst) 'quote)
-		    lst
-		    (cons 'list (replace-atoms lst nil))))
-	       ((atom lst) lst))))
-    (replace-lst lst nil)))
+    (labels ((replace-atoms (lst ret)
+	       (cond
+		 ((null lst) (reverse ret))
+		 ((atom lst)
+		  (let ((ret (reverse ret)))
+		    (rplacd (last ret) lst)
+		    ret))
+		 ((consp lst)
+		  (replace-atoms (cdr lst) (let ((fst (car lst)))
+					     (cond 
+					       ((atom fst)
+						(if (member fst args)
+						    (cons fst ret)
+						    (append `(',fst) ret)))
+					       ((consp fst)
+						(cons (replace-lst fst nil) ret))))))))
+	     (replace-lst (lst acc)
+	       (cond
+		 ((null lst) acc)
+		 ((consp lst)
+		  (if (eq (car lst) 'quote)
+		      lst
+		      (cons 'list (replace-atoms lst nil))))
+		 ((atom lst) lst))))
+      (replace-lst lst nil)))
 
-(defun flatten (x)
-  "
+  (defun flatten (x)
+    "
   Returns a new list by collecting all the symbols found in @arg{x}.
   Borrowed from Onlisp.
 
@@ -188,16 +191,16 @@
   => (LET X 1 + X 2)
   @end lisp
   "
-  (labels ((rec (x acc)
-             (cond ((null x) acc)
-                   ((atom x) (cons x acc))
-                   (t (rec
-		       (car x)
-		       (rec (cdr x) acc))))))
-    (rec x nil)))
+    (labels ((rec (x acc)
+	       (cond ((null x) acc)
+		     ((atom x) (cons x acc))
+		     (t (rec
+			 (car x)
+			 (rec (cdr x) acc))))))
+      (rec x nil)))
 
-(defun list-dimensions (lst)
-  "
+  (defun list-dimensions (lst)
+    "
   Returns the dimensions of the nested list @arg{lst}, by finding the length
   of the immediate list, recursively. This does not ensure the uniformity of
   lengths of the lists.
@@ -208,19 +211,21 @@
   => (2 3)
   @end lisp
   "
-  (declare (type list lst))
-  (labels ((lst-tread (idx lst)
-	     (if (null lst) (reverse idx)
-		 (progn
-		   (setf (car idx) (length lst))
-		   (if (consp (car lst))
-		       (lst-tread (cons 0 idx) (car lst))
-		       (reverse idx))))))
-    (lst-tread (list 0) lst)))
+    (declare (type list lst))
+    (labels ((lst-tread (idx lst)
+	       (if (null lst) (reverse idx)
+		   (progn
+		     (setf (car idx) (length lst))
+		     (if (consp (car lst))
+			 (lst-tread (cons 0 idx) (car lst))
+			 (reverse idx))))))
+      (lst-tread (list 0) lst)))
 
-(defun compile-and-eval (source)
-  "
+  (defun compile-and-eval (source)
+    "
   Compiles and evaluates the given @arg{source}.  This should be
   an ANSI compatible way of ensuring method compilation."
-  (funcall (compile nil `(lambda () ,source))))
+    (funcall (compile nil `(lambda () ,source))))
+
+  )
 
