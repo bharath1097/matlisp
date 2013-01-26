@@ -351,9 +351,9 @@
   ((tensor-class element-type store-element-type store-type &rest class-decls) &key
     f+ f- finv+ fid+ f* f/ finv* fid* fconj f=
     matrix vector
-    store-allocator coercer coercer-unforgiving reader value-writer reader-writer swapper)
+    store-allocator coercer coercer-unforgiving reader value-writer value-incfer reader-writer swapper)
   ;;Error checking
-  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer reader-writer swapper))
+  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer value-incfer reader-writer swapper))
   ;;
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ;;Class definitions
@@ -399,6 +399,7 @@
 		 :fconj ',fconj
 		 :reader ',reader
 		 :value-writer ',value-writer
+		 :value-incfer ',value-incfer
 		 :reader-writer ',reader-writer
 		 :swapper ',swapper
 		 :store-allocator ',store-allocator

@@ -59,3 +59,24 @@
 ;;Had to move it here in the wait for copy!
 (definline sub-tensor (tensor subscripts &optional (preserve-rank nil))
   (copy (sub-tensor~ tensor subscripts preserve-rank)))
+
+(defmacro make-zeros-dims (func-name (tensor-class))
+  (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
+    (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	 (setf (getf opt :zero-maker) ',func-name
+	       (get-tensor-class-optimization ',tensor-class) opt))
+       (defun ,func-name (dims)
+	 (declare (type index-store-vector dims))
+	 (let-typed ((rnk (length dims) :type index-type)
+		     (size (very-quickly (lvec-foldl #'(lambda (a b) (declare (type index-type a b)) (the index-type (* a b))) dims))))
+		    (make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
+				   :dimensions (copy-seq dims) :store (,(getf opt :store-allocator) size) :store-size size))))))
+
+(make-zeros-dims real-typed-zeros (real-tensor))
+(make-zeros-dims complex-typed-zeros (complex-tensor))
+
+#+maxima
+(make-zeros-dims symbolc-typed-tensor (symbolic-tensor))

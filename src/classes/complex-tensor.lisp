@@ -89,6 +89,13 @@
   (setf (aref store (* 2 idx)) (realpart value)
 	(aref store (1+ (* 2 idx))) (imagpart value)))
 
+(definline complex-type.value-incfer (value store idx)
+  (declare (type complex-store-vector store)
+	   (type index-type idx)
+	   (type complex-type value))
+  (incf (aref store (* 2 idx)) (realpart value))
+  (incf (aref store (1+ (* 2 idx))) (imagpart value)))
+
 (definline complex-type.reader-writer (fstore fidx tstore tidx)
   (declare (type complex-store-vector fstore tstore)
 	   (type index-type fidx tidx))
@@ -125,6 +132,7 @@
   ;;
   :reader complex-type.reader
   :value-writer complex-type.value-writer
+  :value-incfer complex-type.value-incfer
   :reader-writer complex-type.reader-writer
   :swapper complex-type.swapper)
 

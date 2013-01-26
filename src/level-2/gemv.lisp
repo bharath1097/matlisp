@@ -50,23 +50,25 @@
 									  (Aval (,(getf opt :reader) sto-A of-A) :type ,(getf opt :element-type)))
 									 (setf dot (,(getf opt :f+) dot (,(getf opt :f*) xval Aval))))
 							  :finally (,(getf opt :value-writer) (,(getf opt :f+) (,(getf opt :f*) alpha dot) val) sto-y of-y))))))))
-	    (if blas-gemv-func	     
+	    (if blas-gemv-func
 		`(mlet*
 		  ((call-fortran? (> (max (nrows A) (ncols A)) ,fortran-call-lb))
-		   ((maj-A ld-A fop-A) (if call-fortran? (blas-matrix-compatible-p A job) (values nil 0 "?")) :type (symbol index-type (string 1))))
+		   ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job) :type (symbol index-type (string 1))))
 		  (cond
-		    ((and maj-a call-fortran?)
-		     (let-typed ((nr-A (nrows A) :type index-type)
-				 (nc-A (ncols A) :type index-type))
-				(when (eq maj-A :row-major)
-				  (rotatef nr-A nc-A))
-				(,blas-gemv-func fop-a nr-A nc-A
-						 alpha (store A) ld-A
-						 (store x) (aref (strides x) 0)
-						 beta
-						 (store y) (aref (strides y) 0)
-						 (head A) (head x) (head y))))
-		    (t
+		    (call-fortran?
+		     (if maj-A
+			 (let-typed ((nr-A (nrows A) :type index-type)
+				     (nc-A (ncols A) :type index-type))
+				    (when (eq maj-A :row-major)
+				      (rotatef nr-A nc-A))
+				    (,blas-gemv-func fop-a nr-A nc-A
+						     alpha (store A) ld-A
+						     (store x) (aref (strides x) 0)
+						     beta
+						     (store y) (aref (strides y) 0)
+						     (head A) (head x) (head y)))
+			 (,func alpha (,(getf opt :copy) A (,(getf opt :zero-maker) (dimensions A)))  x beta y job)))
+		     (t
 		     ,lisp-routine)))
 		lisp-routine))
 	 y))))

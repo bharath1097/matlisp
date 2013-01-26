@@ -67,6 +67,12 @@
 	   (type symbolic-type value))
   (setf (aref store idx) value))
 
+(definline symbolic-type.value-incfer (value store idx)
+  (declare (type index-type idx)
+	   (type symbolic-store-vector store)
+	   (type symbolic-type value))
+  (setf (aref store idx) (symbolic-type.f+ (aref store idx) value)))
+
 (definline symbolic-type.reader-writer (fstore fidx tstore tidx)
   (declare (type index-type fidx tidx)
 	   (type symbolic-store-vector fstore tstore))
@@ -110,6 +116,7 @@ Allocates symbolic storage.  Default initial-element = 0.")
   ;;
   :reader symbolic-type.reader
   :value-writer symbolic-type.value-writer
+  :value-incfer symbolic-type.value-incfer
   :reader-writer symbolic-type.reader-writer
   :swapper symbolic-type.swapper)
 

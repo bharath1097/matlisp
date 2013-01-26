@@ -55,6 +55,12 @@
 	   (type real-type value))
   (setf (aref store idx) value))
 
+(definline real-type.value-incfer (value store idx)
+  (declare (type index-type idx)
+	   (type real-store-vector store)
+	   (type real-type value))
+  (incf (aref store idx) value))
+
 (definline real-type.reader-writer (fstore fidx tstore tidx)
   (declare (type index-type fidx tidx)
 	   (type real-store-vector fstore tstore))
@@ -99,6 +105,7 @@ Allocates real storage.  Default initial-element = 0d0.")
   ;;
   :reader real-type.reader
   :value-writer real-type.value-writer
+  :value-incfer real-type.value-incfer
   :reader-writer real-type.reader-writer
   :swapper real-type.swapper)
 
