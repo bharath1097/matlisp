@@ -42,7 +42,6 @@
 	 (declare (type ,(getf opt :element-type) alpha beta)
 		  (type ,matrix-class A B C)
 		  (type symbol job))
-	 ;;The big done-in-lisp-gemm, loop-ordering was inspired by the BLAS dgemm reference implementation.
 	 ,(let
 	      ((lisp-routine
 		 `(let-typed ((nr-C (nrows C) :type index-type)
@@ -60,7 +59,7 @@
 			      (rstp-C (row-stride C) :type index-type)
 			      (cstp-C (col-stride C) :type index-type)
 			      (hd-C (head C) :type index-type))
-			     ;;Replace with separate loops to maximize Row-ordered MM performance
+			     ;;
 			     (when (eq job-A :t)
 			       (rotatef rstp-A cstp-A))
 			     (when (eq job-B :t)
