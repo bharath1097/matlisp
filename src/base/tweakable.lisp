@@ -28,7 +28,7 @@
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 400 and 1000.")
 ;;Level 3--------------------------------------------------------;;
-(defparameter *real-l3-fcall-lb* 100
+(defparameter *real-l3-fcall-lb* 50
   "
   If the maximum dimension in the MM is lower than this
   parameter, then the lisp code is used by default, instead of
@@ -37,7 +37,7 @@
   Default set with SBCL on x86-64 linux. A reasonable value
   is something between 20 and 200.")
 
-(defparameter *complex-l3-fcall-lb* 60
+(defparameter *complex-l3-fcall-lb* 30
   "
   If the maximum dimension in the MM is lower than this
   parameter, then the lisp code is used by default, instead of

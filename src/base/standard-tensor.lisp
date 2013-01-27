@@ -113,7 +113,7 @@
   (assert (= (rank old) 1) nil 'tensor-not-vector :rank (rank old)))
 
 ;;
-(defparameter *tensor-class-optimizations* (make-hash-table)
+(defvar *tensor-class-optimizations* (make-hash-table)
   "
   Contains a either:
   o A property list containing:  
