@@ -252,9 +252,6 @@
 		  ,@(mapcar #'second return-vars)))))))))
 
   ;;TODO: Outputs are messed up inside the callback
-  ;;TODO: Define callbacks outside the function call and lexically bind functions inside the
-  ;;      call. Callbacks allocate memory in some non-GC'ed part of the heap. Runs out of memory
-  ;;      quite quickly.
   (defun %f77.def-fortran-callback (func callback-name return-type parm)
     (let* ((hack-return-type `,return-type)
 	   (hack-parm `(,@parm))
@@ -333,8 +330,9 @@
 		`(let (,@array-vars)))
 	      ;;
 	      `(multiple-value-bind (,retvar ,@(mapcar #'car return-vars)) (funcall ,func ,@func-pars)
-		 ,@(when (eq hack-return-type :void)
-			 `((declare (ignore ,retvar))))
+		 (declare (ignore ,@(mapcar #'car return-vars)
+				  ,@(when (eq hack-return-type :void)
+					  `(,retvar))))
 		 ,@(mapcar #'(lambda (decl)
 			       (destructuring-bind (func-var ffi-var type) decl
 				 (if (member type '(:complex-single-float :complex-double-float))
