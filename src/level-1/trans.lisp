@@ -81,9 +81,10 @@
   (copy! value (TRANSPOSE~ tensor permutation))"
   (declare (type standard-tensor A))
   (let ((displaced (make-instance (class-of A) :store (store A)
-					       :dimensions (copy-seq (dimensions A))
-					       :strides (copy-seq (strides A))
-					       :parent-tensor A)))
+				  :store-size (store-size A)
+				  :dimensions (copy-seq (dimensions A))
+				  :strides (copy-seq (strides A))
+				  :parent-tensor A)))
     (transpose! displaced permutation)))
 
 (definline (setf transpose~) (value A &optional permutation)
@@ -139,7 +140,7 @@
   (etypecase A
     (real-tensor A)
     (complex-tensor
-     (scal! -1 (tensor-imagpart~ A))
+     (real-typed-num-scal! -1d0 (tensor-imagpart~ A))
      A)
     (number (conjugate A))))
 

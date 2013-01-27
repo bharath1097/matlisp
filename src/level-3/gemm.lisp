@@ -52,18 +52,15 @@
 			      (rstp-A (row-stride A) :type index-type)
 			      (cstp-A (col-stride A) :type index-type)
 			      (hd-A (head A) :type index-type)
-			      (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
 					;
 			      (rstp-B (row-stride B) :type index-type)
 			      (cstp-B (col-stride B) :type index-type)
 			      (hd-B (head B) :type index-type)
-			      (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
 					;
 			      (rstp-C (row-stride C) :type index-type)
 			      (cstp-C (col-stride C) :type index-type)
-			      (hd-C (head C) :type index-type)
-			      (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-			     ;;Replace with separate loops to maximize Row-ordered MM performance		       
+			      (hd-C (head C) :type index-type))
+			     ;;Replace with separate loops to maximize Row-ordered MM performance
 			     (when (eq job-A :t)
 			       (rotatef rstp-A cstp-A))
 			     (when (eq job-B :t)
@@ -71,14 +68,18 @@
 			     ;;
 			     (unless (,(getf opt :f=) beta (,(getf opt :fid*)))
 			       (,(getf opt :num-scal) beta C))
-			     ;;
+			     ;;Most of these loop orderings are borrowed from the Fortran reference
+			     ;;implementation of BLAS.
 			     (cond
-			       ((and (= cstp-C 1) (= cstp-B 1) nil)
+			       ((and (= cstp-C 1) (= cstp-B 1))
 				(let-typed ((of-A hd-A :type index-type)
 					    (of-B hd-B :type index-type)
 					    (of-C hd-C :type index-type)
 					    (d.rstp-B (- rstp-B nc-C) :type index-type)
-					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type))
+					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type)
+					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
 					   (very-quickly
 					     (loop :repeat nr-C
 						:do (progn
@@ -97,13 +98,99 @@
 						      (incf of-C rstp-C)
 						      (incf of-A d.rstp-A)
 						      (setf of-B hd-B))))))
+			       ((and (= cstp-A 1) (= rstp-B 1))
+				(let-typed ((of-A hd-A :type index-type)
+					    (of-B hd-B :type index-type)
+					    (of-C hd-C :type index-type)
+					    (d.cstp-B (- cstp-B dotl) :type index-type)
+					    (d.rstp-C (- rstp-C (* nc-C cstp-C)) :type index-type)
+					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type)))
+					    (dot (,(getf opt :fid+)) :type ,(getf opt :element-type)))
+					   (very-quickly
+					     (loop :repeat nr-C
+						:do (progn
+						      (loop :repeat nc-C
+							 :do (progn
+							       (setf dot (,(getf opt :fid+)))
+							       (loop :repeat dotl
+								  :do (progn
+									(setf dot (,(getf opt :f+) dot (,(getf opt :f*) (,(getf opt :reader) sto-A of-A) (,(getf opt :reader) sto-B of-B))))
+									(incf of-A)
+									(incf of-B)))
+							       (,(getf opt :value-incfer) dot sto-C of-C)
+							       (incf of-C cstp-C)
+							       (decf of-A dotl)
+							       (incf of-B d.cstp-B)))
+						      (incf of-C d.rstp-C)
+						      (incf of-A rstp-A)
+						      (setf of-B hd-B))))))
+			       ((and (= cstp-A 1) (= rstp-B 1))
+				(let-typed ((of-A hd-A :type index-type)
+					    (of-B hd-B :type index-type)
+					    (of-C hd-C :type index-type)
+					    (d.cstp-B (- cstp-B dotl) :type index-type)
+					    (d.rstp-C (- rstp-C (* nc-C cstp-C)) :type index-type)
+					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type)))
+					    (dot (,(getf opt :fid+)) :type ,(getf opt :element-type)))
+					   (very-quickly
+					     (loop :repeat nr-C
+						:do (progn
+						      (loop :repeat nc-C
+							 :do (progn
+							       (setf dot (,(getf opt :fid+)))
+							       (loop :repeat dotl
+								  :do (progn
+									(setf dot (,(getf opt :f+) dot (,(getf opt :f*) (,(getf opt :reader) sto-A of-A) (,(getf opt :reader) sto-B of-B))))
+									(incf of-A)
+									(incf of-B)))
+							       (,(getf opt :value-incfer) dot sto-C of-C)
+							       (incf of-C cstp-C)
+							       (decf of-A dotl)
+							       (incf of-B d.cstp-B)))
+						      (incf of-C d.rstp-C)
+						      (incf of-A rstp-A)
+						      (setf of-B hd-B))))))
+			       ((and (= rstp-A 1) (= rstp-C 1))
+				(let-typed ((of-A hd-A :type index-type)
+					    (of-B hd-B :type index-type)
+					    (of-C hd-C :type index-type)
+					    (d.cstp-B (- cstp-B (* rstp-B dotl)) :type index-type)
+					    (d.cstp-A (- cstp-A nr-C) :type index-type)
+					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
+					   (very-quickly
+					     (loop :repeat nc-C
+						:do (progn
+						      (loop :repeat dotl
+							 :do (let-typed
+							      ((ele-B (,(getf opt :f*) alpha (,(getf opt :reader) sto-B of-B)) :type ,(getf opt :element-type)))
+							      (loop :repeat nr-C
+								 :do (progn
+								       (,(getf opt :value-incfer) (,(getf opt :f*) ele-B (,(getf opt :reader) sto-A of-A))
+									 sto-C of-C)
+								       (incf of-C)
+								       (incf of-A)))
+							      (decf of-C nr-C)
+							      (incf of-A d.cstp-A)
+							      (incf of-B rstp-B)))
+						      (incf of-C cstp-C)
+						      (setf of-A hd-A)
+						      (incf of-B d.cstp-B))))))
 			       (t
 				(let-typed ((of-A hd-A :type index-type)
 					    (of-B hd-B :type index-type)
 					    (of-C hd-C :type index-type)
 					    (r.cstp-C (* cstp-C nc-C) :type index-type)
 					    (d.rstp-B (- rstp-B (* cstp-B nc-C)) :type index-type)
-					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type))
+					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type)
+					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
+					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
 					   (very-quickly
 					     (loop :repeat nr-C
 						:do (progn
@@ -193,18 +280,14 @@
 	(complex-base-typed-gemm! alpha A B beta C job)
 	(let ((A (ecase job-A
 		   ((:n :t) A)
-		   ((:h :c)
-		    ;;BUG!
-		    ;;Multiplication does not yield the complex conjugate!
-		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions A)))))
-		      (complex-typed-axpy! #c(-1d0 0d0) A ret)))))
+		   ((:h :c) (let ((ret (complex-typed-copy! A (complex-typed-zeros (dimensions A)))))
+			      (real-typed-num-scal! -1d0 (tensor-imagpart~ ret))
+			      ret))))
 	      (B (ecase job-B
 		   ((:n :t) B)
-		   ((:h :c)
-		    ;;BUG!
-		    ;;Multiplication does not yield the complex conjugate!
-		    (let ((ret (apply #'make-complex-tensor (lvec->list (dimensions B)))))
-		      (complex-typed-axpy! #c(-1d0 0d0) B ret)))))
+		   ((:h :c) (let ((ret (complex-typed-copy! A (complex-typed-zeros (dimensions A)))))
+			      (real-typed-num-scal! -1d0 (tensor-imagpart~ ret))
+			      ret))))
 	      (tjob (combine-jobs (ecase job-A ((:n :t) job-A) (:h :t) (:c :n))
 				  (ecase job-B ((:n :t) job-B) (:h :t) (:c :n)))))
 	  (complex-base-typed-gemm! alpha A B
