@@ -119,10 +119,10 @@
   Purpose
   =======
   Performs the GEneral Matrix Vector operation given by
-               --      -      -
+	       --      -      -
 
-            Y <- alpha * op(A) * x + beta * y
-     
+	    Y <- alpha * op(A) * x + beta * y
+
   and returns y.
 
   alpha,beta are scalars,
@@ -217,7 +217,7 @@
   =======
   Returns the GEneral Matrix Vector operation given by
 
-            alpha * op(A) * x + beta * y
+	    alpha * op(A) * x + beta * y
 
   alpha,beta are scalars,
   A is a matrix, and x,y are vectors.
