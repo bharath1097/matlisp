@@ -91,15 +91,16 @@
 	   (type symbol job))
   (if (member job '(:n :t))
       (complex-base-typed-gemv! alpha A x beta y job)
-      ;;The CBLAS way.
-      (let-typed ((cx (let-typed ((ret (apply #'make-real-tensor (lvec->list (dimensions x))) :type complex-vector))
-				 (complex-typed-axpy! #c(-1d0 0d0) x ret))
-		      :type complex-vector))
-		 (complex-typed-num-scal! #c(-1d0 0d0) (tensor-realpart~ y))
+      ;;
+      (let-typed ((cx (let ((ret (complex-typed-copy! x (complex-typed-zeros (dimensions x)))))
+			(real-typed-num-scal! -1d0 (tensor-imagpart~ ret))
+			ret) :type complex-vector)
+		  (y.view (tensor-imagpart~ y)))
+		 (real-typed-num-scal! -1d0 y.view)
 		 (complex-base-typed-gemv! (cl:conjugate alpha) A cx
 					   (cl:conjugate beta) y (ecase job (:h :t) (:c :n)))
-		 (complex-typed-num-scal! #c(-1d0 0d0) (tensor-realpart~ y))
-		 y)))
+		 (real-typed-num-scal! -1d0 y.view)))
+  y)
 
 ;;Symbolic
 #+maxima
