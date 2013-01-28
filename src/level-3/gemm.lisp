@@ -448,10 +448,11 @@
 (defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
 		 (beta number) (c real-matrix)
 		 &optional (job :nn))
-  (let ((result (if (or (complexp alpha) (complexp beta)
-			(typep a 'complex-matrix) (typep b 'complex-matrix))
-		    (make-complex-tensor (nrows C) (ncols C))
-		    (make-real-tensor (nrows C) (ncols C)))))
+  (let ((result (funcall (if (or (complexp alpha) (complexp beta)
+				 (typep a 'complex-matrix) (typep b 'complex-matrix))
+			     #'complex-typed-zeros
+			     #'real-typed-zeros)
+			 (dimensions C))))
     (copy! C result)
     (gemm! alpha A B beta result job)))
 
@@ -459,11 +460,10 @@
 		 (beta (eql nil)) (c (eql nil))
 		 &optional (job :nn))
   (multiple-value-bind (job-A job-B) (split-job job)
-    (let ((result (apply
-		   (if (or (complexp alpha) (complexp beta)
-			   (typep a 'complex-matrix) (typep b 'complex-matrix))
-		       #'make-complex-tensor
-		       #'make-real-tensor)
-		   (list (if (member job-A '(:n :c)) (nrows A) (ncols A))
-			 (if (member job-B '(:n :c)) (ncols B) (nrows B))))))
+    (let ((result (funcall (if (or (complexp alpha) (complexp beta)
+				   (typep a 'complex-matrix) (typep b 'complex-matrix))
+			       #'complex-typed-zeros
+			       #'real-typed-zeros)
+			   (make-index-store (list (if (member job-A '(:n :c)) (nrows A) (ncols A))
+						   (if (member job-B '(:n :c)) (ncols B) (nrows B)))))))
       (gemm! alpha A B 0 result job))))
