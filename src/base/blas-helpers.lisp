@@ -13,18 +13,18 @@
     (perm-b-dims (permute (dimensions ten-b) std-a-perm) :type index-store-vector))
    (very-quickly
      (loop
-	for i of-type index-type from 0 below (rank ten-a)
-	for sost-a across sort-std-a
-	for a-aoff of-type index-type = (aref sort-std-a 0) then (the index-type (* a-aoff (aref perm-a-dims (1- i))))
+	:for i :of-type index-type :from 0 :below (rank ten-a)
+	:for sost-a :across sort-std-a
+	:for a-aoff :of-type index-type := (aref sort-std-a 0) :then (the index-type (* a-aoff (aref perm-a-dims (1- i))))
 	;;
-	for sost-b across sort-std-b
-	for b-aoff of-type index-type = (aref sort-std-b 0) then (the index-type (* b-aoff (aref perm-b-dims (1- i))))
+	:for sost-b :across sort-std-b
+	:for b-aoff :of-type index-type := (aref sort-std-b 0) :then (the index-type (* b-aoff (aref perm-b-dims (1- i))))
 	;;
-	do (progn
-	     (unless (and (= sost-a a-aoff)
-			  (= sost-b b-aoff))
-	       (return nil)))
-	finally (return (list (aref sort-std-a 0) (aref sort-std-b 0)))))))
+	:do (progn
+	      (unless (and (= sost-a a-aoff)
+			   (= sost-b b-aoff))
+		(return nil)))
+	:finally (return (list (aref sort-std-a 0) (aref sort-std-b 0)))))))
 
 (defun consecutive-store-p (tensor)
   (declare (type standard-tensor tensor))
@@ -34,11 +34,11 @@
 	  (perm-dims (permute (dimensions tensor) std-perm) :type index-store-vector))
       (very-quickly
 	(loop
-	   for so-st across sort-std
-	   for so-di across perm-dims
-	   and accumulated-off = (aref sort-std 0) then (the index-type (* accumulated-off so-di))
-	   unless (= so-st accumulated-off) do (return nil)
-	   finally (return (aref sort-std 0))))))
+	   :for so-st :across sort-std
+	   :for so-di :across perm-dims
+	   :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
+	   :unless (= so-st accumulated-off) :do (return nil)
+	   :finally (return (aref sort-std 0))))))
 
 (defun blas-matrix-compatible-p (matrix op)
   (declare (type standard-matrix matrix))
@@ -100,3 +100,6 @@
 	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
 	       (setf (aref stds i) st))
 	 :finally (return (values stds st))))))
+
+(defun make-stride (dims)
+  (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))

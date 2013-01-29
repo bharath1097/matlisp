@@ -36,7 +36,7 @@
 (asdf:defsystem matlisp-packages
   :depends-on (#:cffi)
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
-  :components 
+  :components
   ((:file "packages")))
 
 (asdf:defsystem matlisp-config
@@ -84,7 +84,7 @@
 	       "matlisp-utilities" "fortran-names")
   :components
   ((:module "foreign-interface"
-	    :pathname "ffi"	    
+	    :pathname "ffi"
 	    :components ((:file "ffi-cffi")
 			 (:file "ffi-cffi-implementation-specific")
 			 (:file "foreign-vector")
@@ -103,7 +103,9 @@
    (:module "matlisp-base"
 	    :depends-on ("foreign-core")
 	    :pathname "base"
-	    :components ((:file "standard-tensor")
+	    :components ((:file "tweakable")
+			 (:file "standard-tensor"
+				:depends-on ("tweakable"))
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
@@ -116,9 +118,7 @@
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
 			 (:file "print"
-				:depends-on ("standard-tensor"))
-			 ;;Probably not the right place, but should do.
-			 (:file "tweakable")))
+				:depends-on ("standard-tensor"))))
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")

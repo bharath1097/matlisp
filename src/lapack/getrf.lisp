@@ -27,44 +27,37 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
+;;Possibly add Lisp routine in the future.
 (defmacro generate-typed-getrf! (func-name (tensor-class lapack-func))
   (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
 	 (matrix-class (getf opt :matrix)))
-    `(defun ,func-name (A ipiv)
-       (declare (type ,matrix-class A)
-		(type permutation-pivot-flip ipiv))
-       (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
-	      (if (not (eq maj-A :col-major))
-		  (let*-typed ((dims (dimensions A) :type index-store-vector)			       
-			       ;;Column major
-			       (stds (let*-typed ((rank (rank A) :type fixnum)
-						  (stds (allocate-index-store rank) :type index-store-vector))
-				       (very-quickly
-					 (loop
-					    :for i :from 0 :below rank
-					    :and st = 1 :then (the index-type (* st (aref dims i)))
-					    :do (setf (aref stds i) st)))
-				       stds)
-				     :type index-store-vector)
-			       (tmp (,(get tensor-class :copy) A (make-instance (class-of A) :dimensions dims :strides stds :store (,(get tensor-class :store-allocator) (lvec-foldr #'* dims))))))
-			      (mlet* (((maj-tmp ld-tmp fop-tmp) (blas-matrix-compatible-p tmp :n) :type (nil index-type nil))
-				      ((new-tmp new-ipiv info) (,lapack-func
-								 (nrows tmp) (ncols tmp) (store tmp)
-								 ld-tmp (repr ipiv) 0) :type (nil nil integer)))
-				     (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
-				     (,(get tensor-class :copy) tmp A)))
-		  (mlet* (((new-A new-ipiv info) (,lapack-func
-						   (nrows A) (ncols A) (store A)
-						   ld-A (repr ipiv) 0) :type (nil nil integer)))
-			 (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))))
-	      ;;Convert from 1-based indexing to 0-based indexing, and fix
-	      ;;other Fortran-ic quirks
-	      (let-typed ((pidv (repr ipiv) :type perrepr-vector))
-			 (very-quickly
-			   (loop for i from 0 below (length pidv)
-			      do (decf (aref pidv i)))))
-	      (values A ipiv)))))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	 (setf (getf opt :getrf) ',func-name
+	       (get-tensor-class-optimization ',tensor-class) opt))
+       (defun ,func-name (A ipiv)
+	 (declare (type ,matrix-class A)
+		  (type permutation-pivot-flip ipiv))
+	 (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
+		(if (eq maj-A :col-major)
+		    (multiple-value-bind (n-A n-ipiv info) (,lapack-func
+							    (nrows A) (ncols A) (store A)
+							    ld-A (repr ipiv) 0)
+		      (declare (ignore n-A n-ipiv))
+		      (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
+		      ;;Convert back to 0-based indexing.
+		      (let-typed ((pidv (repr ipiv) :type perrepr-vector))
+				 (very-quickly
+				   (loop :for i :of-type index-type :from 0 :below (length pidv)
+				      :do (decf (aref pidv i)))))
+		      (values A ipiv info))
+		    (let ((tmp (,(getf opt :copy) A (with-order :col-major (,(getf opt :zero-maker) (dimensions A))))))
+		      (multiple-value-bind (n-tmp n-ipiv info) (,func-name tmp ipiv)
+			(declare (ignore n-tmp n-ipiv))
+			(,(getf opt :copy) tmp A)
+			(values A ipiv info)))))))))
 
 (generate-typed-getrf! real-typed-getrf! (real-tensor dgetrf))
 (generate-typed-getrf! complex-typed-getrf! (complex-tensor zgetrf))
@@ -92,16 +85,6 @@
          U: upper triangular
             (upper trapezoidal when N<M)
 
-  If the optional argument IPIV is provided it must
-  be a (SIMPLE-ARRAY (UNSIGNED-BYTE 32) (*)) of dimension >= (MIN N M)
-
-  IPIV is filled with the pivot indices that define the permutation
-  matrix P:
-
-        row i of the matrix was interchanged with row IPIV(i).
-
-  If IPIV is not provided, it is allocated by GESV.
-
   Return Values
   =============
   [1] The factors L and U from the factorization A = P*L*U  where the 
@@ -109,37 +92,21 @@
   [2] IPIV
   [3] INFO = T: successful
              i:  U(i,i) is exactly zero. 
-")
-  (:method :before ((A standard-matrix) (ipiv permutation-pivot-flip))
-	   (assert (>= (group-rank ipiv) (idx-min (dimensions A))) nil 'invalid-value
-		   :given (group-rank ipiv) :expected '(>= (group-rank ipiv) (idx-min (dimensions A))))))
+"))
 
-(defmethod getrf! ((A real-matrix) (ipiv permutation-pivot-flip))
-  (let* ((copy? (not (consecutive-store-p A)))
-	 (cp-A (if copy? (copy A) A))
-	 (ret (multiple-value-list (real-typed-getrf! cp-A ipiv))))
-    (when copy?
-      (copy! (first ret) A)
-      (rplaca ret A))
-    (values-list ret)))
+(defmethod getrf! ((A real-matrix))
+  (let ((ipiv (make-instance 'permutation-pivot-flip
+			     :repr (perrepr-id-action (lvec-min (dimensions A))))))
+    (real-typed-getrf! A ipiv)))
 
-(defmethod getrf! ((A complex-matrix) (ipiv permutation-pivot-flip))
-  (let* ((copy? (not (consecutive-store-p A)))
-	 (cp-A (if copy? (copy A) A))
-	 (ret (multiple-value-list (complex-typed-getrf! cp-A ipiv))))
-    (when copy?
-      (copy! (first ret) A)
-      (rplaca ret A))
-    (values-list ret)))
+(defmethod getrf! ((A complex-matrix))
+  (let ((ipiv (make-instance 'permutation-pivot-flip
+			     :repr (perrepr-id-action (lvec-min (dimensions A))))))
+    (complex-typed-getrf! A ipiv)))
 
-(defun split-lu (A op-info)
-  (declare (type standard-matrix A))
-  (destructuring-bind (&key decomposition-type row-permutation col-permutation) op-info
-    (assert (member decomposition-type '(:|U_ii=1| :|L_ii=1|)) nil 'invalid-arguments :message "Bad decomposition-type")
-    
 ;;
 (defgeneric lu (a &key with-l with-u with-p)
-  (:documentation 
+  (:documentation
   "
   Syntax
   ======
@@ -160,57 +127,84 @@
   By default WITH-L,WITH-U,WITH-P.
 "))
 
+;;Sure I can do this with a defmethod (slowly), but where's the fun in that ? :)
+(defmacro make-lu (tensor-class)
+  (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
+		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))	 (matrix-class (getf opt :matrix)))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (defmethod lu ((A ,matrix-class) &key with-l with-u with-p)
+	 (multiple-value-bind (lu ipiv info)
+	     (getrf! (with-order :col-major
+		       (,(getf opt :copy) A (,(getf opt :zero-maker) (dimensions A)))))
+	   (declare (ignore info))
+	   (let* ((ret (list lu))
+		  (n (nrows a))
+		  (m (ncols a))
+		  (p (min n m)))
+	     (declare (type fixnum n m p))
+	     ;; Extract the lower triangular part, if requested
+	     (when with-l
+	       (let*-typed ((lmat (,(getf opt :zero-maker) (list n p)) :type ,matrix-class)
+			    ;;
+			    (l.rstd (row-stride lmat) :type index-type)
+			    (l.cstd (col-stride lmat) :type index-type)
+			    (l.of (head lmat) :type index-type)
+			    (l.sto (store lmat) :type ,(linear-array-type (getf opt :element-type)))
+			    ;;
+			    (lu.rstd (row-stride lu) :type index-type)
+			    (lu.cstd (col-stride lu) :type index-type)
+			    (lu.of (head lu) :type index-type)
+			    (lu.sto (store lu) :type ,(linear-array-type (getf opt :element-type))))
+			   (very-quickly 
+			     (loop :for j :of-type index-type :from 0 :below p
+				:do (progn
+				      (,(getf opt :value-writer) (,(getf opt :fid*)) l.sto l.of)
+				      (loop :repeat (- n j 1)
+					 :do (progn
+					       (incf lu.of lu.rstd)
+					       (incf l.of l.rstd)
+					       (,(getf opt :reader-writer) lu.sto lu.of l.sto l.of)))
+				      (incf lu.of (- lu.cstd (the index-type (* (- n j 2) lu.rstd))))
+				      (incf l.of (- l.cstd (the index-type (* (- n j 2) l.rstd))))))
+			     (push lmat ret))))
+	     ;; Extract the upper triangular part, if requested
+	     (when with-u
+	       (let*-typed ((umat (,(getf opt :zero-maker) (list p m)) :type ,matrix-class)
+			    ;;
+			    (u.rstd (row-stride umat) :type index-type)
+			    (u.cstd (col-stride umat) :type index-type)
+			    (u.of (head umat) :type index-type)
+			    (u.sto (store umat) :type ,(linear-array-type (getf opt :element-type)))
+			    ;;
+			    (lu.rstd (row-stride lu) :type index-type)
+			    (lu.cstd (col-stride lu) :type index-type)
+			    (lu.of (head lu) :type index-type)
+			    (lu.sto (store lu) :type ,(linear-array-type (getf opt :element-type))))
+			   (progn
+			     (loop :for i :of-type index-type :from 0 :below p
+				:do (progn
+				      (loop :repeat (- m i)
+					 :do (progn
+					       (,(getf opt :reader-writer) lu.sto lu.of u.sto u.of)
+					       (incf lu.of lu.cstd)
+					       (incf u.of u.cstd)))
+				      (incf lu.of (- lu.rstd (the index-type (* (- m i 1) lu.cstd))))
+				      (incf u.of (- u.rstd (the index-type (* (- m i 1) u.cstd))))))
+			     (push umat ret))))
+	     ;; Extract the permutation matrix, if requested
+	     (if with-p
+		 (let* ((npiv (length ipiv))
+			(pmat (make-real-matrix-dim n n))
+			(pidx (make-array n :element-type '(unsigned-byte 32))))
+		   ;; Compute the P matrix from the pivot vector
+		   (dotimes (k n)
+		     (setf (aref pidx k) k))
+		   (dotimes (k npiv)
+		     (rotatef (aref pidx k) (aref pidx (1- (aref ipiv k)))))
+		   (dotimes (k n)
+		     (setf (matrix-ref pmat  (aref pidx k) k) 1))
+		   (push pmat result)))
+	     ;; Return the final result
+	     (values-list (nreverse ret))))))))
 
-(defmethod lu ((a standard-matrix) &key  (with-l t) (with-u t) (with-p t))
-  (multiple-value-bind (lu ipiv info)
-      (getrf! (copy a))
-    (declare (ignore info))
-
-    (let* ((result (list lu))
-	   (n (nrows a))
-	   (m (ncols a))
-	   (p (min n m)))
-
-      (declare (type fixnum n m p))
-
-      ;; Extract the lower triangular part, if requested
-      (when with-l
-	(let ((lmat (typecase lu
-		      (real-matrix (make-real-matrix-dim n p))
-		      (complex-matrix (make-complex-matrix-dim n p)))))
-	  (dotimes (i p)
-	    (setf (matrix-ref lmat i i) 1.0d0))
-	  (dotimes (i n)
-	    (dotimes (j (min i p))
-	      (setf (matrix-ref lmat i j) (matrix-ref lu i j))))
-
-	  (push lmat result)))
-
-
-      ;; Extract the upper triangular part, if requested
-      (when with-u
-	(let ((umat (typecase lu
-		      (real-matrix (make-real-matrix-dim p m))
-		      (complex-matrix (make-complex-matrix-dim p m)))))
-	  (dotimes (i p)
-	    (loop for j from i to (1- m)
-		  do (setf (matrix-ref umat i j) (matrix-ref lu i j))))
-
-	  (push umat result)))
-
-      ;; Extract the permutation matrix, if requested
-      (when with-p
-	(let* ((npiv (length ipiv))
-	       (pmat (make-real-matrix-dim n n))
-	       (pidx (make-array n :element-type '(unsigned-byte 32))))
-	  ;; Compute the P matrix from the pivot vector
-	  (dotimes (k n)
-	    (setf (aref pidx k) k))
-	  (dotimes (k npiv)
-	    (rotatef (aref pidx k) (aref pidx (1- (aref ipiv k)))))
-	  (dotimes (k n)
-	    (setf (matrix-ref pmat  (aref pidx k) k) 1))
-	  (push pmat result)))
-
-      ;; Return the final result
-      (values-list (nreverse result)))))
+(make-lu real-tensor)
