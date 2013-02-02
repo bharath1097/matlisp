@@ -1,23 +1,10 @@
 (in-package #:matlisp)
 
 (cffi:define-foreign-library libodepack
-  #+nil(:unix #.(translate-logical-pathname
-	    (merge-pathnames "matlisp:lib;libodepack"
-			     *shared-library-pathname-extension*)))
   (t (:default "libodepack")))
 
 (cffi:use-foreign-library libodepack)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#+nil
-(def-fortran-routine testde :void
-  (field (:callback :void
-		    (c-neq :integer :input)
-		    (c-t :double-float :input)
-		    (c-y (* :double-float :size c-neq) :input)
-		    (c-ydot (* :double-float :size c-neq) :output)))
-  (neq :integer :input)
-  (y (* :double-float) :input-output))
 
 (def-fortran-routine dlsode :void
   "DLSODE in ODEPACK"

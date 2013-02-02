@@ -477,7 +477,6 @@
 	      (loop ;;:repeat 10
 		 :for bounds := (pop jobs) :then (pop jobs)
 		 :until (null bounds)
-		 :finally (return (values seq (make-instance 'permutation-action :repr perm)))
 		 :do (let*-typed ((below-idx (first bounds) :type fixnum)
 				  (above-idx (second bounds) :type fixnum)
 				  (piv (+ below-idx (floor (- above-idx below-idx) 2)) :type fixnum))
@@ -525,4 +524,5 @@
 						  (rotatef (aref perm lbound) (aref perm piv)))
 						(decf piv)
 						(decf ubound)
-						nil))))))))
+						nil)))))
+		 :finally (return (values seq (make-instance 'permutation-action :repr perm))))))
