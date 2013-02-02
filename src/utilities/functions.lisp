@@ -2,6 +2,19 @@
 
 ;;These functions are used all over the place inside Matlisp's macros.
 (eval-when (:compile-toplevel :load-toplevel :execute)
+
+  (declaim (inline id))
+  (defun id (x) x)
+
+  #+nil
+  (defun make-ring (n)
+    (let ((ret (cons nil nil)))
+      (loop :for i :from 0 :below (1- n)
+	 :with tail :of-type cons := ret
+	 :do (setf (cdr tail) (cons nil nil)
+		   tail (cdr tail))
+	 :finally (setf (cdr tail) ret))
+      ret))
   
   (declaim (inline slot-values))
   (defun slot-values (obj slots)

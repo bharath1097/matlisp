@@ -63,11 +63,12 @@
 	   ,@body))))
 
 (defmacro make-array-allocator (allocator-name type init &optional doc)
-  `(definline ,allocator-name (size &optional (initial-element ,init))
-     ,@(unless (null doc)
-	       `(,doc))
-     (make-array size
-		 :element-type ,type :initial-element initial-element)))
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (definline ,allocator-name (size &optional (initial-element ,init))
+       ,@(unless (null doc)
+		 `(,doc))
+       (make-array size
+		   :element-type ,type :initial-element initial-element))))
 
 (defmacro let-typed (bindings &rest body)
   "

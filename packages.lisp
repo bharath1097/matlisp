@@ -66,7 +66,7 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:matlisp-conditions)
-  (:export #:ensure-list
+  (:export #:ensure-list #:id ;;#:make-ring
 	   #:zip #:zip-eq
 	   #:cut-cons-chain!
 	   #:slot-values 
