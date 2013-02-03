@@ -34,11 +34,12 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :axpy) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :axpy) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (alpha from to)
 	 (declare (type ,tensor-class from to)
 		  (type ,(getf opt :element-type) alpha))
@@ -80,11 +81,12 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :num-axpy) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :num-axpy) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (num-from to)
 	 (declare (type ,tensor-class to)
 		  (type ,(getf opt :element-type) num-from))

@@ -3,11 +3,12 @@
 (defmacro make-tensor-maker (func-name (tensor-class))
   (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :maker) ',func-name
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :maker) ',func-name
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func-name (&rest args)
 	 (labels ((make-dims (dims)
 		    (declare (type cons dims))
@@ -67,11 +68,12 @@
 (defmacro make-zeros-dims (func-name (tensor-class))
   (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :zero-maker) ',func-name
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :zero-maker) ',func-name
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func-name (dims)
 	 (declare (type (or cons index-store-vector) dims))
 	 (let*-typed ((dims (if (consp dims) (make-index-store dims) (copy-seq dims)) :type index-store-vector)

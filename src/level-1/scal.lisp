@@ -31,11 +31,12 @@
 (defmacro generate-typed-scal! (func (tensor-class fortran-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :scal) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :scal) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (from to)
 	 (declare (type ,tensor-class from to))
 	 ,(let
@@ -69,11 +70,12 @@
 (defmacro generate-typed-num-scal! (func (tensor-class blas-func fortran-lb))
   (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :num-scal) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))    
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :num-scal) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (alpha to)
 	 (declare (type ,tensor-class to)
 		  (type ,(getf opt :element-type) alpha))
@@ -101,11 +103,12 @@
 (defmacro generate-typed-div! (func (tensor-class fortran-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :div) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))    
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :div) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (from to)
 	 (declare (type ,tensor-class from to))
 	 ,(let
@@ -139,11 +142,12 @@
 (defmacro generate-typed-num-div! (func (tensor-class fortran-func fortran-lb))
   (let ((opt (get-tensor-class-optimization tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :num-div) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :num-div) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (alpha to)
 	 (declare (type ,tensor-class to)
 		  (type ,(getf opt :element-type) alpha))

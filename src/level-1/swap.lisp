@@ -34,11 +34,12 @@
   ;;Use only after checking the arguments for compatibility.
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :swap) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :swap) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (x y)
 	 (declare (type ,tensor-class x y))
 	 ,(let

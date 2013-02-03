@@ -34,11 +34,12 @@
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
     (setf (getf opt :dot) func
 	  (get-tensor-class-optimization tensor-class) opt)
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :axpy) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :axpy) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (x y conjugate-p)
 	 (declare (type ,tensor-class x y)
 		  ,(if conj?

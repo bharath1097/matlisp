@@ -546,7 +546,7 @@
 			    ,@pars))
 	  (setq hack-return-type :void)))
       
-      `(eval-when (:compile-toplevel :load-toplevel :execute)
+      `(progn
 	 (cffi:defcfun (,fortran-name ,lisp-name) ,(%f77.get-return-type hack-return-type)
 	   ,@(%f77.parse-fortran-parameters hack-body))
 	 ,@(%f77.def-fortran-interface name hack-return-type hack-body hidden-var-name)))))

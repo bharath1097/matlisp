@@ -32,11 +32,12 @@
   (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
 	 (matrix-class (getf opt :matrix)))
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :getrf) ',func-name
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :getrf) ',func-name
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func-name (A ipiv)
 	 (declare (type ,matrix-class A)
 		  (type permutation-pivot-flip ipiv))
@@ -136,13 +137,12 @@
   (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
 	 (matrix-class (getf opt :matrix)))
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (defmethod lu ((A ,matrix-class) &optional (split-lu? t))
-	 (multiple-value-bind (lu ipiv info)
-	     (getrf! (with-order :col-major
-		       (,(getf opt :copy) A (,(getf opt :zero-maker) (dimensions A)))))
-	   (declare (ignore info))
-	   (let* ((n (nrows a))
+    `(defmethod lu ((A ,matrix-class) &optional (split-lu? t))
+       (multiple-value-bind (lu ipiv info)
+	   (getrf! (with-order :col-major
+		     (,(getf opt :copy) A (,(getf opt :zero-maker) (dimensions A)))))
+	 (declare (ignore info))
+	 (let* ((n (nrows a))
 		  (m (ncols a))
 		  (p (min n m)))
 	     (declare (type fixnum n m p))
@@ -197,7 +197,7 @@
 					    (incf lu.of (- lu.cstd (the index-type (* (- n j 2) lu.rstd))))
 					    (incf l.of (- l.cstd (the index-type (* (- n j 2) l.rstd)))))))
 				 (values lmat lu ipiv)))
-		 (values lu ipiv))))))))
+		 (values lu ipiv)))))))
 
 (make-lu real-tensor)
 (make-lu complex-tensor)

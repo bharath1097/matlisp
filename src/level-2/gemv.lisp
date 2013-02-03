@@ -7,11 +7,12 @@
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
 	 (matrix-class (getf opt :matrix))
 	 (vector-class (getf opt :vector)))
-    `(eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	 (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	 (setf (getf opt :gemv) ',func
-	       (get-tensor-class-optimization ',tensor-class) opt))
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
+	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
+	   (setf (getf opt :gemv) ',func
+		 (get-tensor-class-optimization ',tensor-class) opt)))
        (defun ,func (alpha A x beta y job)
 	 (declare (type ,(getf opt :element-type) alpha beta)
 		  (type ,matrix-class A)
