@@ -122,12 +122,12 @@
 
 (define-condition permutation-permute-error (permutation-error)
   ((sequence-length :reader seq-len :initarg :seq-len)
-   (group-rank :reader group-rank :initarg :group-rank))
+   (permutation-size :reader per-size :initarg :per-size))
   (:documentation "Cannot permute sequence.")
-  (:report (lambda (c stream)	     
+  (:report (lambda (c stream)
 	     (format stream "Cannot permute sequence.~%")
-	     (when (slots-boundp c 'sequence-length 'group-rank)
-	       (format stream "~%sequence-length : ~a group-rank: ~a" (seq-len c) (group-rank c))))))
+	     (when (slots-boundp c 'sequence-length 'permutation-size)
+	       (format stream "~%sequence-length : ~a, permutation size: ~a" (seq-len c) (per-size c))))))
 
 ;;Tensor conditions----------------------------------------------;;
 (define-condition tensor-error (error)

@@ -6,15 +6,32 @@
   (declaim (inline id))
   (defun id (x) x)
 
-  #+nil
-  (defun make-ring (n)
-    (let ((ret (cons nil nil)))
-      (loop :for i :from 0 :below (1- n)
-	 :with tail :of-type cons := ret
-	 :do (setf (cdr tail) (cons nil nil)
-		   tail (cdr tail))
-	 :finally (setf (cdr tail) ret))
-      ret))
+  (declaim (inline vectorify))
+  (defun vectorify (seq n &optional (element-type t))
+    (declare (type (or vector list) seq))
+    (etypecase seq
+      (cons
+       (let ((ret (make-array n :element-type element-type)))
+	 (loop :for i :of-type fixnum :from 0 :below n
+	    :for lst := seq :then (cdr lst)
+	    :do (setf (aref ret i) (car lst))
+	    :finally (return ret))))
+      (vector
+       (let ((ret (make-array n :element-type element-type)))
+	 (loop :for i :of-type fixnum :from 0 :below n
+	    :for ele :across seq	    
+	    :do (setf (aref ret i) ele)
+	    :finally (return ret))))))
+
+  (declaim (inline copy-n))
+  (defun copy-n (vec lst n)
+    (declare (type vector vec)
+	     (type list lst)
+	     (type fixnum n))
+    (loop :for i :of-type fixnum :from 0 :below n
+       :for vlst := lst :then (cdr vlst)
+       :do (setf (car vlst) (aref vec i)))
+    lst)
   
   (declaim (inline slot-values))
   (defun slot-values (obj slots)
