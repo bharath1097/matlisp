@@ -224,3 +224,11 @@
   (:report (lambda (c stream)
 	     (declare (ignore c))
 	     (format stream "The strides of the store, of the given tensor are not conscutive."))))
+
+(define-condition tensor-method-does-not-exist (tensor-error)
+  ((method-name :reader method-name :initarg :method-name)
+   (tensor-class :reader tensor-class :initarg :tensor-class))
+  (:documentation "The method is not defined for the given tensor class.")
+  (:report (lambda (c stream)
+	     (when (slots-boundp c 'method 'tensor-class)
+	       (format stream "The tensor class: ~a, does not have the method: ~a defined as a specialization." (method-name c) (tensor-class c))))))

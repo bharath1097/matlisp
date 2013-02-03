@@ -374,7 +374,7 @@
        (declare (type index-type lidx))
        (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
 	 (,reader sto-x lidx)))
-     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) lidx)
+     (defmethod (setf tensor-store-ref) (value (tensor ,tensor-class) lidx)
        (declare (type index-type lidx))
        (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
 	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))

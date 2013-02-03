@@ -62,6 +62,7 @@
    #:tensor-cannot-find-optimization #:tensor-class
    #:tensor-dimension-mismatch
    #:tensor-store-not-consecutive
+   #:tensor-method-does-not-exist
 ))
 
 (defpackage "MATLISP-UTILITIES"

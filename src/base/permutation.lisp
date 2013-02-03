@@ -106,12 +106,10 @@
 	   (declare (ignore arg))
 	   (let ((len (length seq)))
 	     (assert (>= len (permutation-size perm)) nil
-		     'permutation-permute-error :seq-len len :per-size (permutation-size perm)))))
-
-;; (:method :before ((ten standard-tensor) (perm permutation) &optional (arg 0))
-;; 	   (let ((len (aref (dimensions ten) arg)))
-;; 	     (assert (>= len (permutation-size perm)) nil
-;; 		     'permutation-permute-error :seq-len len :permutation-size (permutation-size perm)))))
+		     'permutation-permute-error :seq-len len :per-size (permutation-size perm))))
+  (:method :before ((ten standard-tensor) (perm permutation) &optional (arg 0))
+	   (assert (>= (aref (dimensions ten) arg) (permutation-size perm)) nil
+		   'permutation-permute-error :seq-len (aref (dimensions ten) arg) :permutation-size (permutation-size perm))))
 
 (definline permute (thing perm &optional (arg 0))
   (permute! (copy thing) perm arg))
@@ -136,9 +134,8 @@
        :do (setf (aref seq i) (aref cseq (aref act i)))
        :finally (return seq))))
 
-;; (defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
-;;   (let ((cyc (action->cycle perm)))
-;;     (permute! ten cyc arg)))
+(defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
+  (permute! ten (action->pivot-flip perm) arg))
 
 ;;Cycle
 (definline apply-cycle! (seq pcyc)
@@ -168,29 +165,8 @@
        :do (apply-cycle! seq cyc)))
   seq)
 
-;; (defmethod permute! ((A standard-tensor) (perm permutation-cycle) &optional (arg 0))
-;;   (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
-;; 				     (rplaca (nthcdr arg slst) 0)
-;; 				     (values (sub-tensor~ A slst) (sub-tensor~ A slst)))
-;;     (let-typed ((cyclst (store perm) :type cons)
-;; 		(cp-ten (make-instance (class-of tone)
-;; 				       :dimensions (copy-seq (dimensions tone))))
-;; 		(std-arg (aref (strides A) arg) :type index-type)
-;; 		(hd-sl (head ttwo) :type index-type))
-;; 	       (dolist (cyc cyclst)
-;; 		 (declare (type pindex-store-vector cyc))
-;; 		 (setf (head tone) (+ hd-sl (* std-arg (aref cyc (1- (length cyc))))))
-;; 		 (copy! tone cp-ten)
-;; 		 (loop :for i :of-type index-type :downfrom (1- (length cyc)) :to 0
-;; 		    :do (progn
-;; 			  (setf (head tone) (+ hd-sl (* std-arg (aref cyc i))))
-;; 			  (copy!
-;; 			   (if (= i 0) cp-ten
-;; 			       (progn
-;; 				 (setf (head ttwo) (+ hd-sl (* std-arg (aref cyc (1- i)))))
-;; 				 ttwo))
-;; 			   tone))))))
-;;   A)
+(defmethod permute! ((A standard-tensor) (perm permutation-cycle) &optional (arg 0))
+  (permute! A (action->pivot-flip (cycle->action perm)) arg))
 
 ;Pivot idx
 (definline apply-flips! (seq pflip)
@@ -213,20 +189,21 @@
     (copy-n cseq seq size))
   seq)
 
-;; (defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
-;;   (let ((idiv (store perm)))
-;;     (multiple-value-bind (tone ttwo) (let ((slst (make-list (rank A) :initial-element '\:)))
-;; 				       (rplaca (nthcdr arg slst) 0)
-;; 				       (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
-;;       (let ((argstd (aref (strides A) arg))
-;; 	    (hd-sl (head ttwo)))
-;; 	(loop :for i :from 0 :below (length idiv)
-;; 	   :do (progn
-;; 		 (unless (= i (aref idiv i))
-;; 		   (setf (head ttwo) (+ hd-sl (* (aref idiv i) argstd)))
-;; 		   (swap! tone ttwo))
-;; 		 (incf (head tone) argstd))))))
-;;   A)
+(defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
+  (multiple-value-bind (t1 t2) (let ((slst (make-list (rank A) :initial-element '(* * *))))
+				 (rplaca (nthcdr arg slst) (list 0 '* 1))
+				 (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
+    (let-typed ((argstd (aref (strides A) arg) :type index-type)
+		(hd-sl (head t2) :type index-type)
+		(idiv (store perm) :type pindex-store-vector))
+	       (very-quickly
+		 (loop :for i :from 0 :below (length idiv)
+		    :do (progn
+			  (unless (= i (aref idiv i))
+			    (setf (head t2) (the index-type (+ hd-sl (the index-type (* (aref idiv i) argstd)))))
+			    (swap! t1 t2))
+			  (setf (head t1) (the index-type (+ argstd (the index-type (head t1))))))))))
+  A)
 
 ;;Conversions----------------------------------------------------;;
 (defun action->cycle (act)
