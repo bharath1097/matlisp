@@ -43,17 +43,23 @@
 		  (type permutation-pivot-flip ipiv))
 	 (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
 		(if (eq maj-A :col-major)
-		    (multiple-value-bind (n-A n-ipiv info) (,lapack-func
-							    (nrows A) (ncols A) (store A)
-							    ld-A (store ipiv) 0)
-		      (declare (ignore n-A n-ipiv))
-		      (assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
-		      ;;Convert back to 0-based indexing.
+		    (progn
+		      ;;Convert to 1-based indexing.
 		      (let-typed ((pidv (store ipiv) :type pindex-store-vector))
 				 (very-quickly
 				   (loop :for i :of-type index-type :from 0 :below (length pidv)
-				      :do (decf (aref pidv i)))))
-		      (values A ipiv info))
+				      :do (incf (aref pidv i)))))
+		      (multiple-value-bind (n-A n-ipiv info) (,lapack-func
+							      (nrows A) (ncols A) (store A)
+							      ld-A (store ipiv) 0)
+			(declare (ignore n-A n-ipiv))
+			(assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
+			;;Convert back to 0-based indexing.
+			(let-typed ((pidv (store ipiv) :type pindex-store-vector))
+				   (very-quickly
+				     (loop :for i :of-type index-type :from 0 :below (length pidv)
+					:do (decf (aref pidv i)))))
+			(values A ipiv info)))
 		    (let ((tmp (,(getf opt :copy) A (with-order :col-major (,(getf opt :zero-maker) (dimensions A))))))
 		      (multiple-value-bind (n-tmp n-ipiv info) (,func-name tmp ipiv)
 			(declare (ignore n-tmp n-ipiv))
