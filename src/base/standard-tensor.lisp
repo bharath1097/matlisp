@@ -256,9 +256,7 @@
        /_        i      i
      i = 0
 "
-  (declare (type standard-tensor tensor)
-	   (type (or index-store-vector cons) idx))
-  (typecase idx
+  (etypecase idx
     (cons (store-indexing-lst idx (head tensor) (strides tensor) (dimensions tensor)))
     (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
 ;;
