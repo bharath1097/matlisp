@@ -352,7 +352,7 @@
   ;;Error checking
   (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer value-incfer reader-writer swapper))
   ;;
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
+  `(progn
      ;;Class definitions
      (defclass ,tensor-class (standard-tensor)
        ((store :type ,store-type))
@@ -379,34 +379,35 @@
        (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
 	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
      ;;
-     (let ((hst (list
-		 :tensor ',tensor-class
-		 :matrix ',matrix
-		 :vector ',vector
-		 :element-type ',element-type
-		 :f+ ',f+
-		 :f- ',f-
-		 :finv+ ',finv+
-		 :fid+ ',fid+
-		 :f* ',f*
-		 :f/ ',f/
-		 :finv* ',finv*
-		 :fid* ',fid*
-		 :f= ',f=
-		 :fconj ',fconj
-		 :reader ',reader
-		 :value-writer ',value-writer
-		 :value-incfer ',value-incfer
-		 :reader-writer ',reader-writer
-		 :swapper ',swapper
-		 :store-allocator ',store-allocator
-		 :coercer ',coercer
-		 :coercer-unforgiving ',coercer-unforgiving
-		 :store-type ',store-element-type)))
-       (setf (get-tensor-class-optimization ',tensor-class) hst
-	     (get-tensor-class-optimization ',matrix) ',tensor-class
-	     (get-tensor-class-optimization ',vector) ',tensor-class)
-       (setf (symbol-plist ',tensor-class) hst))))
+     (eval-when (:compile-toplevel :load-toplevel :execute)
+       (let ((hst (list
+		   :tensor ',tensor-class
+		   :matrix ',matrix
+		   :vector ',vector
+		   :element-type ',element-type
+		   :f+ ',f+
+		   :f- ',f-
+		   :finv+ ',finv+
+		   :fid+ ',fid+
+		   :f* ',f*
+		   :f/ ',f/
+		   :finv* ',finv*
+		   :fid* ',fid*
+		   :f= ',f=
+		   :fconj ',fconj
+		   :reader ',reader
+		   :value-writer ',value-writer
+		   :value-incfer ',value-incfer
+		   :reader-writer ',reader-writer
+		   :swapper ',swapper
+		   :store-allocator ',store-allocator
+		   :coercer ',coercer
+		   :coercer-unforgiving ',coercer-unforgiving
+		   :store-type ',store-element-type)))
+	 (setf (get-tensor-class-optimization ',tensor-class) hst
+	       (get-tensor-class-optimization ',matrix) ',tensor-class
+	       (get-tensor-class-optimization ',vector) ',tensor-class)
+	 (setf (symbol-plist ',tensor-class) hst)))))
 
 ;;
 (defun tensor-typep (tensor subscripts)
