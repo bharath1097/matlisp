@@ -48,7 +48,7 @@
        `(:pointer ,(%f77.cffi-type :single-float)))
       ((eq type :complex-double-float)
        `(:pointer ,(%f77.cffi-type :double-float)))
-      (t (ecase type
+      (t (case type
 	   (:void :void)
 	   (:integer :int32)
 	   (:character :char)

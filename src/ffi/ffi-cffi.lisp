@@ -59,7 +59,7 @@
 			declarations))))
     ;; Store result and then free foreign-objects
    (when declarations
-       `(multiple-value-prog1))
+       `(unwind-protect))
    `((progn
        ,@body)
      ;;Free C objects
