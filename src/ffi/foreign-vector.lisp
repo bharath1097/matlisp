@@ -18,24 +18,14 @@
 (defun fv-ref (x n)
   (declare (type foreign-vector x)
 	   (type fixnum n))
-  (let ((sap (fv-pointer x))
-	(ss (fv-size x))
-	(sty (fv-type x)))
-   (unless (< -1 n ss)
-     (error 'out-of-bounds-error :requested n :bound ss
-	    :message "From inside fv-ref."))
-   (cffi:mem-aref sap sty n)))
+  (assert (< -1 n (fv-size x)) nil 'out-of-bounds-error :requested n :bound (fv-size x) :message "From inside fv-ref.")
+  (cffi:mem-aref (fv-pointer x) (fv-type x) n))
 
 (defun (setf fv-ref) (value x n)
   (declare (type foreign-vector x)
 	   (type fixnum n))
-  (let ((sap (fv-pointer x))
-	(ss (fv-size x))
-	(sty (fv-type x)))
-   (unless (< -1 n ss)
-     (error 'out-of-bounds-error :requested n :bound ss
-	    :message "From inside (setf fv-ref)."))
-   (setf (cffi:mem-aref sap sty n) value)))
+  (assert (< -1 n (fv-size x)) nil 'out-of-bounds-error :requested n :bound (fv-size x) :message "From inside fv-ref.")
+  (setf (cffi:mem-aref (fv-pointer x) (fv-type x) n) value))
 
 ;;; Rudimentary support for making it a bit easier to deal with Fortran
 ;;; arrays in callbacks.

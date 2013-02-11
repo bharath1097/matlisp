@@ -14,41 +14,41 @@
   '(cl:complex complex-base-type))
 
 ;;Field operations
-(definline complex-type.f+ (a b)
+(definline complex-typed.f+ (a b)
   (declare (type complex-type a b))
   (+ a b))
 
-(definline complex-type.f- (a b)
+(definline complex-typed.f- (a b)
   (declare (type complex-type a b))
   (- a b))
 
-(definline complex-type.finv+ (a)
+(definline complex-typed.finv+ (a)
   (declare (type complex-type a))
   (- a))
 
-(definline complex-type.fid+ ()
+(definline complex-typed.fid+ ()
   #c(0.0d0 0.0d0))
 
-(definline complex-type.f* (a b)
+(definline complex-typed.f* (a b)
   (declare (type complex-type a b))
   (* a b))
 
-(definline complex-type.f/ (a b)
+(definline complex-typed.f/ (a b)
   (declare (type complex-type a b))
   (/ a b))
 
-(definline complex-type.finv* (a)
+(definline complex-typed.finv* (a)
   (declare (type complex-type a))
   (/ a))
 
-(definline complex-type.fid* ()
+(definline complex-typed.fid* ()
   #c(1.0d0 0.0d0))
 
-(definline complex-type.fconj (a)
+(definline complex-typed.fconj (a)
   (declare (type complex-type a))
   (conjugate a))
 
-(definline complex-type.f= (a b)
+(definline complex-typed.f= (a b)
   (declare (type complex-type a b))
   (= a b))
 
@@ -76,33 +76,33 @@
   (restart-case (coerce-complex-base-unforgiving x)
     (use-value (value) (coerce-complex-base value))))
 ;;
-(definline complex-type.reader (tstore idx)
+(definline complex-typed.reader (tstore idx)
   (declare (type complex-store-vector tstore)
 	   (type index-type idx))
   (complex (aref tstore (* 2 idx))
 	   (aref tstore (1+ (* 2 idx)))))
 
-(definline complex-type.value-writer (value store idx)
+(definline complex-typed.value-writer (value store idx)
   (declare (type complex-store-vector store)
 	   (type index-type idx)
 	   (type complex-type value))
   (setf (aref store (* 2 idx)) (realpart value)
 	(aref store (1+ (* 2 idx))) (imagpart value)))
 
-(definline complex-type.value-incfer (value store idx)
+(definline complex-typed.value-incfer (value store idx)
   (declare (type complex-store-vector store)
 	   (type index-type idx)
 	   (type complex-type value))
   (incf (aref store (* 2 idx)) (realpart value))
   (incf (aref store (1+ (* 2 idx))) (imagpart value)))
 
-(definline complex-type.reader-writer (fstore fidx tstore tidx)
+(definline complex-typed.reader-writer (fstore fidx tstore tidx)
   (declare (type complex-store-vector fstore tstore)
 	   (type index-type fidx tidx))
   (setf (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx))
 	(aref tstore (1+ (* 2 tidx))) (aref fstore (1+ (* 2 fidx)))))
 
-(definline complex-type.swapper (fstore fidx tstore tidx)
+(definline complex-typed.swapper (fstore fidx tstore tidx)
   (declare (type complex-store-vector fstore tstore)
 	   (type index-type fidx tidx))
   (rotatef (aref tstore (* 2 tidx)) (aref fstore (* 2 fidx)))
@@ -113,16 +113,16 @@
                 (:documentation "Tensor class with complex elements."))
   :matrix complex-matrix :vector complex-vector
   ;;
-  :f+ complex-type.f+
-  :f- complex-type.f-
-  :finv+ complex-type.finv+
-  :fid+ complex-type.fid+
-  :f* complex-type.f*
-  :f/ complex-type.f/
-  :finv* complex-type.finv*
-  :fid* complex-type.fid*
-  :f= complex-type.f=
-  :fconj complex-type.fconj  
+  :f+ complex-typed.f+
+  :f- complex-typed.f-
+  :finv+ complex-typed.finv+
+  :fid+ complex-typed.fid+
+  :f* complex-typed.f*
+  :f/ complex-typed.f/
+  :finv* complex-typed.finv*
+  :fid* complex-typed.fid*
+  :f= complex-typed.f=
+  :fconj complex-typed.fconj  
   ;;
   :store-allocator allocate-complex-store
   :coercer coerce-complex
@@ -130,11 +130,11 @@
   ;;
   :matrix complex-matrix :vector complex-vector
   ;;
-  :reader complex-type.reader
-  :value-writer complex-type.value-writer
-  :value-incfer complex-type.value-incfer
-  :reader-writer complex-type.reader-writer
-  :swapper complex-type.swapper)
+  :reader complex-typed.reader
+  :value-writer complex-typed.value-writer
+  :value-incfer complex-typed.value-incfer
+  :reader-writer complex-typed.reader-writer
+  :swapper complex-typed.swapper)
 
 ;;
 #+nil

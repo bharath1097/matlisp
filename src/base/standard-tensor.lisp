@@ -294,7 +294,7 @@
 				     (setf (number-of-elements tensor) sz)))))))))
 
 ;;
-(defgeneric tensor-ref (tensor subscripts)
+(defgeneric tensor-ref (tensor &rest subscripts)
   (:documentation "
   Syntax
   ======
@@ -312,7 +312,7 @@
 
   of the store."))
 
-(defgeneric (setf tensor-ref) (value tensor subscripts))
+(defgeneric (setf tensor-ref) (value tensor &rest subscripts))
 
 ;;
 (defgeneric tensor-store-ref (tensor store-idx)
@@ -362,12 +362,12 @@
      (defclass ,vector (standard-vector ,tensor-class)
        ())
      ;;Store refs
-     (defmethod tensor-ref ((tensor ,tensor-class) subs)
-       (let-typed ((lidx (store-indexing subs tensor) :type index-type)
+     (defmethod tensor-ref ((tensor ,tensor-class) &rest subs)
+       (let-typed ((lidx (store-indexing (if (typep (car subs) '(or cons vector)) (car subs) subs) tensor) :type index-type)
 		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
 	 (,reader sto-x lidx)))
-     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) subs)
-       (let-typed ((lidx (store-indexing subs tensor) :type index-type)
+     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) &rest subs)
+       (let-typed ((lidx (store-indexing (if (typep (car subs) '(or cons vector)) (car subs) subs) tensor) :type index-type)
 		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
 	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
      (defmethod tensor-store-ref ((tensor ,tensor-class) lidx)

@@ -9,64 +9,64 @@
   `(simple-array real-type (,size)))
 
 ;;Field definitions
-(definline real-type.f+ (a b)
+(definline real-typed.f+ (a b)
   (declare (type real-type a b))
   (+ a b))
 
-(definline real-type.f- (a b)
+(definline real-typed.f- (a b)
   (declare (type real-type a b))
   (- a b))
 
-(definline real-type.finv+ (a)
+(definline real-typed.finv+ (a)
   (declare (type real-type a))
   (- a))
 
-(definline real-type.fid+ ()
+(definline real-typed.fid+ ()
   0.0d0)
 
-(definline real-type.f* (a b)
+(definline real-typed.f* (a b)
   (declare (type real-type a b))
   (* a b))
 
-(definline real-type.f/ (a b)
+(definline real-typed.f/ (a b)
   (declare (type real-type a b))
   (/ a b))
 
-(definline real-type.finv* (a)
+(definline real-typed.finv* (a)
   (declare (type real-type a))
   (/ a))
 
-(definline real-type.fid* ()
+(definline real-typed.fid* ()
   1.0d0)
 
-(definline real-type.fid= (a b)
+(definline real-typed.fid= (a b)
   (declare (type real-type a b))
   (= a b))
 
 ;;Store definitions
-(definline real-type.reader (tstore idx)
+(definline real-typed.reader (tstore idx)
   (declare (type index-type idx)
 	   (type real-store-vector tstore))
   (aref tstore idx))
 
-(definline real-type.value-writer (value store idx)
+(definline real-typed.value-writer (value store idx)
   (declare (type index-type idx)
 	   (type real-store-vector store)
 	   (type real-type value))
   (setf (aref store idx) value))
 
-(definline real-type.value-incfer (value store idx)
+(definline real-typed.value-incfer (value store idx)
   (declare (type index-type idx)
 	   (type real-store-vector store)
 	   (type real-type value))
   (incf (aref store idx) value))
 
-(definline real-type.reader-writer (fstore fidx tstore tidx)
+(definline real-typed.reader-writer (fstore fidx tstore tidx)
   (declare (type index-type fidx tidx)
 	   (type real-store-vector fstore tstore))
   (setf (aref tstore tidx) (aref fstore fidx)))
 
-(definline real-type.swapper (fstore fidx tstore tidx)
+(definline real-typed.swapper (fstore fidx tstore tidx)
   (declare (type index-type fidx tidx)
 	   (type real-store-vector fstore tstore))
   (rotatef (aref tstore tidx) (aref fstore fidx)))
@@ -88,26 +88,26 @@ Allocates real storage.  Default initial-element = 0d0.")
 		(:documentation "Tensor class with real double elements."))
   :matrix real-matrix :vector real-vector
   ;;
-  :f+ real-type.f+
-  :f- real-type.f-
-  :finv+ real-type.finv+
-  :fid+ real-type.fid+
-  :f* real-type.f*
-  :f/ real-type.f/
-  :finv* real-type.finv*
-  :fid* real-type.fid*
-  :f= real-type.fid=
+  :f+ real-typed.f+
+  :f- real-typed.f-
+  :finv+ real-typed.finv+
+  :fid+ real-typed.fid+
+  :f* real-typed.f*
+  :f/ real-typed.f/
+  :finv* real-typed.finv*
+  :fid* real-typed.fid*
+  :f= real-typed.fid=
   :fconj nil
   ;;
   :store-allocator allocate-real-store
   :coercer coerce-real
   :coercer-unforgiving coerce-real-unforgiving
   ;;
-  :reader real-type.reader
-  :value-writer real-type.value-writer
-  :value-incfer real-type.value-incfer
-  :reader-writer real-type.reader-writer
-  :swapper real-type.swapper)
+  :reader real-typed.reader
+  :value-writer real-typed.value-writer
+  :value-incfer real-typed.value-incfer
+  :reader-writer real-typed.reader-writer
+  :swapper real-typed.swapper)
 
 (defmethod print-element ((tensor real-tensor)
 			  element stream)
