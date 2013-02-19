@@ -25,41 +25,22 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Tunc Simsek, Univ. of California, Berkeley,
-;;; 2000, simsek@eecs.berkeley.edu
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: seq.lisp,v 1.5 2004/12/03 18:01:38 rtoy Exp $
-;;;
-;;; $Log: seq.lisp,v $
-;;; Revision 1.5  2004/12/03 18:01:38  rtoy
-;;; We were doing (type-of step) and doing (coerce x type).  But (type-of
-;;; 1) can be (integer 1 1), and that doesn't work so well with coerce.
-;;; So make type be either integer or rational, as appropriate.
-;;;
-;;; But the real question is why we need to do this at all.
-;;;
-;;; Revision 1.4  2002/06/24 18:05:30  rtoy
-;;; Modified SEQ to run much faster by pushing the values onto the
-;;; beginning of the list and reversing the result instead of
-;;; destructively appending to the end, for an O(n^2) process instead of
-;;; O(n).
-;;;
-;;; Revision 1.3  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.2  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.1  2000/04/14 00:12:48  simsek
-;;; Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(in-package #:matlisp)
 
-(in-package "MATLISP")
+(defun arange (start end &optional (h 1d0))
+  (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
+    (if (= quo 0) nil
+	(let*-typed ((ret (real-typed-zeros (idxv quo)) :type real-tensor)
+		     (sto-r (store ret) :type real-store-vector)
+		     (h (coerce-real-unforgiving (if (> start end) (- h) h)) :type real-type))
+		    (loop :for i :from 0 :below quo
+		       :for ori := (coerce-real-unforgiving start) :then (+ ori h)
+		       :do (setf (aref sto-r i) ori))
+		    ret))))
+
+(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))
+  (let ((h (/ (- end start) (1- num-points))))
+    (arange start (+ h end) (abs h))))
 
 #+nil (export '(seq))
 

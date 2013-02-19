@@ -90,7 +90,7 @@ of a matrix (default 0)
 	  (1
 	   (format stream (format-to-string "~~~AT" *print-indent*))
 	   (dotimes (i (aref dims 0))
-	     (if (< i *print-max-len*)
+	     (if (or (eq *print-max-len* t) (< i *print-max-len*))
 		 (progn
 		   (print-element tensor (tensor-ref tensor `(,i)) stream)
 		   (format stream "~,4T"))
