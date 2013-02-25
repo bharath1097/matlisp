@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -38,60 +38,19 @@
 		       :do (setf (aref sto-r i) ori))
 		    ret))))
 
-(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))
+(defun alinspace (start end &optional (num-points (1+ (abs (- start end)))))
   (let ((h (/ (- end start) (1- num-points))))
     (arange start (+ h end) (abs h))))
 
-#+nil (export '(seq))
+(defun range (start end &optional (h 1))
+  (declare (type real start end h))
+  (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
+    (if (= quo 0) nil
+	(let ((h (if (> start end) (- h) h)))
+	  (loop :for i :from 0 :below quo
+	     :for ori := start :then (+ ori h)
+	     :collect ori)))))
 
-(if (not (fboundp '%push-on-end%))
-(defmacro %push-on-end% (value location)
-  `(setf ,location (nconc ,location (list ,value)))))
-
-
-(defun seq (start step &optional end)
-  "
- Syntax
- ======
- (SEQ start [step] end)
-
- Purpose
- =======
- Creates a list containing the sequence
-
-  START, START+STEP, ..., START+(N-1)*STEP
-
- where       | END-START |
-        N =  | --------- | + 1
-             |   STEP    |
-             --         --
- 
- The representations of START,STEP,END are
- assumed to be exact (i.e. the arguments
- are rationalized.
-
- The type of the elements in the 
- sequence are of the same type as STEP.
-
- The optional argument STEP defaults to 1. 
-"
-  (when (not end)
-    (setq end step)
-    (setq step 1))
-
-  (let ((start (rationalize start))
-	(type (if (typep step 'integer)
-		  'integer
-		  'rational))
-	(step (rationalize step))
-	(end (rationalize end))
-	(seq nil))
-
-    (when (zerop step)
-      (error "STEP equal to 0"))
-    (do ((x start (+ x step)))
-	((if (> step 0)
-	     (> x end)
-	     (< x end))
-	 (nreverse seq))
-      (push (coerce x type) seq))))
+(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))
+  (let ((h (/ (- end start) (1- num-points))))
+    (range start (+ h end) (abs h))))

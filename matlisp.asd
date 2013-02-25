@@ -157,11 +157,13 @@
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "getrf")))
-   #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
-	    :components ((:file "mplusminus")
+	    :components ((:file "seq")
+			 #+nil
+			 (:file "mplusminus")
+			 #+nil
 			 (:file "mtimesdivide")))
    #+nil
    (:module "matlisp-reader"
