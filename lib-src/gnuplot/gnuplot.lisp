@@ -1,15 +1,18 @@
 (in-package :matlisp)
-(defvar *current-gnuplot-stream* nil)
-(defvar *gnuplot-binary* "/usr/bin/gnuplot")
+(defvar *current-gnuplot-process* nil)
 
-(defun open-gnuplot-stream ()
+(defun open-gnuplot-stream (&optional (gnuplot-binary (pathname "/usr/bin/gnuplot")))
   (#+:sbcl
    sb-ext:run-program
-   *gnuplot-binary* nil :input :stream :wait nil :output t))
+   #+:ccl
+   ccl:run-program
+   gnuplot-binary nil :input :stream :wait nil :output t))
 
 (defun plot2d (data &key (color (list "#FF0000")) (stream (#+:sbcl
-						    sb-ext:process-input
-						    *current-gnuplot-stream*)))
+							   sb-ext:process-input
+							   #+:ccl
+							   ccl:external-process-input-stream
+							   *current-gnuplot-process*)))							       
   (with-open-file (s "/tmp/matlisp-gnuplot.out" :direction :output :if-exists :supersede :if-does-not-exist :create)
     (loop :for i :from 0 :below (loop :for x :in data :minimizing (number-of-elements x))
        :do (loop :for x :in data :do (format s "~a " (tensor-ref x i)) :finally (format s "~%"))))
@@ -18,7 +21,9 @@
 
 (defun gnuplot-send (str &key (stream (#+:sbcl
 				       sb-ext:process-input
-				       *current-gnuplot-stream*)))
+				       #+:ccl
+				       ccl:external-process-input-stream
+				       *current-gnuplot-process*)))
   (format stream "~a~%" str)
   (finish-output stream))
 
