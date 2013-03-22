@@ -334,7 +334,7 @@
 
 ;;Back to practical matters.
 ;;This function is ugly of-course, but is also very very quick!
-(definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
+(definline sort-permute-base (seq predicate &key (key #'matlisp-utilities:id))
   "
   Sorts a lisp-vector in-place, by using the function @arg{predicate} as the
   order. Also computes the permutation action which would sort the original
@@ -393,4 +393,8 @@
 						(decf piv)
 						(decf ubound)
 						nil)))))
-		 :finally (return (values seq (make-instance 'permutation-action :store perm))))))
+		 :finally (return (values seq perm)))))
+
+(definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
+  (multiple-value-bind (seq perm) (sort-permute-base seq predicate :key key)
+    (values seq (make-instance 'permutation-action :store perm))))
