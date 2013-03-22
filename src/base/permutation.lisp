@@ -115,6 +115,15 @@
   (permute! (copy thing) perm arg))
 
 ;;Action
+(definline apply-action! (seq perm)
+  (declare (type vector seq)
+	   (type pindex-store-vector perm))
+  (let* ((size (length perm))
+	 (cseq (vectorify seq size)))
+    (loop :for i :from 0 :below size
+       :do (setf (aref seq i) (aref cseq (aref perm i)))
+       :finally (return seq))))
+
 (defmethod permute! ((seq cons) (perm permutation-action) &optional arg)
   (declare (ignore arg))
   (let* ((size (permutation-size perm))
@@ -127,12 +136,7 @@
 
 (defmethod permute! ((seq vector) (perm permutation-action) &optional arg)
   (declare (ignore arg))
-  (let* ((size (permutation-size perm))
-	 (cseq (vectorify seq size))
-	 (act (store perm)))
-    (loop :for i :from 0 :below size
-       :do (setf (aref seq i) (aref cseq (aref act i)))
-       :finally (return seq))))
+  (apply-action! seq (the pindex-store-vector (store perm))))
 
 (defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
   (permute! ten (action->pivot-flip perm) arg))
