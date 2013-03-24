@@ -65,6 +65,7 @@
 (definline sub-tensor (tensor subscripts &optional (preserve-rank nil))
   (copy (sub-tensor~ tensor subscripts preserve-rank)))
 
+;;This seems unnecessary.
 (defmacro make-zeros-dims (func-name (tensor-class))
   (let ((opt (get-tensor-class-optimization-hashtable tensor-class)))
     (assert opt nil 'tensor-cannot-find-optimization :tensor-class tensor-class)
@@ -79,11 +80,12 @@
 	 (let*-typed ((dims (if (consp dims) (make-index-store dims) (copy-seq dims)) :type index-store-vector)
 		      (rnk (length dims) :type index-type)
 		      (size (very-quickly (lvec-foldl #'(lambda (a b) (declare (type index-type a b)) (the index-type (* a b))) dims))))
-		     (make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
-				   :dimensions dims :store (,(getf opt :store-allocator) size) :store-size size))))))
+		     (let ((*check-after-initializing?* nil))
+		       (make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
+				      :dimensions dims :store (,(getf opt :store-allocator) size) :store-size size)))))))
 
 (make-zeros-dims real-typed-zeros (real-tensor))
 (make-zeros-dims complex-typed-zeros (complex-tensor))
 
 #+maxima
-(make-zeros-dims symbolc-typed-tensor (symbolic-tensor))
+(make-zeros-dims symbolic-typed-zeros (symbolic-tensor))
