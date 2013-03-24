@@ -25,11 +25,11 @@
 (defun gnuplot-send (str)
   (unless *current-gnuplot-process*
     (setf *current-gnuplot-process* (open-gnuplot-stream)))
-  (let (stream (#+:sbcl
-		sb-ext:process-input
+  (let ((stream (#+:sbcl
+		 sb-ext:process-input
 		 #+:ccl
 		 ccl:external-process-input-stream
-		 *current-gnuplot-process*))
+		 *current-gnuplot-process*)))
     (format stream "~a~%" str)
     (finish-output stream)))
 
