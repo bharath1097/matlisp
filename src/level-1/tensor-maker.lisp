@@ -20,7 +20,7 @@
 					(make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
 						       :strides (make-stride vdim)
 						       :store store :store-size ss :dimensions vdim))))
-				(setf (number-of-elements ret) ss)
+				(setf (slot-value ret 'number-of-elements) ss)
 				ret))
 		  (make-from-array (arr)
 		    (declare (type (array * *) arr))

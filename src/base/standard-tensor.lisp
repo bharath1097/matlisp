@@ -35,53 +35,56 @@
 ;;
 (defclass standard-tensor ()
   ((rank
-    :accessor rank
+    :reader rank
     :type index-type
     :documentation "Rank of the tensor: number of arguments for the tensor")
    (dimensions    
-    :accessor dimensions
+    :reader dimensions
     :initarg :dimensions
     :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    (number-of-elements
-    :accessor number-of-elements
+    :reader number-of-elements
     :type index-type
     :documentation "Total number of elements in the tensor.")
    ;;
    (parent-tensor
-    :accessor parent-tensor
+    :reader parent-tensor
     :initarg :parent-tensor
     :type standard-tensor
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
    ;;
+   (memos
+    :reader memos
+    :initform (make-hash-table)
+    :type list
+    :documentation "Cache for arbitrary (computable) attributes of the object.")
    (head
     :initarg :head
     :initform 0
-    :accessor head
+    :reader head
     :type index-type
     :documentation "Head for the store's accessor.")
    (strides
     :initarg :strides
-    :accessor strides
+    :reader strides
     :type index-store-vector
     :documentation "Strides for accesing elements of the tensor.")
    (store-size
     :initarg :store-size
-    :accessor store-size
+    :reader store-size
     :type index-type
     :documentation "Size of the store.")
    (store
     :initarg :store
-    :accessor store
+    :reader store
     :documentation "The actual storage for the tensor."))
   (:documentation "Basic tensor class."))
 
 ;;
 (defclass standard-matrix (standard-tensor)
   ((rank
-    :accessor rank
     :allocation :class
-    :type index-type
     :initform 2
     :documentation "For a matrix, rank = 2."))
   (:documentation "Basic matrix class."))
@@ -97,9 +100,7 @@
 ;;
 (defclass standard-vector (standard-tensor)
   ((rank
-    :accessor rank
     :allocation :class
-    :type index-type
     :initform 1
     :documentation "For a vector, rank = 1."))
   (:documentation "Basic vector class."))
@@ -111,6 +112,39 @@
 (defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-vector) &rest initargs)
   (declare (ignore initargs))
   (assert (= (rank old) 1) nil 'tensor-not-vector :rank (rank old)))
+
+;;
+(defmacro defmemo (func-name (tensor) &rest body)
+  "
+  This macro defines a function taking a tensor argument @arg{tensor}, and memoizes the
+  results of the code @arg{body}. It is assumed that the function definition is functional
+  in character.
+
+  Examples:
+  @lisp
+  > (macroexpand-1 `(defmemo thing (x) (+ x (rank x))))
+  > (defun thing (x)
+      (declare (type standard-tensor x))
+      (let ((memo-hash (memos x)))
+        (multiple-value-bind (value present?) (gethash 'thing memo-hash)
+        (if present? value
+           (let ((value (progn (+ x (rank x)))))
+             (setf (gethash 'thing memo-hash) value)
+            value)))))
+  T
+  >
+  @end lisp
+"
+  (let ((decls (when (and (consp (car body)) (eql (caar body) 'declare)) (cdar body))))
+    `(defun ,func-name (,tensor)
+       (declare (type standard-tensor ,tensor)
+		,@decls)
+       (let* ((memo-hash (memos ,tensor)))
+	 (multiple-value-bind (value present?) (gethash ',func-name memo-hash)
+	   (if present? (values-list value)
+	       (let ((value (multiple-value-list (progn ,@(if decls (cdr body) body)))))
+		 (values-list (setf (gethash ',func-name memo-hash) value)))))))))
+		 
 
 ;;
 (defvar *tensor-class-optimizations* (make-hash-table)

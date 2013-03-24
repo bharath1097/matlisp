@@ -289,7 +289,7 @@
 	      (make-instance 'permutation-action :store (very-quickly (apply-flips! ret idiv)))))
 
 ;;Uber-functional stuff
-;;None of these are ever useful (I've found), neat things for showing off though :]
+;;None of these are ever useful (I've found); neat things for showing off though :]
 (defun permute-arguments-and-compile (func perm)
   (declare (type function func)
 	   (type permutation perm))
