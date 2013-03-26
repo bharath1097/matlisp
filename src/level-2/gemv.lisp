@@ -17,7 +17,7 @@
 	 (declare (type ,(getf opt :element-type) alpha beta)
 		  (type ,matrix-class A)
 		  (type ,vector-class x y)
-		  (type symbol job))
+		  (type list job))
 	 ,(let
 	      ((lisp-routine
 		 `(let-typed ((nr-A (nrows A) :type index-type)
@@ -31,8 +31,10 @@
 			      (hd-x (head x) :type index-type)
 					;
 			      (stp-y (aref (strides y) 0) :type index-type)
-			      (sto-y (store y) :type ,(linear-array-type (getf opt :store-type))))
-			     (when (eq job :t)
+			      (sto-y (store y) :type ,(linear-array-type (getf opt :store-type)))
+					;
+			      (job (car job) :type character))
+			     (when (char= job #\T)
 			       (rotatef nr-A nc-A)
 			       (rotatef rs-A cs-A))
 			     (very-quickly
@@ -51,7 +53,7 @@
 	    (if blas-gemv-func
 		`(mlet*
 		  ((call-fortran? (> (max (nrows A) (ncols A)) ,fortran-call-lb))
-		   ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job) :type (symbol index-type (string 1))))
+		   ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job) :type (symbol index-type character)))
 		  (cond
 		    (call-fortran?
 		     (if maj-A

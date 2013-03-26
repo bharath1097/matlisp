@@ -33,53 +33,36 @@
   (make-index-store contents))
 
 ;;
-(defclass standard-tensor ()
-  ((rank
-    :reader rank
-    :type index-type
-    :documentation "Rank of the tensor: number of arguments for the tensor")
-   (dimensions    
+(defclass tensor ()
+  ((dimensions
     :reader dimensions
     :initarg :dimensions
     :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
-   (number-of-elements
-    :reader number-of-elements
-    :type index-type
-    :documentation "Total number of elements in the tensor.")
    ;;
    (parent-tensor
     :reader parent-tensor
     :initarg :parent-tensor
-    :type standard-tensor
+    :type tensor
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
+   ;;
+   (store
+    :reader store
+    :initarg :store)
    ;;
    (memos
     :reader memos
-    :initform (make-hash-table)
-    :type list
-    :documentation "Cache for arbitrary (computable) attributes of the object.")
-   (head
-    :initarg :head
-    :initform 0
-    :reader head
-    :type index-type
-    :documentation "Head for the store's accessor.")
-   (strides
-    :initarg :strides
-    :reader strides
-    :type index-store-vector
-    :documentation "Strides for accesing elements of the tensor.")
-   (store-size
-    :initarg :store-size
-    :reader store-size
-    :type index-type
-    :documentation "Size of the store.")
-   (store
-    :initarg :store
-    :reader store
-    :documentation "The actual storage for the tensor."))
-  (:documentation "Basic tensor class."))
+    :initarg :memos
+    :documentation "Cache for arbitrary (computable) attributes of the object.")))
+
+;;
+(defclass dense-tensor (tensor)
+  ((store :type dense-store)))
+
+(defclass dense-store ()
+  ((vector-store)
+   (head)
+   (strides))
 
 ;;
 (defclass standard-matrix (standard-tensor)
@@ -113,7 +96,7 @@
   (declare (ignore initargs))
   (assert (= (rank old) 1) nil 'tensor-not-vector :rank (rank old)))
 
-;;
+;;Use 
 (defmacro defmemo (func-name (tensor) &rest body)
   "
   This macro defines a function taking a tensor argument @arg{tensor}, and memoizes the
@@ -302,16 +285,16 @@
 ;;
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
-  (let-typed ((dims (dimensions tensor) :type index-store-vector))
-    (setf (rank tensor) (length dims))
-    (when *check-after-initializing?*
+  (when *check-after-initializing?*
+    (let-typed ((dims (dimensions tensor) :type index-store-vector))
+      (setf (slot-value tensor 'rank) (length dims))
       (assert (>= (head tensor) 0) nil 'tensor-invalid-head-value :head (head tensor) :tensor tensor)
       (if (not (slot-boundp tensor 'strides))
 	  (multiple-value-bind (stds size) (make-stride dims)
 	    (declare (type index-store-vector stds)
 		     (type index-type size))
-	    (setf (number-of-elements tensor) size
-		  (strides tensor) stds)
+	    (setf (slot-value tensor 'number-of-elements) size
+		  (slot-value tensor 'strides) stds)
 	    (assert (<= (+ (head tensor) (1- (number-of-elements tensor))) (store-size tensor)) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (+ (head tensor) (1- (number-of-elements tensor))) :tensor tensor))
 	  (very-quickly
 	    (let-typed ((stds (strides tensor) :type index-store-vector))
@@ -321,9 +304,7 @@
 			  :do (progn
 				(assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
 				(assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
-			  :finally (progn
-				     (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor)
-				     (setf (number-of-elements tensor) sz)))))))))
+			  :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor))))))))
 
 ;;
 (defgeneric tensor-ref (tensor &rest subscripts)
@@ -360,8 +341,7 @@
 (defgeneric (setf tensor-store-ref) (value tensor idx))
 
 ;;
-(defgeneric print-element (tensor
-			   element stream)
+(defgeneric print-element (tensor element stream)
   (:documentation "
   Syntax
   ======

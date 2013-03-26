@@ -18,6 +18,7 @@
 				 (rnk (length vdim))
 				 (ret (let ((*check-after-initializing?* nil))
 					(make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
+						       :rank rnk
 						       :strides (make-stride vdim)
 						       :store store :store-size ss :dimensions vdim))))
 				(setf (slot-value ret 'number-of-elements) ss)
@@ -78,11 +79,12 @@
        (defun ,func-name (dims)
 	 (declare (type (or cons index-store-vector) dims))
 	 (let*-typed ((dims (if (consp dims) (make-index-store dims) (copy-seq dims)) :type index-store-vector)
-		      (rnk (length dims) :type index-type)
-		      (size (very-quickly (lvec-foldl #'(lambda (a b) (declare (type index-type a b)) (the index-type (* a b))) dims))))
-		     (let ((*check-after-initializing?* nil))
-		       (make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
-				      :dimensions dims :store (,(getf opt :store-allocator) size) :store-size size)))))))
+		      (rnk (length dims) :type index-type))
+		     (multiple-value-bind (strides size) (make-stride dims)		  
+		       (let ((*check-after-initializing?* nil))
+			 (make-instance (case rnk (2 ',(getf opt :matrix)) (1 ',(getf opt :vector)) (t ',tensor-class))
+					:strides strides :number-of-elements 
+					:dimensions dims :store (,(getf opt :store-allocator) size) :store-size size)))))))
 
 (make-zeros-dims real-typed-zeros (real-tensor))
 (make-zeros-dims complex-typed-zeros (complex-tensor))

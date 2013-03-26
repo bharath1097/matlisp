@@ -2,13 +2,12 @@
 
 (in-package #:matlisp-ffi)
 
-(defmacro defccomplex (name base-type)
-  `(cffi:defcstruct ,name
-     (real ,base-type)
-     (imag ,base-type)))
-
-(defccomplex %c.complex-double :double)
-(defccomplex %c.complex-float :float)
+(macrolet ((defccomplex (name base-type)
+	     `(cffi:defcstruct ,name
+		(real ,base-type)
+		(imag ,base-type))))
+  (defccomplex %c.complex-double :double)
+  (defccomplex %c.complex-float :float))
 
 ;; Get the equivalent CFFI type.
 ;; If the type is an array, get the type of the array element type.
