@@ -1,0 +1,175 @@
+;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Base: 10 -*-
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Copyright (c) 2000 The Regents of the University of California.
+;;; All rights reserved. 
+;;; 
+;;; Permission is hereby granted, without written agreement and without
+;;; license or royalty fees, to use, copy, modify, and distribute this
+;;; software and its documentation for any purpose, provided that the
+;;; above copyright notice and the following two paragraphs appear in all
+;;; copies of this software.
+;;; 
+;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
+;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+;;; THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+;;; SUCH DAMAGE.
+;;;
+;;; THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+;;; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+;;; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE
+;;; PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF
+;;; CALIFORNIA HAS NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+;;; ENHANCEMENTS, OR MODIFICATIONS.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;  This file is used to generate 'lazy-loader.lisp'.  Essentially, when
+;;;  the 'configure' script is executed the tokens in this file,
+;;;  e.g. FLIBS, get substituted with the appropriate machine specific
+;;;  parameters and the resulting file is saved in 'lazy-loader.lisp'.
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(in-package #:matlisp)
+
+;; Tell cffi where our libraries are.
+(push "@libdir@/" cffi:*foreign-library-directories*)
+
+;; Define our libraries.
+
+;; For some reason, on Darwin (OSX), we can't load the libraries if we
+;; specify the full path.  Loading the library fails because there are
+;; undefined symbols (__gfortran_stop_numeric) referenced from the
+;; library.  However, everything works if the full path is not given.
+;; This could be a bug in how automake generates libraries on Darwin.
+;; Not really sure.
+;;
+;; This isn't a problem on linux or sparc.
+(cffi:define-foreign-library dfftpack
+  (:darwin "libdfftpack.dylib")
+  (t (:default "@libdir@/libdfftpack")))
+
+(cffi:define-foreign-library toms715
+  (:darwin "libtoms715.dylib")
+  (t (:default "@libdir@/libtoms715")))
+
+(cffi:define-foreign-library odepack
+  (:darwin "libodepack.dylib")
+  (t (:default "@libdir@/libodepack")))
+
+(cffi:define-foreign-library colnew
+  (:darwin "libcolnew.dylib")
+  (t (:default "@libdir@/libcolnew")))
+    
+(cffi:define-foreign-library matlisp
+  (:darwin "libmatlisp.dylib")
+  (t (:default "@libdir@/libmatlisp")))
+
+(if @EXTERNAL_BLAS_LAPACK_P@
+    (progn
+      (push "@BLAS_LAPACK_DIR@" cffi:*foreign-library-directories*)
+      (cffi:define-foreign-library blas
+	(:darwin "libblas.dylib")
+	(t (:default "@BLAS_LAPACK_DIR@/libblas")))
+      (cffi:define-foreign-library lapack
+	(:darwin "liblapack.dylib")
+	(t (:default "@BLAS_LAPACK_DIR@/liblapack"))))
+    (progn
+      ;; Use our blas and lapack libraries
+      (cffi:define-foreign-library blas
+	(:darwin "libblas.dylib")
+	(t (:default "@libdir@/libblas")))
+      (cffi:define-foreign-library lapack
+	(:darwin "liblapack.dylib")
+	(t (:default "@libdir@/liblapack")))))
+
+(defun load-blas-&-lapack-libraries ()
+  ;; Load the additional matlisp libraries
+  (cffi:use-foreign-library blas)
+  (cffi:use-foreign-library lapack)
+  (cffi:use-foreign-library matlisp)
+  (cffi:use-foreign-library dfftpack)
+  (cffi:use-foreign-library toms715))
+  ;;(cffi:use-foreign-library odepack)
+
+#+:allegro
+(defun load-blas-&-lapack-libraries ()
+  #+:linux86-64
+  (progn 
+    ;; Load the libraries.
+    (dolist (lib *additional-libs*)
+      (load lib))
+    (load "matlisp:lib;linux64;libblas.so")
+    (load "matlisp:lib;linux64;liblapack.so"))
+  #+:microsoft-32
+  (progn 
+    ;; The libblas and liblapack have dependencies that need to be satisfied.
+    ;; It's annoying, but the easiest way I know to do it is change into the directory
+    ;; when attempting to load the dll.
+    (let ((old-dir (excl:current-directory)))
+      ;; Change to the win32 directory.
+      (excl:chdir "matlisp:lib;win32;")
+      ;; Load the libraries.
+      (load "./libblas.dll")
+      (load "./liblapack.dll")
+      ;; Change back.
+      (excl:chdir old-dir)))
+  #+:microsoft-64
+  (progn 
+    ;; The libblas and liblapack have dependencies that need to be satisfied.
+    ;; It's annoying, but the easiest way I know to do it is change into the directory
+    ;; when attempting to load the dll.
+    (let ((old-dir (excl:current-directory)))
+      ;; Change to the win64 directory.
+      (excl:chdir "matlisp:lib;win64;")
+      ;; Load the libraries.
+      (load "./libblas64.dll")
+      (load "./liblapack64.dll")
+      ;; Change back.
+      (excl:chdir old-dir))))
+
+(defun load-blas-&-lapack-binaries ()
+  (load-blas-&-lapack-libraries)
+  (load (translate-logical-pathname "matlisp:bin;blas") :verbose nil)
+  (load (translate-logical-pathname "matlisp:bin;lapack") :verbose nil)
+  (load (translate-logical-pathname
+	 "matlisp:bin;dfftpack") :verbose nil))
+
+#+(or :cmu :sbcl)
+(defun unload-blas-&-lapack-libraries ()
+  nil)
+
+#+(and :allegro (not :mswindows))
+(defun unload-blas-&-lapack-libraries ()
+  (ff:unload-foreign-library "matlisp:lib;linux64;libdfftpack.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;libtoms715.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;libblas.so")
+  (ff:unload-foreign-library "matlisp:lib;linux64;liblapack.so"))
+
+#+(and :allegro :mswindows)
+(defun unload-blas-&-lapack-libraries ()
+  #+:microsoft-32 (let ((old-dir (excl:current-directory)))
+					  ;; Change to the win32 directory.
+					  (excl:chdir "matlisp:lib;win32;")
+					  ;; Unload the libraries.
+					  (ff:unload-foreign-library "./liblapack.dll")
+					  (ff:unload-foreign-library "./libblas.dll")
+					  ;; Change back.
+					  (excl:chdir old-dir))
+  #+:microsoft-64 (let ((old-dir (excl:current-directory)))
+					  ;; Change to the win64 directory.
+					  (excl:chdir "matlisp:lib;win64;")
+					  ;; Unload the libraries.
+					  (ff:unload-foreign-library "./liblapack64.dll")
+					  (ff:unload-foreign-library "./libblas64.dll")
+					  ;; Change back.
+					  (excl:chdir old-dir)))
+
+
+(eval-when (:load-toplevel :execute)
+  (format t "Loading BLAS and LAPACK libraries~%")
+  (load-blas-&-lapack-libraries)
+  (format t "DONE~%"))

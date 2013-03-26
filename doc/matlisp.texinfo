@@ -1,0 +1,91 @@
+\input texinfo
+
+@setfilename matlisp.info
+@settitle Matlisp: User manual
+
+@copying
+blasblasd
+
+@quotation
+asdasd
+
+@end quotation
+@end copying
+
+@titlepage
+@title Matlisp: User manual
+@vskip 0pt plus 1filll
+July, 2012
+@page
+@vskip 0pt plus 1fill
+@insertcopying
+@end titlepage
+
+
+@macro femlisp{}
+@sc{Femlisp}
+@end macro
+
+@macro CL{}
+Common Lisp
+@end macro
+
+@alias module = code
+@alias package = code
+@alias arg = var
+@alias function = code
+@alias macro = code
+@alias symbol = code
+@alias class = symbol
+@alias type = symbol
+@alias slot = symbol
+@alias path = file
+@alias program = file
+
+@macro slisp{code}
+@lisp
+\code\
+@end lisp
+@end macro
+
+
+@c===================================================================================
+@contents
+
+@ifnottex
+@node Top
+
+@end ifnottex
+
+@menu
+* Introduction::
+* Index::
+@end menu
+
+@node Introduction 
+@chapter Introduction
+@cindex chapter, Introduction
+
+Matlisp is a asjdhkasd
+
+@deffn Macro CHECK-PROPERTIES @var{PLACE} @var{PROPERTIES}
+@findex CHECK-PROPERTIES
+check-properties place properties
+
+Checks if all of the @arg{properties} are in the property list
+@arg{place}.
+
+@lisp
+(let ((x (make-real-tensor '((1 2 3) (4 5 6)))))
+  (scal! pi x))
+@end lisp
+
+@end deffn
+
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye

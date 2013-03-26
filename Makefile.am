@@ -1,6 +1,6 @@
-SUBDIRS = dfftpack lib-src/toms715 lib-src/odepack
-if !ATLAS
-SUBDIRS += LAPACK/BLAS/SRC LAPACK/SRC
+SUBDIRS = lib-src/matlisp lib-src/dfftpack lib-src/toms715 lib-src/odepack lib-src/colnew
+if !EXT_BLAPACK
+SUBDIRS += lib-src/blas lib-src/lapack
 endif
 
 #ACLOCAL_AMFLAGS = -I m4
@@ -12,13 +12,14 @@ F2C = @F2C@
 # This should build all the libraries we need.  Then we need to
 # install them before we can build the lisp code.
 all : 
-	(cd dfftpack; $(MAKE) install)
+	(cd lib-src/matlisp; $(MAKE) install)
+	(cd lib-src/dfftpack; $(MAKE) install)
 	(cd lib-src/toms715; $(MAKE) install)
 	(cd lib-src/odepack; $(MAKE) install)
-	(cd lib-src/compat; $(MAKE) install)
-if !ATLAS
-	(cd LAPACK/BLAS/SRC; $(MAKE) install)
-	(cd LAPACK/SRC; $(MAKE) install)
+	(cd lib-src/colnew; $(MAKE) install)
+if !EXT_BLAPACK
+	(cd lib-src/blas; $(MAKE) install)
+	(cd lib-src/lapack; $(MAKE) install)
 endif
 	$(MAKE) lisp
 

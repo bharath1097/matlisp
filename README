@@ -1,118 +1,176 @@
-MatLisp - a Matrix package for CMU Lisp
+# -*- Mode: org -*-
+
+MatLisp - a base for scientific computation in Lisp.
+This is the development branch of Matlisp.
+
+* Progress Tracker
+** What works ?
+   * Basic {real, complex} tensor structure in place.
+   * Added a specialisation agnostic macros {copy, scal} which generate
+     functions by getting special method producing macros - produced
+     by another macro {tensor-store-defs}.
+   * copy, scal, dot, swap, axpy work
+   * tensor-{real, imag}part(~) work
+   * sub-tensor~ works
+   * print methods work
+   * permutation class, sorting, conversion between action and
+     cycle representations.
+   * mod-loop works, can produce very quick multi-index loops.
+
+** TODO : What remains ? (Help!)
+*** Functionality
+   * Make everything in src/old/ compatible with new datastrutures.
+   * Add negative stride support, ala Python.
+   * Tensor contraction: Hard to do very quickly.
+     Might have to copy stuff into a contiguous array; like Femlisp.
+   * BLAS level-2 and level-3: most importantly Matrix multiplication.
+   * LAPACK: solving Linear equations, Eigenvalue decomposition.
+   * DFFTPACK: computing FFTs
+   * QUADPACK: Move from f2cl-ed version to the Fortran one.
+   * MINPACK: Move from f2cl-ed version to the Fortran one.
+   * ODEPACK: Add abstraction for DLSODE, and DLSODAR may others too.
+   * Add a Lisp generic wrapper for every BLAS func {low priority}.
+
+*** Syntactic sugar
+   * Add array slicing macros
+   * Might have to add something to make it compatible with old Matlisp.
+*** Python-bridge
+    (C)Python has far too many things, that we cannot even begin to hope to replicate.
+    Burgled-batteries has a lot of things which could be useful in talking to CPython.
+
+    Getting standard-tensor <-> numpy tranlation should be enough. Mostly care about
+    matplotlib at the moment.
+
+*** Add infix to Matlisp
+    Added Mark Kantrowicz' infix package into lib-src. Should be straight forward to use it,
+    although changes are not strictly local.
+
+*** Support linking to libraries ?
+    Might have to parse header files with cffi-grovel.
+
+*** Documentation, tests
+    * Write documentation.
+      Fix the formatting for docstrings. Maybe move to TeXinfo (like femlisp).
+    * Write tests
+      Use cl-rt stuff to write more tests. Probably even add benchmarks.
+
+*** Symbolics, AD, more fancy stuff {wishlist}
+   * Use things like macrofy to work with Maxima
+   * Provide seamless AD, Symbolic differentiation and numerical function calls, ala scmutils.
 
 
-What is MatLisp?
-----------------
+* What is MatLisp?
 
-MatLisp is a set of CLOS classes for handling matrices with
-real-valued or complex-valued elements.  The classes allow a simple
-and consistent interface to matrix operations such as add, subtrace,
-multiple, and divide. 
+  MatLisp is a set of CLOS classes for handling multidimensional
+  arrays with real-valued or complex-valued elements.
 
-However, a implementation of the matrix operations entirely in Lisp
-could have been done, but such an approach completely ignores the
-excellent packages available for matrices.  In particular, LAPACK is
-used to handle the matrix operations.
+  However, a implementation of the matrix operations entirely in Lisp
+  could have been done, but such an approach completely ignores the
+  excellent packages available for matrices.  In particular, LAPACK is
+  used to handle the matrix operations.
 
-Thus, MatLisp supplies a set of wrapper classes and functions around
-the core LAPACK routines.  
+  Thus, MatLisp supplies a set of wrapper classes and functions around
+  the core LAPACK routines.
 
 
-Why MatLisp?
-------------
+* Why MatLisp?
 
-While MatLisp essentially supplies a wrapper around the LAPACK
-routines, it is more than that.  You have at your disposable the
-complete Lisp language and CLOS.  
+  Lisp is a very hacker friendly language - the difference between
+  source and binary is almost non-existent. When you use Matlisp we
+  are being selfish in that we hope that when you do use Matlisp, you
+  hack matlisp and contribute changes back.
 
-This allows you to write clean, object-oriented code that can utilize
-the LAPACK matrix routines.  Thus, you can think about your problem in
-the natural way instead of trying to force-fit your problem in
-matrices, like some other packages do.
+  While MatLisp essentially supplies a wrapper around the BLAS/LAPACK
+  routines, it is more than just that.  You have at your disposable the
+  complete Lisp language and CLOS, and the fabled macros.
 
-What About Matlab, Rlab, Octave, etc?
--------------------------------------
+  This allows you to write clean, object-oriented code that can utilize
+  the LAPACK matrix routines.  Thus, you can think about your problem in
+  the natural way instead of trying to force-fit your problem in
+  matrices, like some other packages do.
 
-While all of these are good at what they do, they all have a
-fundamental limitation:  Everything is a matrix.  You have no
-alternative.  Either you make your problem fit into a matrix, or you
-can't use these languages.  The exception is Rlab, which does have
-simple lists in addition to matrices.  However, that's as far as it goes.
+* What about Matlab, SciPy, Octave, etc?
 
-MatLisp frees you from this limitation---you have at your disposal,
-the complete functionality of Common Lisp, including structures, hash
-tables, lists, arrays, and the Common Lisp Object System (CLOS).
-MatLisp adds to this richness by giving you a matrix fast class based
-on the well-known and well-tested LAPACK library.
+  While all of these are good at what they do, they all have a
+  fundamental limitation:  Everything is a matrix.  You have no
+  alternative.  Either you make your problem fit into a matrix, or you
+  can't use these languages.  The exception is Rlab, which does have
+  simple lists in addition to matrices.  However, that's as far as it goes.
 
-Thus, you can think about your problem in the most natural way,
-without having to force everything into a matrix.  If the natural way,
-you can then use a matrix, and achieve performance close to Matlab and
-the other languages.
+  MatLisp frees you from this limitation---you have at your disposal,
+  the complete functionality of Common Lisp, including structures, hash
+  tables, lists, arrays, and the Common Lisp Object System (CLOS).
+  MatLisp adds to this richness by giving you a matrix fast class based
+  on the well-known and well-tested LAPACK library.
 
-
-How to Install
---------------
-See the file INSTALL.
-
-How to Use
-----------
-
-This is very short.  Here is a list of available routines
-
-make-float-matrix
-	create a float matrix
-    (make-float-matrix n m)
-	creates an n x m matrix initialize to zero.
-    (make-float-matrix #2a(...))
-	creates a matrix with the same dimensions as the array and
-	initializes the matrix with those elements.
-    (make-float-matrix '((...) (...) ...))
-	creats a matrix of the appropriate dimensions and initializes
-	it to the elements in the list.
-
-make-complex-matrix
-	create a complex matrix
-    (make-complex-matrix n m)
-	creates an n x m matrix initialize to zero.
-    (make-complex-matrix #2a(...))
-	creates a matrix with the same dimensions as the array and
-	initializes the matrix with those elements.
-    (make-complex-matrix '((...) (...) ...))
-	creats a matrix of the appropriate dimensions and initializes
-	it to the elements in the list.
+  Thus, you can think about your problem in the most natura
+  l way, without having to force everything into a matrix.  If the natural way,
+  you can then use a matrix, and achieve performance close to Matlab and
+  the other languages.
 
 
-[]
-	create a float or complex matrix
-    [1 2 ; 3 4]
-	creates a 2x2 matrix
-    [[1 3]' [2 4]']
-        creates the same 2x2 matrix
-    [[1 2] ; [3 4]]
-   	creates the same 2x2 matrix
+* How to Install
 
-matrix-ref
-	access the elements of the matrix.  Indices are 0-based.
-    (matrix-ref mat r)
-	access the array as if it were really 1-dimensional.  Matrix
-	is stored in column-major order.
-    (matrix-ref mat r c)
-	access element r,c
-    (matrix-ref mat ridx)
-	if ridx is a matrix or a sequence, ridx is used as the indices
-	to extract the corresponding elements from the matrix.
+  See the file INSTALL.
 
-m+
-	add two matrices
+* Usage
 
-m-
-	subtract two matrices.  If only one matrix is given, return
-	the negative of the matrix.
+  This is very short.  Here is a list of available routines
 
-m*
-	multiply two matrices
+  make-float-matrix
+  create a float matrix
+  (make-float-matrix n m)
+  creates an n x m matrix initialize to zero.
+  (make-float-matrix #2a(...))
+  creates a matrix with the same dimensions as the array and
+  initializes the matrix with those elements.
+  (make-float-matrix '((...) (...) ...))
+  creats a matrix of the appropriate dimensions and initializes
+  it to the elements in the list.
 
-m/
-	divide two matrices.  (m/ a b) means the same as inv(B)*A.
-	(m/ a) is the same as inv(A).
+  make-complex-matrix
+  create a complex matrix
+  (make-complex-matrix n m)
+  creates an n x m matrix initialize to zero.
+  (make-complex-matrix #2a(...))
+  creates a matrix with the same dimensions as the array and
+  initializes the matrix with those elements.
+  (make-complex-matrix '((...) (...) ...))
+  creats a matrix of the appropriate dimensions and initializes
+  it to the elements in the list.
+
+
+  []
+  create a float or complex matrix
+  [1 2 ; 3 4]
+  creates a 2x2 matrix
+  [[1 3]' [2 4]']
+  creates the same 2x2 matrix
+  [[1 2] ; [3 4]]
+  creates the same 2x2 matrix
+
+  matrix-ref
+  access the elements of the matrix.  Indices are 0-based.
+  (matrix-ref mat r)
+  access the array as if it were really 1-dimensional.  Matrix
+  is stored in column-major order.
+  (matrix-ref mat r c)
+  access element r,c
+  (matrix-ref mat ridx)
+  if ridx is a matrix or a sequence, ridx is used as the indices
+  to extract the corresponding elements from the matrix.
+
+  m+
+  add two matrices
+
+  m-
+  subtract two matrices.  If only one matrix is given, return
+  the negative of the matrix.
+
+  m*
+  multiply two matrices
+
+  m/
+  divide two matrices.  (m/ a b) means the same as inv(B)*A.
+  (m/ a) is the same as inv(A).
+

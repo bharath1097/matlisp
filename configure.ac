@@ -295,34 +295,33 @@ dnl   rm -f ctest.c a.out
 dnl   AC_MSG_RESULT([$NEED_FF2C])
 dnl fi
 dnl 
-# Allow user to use ATLAS if available.
-# We assume the standard names for the ATLAS libraries.
-AC_ARG_WITH([atlas],
-AC_HELP_STRING([--with-atlas=libpath], [Location of the ATLAS libraries]),
+# Allow user to use external BLAS/LAPACK library if available.
+# We assume the standard names for the libraries: lib{blas, lapack}
+AC_ARG_WITH([external-blas-lapack],
+AC_HELP_STRING([--with-external-blas-lapack=libpath], [Location of the BLAS/LAPACK libraries]),
 [
-  # Building with ATLAS
-  ATLAS_DIR="$withval/"
-  ATLAS_LIBS="libatlas libcblas libf77blas liblapack"
-  atlas=true
-  ATLAS_P=t
+  # Building with external BLAS
+  ext_blapack=true
+  BLAS_LAPACK_DIR="$withval/"
+  EXTERNAL_BLAS_LAPACK_P=t
 ],
 [
-  # Building without ATLAS.  Need these objects from our own copy of 
+  # Building without external BLAS.  Need these objects from our own copy of 
   # LAPACK.
-  atlas=false
-  ATLAS_P=nil
+  ext_blapack=false
+  EXTERNAL_BLAS_LAPACK_P=nil
 ])
-AM_CONDITIONAL([ATLAS], [test x$atlas = xtrue])
+AM_CONDITIONAL([EXT_BLAPACK], [test x$ext_blapack = xtrue])
 
-# Check to see if the ATLAS libraries are compatible with matlisp's
+# Check to see if the BLAS library is compatible with matlisp's
 # ffi.  Basically the same test as above that checks to see if -ff2c
 # is needed.  We call zdotu which is a Fortran function returning a
 # complex number.  Matlisp assumes such functions return the result by
 # storing the answer at address given by a hidden first parameter to
 # the function.
 
-if test x"$atlas" = xtrue; then
-  AC_MSG_CHECKING([if ATLAS is compatible with f2c calling conventions])
+if test x"$ext_blapack" = xtrue; then
+  AC_MSG_CHECKING([if BLAS is compatible with f2c calling conventions])
   # From the value of f77_name, figure out the actual name for
   # Fortran's zdotu.
   case $f77_name in
@@ -376,7 +375,7 @@ int main()
 ]
 EOF
   $CC $CFLAGS -c conftest.c
-  $F77 $FFLAGS -o a.out conftest.o -L${ATLAS_DIR} -latlas -lcblas -lf77blas -llapack
+  $F77 $FFLAGS -o a.out conftest.o -L${BLAS_LAPACK_DIR} -lblas -llapack
   if ./a.out; then
     AC_MSG_RESULT([yes])
     F2C=-ff2c
@@ -389,10 +388,8 @@ fi
 # The following variables will be substituted into the .in files
 AC_SUBST(LISPEXEC)
 AC_SUBST(BLAS_OBJS)
-AC_SUBST(NO_ATLAS_LAPACK_OBJS)
-AC_SUBST(ATLAS_DIR)
-AC_SUBST(ATLAS_LIBS)
-AC_SUBST(ATLAS_P)
+AC_SUBST(EXTERNAL_BLAS_LAPACK_P)
+AC_SUBST(BLAS_LAPACK_DIR)
 AC_SUBST(F77_LOWER_CASE)
 AC_SUBST(F77_UNDERSCORE)
 AC_SUBST(F77_EXTRA_UNDERSCORE)
@@ -416,18 +413,18 @@ case $host in
 esac
 
 AC_CONFIG_FILES([
-  matlisp.mk
   Makefile
   start.lisp
   config.lisp
-  lib/lazy-loader.lisp
-  LAPACK/SRC/Makefile
-  LAPACK/BLAS/SRC/Makefile
-  dfftpack/Makefile
+  src/foreign-core/lazy-loader.lisp
+  src/ffi/f77-mangling.lisp
+  lib-src/blas/Makefile
+  lib-src/lapack/Makefile
+  lib-src/dfftpack/Makefile
   lib-src/toms715/Makefile
+  lib-src/matlisp/Makefile
   lib-src/odepack/Makefile
-  lib-src/compat/Makefile
-  src/f77-mangling.lisp
+  lib-src/colnew/Makefile
 ])
 
 echo FLIBS = $FLIBS
