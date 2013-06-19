@@ -90,6 +90,9 @@
   =======
   Return a copy of X"))
 
+(defmethod copy ((num number))
+  num)
+
 (defmethod copy ((lst cons))
   (copy-list lst))
 

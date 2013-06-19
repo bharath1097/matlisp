@@ -77,6 +77,6 @@
 (defun make-stride (dims)
   (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
 
-(definline call-fortran? (x lb)
+(defun call-fortran? (x lb)
   (declare (type standard-tensor x))
-  (> (lvec-max (the index-store-vector (dimensions x))) lb))
+  (> (size x) lb))

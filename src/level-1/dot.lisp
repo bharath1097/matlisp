@@ -105,7 +105,7 @@
 ")
   (:method :before ((x standard-tensor) (y standard-tensor) &optional (conjugate-p t))
     (declare (ignore conjugate-p))
-    (unless (and (vector-p x) (vector-p y) (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)))
+    (unless (and (tensor-vectorp x) (tensor-vectorp y) (= (aref (the index-store-vector (dimensions x)) 0) (aref (the index-store-vector (dimensions y)) 0)))
       (error 'tensor-dimension-mismatch))))
 
 (defmethod dot ((x number) (y number) &optional (conjugate-p t))
@@ -119,24 +119,26 @@
     (assert (and (member clx *tensor-type-leaves*)
 		 (member cly *tensor-type-leaves*))
 	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (if (eq clx cly)
-	(progn
-	  (compile-and-eval
-	   `(defmethod dot ((x ,clx) (y ,cly) &optional (conjugate-p t))
-	      ,(recursive-append
-		(when (subtypep clx 'blas-numeric-tensor)
-		  `(if (call-fortran? x (t/l1-lb ,clx))
-		       (if conjugate-p
-			   (t/blas-dot ,clx x y t)
-			   (t/blas-dot ,clx x y nil))))
-	      `(if conjugate-p
-		   ;;Please do your checks before coming here.
-		   (very-quickly (t/dot ,clx x y t))
-		   (very-quickly (t/dot ,clx x y nil))))))
-	  (dot x y conjugate-p))
-	;;You pay the piper if you like mixing types.
-	;;This is (or should be) a rare enough to not matter.
-	(or (handler-case
-		(dot (copy! x (zeros (dimensions x) cly)) y conjugate-p)
-	      (error () nil))
-	    (dot x (copy! y (zeros (dimensions y) clx)) conjugate-p)))))
+    (cond
+      ((eq clx cly)
+       (compile-and-eval
+	`(defmethod dot ((x ,clx) (y ,cly) &optional (conjugate-p t))
+	   ,(recursive-append
+	     (when (subtypep clx 'blas-numeric-tensor)
+	       `(if (call-fortran? x (t/l1-lb ,clx))
+		    (if conjugate-p
+			(t/blas-dot ,clx x y t)
+			(t/blas-dot ,clx x y nil))))
+	     `(if conjugate-p
+		  ;;Please do your checks before coming here.
+		  (very-quickly (t/dot ,clx x y t))
+		  (very-quickly (t/dot ,clx x y nil))))))
+       (dot x y conjugate-p))
+      ;;You pay the piper if you like mixing types.
+      ;;This is (or should be) a rare enough to not matter.
+      ((coerceable? clx cly)
+       (dot (copy! x (zeros (dimensions x) cly)) y conjugate-p))
+      ((coerceable? cly clx)
+       (dot x (copy! y (zeros (dimensions y) clx)) conjugate-p))
+      (t
+       (error "Don't know how to compute the dot product of ~a , ~a." clx cly)))))

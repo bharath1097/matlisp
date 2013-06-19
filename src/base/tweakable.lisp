@@ -27,13 +27,13 @@
 ")
 
 ;;Level 1--------------------------------------------------------;;
-(defparameter *real-l1-fcall-lb* 20000
+(defparameter *real-l1-fcall-lb* 50000
   "If the size of the array is less than this parameter, the
    lisp version of axpy is called in order to avoid FFI overheads.
    The Fortran function is not called if the tensor does not have
    a consecutive store (see blas-helpers.lisp/consecutive-store-p).")
 
-(defparameter *complex-l1-fcall-lb* 10000
+(defparameter *complex-l1-fcall-lb* 20000
   "If the size of the array is less than this parameter, the
    lisp version of axpy is called in order to avoid FFI overheads.
    The Fortran function is not called if the tensor does not have

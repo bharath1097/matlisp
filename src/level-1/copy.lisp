@@ -136,24 +136,6 @@
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 
-;;This shouldn't happen ideally
-(defmethod copy! ((x t) (y standard-tensor))
-  (let ((clname (class-name (class-of y))))
-    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-    (warn "copy! method being generated for '(t ~a), does not use BLAS." clname)
-    (compile-and-eval
-     `(defmethod copy! ((x t) (y ,clname))
-	(let-typed ((sto-y (store y) :type (simple-array ,(store-element-type clname)))
-		    (cx (t/coerce ,(field-type clname) x) :type ,(field-type clname)))
-		   ;;This should be safe
-		   (very-quickly
-		     (mod-dotimes (idx (dimensions y))
-		       :with (linear-sums
-			      (of-y (strides y) (head y)))
-		       :do (t/store-set ,clname cx sto-y of-y))))
-	y))
-    (copy! x y)))
-
 (defmethod copy! ((x standard-tensor) (y standard-tensor))
   (let ((clx (class-name (class-of x)))
 	(cly (class-name (class-of y))))
@@ -166,142 +148,30 @@
 	   `(defmethod copy! ((x ,clx) (y ,cly))
 	      ,(recursive-append
 		(when (subtypep clx 'blas-numeric-tensor)
-		  `(if (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyable-p 
-  
-  (mod-dotimes (idx (dimensions x))
-    do (setf (tensor-ref y idx) (tensor-ref x idx)))
-  y)
+		  `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
+		     (let ((sz (size x))) (t/blas-copy! ,clx sz x (first strd) y (second strd)))))
+		`(very-quickly (t/copy! (,clx ,cly) x y)))
+	      y)))
+	(compile-and-eval
+	 `(defmethod copy! ((x ,clx) (y ,cly))
+	    (t/copy! (,clx ,cly) x y)
+	    y)))
+    (copy! x y)))
 
-(defmethod copy! ((x complex-tensor) (y real-tensor))
-  (error 'coercion-error :from 'complex-tensor :to 'real-tensor))
+(defmethod copy! ((x t) (y standard-tensor))
+  (let ((cly (class-name (class-of y))))
+    (assert (and (member cly *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class cly)
+    (compile-and-eval
+     `(defmethod copy! ((x t) (y ,cly))
+	,(recursive-append
+	  (when (subtypep cly 'blas-numeric-tensor)
+	    `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
+	       	(let ((sz (size y))) (t/blas-num-copy! ,cly sz x y strd))))
+	  `(very-quickly (t/copy! (t ,cly) x y)))))
+    (copy! x y)))
 
-(defmethod copy! ((x real-tensor) (y real-tensor))
-  (real-typed-copy! x y))
-
-(defmethod copy! ((x number) (y real-tensor))
-  (real-typed-num-copy! (coerce-real x) y))
-
-(defmethod copy! ((x complex-tensor) (y complex-tensor))
-  (complex-typed-copy! x y))
-
-(defmethod copy! ((x real-tensor) (y complex-tensor))
-  ;;Borrowed from realimag.lisp
-  (let ((tmp (make-instance 'real-tensor
-			    :parent-tensor y :store (store y)
-			    :dimensions (dimensions y)
-			    :strides (map 'index-store-vector #'(lambda (n) (* 2 n)) (strides y))
-			    :head (the index-type (* 2 (head y))))))
-    (declare (type real-tensor tmp))
-    (real-typed-copy! x tmp)
-    ;;Increasing the head by 1 points us to the imaginary part.
-    (incf (head tmp))
-    (real-typed-num-copy! 0d0 tmp))
-  y)
-
-(defmethod copy! ((x number) (y complex-tensor))
-  (complex-typed-num-copy! (coerce-complex x) y))
-
-;; Copy between a Lisp array and a tensor
-(defun convert-to-lisp-array (tensor)
-  "
-  Syntax
-  ======
-  (convert-to-lisp-array tensor)
-
-  Purpose
-  =======
-  Create a new Lisp array with the same dimensions as the tensor and
-  with the same elements.  This is a copy of the tensor.
-"
-  (declare (type standard-tensor tensor))
-  (let*-typed ((dims (dimensions tensor) :type index-store-vector)
-	       (ret (make-array (lvec->list dims)
-				:element-type (or (getf (get-tensor-object-optimization tensor) :element-type)
-						  (error 'tensor-cannot-find-optimization :tensor-class (class-name (class-of tensor)))))))
-	      (let ((lst (make-list (rank tensor))))
-		(very-quickly
-		  (mod-dotimes (idx dims)
-		    do (setf (apply #'aref ret (lvec->list! idx lst)) (tensor-ref tensor idx))))
-		ret)))
-
-(defmethod copy! :before ((x standard-tensor) (y array))
-  (assert (subtypep (getf (get-tensor-object-optimization x) :element-type)
-		    (array-element-type y))
-	  nil 'invalid-type
-	  :given (getf (get-tensor-object-optimization x) :element-type)
-	  :expected (array-element-type y))
-  (assert (and
-	   (= (rank x) (array-rank y))
-	   (dolist (ele (mapcar #'= (lvec->list (dimensions x)) (array-dimensions y)) t)
-	     (unless ele (return nil))))
-	  nil 'dimension-mismatch))
-
-(defmethod copy! ((x real-tensor) (y array))
-  (let-typed ((sto-x (store x) :type real-store-vector)
-	      (lst (make-list (rank x)) :type cons))
-	     (mod-dotimes (idx (dimensions x))
-	       with (linear-sums
-		     (of-x (strides x) (head x)))
-	       do (setf (apply #'aref y (lvec->list! idx lst))
-			(aref sto-x of-x))))
-  y)
-
-(defmethod copy! ((x complex-tensor) (y array))
-  (let-typed ((sto-x (store x) :type complex-store-vector)
-	      (lst (make-list (rank x)) :type cons))
-	     (mod-dotimes (idx (dimensions x))
-	       with (linear-sums
-		     (of-x (strides x) (head x)))
-	       do (setf (apply #'aref y (lvec->list! idx lst))
-			(complex (aref sto-x (* 2 of-x)) (aref sto-x (1+ (* 2 of-x)))))))
-  y)
-
-;;
-(defmethod copy! :before ((x array) (y standard-tensor))
-  (assert (subtypep (array-element-type x)
-		    (getf (get-tensor-object-optimization y) :element-type))
-	  nil 'invalid-type
-	  :given (array-element-type x) :expected (getf (get-tensor-object-optimization y) :element-type))
-  (assert (and
-	   (= (array-rank x) (rank y))
-	   (dolist (ele (mapcar #'= (array-dimensions x) (lvec->list (dimensions y))) t)
-	     (unless ele (return nil))))
-	  nil 'dimension-mismatch))
-
-(defmethod copy! ((x array) (y real-tensor))
-  (let-typed ((sto-y (store y) :type real-store-vector)
-	      (lst (make-list (array-rank x)) :type cons))
-	     (very-quickly
-	       (mod-dotimes (idx (dimensions y))
-		 with (linear-sums
-		       (of-y (strides y) (head y)))
-		 do (setf (aref sto-y of-y) (apply #'aref x (lvec->list! idx lst))))))
-  y)
-
-(defmethod copy! ((x array) (y complex-tensor))
-  (let-typed ((sto-y (store y) :type real-store-vector)
-	      (lst (make-list (array-rank x)) :type cons))
-	     (very-quickly
-	       (mod-dotimes (idx (dimensions y))
-		 with (linear-sums
-		       (of-y (strides y) (head y)))
-		 do (let-typed ((ele (apply #'aref x (lvec->list! idx lst)) :type complex-type))
-			       (setf (aref sto-y (* 2 of-y)) (realpart ele)
-				     (aref sto-y (1+ (* 2 of-y))) (imagpart ele))))))
-  y)
-
-;;
 ;;Generic function defined in src;base;generic-copy.lisp
-
-(defmethod copy ((tensor real-tensor))
-  (let* ((ret (apply #'make-real-tensor (lvec->list (dimensions tensor)))))
-    (declare (type real-tensor ret))
+(defmethod copy ((tensor standard-tensor))
+  (let* ((ret (zeros (the index-store-vector (dimensions tensor)) (class-name (class-of tensor)))))
     (copy! tensor ret)))
-
-(defmethod copy ((tensor complex-tensor))
-  (let* ((ret (apply #'make-complex-tensor (lvec->list (dimensions tensor)))))
-    (declare (type complex-tensor ret))
-    (copy! tensor ret)))
-
-(defmethod copy ((tensor number))
-  tensor)
