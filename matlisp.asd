@@ -139,9 +139,10 @@
 				:depends-on ("maker"))
 			 (:file "dot"
 				:depends-on ("maker"))
+			 (:file "swap")				
 			 #+nil
 			 (
-			 (:file "swap")
+		
 			 (:file "realimag"
 				:depends-on ("copy"))
 			 (:file "scal"
