@@ -3,7 +3,8 @@
 ;;Suck on that C++ :)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *template-table* (make-hash-table)))
+
+(defvar *template-table* (make-hash-table))
 
 (defun match-lambda-lists (lsta lstb)
   (let ((optional? nil))
@@ -100,3 +101,4 @@
     (setf (getf data :methods) (setrem meth spls  #'(lambda (a b) (list-eq (second a) b))))
     nil))
 
+)
