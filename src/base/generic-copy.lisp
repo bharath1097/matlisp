@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(defgeneric copy! (from-tensor to-tensor)
+(defgeneric copy! (from to)
   (:documentation
    "
   Syntax
@@ -10,51 +10,73 @@
   Purpose
   =======
   Copies the contents of X into Y. Returns Y.
-
-  X,Y must have the same dimensions, and
-  ergo the same number of elements.
-
-  Furthermore, X may be a scalar, in which
-  case Y is filled with X.
 ")
-  (:method :before ((x cons) (y cons))
-	   (assert (= (length x) (length y))))
   (:method :before ((x array) (y array))
-	   (assert (subtypep (array-element-type x) (array-element-type y))
-		   nil 'invalid-type
-		   :given (array-element-type y) :expected (array-element-type x))
-	   (assert (and
-		    (= (array-rank x) (array-rank y))
-		    (reduce #'(lambda (x y) (and x y))
-			    (mapcar #'= (array-dimensions x) (array-dimensions y))))
+	   (assert (list-eq (array-dimensions x) (array-dimensions y))		   
 		   nil 'dimension-mismatch)))
 
 (defmethod copy! ((from cons) (to cons))
   (let-rec cdr-writer ((flst from) (tlst to))
-	   (if (null flst) to
-	       (progn
-		 (rplaca tlst (car flst))
-		 (cdr-writer (cdr flst) (cdr tlst))))))
+    (unless (or (null flst) (null tlst))
+      (setf (car tlst) (car flst))
+      (cdr-writer (cdr flst) (cdr tlst))))
+  to)
 
-(defmethod copy! (from (to cons))
+(defmethod copy! ((from t) (to cons))
   (mapl #'(lambda (lst) (rplaca lst from)) to)
   to)
 
 (defmethod copy! ((from array) (to array))
   (let ((lst (make-list (array-rank to))))
     (mod-dotimes (idx (make-index-store (array-dimensions to)))
-      do (progn
-	   (lvec->list! idx lst)
-	   (setf (apply #'aref to lst) (apply #'aref from lst)))))
+      :do (progn
+	    (lvec->list! idx lst)
+	    (setf (apply #'aref to lst) (apply #'aref from lst)))))
   to)
 
-(defmethod copy! (from (to array))
+(defmethod copy! ((from t) (to array))
   (let ((lst (make-list (array-rank to))))
     (mod-dotimes (idx (make-index-store (array-dimensions to)))
       do (progn
 	   (lvec->list! idx lst)
 	   (setf (apply #'aref to lst) from)))
   to))
+
+;;
+(defmethod copy! :before ((x array) (y standard-tensor))
+  (assert (list-eq (array-dimensions x) (lvec->list (dimensions y)))
+	  nil 'dimension-mismatch))
+(defmethod copy! :before ((x standard-tensor) (y array))
+  (assert (list-eq (array-dimensions y) (lvec->list (dimensions x)))
+	  nil 'dimension-mismatch))
+
+(defmethod copy! ((x array) (y standard-tensor))
+  (let ((clname (class-name (class-of y))))
+    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+    (compile-and-eval
+     `(defmethod copy! ((x array) (y ,clname))
+	(let-typed ((sto-y (store y) :type (simple-array ,(store-element-type clname)))
+		    (lst (make-list (array-rank x)) :type cons))
+		   (mod-dotimes (idx (dimensions y))
+		     :with (linear-sums
+			    (of-y (strides y) (head y)))
+		     :do (t/store-set ,clname (t/coerce ,(field-type clname) (apply #'aref x (lvec->list! idx lst))) sto-y of-y)))
+	y))
+    (copy! x y)))
+
+(defmethod copy! ((x standard-tensor) (y array))
+  (let ((clname (class-name (class-of x))))
+    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+    (compile-and-eval
+     `(defmethod copy! ((x ,clname) (y array))
+	(let-typed ((sto-x (store x) :type (simple-array ,(store-element-type clname)))
+		    (lst (make-list (array-rank y)) :type cons))
+		   (mod-dotimes (idx (dimensions x))
+		     :with (linear-sums
+			    (of-x (strides x) (head x)))
+		     :do (setf (apply #'aref y (lvec->list! idx lst)) (t/store-ref ,clname sto-x of-x))))
+	y))
+    (copy! x y)))
 
 ;;
 (defgeneric copy (object)

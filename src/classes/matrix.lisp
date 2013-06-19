@@ -1,26 +1,16 @@
 (in-package #:matlisp)
 
 (definline nrows (matrix)
-  (declare (type standard-matrix matrix))
   (aref (dimensions matrix) 0))
 
 (definline ncols (matrix)
-  (declare (type standard-matrix matrix))
   (aref (dimensions matrix) 1))
 
 (definline row-stride (matrix)
-  (declare (type standard-matrix matrix))
   (aref (strides matrix) 0))
 
 (definline col-stride (matrix)
-  (declare (type standard-matrix matrix))
   (aref (strides matrix) 1))
-
-(definline size (matrix)
-  (declare (type standard-matrix matrix))
-  (let ((dims (dimensions matrix)))
-    (declare (type (index-store-vector 2) dims))
-    (list (aref dims 0) (aref dims 1))))
 
 ;;
 (definline row-matrix-p (matrix)

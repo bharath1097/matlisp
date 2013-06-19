@@ -69,6 +69,8 @@
 	       (:file "macros"
 		      :depends-on ("functions"))
 	       (:file "lvec"
+		      :depends-on ("macros" "functions"))
+	       (:file "template"
 		      :depends-on ("macros" "functions"))))
 
 (asdf:defsystem fortran-names
@@ -104,8 +106,9 @@
 	    :depends-on ("foreign-core")
 	    :pathname "base"
 	    :components ((:file "tweakable")
+			 (:file "template")
 			 (:file "standard-tensor"
-				:depends-on ("tweakable"))
+				:depends-on ("tweakable" "template"))
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
@@ -122,17 +125,20 @@
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
-	    :components ((:file "real-tensor")
-			 (:file "complex-tensor")
+	    :components ((:file "numeric")
 			 #+maxima
 			 (:file "symbolic-tensor")
+			 #+nil
 			 (:file "matrix"
-				:depends-on ("real-tensor" "complex-tensor"))))
+				:depends-on ("numeric"))))
    (:module "matlisp-level-1"
 	    :pathname "level-1"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
 	    :components ((:file "tensor-maker")
+			 #+nil
+			 (
 			 (:file "swap")
+
 			 (:file "copy"
 				:depends-on ("tensor-maker"))
 			 (:file "realimag"
@@ -144,19 +150,23 @@
 			 (:file "axpy"
 				:depends-on ("copy" "scal"))
 			 (:file "trans"
-				:depends-on ("scal" "copy"))))
+				:depends-on ("scal" "copy")))))
+   #+nil
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
 	    :components ((:file "gemv")))
+   #+nil
    (:module "matlisp-level-3"
 	    :pathname "level-3"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1" "matlisp-level-2")
 	    :components ((:file "gemm")))
+   #+nil
    (:module "matlisp-lapack"
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
 	    :components ((:file "getrf")))
+   #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")

@@ -41,7 +41,7 @@
 	   :finally (return (aref sort-std 0))))))
 
 (defun blas-matrix-compatible-p (matrix op)
-  (declare (type standard-matrix matrix))
+  (declare (type standard-tensor matrix))
   (let*-typed ((stds (strides matrix) :type index-store-vector)
 	       (rs (aref stds 0) :type index-type)
 	       (cs (aref stds 1) :type index-type))
@@ -103,3 +103,7 @@
 
 (defun make-stride (dims)
   (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
+
+(definline call-fortran? (x lb)
+  (declare (type standard-tensor x))
+  (> (lvec-max (the index-store-vector (dimensions x))) lb))
