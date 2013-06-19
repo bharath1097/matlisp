@@ -1,8 +1,10 @@
 (in-package #:matlisp)
 
 ;;This must match the type used in LAPACK
+;;(unsigned-byte 32)
+
 (deftype pindex-type ()
-  '(unsigned-byte 32))
+  'fixnum)
 
 (deftype pindex-store-vector (&optional (size '*))
   `(simple-array pindex-type (,size)))

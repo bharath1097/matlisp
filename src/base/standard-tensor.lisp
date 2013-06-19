@@ -62,6 +62,18 @@
     :documentation "Place for computable attributes of an object instance."))
   (:documentation "Basic tensor class."))
 
+(defmacro memoizing ((tensor name) &rest body)
+  (declare (type symbol name))
+  (with-gensyms (tens)
+    `(let* ((,tens ,tensor))
+       (declare (type standard-tensor ,tens))
+       (multiple-value-bind (value present?) (gethash ',name (attributes ,tens))
+	 (values-list 
+	  (if present?
+	      value
+	      (setf (gethash ',name (attributes ,tens))
+		    (multiple-value-list (progn ,@body)))))))))
+		      
 ;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor standard-tensor) &optional env)
   "
@@ -69,30 +81,14 @@
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
 
-;;These should ideally be memoised
-(defgeneric rank (tensor)
-  (:documentation "
-  Syntax
-  ======
-  (rank tensor)
+;;These should ideally be memoised (or not)
+(definline rank (tensor)
+  (declare (type standard-tensor tensor))
+  (length (the index-store-vector (dimensions tensor))))
 
-  Purpose
-  =======
-  Returns the rank of the tensor object.")
-  (:method ((tensor standard-tensor))
-    (length (dimensions tensor))))
-
-(defgeneric size (tensor)
-  (:documentation "
-  Syntax
-  ======
-  (size tensor)
-
-  Purpose
-  =======
-  Returns the number of elements in the tensor.")
-  (:method ((tensor standard-tensor))
-    (lvec-foldr #'* (the index-store-vector (dimensions tensor)))))
+(definline size (tensor)
+  (declare (type standard-tensor tensor))
+  (lvec-foldr #'* (the index-store-vector (dimensions tensor))))
 
 (defgeneric store-size (tensor)
   (:documentation "
@@ -296,7 +292,7 @@
     (setf (store-ref tensor idx) value)))
 
 ;;
-(defun tensor-typep (tensor subscripts)
+(defun tensor-typep (tensor subs)
   "
   Syntax
   ======
@@ -310,31 +306,35 @@
   Examples
   ========
   Checking for a vector:
-  > (tensor-typep ten '(*))
+  > (tensor-typep ten '(class-name *))
 
   Checking for a matrix with 2 columns:
-  > (tensor-typep ten '(* 2))
+  > (tensor-typep ten '(real-tensor (* 2)))
 
   "
   (declare (type standard-tensor tensor))
-  (let-typed ((rank (rank tensor) :type index-type)
-	      (dims (dimensions tensor) :type index-store-vector))
-    (very-quickly 
-      (loop :for val :in subscripts
-	 :for i :of-type index-type := 0 :then (1+ i)
-	 :do (unless (or (eq val '*) (eq val (aref dims i)))
-	       (return nil))
-	 :finally (return (when (= (1+ i) rank) t))))))
+  (destructuring-bind (cls &optional subscripts) (ensure-list subs)
+    (and (typep tensor cls)
+	 (if subscripts
+	     (let-typed ((rank (rank tensor) :type index-type)
+			 (dims (dimensions tensor) :type index-store-vector))
+			(very-quickly 
+			  (loop :for val :in subscripts
+			     :for i :of-type index-type := 0 :then (1+ i)
+			     :do (unless (or (eq val '*) (eq val (aref dims i)))
+				   (return nil))
+			     :finally (return (when (= (1+ i) rank) t)))))
+	     t))))
 
-(definline matrix-p (ten)
+(definline tensor-matrixp (ten)
   (declare (type standard-tensor ten))
   (= (rank ten) 2))
 
-(definline vector-p (ten)
+(definline tensor-vectorp (ten)
   (declare (type standard-tensor ten))
   (= (rank ten) 1))
 
-(definline square-p (tensor)
+(definline tensor-squarep (tensor)
   (let-typed ((dims (dimensions tensor) :type index-store-vector))
     (lvec-foldr #'(lambda (a b) (if (eq a b) a nil)) dims)))
 
@@ -357,13 +357,13 @@
   X
 
   ;; Get (:, 0, 0)
-  > (sub-tensor~ X '((* * *) (0 * 1) (0 * 1)))
+  > (sub-tensor/ X '((* * *) (0 * 1) (0 * 1)))
 
   ;; Get (:, 2:5, :)
-  > (sub-tensor~ X '((* * *) (2 * 5)))
+  > (sub-tensor/ X '((* * *) (2 * 5)))
 
   ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
-  > (sub-tensor~ X '((* * *) (* * *) (0 2 10)))
+  > (sub-tensor/ X '((* * *) (* * *) (0 2 10)))
 
   Commentary
   ==========

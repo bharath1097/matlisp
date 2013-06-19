@@ -133,7 +133,7 @@
 
 ;;
 (defmethod copy! :before ((x standard-tensor) (y standard-tensor))
-  (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
+  (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 
 ;;This shouldn't happen ideally
@@ -166,7 +166,7 @@
 	   `(defmethod copy! ((x ,clx) (y ,cly))
 	      ,(recursive-append
 		(when (subtypep clx 'blas-numeric-tensor)
-		  
+		  `(if (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyable-p 
   
   (mod-dotimes (idx (dimensions x))
     do (setf (tensor-ref y idx) (tensor-ref x idx)))

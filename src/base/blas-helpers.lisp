@@ -1,12 +1,35 @@
 (in-package #:matlisp)
+   
+(defun consecutive-storep (tensor)
+  (declare (type standard-tensor tensor))
+  (memoizing (tensor consecutive-storep)
+    (mlet* (((sort-std std-perm) (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<))
+	     :type (index-store-vector pindex-store-vector))
+	    (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
+	   (very-quickly
+	     (loop
+		:for so-st :across sort-std
+		:for so-di :across perm-dims
+		:and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
+		:unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
+		:finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
+
+(defun blas-copyablep (ten-a ten-b)
+  (declare (type standard-tensor ten-a ten-b))
+  (when (= (rank ten-a) (rank ten-b))
+    (mlet*
+     (((csto-a? pdims-a tmp perm-a) (consecutive-storep ten-a) :type (t index-store-vector nil pindex-store-vector))
+      ((csto-b? pdims-b tmp perm-b) (consecutive-storep ten-b) :type (t index-store-vector nil pindex-store-vector)))
+     (when (and csto-a? csto-b? (very-quickly (lvec-eq perm-a perm-b)) (very-quickly (lvec-eq pdims-a pdims-b)))
+       (list csto-a? csto-b?)))))
 
 (definline fortran-nop (op)
-  (ecase op (#\T #\N) (#\N #\T)))
+  (ecase op (#\t #\n) (#\n #\t)))
 
 (defun split-job (job)
   (declare (type symbol job))
   (let-typed ((name (symbol-name job) :type string))
-    (loop :for x :across name :collect x)))
+    (loop :for x :across name :collect (char-downcase x))))
 
 (definline flip-major (job)
   (declare (type symbol job))
@@ -14,47 +37,10 @@
     (:row-major :col-major)
     (:col-major :row-major)))
 
-(defun blas-copyable-p (ten-a ten-b)
-  (declare (type standard-tensor ten-a ten-b))
-  (when (= (rank ten-a) (rank ten-b))
-    (mlet*
-     (((sort-std-a std-a-perm) (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides ten-a))) #'<)) :type (index-store-vector pindex-store-vector))
-      (perm-a-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions ten-a))) std-a-perm)) :type index-store-vector)
-      ;;If blas-copyable then the strides must have the same sorting permutation.
-      (sort-std-b (very-quickly (apply-action! (copy-seq (the index-store-vector (strides ten-b))) std-a-perm)) :type index-store-vector)
-      (perm-b-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions ten-b))) std-a-perm)) :type index-store-vector))
-     (very-quickly
-       (loop
-	  :for i :of-type index-type :from 0 :below (rank ten-a)
-	  :for sost-a :across sort-std-a
-	  :for a-aoff :of-type index-type := (aref sort-std-a 0) :then (the index-type (* a-aoff (aref perm-a-dims (1- i))))
-	  ;;
-	  :for sost-b :across sort-std-b
-	  :for b-aoff :of-type index-type := (aref sort-std-b 0) :then (the index-type (* b-aoff (aref perm-b-dims (1- i))))
-	  ;;
-	  :do (unless (and (= sost-a a-aoff)
-			   (= sost-b b-aoff)
-			   (= (aref perm-a-dims i) (aref perm-b-dims i)))
-		(return nil))
-	  :finally (return (list (aref sort-std-a 0) (aref sort-std-b 0))))))))
-
-(definline consecutive-store-p (tensor)
-  (declare (type standard-tensor tensor))
-  (mlet* (((sort-std std-perm) (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<))
-	   :type (index-store-vector pindex-store-vector))
-	  (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
-	 (very-quickly
-	   (loop
-	      :for so-st :across sort-std
-	      :for so-di :across perm-dims
-	      :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
-	      :unless (= so-st accumulated-off) :do (return nil)
-
-	      :finally (return (values t (aref sort-std 0)))))))
-
-(definline blas-matrix-compatible-p (matrix op)
-  (declare (type standard-matrix matrix)
+(definline blas-matrix-compatiblep (matrix op)
+  (declare (type standard-tensor matrix)
 	   (type character op))
+  (assert (tensor-matrixp matrix) nil 'tensor-not-matrix)
   (let*-typed ((stds (strides matrix) :type index-store-vector)
 	       (rs (aref stds 0) :type index-type)
 	       (cs (aref stds 1) :type index-type))

@@ -32,34 +32,34 @@
   (:export
    ;;<conditon {accessors*}>
    ;;Generic errors
-   #:generic-error #:message
+   #:generic-error
    #:dimension-mismatch
    #:assumption-violated
-   #:invalid-type #:given #:expected
-   #:invalid-arguments #:argnum
-   #:invalid-value #:given #:expected
-   #:unknown-token #:token
+   #:invalid-type
+   #:invalid-arguments
+   #:invalid-value
+   #:unknown-token
    #:parser-error
-   #:coercion-error #:from #:to
-   #:out-of-bounds-error #:requested #:bound   
-   #:non-uniform-bounds-error #:assumed #:found
+   #:coercion-error
+   #:out-of-bounds-error
+   #:non-uniform-bounds-error
    ;;Permutation conditions
-   #:permutation #:permutation
+   #:permutation
    #:permutation-invalid-error
-   #:permutation-permute-error #:seq-len #:group-rank   
+   #:permutation-permute-error
    ;;Tensor conditions
-   #:tensor-error #:tensor
-   #:tensor-store-index-out-of-bounds #:index #:store-size
-   #:tensor-insufficient-store #:store-size #:max-idx
-   #:tensor-not-matrix #:rank
-   #:tensor-not-vector #:rank
-   #:tensor-index-out-of-bounds #:argument #:index #:dimension
-   #:tensor-index-rank-mismatch #:index-rank #:rank
-   #:tensor-invalid-head-value #:head
-   #:tensor-invalid-dimension-value #:argument #:dimension
-   #:tensor-invalid-stride-value #:argument #:stride
-   #:tensor-cannot-find-counter-class #:tensor-class
-   #:tensor-cannot-find-optimization #:tensor-class
+   #:tensor-error
+   #:tensor-store-index-out-of-bounds
+   #:tensor-insufficient-store
+   #:tensor-not-matrix
+   #:tensor-not-vector
+   #:tensor-index-out-of-bounds
+   #:tensor-index-rank-mismatch
+   #:tensor-invalid-head-value
+   #:tensor-invalid-dimension-value
+   #:tensor-invalid-stride-value
+   #:tensor-cannot-find-counter-class
+   #:tensor-cannot-find-optimization
    #:tensor-dimension-mismatch
    #:tensor-store-not-consecutive
    #:tensor-method-does-not-exist
