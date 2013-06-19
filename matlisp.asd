@@ -134,19 +134,18 @@
    (:module "matlisp-level-1"
 	    :pathname "level-1"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
-	    :components ((:file "tensor-maker")
+	    :components ((:file "maker")
+			 (:file "copy"
+				:depends-on ("maker"))
+			 (:file "dot"
+				:depends-on ("maker"))
 			 #+nil
 			 (
 			 (:file "swap")
-
-			 (:file "copy"
-				:depends-on ("tensor-maker"))
 			 (:file "realimag"
 				:depends-on ("copy"))
 			 (:file "scal"
 				:depends-on ("copy" "tensor-maker" "realimag"))
-			 (:file "dot"
-				:depends-on ("realimag"))
 			 (:file "axpy"
 				:depends-on ("copy" "scal"))
 			 (:file "trans"
