@@ -204,9 +204,9 @@
 		 (loop :for i :from 0 :below (length idiv)
 		    :do (progn
 			  (unless (= i (aref idiv i))
-			    (setf (head t2) (the index-type (+ hd-sl (the index-type (* (aref idiv i) argstd)))))
+			    (setf (slot-value t2 'head) (the index-type (+ hd-sl (the index-type (* (aref idiv i) argstd)))))
 			    (swap! t1 t2))
-			  (setf (head t1) (the index-type (+ argstd (the index-type (head t1))))))))))
+			  (setf (slot-value t1 'head) (the index-type (+ argstd (the index-type (head t1))))))))))
   A)
 
 ;;Conversions----------------------------------------------------;;

@@ -14,7 +14,7 @@
   (ALLOCATE-INDEX-STORE SIZE [INITIAL-ELEMENT 0])
 
   Purpose
-  =======
+  ======
   Allocates index storage.")
 
 (definline make-index-store (contents)
@@ -33,162 +33,94 @@
   (make-index-store contents))
 
 ;;
-(defclass tensor ()
-  ((dimensions
-    :reader dimensions
-    :initarg :dimensions
-    :type index-store-vector
+(defvar *tensor-type-leaves* nil "
+  This is used to keep track of classes that are not meant to be
+  abstract classes. This prevents less specialized methods from
+  clobbering the generation of more sophisticated (read faster)
+  methods.")
+
+(defmacro defleaf (name direct-superclasses direct-slots &rest options)
+  `(progn
+     (defclass ,name ,direct-superclasses ,direct-slots ,@options)
+     (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
+
+(defclass standard-tensor ()
+  ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    ;;
-   (parent-tensor
-    :reader parent-tensor
-    :initarg :parent-tensor
-    :type tensor
+   (parent-tensor :reader parent-tensor :initarg :parent-tensor :type standard-tensor
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
    ;;
-   (store
-    :reader store
-    :initarg :store)
+   (head :initarg :head :initform 0 :reader head :type index-type
+    :documentation "Head for the store's accessor.")
+   (strides :initarg :strides :reader strides :type index-store-vector
+    :documentation "Strides for accesing elements of the tensor.")
+   (store :initarg :store :reader store
+    :documentation "The actual storage for the tensor.")
    ;;
-   (memos
-    :reader memos
-    :initarg :memos
-    :documentation "Cache for arbitrary (computable) attributes of the object.")))
+   (attributes :initarg :attributes :reader attributes :initform (make-hash-table)
+    :documentation "Place for computable attributes of an object instance."))
+  (:documentation "Basic tensor class."))
 
-;;
-(defclass dense-tensor (tensor)
-  ((store :type dense-store)))
-
-(defclass dense-store ()
-  ((vector-store)
-   (head)
-   (strides))
-
-;;
-(defclass standard-matrix (standard-tensor)
-  ((rank
-    :allocation :class
-    :initform 2
-    :documentation "For a matrix, rank = 2."))
-  (:documentation "Basic matrix class."))
-
-(defmethod initialize-instance :after ((matrix standard-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (assert (= (rank matrix) 2) nil 'tensor-not-matrix :rank (rank matrix) :tensor matrix))
-
-(defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-matrix) &rest initargs)
-  (declare (ignore initargs))
-  (assert (= (rank old) 2) nil 'tensor-not-matrix :rank (rank old)))
-
-;;
-(defclass standard-vector (standard-tensor)
-  ((rank
-    :allocation :class
-    :initform 1
-    :documentation "For a vector, rank = 1."))
-  (:documentation "Basic vector class."))
-
-(defmethod initialize-instance :after ((vector standard-vector) &rest initargs)
-  (declare (ignore initargs))
-  (assert (= (rank vector) 1) nil 'tensor-not-vector :rank (rank vector) :tensor vector))
-
-(defmethod update-instance-for-different-class :before ((old standard-tensor) (new standard-vector) &rest initargs)
-  (declare (ignore initargs))
-  (assert (= (rank old) 1) nil 'tensor-not-vector :rank (rank old)))
-
-;;Use 
-(defmacro defmemo (func-name (tensor) &rest body)
-  "
-  This macro defines a function taking a tensor argument @arg{tensor}, and memoizes the
-  results of the code @arg{body}. It is assumed that the function definition is functional
-  in character.
-
-  Examples:
-  @lisp
-  > (macroexpand-1 `(defmemo thing (x) (+ x (rank x))))
-  > (defun thing (x)
-      (declare (type standard-tensor x))
-      (let ((memo-hash (memos x)))
-        (multiple-value-bind (value present?) (gethash 'thing memo-hash)
-        (if present? value
-           (let ((value (progn (+ x (rank x)))))
-             (setf (gethash 'thing memo-hash) value)
-            value)))))
-  T
-  >
-  @end lisp
-"
-  (let ((decls (when (and (consp (car body)) (eql (caar body) 'declare)) (cdar body))))
-    `(defun ,func-name (,tensor)
-       (declare (type standard-tensor ,tensor)
-		,@decls)
-       (let* ((memo-hash (memos ,tensor)))
-	 (multiple-value-bind (value present?) (gethash ',func-name memo-hash)
-	   (if present? (values-list value)
-	       (let ((value (multiple-value-list (progn ,@(if decls (cdr body) body)))))
-		 (values-list (setf (gethash ',func-name memo-hash) value)))))))))
-		 
-
-;;
-(defvar *tensor-class-optimizations* (make-hash-table)
-  "
-  Contains a either:
-  o A property list containing:  
-  :field-type -> Field type
-  :f+ (a b) -> a + b
-  :f- (a b) -> a + (- b)
-  :finv+ (a) -> -a
-  :fid+ () -> + identity
-  :f* (a b) -> a * b
-  :f/ (a b) -> a * b^{-1}
-  :finv* (a) -> 1/a
-  :fid* () -> * identity
-  :f= (a b) -> (= a b)
-  :fconj (a) -> a^* {if nil, Field does not have a conjugation op}
-
-  :coercer (ele) -> Coerced to store-type, with error checking
-  :coercer-unforgiving (ele) -> Coerced to store-type, no error checking
-
-  :store-allocator (n) -> Allocates a store of size n
-  :store-type
-  :reader (store idx) => result
-  :value-writer (value store idx) => (store idx) <- value
-  :reader-writer (fstore fidx tstore tidx) => (tstore tidx) <- (fstore fidx)
-  :swapper       (fstore fidx tstore tidx) => (tstore tidx) <-> (fstore fidx)
-  o class-name (symbol) of the superclass whose optimizations
-  are to be made use of.")
-
-(definline get-tensor-class-optimization (clname)
-  (declare (type symbol clname))
-  (symbol-plist clname))
-
-(definline get-tensor-object-optimization (obj)
-  (symbol-plist (class-name (class-of obj))))
-
-(defun get-tensor-class-optimization-hashtable (clname)
-  (let ((opt (gethash clname *tensor-class-optimizations*)))
-    (cond
-      ((null opt) nil)
-      ((symbolp opt)
-       (get-tensor-class-optimization opt))
-      (t (values opt clname)))))
-
-(defun (setf get-tensor-class-optimization) (value clname)
-  (setf (gethash clname *tensor-class-optimizations*) value)
-  (let ((opt (if (symbolp value)
-		 (get-tensor-class-optimization-hashtable clname)
-		 value)))
-    (setf (symbol-plist (getf opt :tensor)) opt
-	  (symbol-plist (getf opt :matrix)) opt
-	  (symbol-plist (getf opt :vector)) opt)))
-
-;; Akshay: I have no idea what this does, or why we want it
-;; (inherited from standard-matrix.lisp
+;;I have no idea what this does, or why we want it (inherited from standard-matrix.lisp)
 (defmethod make-load-form ((tensor standard-tensor) &optional env)
   "
   MAKE-LOAD-FORM allows us to determine a load time value for
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
+
+;;These should ideally be memoised
+(defgeneric rank (tensor)
+  (:documentation "
+  Syntax
+  ======
+  (rank tensor)
+
+  Purpose
+  =======
+  Returns the rank of the tensor object.")
+  (:method ((tensor standard-tensor))
+    (length (dimensions tensor))))
+
+(defgeneric size (tensor)
+  (:documentation "
+  Syntax
+  ======
+  (size tensor)
+
+  Purpose
+  =======
+  Returns the number of elements in the tensor.")
+  (:method ((tensor standard-tensor))
+    (lvec-foldr #'* (the index-store-vector (dimensions tensor)))))
+
+(defgeneric store-size (tensor)
+  (:documentation "
+  Syntax
+  ======
+  (store-size tensor)
+
+  Purpose
+  =======
+  Returns the number of elements the store of the tensor can hold
+  (which is not necessarily equal to its vector length).")
+  (:method ((tensor standard-tensor))
+    (length (store tensor))))
+
+(defgeneric print-element (tensor
+			   element stream)
+  (:documentation "
+  Syntax
+  ======
+  (PRINT-ELEMENT tensor element stream)
+
+  Purpose
+  =======
+  This generic function is specialized to TENSOR to
+  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
+  to format a tensor into the STREAM.")
+  (:method ((tensor standard-tensor) element stream)
+    (format stream "~a" element)))
 
 ;;
 (defun store-indexing-vec (idx hd strides dims)
@@ -287,31 +219,29 @@
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (let-typed ((dims (dimensions tensor) :type index-store-vector))
-      (setf (slot-value tensor 'rank) (length dims))
       (assert (>= (head tensor) 0) nil 'tensor-invalid-head-value :head (head tensor) :tensor tensor)
       (if (not (slot-boundp tensor 'strides))
 	  (multiple-value-bind (stds size) (make-stride dims)
 	    (declare (type index-store-vector stds)
 		     (type index-type size))
-	    (setf (slot-value tensor 'number-of-elements) size
-		  (slot-value tensor 'strides) stds)
-	    (assert (<= (+ (head tensor) (1- (number-of-elements tensor))) (store-size tensor)) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (+ (head tensor) (1- (number-of-elements tensor))) :tensor tensor))
+	    (setf (slot-value tensor 'strides) stds)
+	    (assert (<= (+ (head tensor) size) (store-size tensor)) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (+ (head tensor) (1- (size tensor))) :tensor tensor))
 	  (very-quickly
 	    (let-typed ((stds (strides tensor) :type index-store-vector))
-		       (loop :for i :of-type index-type :from 0 :below (rank tensor)
-			  :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
-			  :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
-			  :do (progn
-				(assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
-				(assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
-			  :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor))))))))
+	      (loop :for i :of-type index-type :from 0 :below (rank tensor)
+		 :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
+		 :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
+		 :do (progn
+		       (assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
+		       (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
+		 :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor))))))))
 
 ;;
-(defgeneric tensor-ref (tensor &rest subscripts)
+(defgeneric ref (tensor &rest subscripts)
   (:documentation "
   Syntax
   ======
-  (tensor-ref store subscripts)
+  (ref store subscripts)
 
   Purpose
   =======
@@ -323,103 +253,47 @@
        /_        i      i
       i = 0
 
-  of the store."))
+  of the store.")
+  (:method ((tensor standard-tensor) &rest subscripts)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod ref ((tensor ,clname) &rest subscripts)
+	  (let ((subs (if (numberp (car subscripts)) subscripts (car subscripts))))
+	    (t/store-ref ,clname (store tensor) (store-indexing subs tensor)))))
+      (apply #'ref (cons tensor subscripts)))))
 
-(defgeneric (setf tensor-ref) (value tensor &rest subscripts))
+(defgeneric (setf ref) (value tensor &rest subscripts)
+  (:method (value (tensor standard-tensor) &rest subscripts)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod (setf ref) (value (tensor ,clname) &rest subscripts)
+	  (let* ((subs (if (numberp (car subscripts)) subscripts (car subscripts)))
+		 (idx (store-indexing subs tensor)))
+	    (t/store-set ,clname value (store tensor) idx)
+	    (t/store-ref ,clname (store tensor) idx))))
+    (setf (apply #'ref (cons tensor subscripts)) value))))
 
-;;
-(defgeneric tensor-store-ref (tensor store-idx)
-  (:documentation "
-  Syntax
-  ======
-  (tensor-store-ref store store-idx)
+(defgeneric store-ref (tensor idx)
+  (:documentation  "Generic serial read access to the store.")
+  (:method ((tensor standard-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-ref ((tensor ,clname) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (store-ref tensor idx)))
 
-  Purpose
-  =======
-  Return the element store-idx of the tensor store."))
-
-(defgeneric (setf tensor-store-ref) (value tensor idx))
-
-;;
-(defgeneric print-element (tensor element stream)
-  (:documentation "
-  Syntax
-  ======
-  (PRINT-ELEMENT tensor element stream)
-
-  Purpose
-  =======
-  This generic function is specialized to TENSOR to
-  print ELEMENT to STREAM.  Called by PRINT-TENSOR/MATRIX
-  to format a tensor into the STREAM.")
-  (:method (tensor element stream)
-    (format stream "~a" element)))
-
-;;
-(defmacro define-tensor
-  ((tensor-class element-type store-element-type store-type &rest class-decls) &key
-    f+ f- finv+ fid+ f* f/ finv* fid* fconj f=
-    matrix vector
-    store-allocator coercer coercer-unforgiving reader value-writer value-incfer reader-writer swapper)
-  ;;Error checking
-  (assert (and f+ f- finv+ fid+ f* f/ finv* fid* f= store-allocator coercer coercer-unforgiving matrix vector reader value-writer value-incfer reader-writer swapper))
-  ;;
-  `(progn
-     ;;Class definitions
-     (defclass ,tensor-class (standard-tensor)
-       ((store :type ,store-type))
-       ,@class-decls)
-     (defclass ,matrix (standard-matrix ,tensor-class)
-       ())
-     (defclass ,vector (standard-vector ,tensor-class)
-       ())
-     ;;Store refs
-     (defmethod tensor-ref ((tensor ,tensor-class) &rest subs)
-       (let-typed ((lidx (store-indexing (if (typep (car subs) '(or cons vector)) (car subs) subs) tensor) :type index-type)
-		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
-	 (,reader sto-x lidx)))
-     (defmethod (setf tensor-ref) (value (tensor ,tensor-class) &rest subs)
-       (let-typed ((lidx (store-indexing (if (typep (car subs) '(or cons vector)) (car subs) subs) tensor) :type index-type)
-		   (sto-x (store tensor) :type ,(linear-array-type store-element-type)))
-	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
-     (defmethod tensor-store-ref ((tensor ,tensor-class) lidx)
-       (declare (type index-type lidx))
-       (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
-	 (,reader sto-x lidx)))
-     (defmethod (setf tensor-store-ref) (value (tensor ,tensor-class) lidx)
-       (declare (type index-type lidx))
-       (let-typed ((sto-x (store tensor) :type ,(linear-array-type store-element-type)))
-	 (,value-writer (,coercer-unforgiving value) sto-x lidx)))
-     ;;
-     (eval-when (:compile-toplevel :load-toplevel :execute)
-       (let ((hst (list
-		   :tensor ',tensor-class
-		   :matrix ',matrix
-		   :vector ',vector
-		   :element-type ',element-type
-		   :f+ ',f+
-		   :f- ',f-
-		   :finv+ ',finv+
-		   :fid+ ',fid+
-		   :f* ',f*
-		   :f/ ',f/
-		   :finv* ',finv*
-		   :fid* ',fid*
-		   :f= ',f=
-		   :fconj ',fconj
-		   :reader ',reader
-		   :value-writer ',value-writer
-		   :value-incfer ',value-incfer
-		   :reader-writer ',reader-writer
-		   :swapper ',swapper
-		   :store-allocator ',store-allocator
-		   :coercer ',coercer
-		   :coercer-unforgiving ',coercer-unforgiving
-		   :store-type ',store-element-type)))
-	 (setf (get-tensor-class-optimization ',tensor-class) hst
-	       (get-tensor-class-optimization ',matrix) ',tensor-class
-	       (get-tensor-class-optimization ',vector) ',tensor-class)
-	 (setf (symbol-plist ',tensor-class) hst)))))
+(defgeneric (setf store-ref) (value tensor idx)
+  (:method (value (tensor standard-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod (setf store-ref) (value (tensor ,clname) idx)
+	  (t/store-set ,clname value (store tensor) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (setf (store-ref tensor idx) value)))
 
 ;;
 (defun tensor-typep (tensor subscripts)
@@ -454,17 +328,17 @@
 
 (definline matrix-p (ten)
   (declare (type standard-tensor ten))
-  (= (slot-value ten 'rank) 2))
+  (= (rank ten) 2))
 
 (definline vector-p (ten)
   (declare (type standard-tensor ten))
-  (= (slot-value ten 'rank) 1))
+  (= (rank ten) 1))
 
 (definline square-p (tensor)
   (let-typed ((dims (dimensions tensor) :type index-store-vector))
     (lvec-foldr #'(lambda (a b) (if (eq a b) a nil)) dims)))
 
-;;---------------------------------------------------------------;;
+;;
 (defun sub-tensor~ (tensor subscripts &optional (preserve-rank nil))
   "
   Syntax
@@ -542,13 +416,10 @@
 		 (when (/= start 0)
 		   (incf nhd (the index-type (* start (aref stds i)))))))
 	 :finally (return
-		    (if (= nrank 0) (tensor-store-ref tensor nhd)
-			(make-instance (cond
-					 ((or preserve-rank (> nrank 2)) (class-of tensor))
-					 ((= nrank 2) (get (class-name (class-of tensor)) :matrix))
-					 ((= nrank 1) (get (class-name (class-of tensor)) :vector)))
+		    (if (= nrank 0) (store-ref tensor nhd)
+			(make-instance (class-of tensor)
 				       :head nhd
 				       :dimensions (prune-index-vector! ndims nrank)
 				       :strides (prune-index-vector! nstds nrank)
-				       :store (store tensor) :store-size (store-size tensor)
+				       :store (store tensor)
 				       :parent-tensor tensor)))))))

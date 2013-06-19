@@ -63,15 +63,18 @@
    #:tensor-dimension-mismatch
    #:tensor-store-not-consecutive
    #:tensor-method-does-not-exist
+   #:tensor-abstract-class
 ))
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:matlisp-conditions)
   (:export #:ensure-list #:id
 	   #:vectorify #:copy-n
-	   #:zip #:zip-eq
+	   #:ensure-args #:repsym #:findsym #:find-tag
+	   #:zip #:zip-eq #:zipsym
+	   #:list-eq #:setadd #:setrem
 	   #:cut-cons-chain!
-	   #:slot-values 
+	   #:slot-values #:remmeth
 	   #:recursive-append #:unquote-args #:flatten
 	   #:format-to-string #:string+
 	   #:linear-array-type
@@ -88,6 +91,11 @@
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
+
+
+(defpackage "MATLISP-TEMPLATE"
+  (:use #:common-lisp #:matlisp-utilities)
+  (:export #:deft/generic #:deft/method #:remt/method))
 
 ;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
@@ -162,7 +170,7 @@
 
 (defpackage "MATLISP"
   (:use #:common-lisp
-	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi
+	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
   (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor

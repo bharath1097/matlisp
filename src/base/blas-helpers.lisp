@@ -38,7 +38,7 @@
 		(return nil))
 	  :finally (return (list (aref sort-std-a 0) (aref sort-std-b 0))))))))
 
-(defmemo consecutive-store-p (tensor)
+(definline consecutive-store-p (tensor)
   (declare (type standard-tensor tensor))
   (mlet* (((sort-std std-perm) (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<))
 	   :type (index-store-vector pindex-store-vector))
@@ -90,3 +90,7 @@
 
 (defun make-stride (dims)
   (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
+
+(definline call-fortran? (x lb)
+  (declare (type standard-tensor x))
+  (> (lvec-max (the index-store-vector (dimensions x))) lb))

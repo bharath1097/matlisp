@@ -36,7 +36,7 @@
 	     (cond
 	       ((null body)
 		(values nil ret))
-	       ((eq (car body) 'with)
+	       ((member (car body) '(with :with))
 		(multiple-value-bind (indic decl) (parse-with (cadr body))
 		  (setf (getf ret indic) decl))
 		(parse-code (cddr body) ret))
@@ -45,12 +45,12 @@
 	       ((eq (car body) 'finally)
 		(setf (getf ret :finally) (second body))
 		(parse-code (cddr body) ret))
-	       ((eq (car body) 'do)
+	       ((member (car body) '(do :do))
 		(values (cadr body) ret))
 	       (t (error 'unknown-token :token (car body) :message "Error in macro: mod-dotimes -> parse-code.~%"))))
 	   (parse-with (code)
 	     (cond
-	       ((eq (car code) 'linear-sums)
+	       ((member (car code) '(linear-sums :linear-sums))
 		(values :linear-sums
 			(loop for decl in (cdr code)
 			   collect (destructuring-bind (offst strds &optional (init 0)) decl
@@ -58,7 +58,7 @@
 					   :offset-init init
 					   :stride-sym (gensym (string+ (symbol-name offst) "-stride"))
 					   :stride-expr strds)))))
-	       ((and (eq (car code) 'loop-order)
+	       ((and (member (car code) '(loop-order :loop-order))
 		     (member (cadr code) '(:row-major :col-major)))
 		(values :loop-order (second code)))
 	       ;;Useless without a finally clause

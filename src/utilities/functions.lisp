@@ -23,6 +23,33 @@
 	  :do (setf (aref ret i) ele)
 	  :finally (return ret))))))
 
+(defun zipsym (lst)
+  (zip (loop :repeat (length lst)
+	  :collect (gensym))
+       lst))
+
+(defun list-eq (a b &optional (test #'eq))
+  (if (or (atom a) (atom b)) (eq a b)
+      (and (funcall test (car a) (car b)) (list-eq (cdr a) (cdr b) test))))
+
+(defun remmeth (func spls &optional quals)
+  (let ((meth (find-method func quals (mapcar #'(lambda (x) (if (consp x) x (find-class x))) spls) nil)))
+    (when meth
+      (remove-method func meth)
+      meth)))
+      
+(defun setadd (lst a &optional (test #'eq))
+  (if (null lst) (list a)
+      (if (funcall test (car lst) a)
+	  (cons a (cdr lst))
+	  (cons (car lst) (setadd (cdr lst) a test)))))
+
+(defun setrem (lst a &optional (test #'eq))
+  (unless (null lst)
+    (if (funcall test (car lst) a)
+	(cdr lst)
+	(cons (car lst) (setrem (cdr lst) a test)))))
+
 (declaim (inline copy-n))
 (defun copy-n (vec lst n)
   (declare (type vector vec)
@@ -32,6 +59,28 @@
      :for vlst := lst :then (cdr vlst)
      :do (setf (car vlst) (aref vec i)))
   lst)
+
+(defun find-tag (lst tag)
+  (let ((car (car lst)))
+    (if (atom car)
+	(if (or (null car) (eq car tag))
+	    (cadr lst)
+	    (find-tag (cddr lst) tag))
+	(or (find-tag car tag) (find-tag (cdr lst) tag)))))
+
+(defun ensure-args (args)
+  (if (null args) t
+      (and (symbolp (car args)) (ensure-args (cdr args)))))
+
+(defun repsym (lst sym rep)
+  (if (atom lst) lst
+      (if (and (symbolp (car lst)) (eq (car lst) sym))
+	  (cons rep (repsym (cdr lst) sym rep))
+	  (cons (repsym (car lst) sym rep) (repsym (cdr lst) sym rep)))))
+
+(defun findsym (lst sym)
+  (if (atom lst) (eq lst sym)
+      (or (findsym (car lst) sym) (findsym (cdr lst) sym))))
 
 (declaim (inline slot-values))
 (defun slot-values (obj slots)

@@ -7,7 +7,7 @@
 ;;code (global variables are only bad if you overwrite them :)
 
 ;;Default ordering of strides
-(defparameter *default-stride-ordering* :row-major
+(defparameter *default-stride-ordering* :col-major
   "
   Determines whether strides are row or column major by default.
   Doing:

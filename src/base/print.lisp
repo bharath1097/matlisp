@@ -59,7 +59,7 @@ of a matrix (default 0)
 		       (dotimes (j (aref dims (- rank 1)))
 			 (if (or (eq *print-max-len* t) (< j *print-max-len*))
 			     (progn
-			       (print-element tensor (tensor-ref tensor (append subs `(,i ,j))) stream)
+			       (print-element tensor (ref tensor (append subs `(,i ,j))) stream)
 			       (format stream "~,4T"))
 			     (progn
 			       (format stream "...")
@@ -92,7 +92,7 @@ of a matrix (default 0)
 	   (dotimes (i (aref dims 0))
 	     (if (or (eq *print-max-len* t) (< i *print-max-len*))
 		 (progn
-		   (print-element tensor (tensor-ref tensor `(,i)) stream)
+		   (print-element tensor (ref tensor i) stream)
 		   (format stream "~,4T"))
 		 (progn
 		   (format stream "...")
