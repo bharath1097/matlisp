@@ -64,7 +64,7 @@
       `(eval-when (:compile-toplevel :load-toplevel :execute)
 	 (setf (gethash ',name *template-table*) (list :lambda-list (list ',disp ',args) :predicate ,predicate :sorter ,(or sorter predicate) :methods nil))
 	 (defmacro ,name (&whole ,warg-sym ,disp-arg ,@args)
-	   (declare (ignore ,@(remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args)))
+	   (declare (ignore ,@(remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args) ,@(when (consp disp) disp)))
 	   (let* ((,pred-sym (preprocess-t/dispatch ',name ,disp-far))
 		  (,meth-sym (compute-t/dispatch ',name ,pred-sym)))
 	     (apply ,meth-sym (cons ,pred-sym (cddr ,warg-sym)))))))))

@@ -50,7 +50,7 @@
       (compile-and-eval
        `(defmethod fconj ((x ,clname))
 	  (t/fc ,clname x)))
-      (fconj x))))
+      (fc x))))
 
 (deft/generic (t/f= #'subtypep) ty (&rest nums))
 (deft/method t/f= (ty number) (&rest nums)

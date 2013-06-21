@@ -203,6 +203,11 @@
 		 symlist)
      ,@body))
 
+(defmacro using-gensyms ((decl (&rest syms)) &rest body)
+  `(let ((,decl (zipsym (list ,@syms))))
+     (destructuring-bind (,@syms) (mapcar #'car ,decl)
+       ,@body)))
+
 (defmacro nconsc (var &rest args)
   "
   Macro to do setf and nconc for destructive list updates. If @arg{var}

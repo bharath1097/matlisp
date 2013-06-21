@@ -84,7 +84,7 @@
 	   #:lvec->list #:lvec->list!
 	   #:compile-and-eval
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec #:using-gensyms
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant
 	   #:macrofy #:looped-mapcar #:defun-compiler-macro
