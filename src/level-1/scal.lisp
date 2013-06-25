@@ -25,8 +25,50 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (in-package #:matlisp)
+
+(deft/generic (t/blas-scal-func #'subtypep) sym ())
+(deft/method t/blas-scal-func (sym real-tensor) ()
+  'descal)
+
+(deft/method t/blas-scal-func (sym complex-tensor) ()
+  'zescal)
+;;
+(deft/generic (t/blas-scal! #'subtypep) sym (sz alpha x st-x))
+
+(deft/generic (t/blas-axpy! #'subtypep) sym (a x st-x y st-y))
+(deft/method t/blas-axpy! (sym blas-numeric-tensor) (a x st-x y st-y)
+  (let ((apy? (null x)))
+    (using-gensyms (decl (a x y))
+      `(let (,@decl)
+	 (declare (type ,sym ,@(unless apy? `(,x)) ,y)
+		  ,@(when apy? `((ignore ,x))))
+	 (let ((sto-x ,(if apy? `(t/store-allocator ,sym 1) `(store ,x)))
+	       (st-x ,(if apy? 0 st-x)))
+	   (declare (type ,(store-type sym) sto-x)
+		    (type index-type st-x))
+	   ,@(when apy?
+		   `((t/store-set real-tensor (t/fid* ,(field-type sym)) sto-x 0)))
+	   (,(macroexpand-1 `(t/blas-axpy-func ,sym))
+	     (the index-type (size ,y))
+	     (the ,(field-type sym) ,a)
+	     sto-x st-x
+	     (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
+	     ,(if apy? 0 `(head ,x)) (head ,y))
+	   ,y)))))
+
+(deft/method t/blas-scal! (sym blas-numeric-tensor) (sz a x st-x)
+  (using-gensyms (decl (x))
+    `(let (,@decl)
+       (declare (type ,sym ,x))
+       (,(macroexpand-1 `(t/blas-scal-func ,sym))
+	 (the index-type ,sz)
+	 (the ,(field-type sym) ,a)
+	 (the ,(store-type sym) (store ,x)) (the index-type ,st-x)
+	 (head ,x))
+       ,x)))
+
+
 
 (defmacro generate-typed-scal! (func (tensor-class fortran-func fortran-lb))
   (let* ((opt (get-tensor-class-optimization-hashtable tensor-class)))
@@ -190,10 +232,6 @@
     (real-tensor dediv *real-l1-fcall-lb*))
 
 ;;Complex
-(definline zordscal (nele alpha x incx &optional hd-x)
-  (if (zerop (imagpart alpha))
-      (zdscal nele (realpart alpha) x incx hd-x)
-      (zscal nele alpha x incx hd-x)))
 
 (generate-typed-num-scal! complex-typed-num-scal!
     (complex-tensor zordscal *complex-l1-fcall-lb*))

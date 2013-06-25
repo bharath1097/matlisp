@@ -139,16 +139,15 @@
 				:depends-on ("maker"))
 			 (:file "dot"
 				:depends-on ("maker"))
-			 (:file "swap")				
+			 (:file "swap")
+			 (:file "axpy"
+				:depends-on ("maker" "copy"))
 			 #+nil
-			 (
-		
+			 (		
 			 (:file "realimag"
 				:depends-on ("copy"))
 			 (:file "scal"
 				:depends-on ("copy" "tensor-maker" "realimag"))
-			 (:file "axpy"
-				:depends-on ("copy" "scal"))
 			 (:file "trans"
 				:depends-on ("scal" "copy")))))
 

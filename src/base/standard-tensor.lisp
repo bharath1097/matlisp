@@ -48,7 +48,7 @@
   ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    ;;
-   (parent-tensor :reader parent-tensor :initarg :parent-tensor :type standard-tensor
+   (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type standard-tensor
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
    ;;
    (head :initarg :head :initform 0 :reader head :type index-type
@@ -80,6 +80,11 @@
   MAKE-LOAD-FORM allows us to determine a load time value for
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
+
+;;
+(definline coerce-tensor (x cly)
+  (declare (type standard-tensor x))	  
+  (copy! x (zeros (the index-store-vector (dimensions x)) cly)))
 
 ;;These should ideally be memoised (or not)
 (definline rank (tensor)
@@ -417,9 +422,10 @@
 		   (incf nhd (the index-type (* start (aref stds i)))))))
 	 :finally (return
 		    (if (= nrank 0) (store-ref tensor nhd)
-			(make-instance (class-of tensor)
-				       :head nhd
-				       :dimensions (prune-index-vector! ndims nrank)
-				       :strides (prune-index-vector! nstds nrank)
-				       :store (store tensor)
-				       :parent-tensor tensor)))))))
+			(let ((*check-after-initializing?* nil))
+			  (make-instance (class-of tensor)
+					 :head nhd
+					 :dimensions (prune-index-vector! ndims nrank)
+					 :strides (prune-index-vector! nstds nrank)
+					 :store (store tensor)
+					 :parent-tensor tensor))))))))

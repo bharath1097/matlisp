@@ -33,41 +33,37 @@
 (deft/method t/blas-swap-func (sym complex-tensor) ()
   'zswap)
 ;;
-(deft/generic (t/blas-swap! #'subtypep) sym (sz x st-x y st-y))
-(deft/method t/blas-swap! (sym blas-numeric-tensor) (sz x st-x y st-y)
-  (let* ((decl (zipsym (list x y)))
-	 (args (mapcar #'car decl))
-	 (func (macroexpand-1 `(t/blas-swap-func ,sym))))
-    (let ((x (first args)) (y (second args)))
-      `(let (,@decl)
-	 (declare (type ,sym ,@args))
-	 (,func
-	  (the index-type ,sz)
-	  (the ,(store-type sym) (store ,x)) (the index-type ,st-x)
-	  (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-	  (head ,x) (head ,y))
-	 ,y))))
+(deft/generic (t/blas-swap! #'subtypep) sym (x st-x y st-y))
+(deft/method t/blas-swap! (sym blas-numeric-tensor) (x st-x y st-y)
+  (using-gensyms (decl (x y))
+    `(let (,@decl)
+       (declare (type ,sym ,x ,y))
+       (,(macroexpand-1 `(t/blas-swap-func ,sym))
+	 (the index-type (size ,y))
+	 (the ,(store-type sym) (store ,x)) (the index-type ,st-x)
+	 (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
+	 (head ,x) (head ,y))
+       ,y)))
   
 (deft/generic (t/swap! #'subtypep) sym (x y))
 (deft/method t/swap! (sym standard-tensor) (x y)
-  (let* ((decl (zipsym (list x y)))
-	 (args (mapcar #'car decl)))
-    (let ((x (first args)) (y (second args)))
-      `(let* (,@decl
-	      (sto-x (store ,x))
-	      (sto-y (store ,y)))
-	 (declare (type ,sym ,@args)
+  (using-gensyms (decl (x y))
+    `(let (,@decl
+	   (sto-x (store ,x))
+	   (sto-y (store ,y)))
+	 (declare (type ,sym ,x ,y)
 		  (type ,(store-type sym) sto-x sto-y))
-	 (mod-dotimes (idx (dimensions ,x))
-	   :with (linear-sums
-		  (of-x (strides ,x) (head ,x))
-		  (of-y (strides ,y) (head ,y)))
-	   :do (let-typed ((y-val (t/store-ref ,sym sto-y of-y) :type ,(field-type sym)))
-		 (t/store-set ,sym
-			      (t/store-ref ,sym sto-x of-x) sto-y of-y)
-		 (t/store-set ,sym
-			      y-val sto-x of-x)))
-	 ,y))))
+	 (very-quickly
+	   (mod-dotimes (idx (dimensions ,x))
+	     :with (linear-sums
+		    (of-x (strides ,x) (head ,x))
+		    (of-y (strides ,y) (head ,y)))
+	     :do (let-typed ((y-val (t/store-ref ,sym sto-y of-y) :type ,(field-type sym)))
+			    (t/store-set ,sym
+					 (t/store-ref ,sym sto-x of-x) sto-y of-y)
+			    (t/store-set ,sym
+					 y-val sto-x of-x)))
+	   ,y))))
 ;;---------------------------------------------------------------;;
 (defmethod swap! :before ((x standard-tensor) (y standard-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
@@ -86,8 +82,8 @@
 	      ,(recursive-append
 		(when (subtypep clx 'blas-numeric-tensor)
 		  `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		     (let ((sz (size x))) (t/blas-swap! ,clx sz x (first strd) y (second strd)))))
-		`(very-quickly (t/swap! ,clx x y)))
+		     (t/blas-swap! ,clx x (first strd) y (second strd))))
+		`(t/swap! ,clx x y))
 	      y))
 	  (swap! x y))
 	;;It is silly to swap a real vector with a complex one, no?

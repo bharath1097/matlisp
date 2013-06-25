@@ -32,76 +32,53 @@
   'daxpy)
 (deft/method t/blas-axpy-func (sym complex-tensor) ()
   'zaxpy)
-;;
-    
-(deft/generic (t/blas-axpy! #'subtypep) sym (sz a x st-x y st-y))
-(deft/method t/blas-axpy! (sym blas-numeric-tensor) (sz a x st-x y st-y)
-  (using-gensyms (decl (x y))
-    `(let (,@decl)
-       (declare (type ,sym ,x ,y))
-       (,(macroexpand-1 `(t/blas-axpy-func ,sym))
-	 (the index-type ,sz)
-	 (the ,(field-type sym) ,a)
-	 (the ,(store-type sym) (store ,x)) (the index-type ,st-x)
-	 (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-	 (head ,x) (head ,y))
-       ,y)))
-
-(deft/generic (t/blas-apy! #'subtypep) sym (sz a y st-y))
-(deft/method t/blas-apy! (sym blas-numeric-tensor) (sz a y st-y)
-  (using-gensyms (decl (a y))
-   `(let (,@decl)
-      (declare (type ,sym ,y)
-	       (type ,(field-type sym) ,a))
-	 (let ((sto-a (t/store-allocator ,sym 1)))
-	   (declare (type ,(store-type sym) sto-a))
-	   (t/store-set ,sym ,a sto-a 0)
+;;    
+(deft/generic (t/blas-axpy! #'subtypep) sym (a x st-x y st-y))
+(deft/method t/blas-axpy! (sym blas-numeric-tensor) (a x st-x y st-y)
+  (let ((apy? (null x)))
+    (using-gensyms (decl (a x y))
+      `(let (,@decl)
+	 (declare (type ,sym ,@(unless apy? `(,x)) ,y)
+		  ,@(when apy? `((ignore ,x))))
+	 (let ((sto-x ,(if apy? `(t/store-allocator ,sym 1) `(store ,x)))
+	       (st-x ,(if apy? 0 st-x)))
+	   (declare (type ,(store-type sym) sto-x)
+		    (type index-type st-x))
+	   ,@(when apy?
+		   `((t/store-set real-tensor (t/fid* ,(field-type sym)) sto-x 0)))
 	   (,(macroexpand-1 `(t/blas-axpy-func ,sym))
-	     (the index-type ,sz)
-	     (t/fid* ,(field-type sym))
-	     (the ,(store-type sym) sto-a) 0
+	     (the index-type (size ,y))
+	     (the ,(field-type sym) ,a)
+	     sto-x st-x
 	     (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-	     0 (head ,y)))
-	 ,y)))
+	     ,(if apy? 0 `(head ,x)) (head ,y))
+	   ,y)))))
 
 (deft/generic (t/axpy! #'subtypep) sym (a x y))
 (deft/method t/axpy! (sym standard-tensor) (a x y)
-  (using-gensyms (decl (a x y))
-    `(let (,@decl)
-       (declare (type ,sym ,x ,y)
-		(type ,(field-type sym) ,a))
-       (let ((sto-x (store ,x))
+  (let ((apy? (null x)))
+    (using-gensyms (decl (a x y))
+     `(let (,@decl)
+	(declare (type ,sym ,@(unless apy? `(,x)) ,y)
+		 (type ,(field-type sym) ,a)
+		 ,@(when apy? `((ignore ,x))))
+       (let (,@(unless apy? `((sto-x (store ,x))))
 	     (sto-y (store ,y)))
-	 (declare (type ,(store-type sym) sto-x sto-y))
-	 (mod-dotimes (idx (dimensions ,x))
-	   :with (linear-sums
-		  (of-x (strides ,x) (head ,x))
-		  (of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,sym (t/f+ ,(field-type sym)
-				       (t/f* ,(field-type sym)
-					     ,a (t/store-ref ,sym sto-x of-x))
-				       (t/store-ref ,sym sto-y of-y))
-			    sto-y of-y)))
-       ,y)))
-
-(deft/generic (t/apy! #'subtypep) sym (a y))
-(deft/method t/apy! (sym standard-tensor) (a y)
-  (using-gensyms (decl (a y))
-    `(let (,@decl)
-       (declare (type ,sym ,y)
-		(type ,(field-type sym) ,a))
-       (let ((sto-y (store ,y)))
-	 (declare (type ,(store-type sym) sto-y))
-	 (mod-dotimes (idx (dimensions ,y))
-	   :with (linear-sums
-		  (of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,sym (t/f+ ,(field-type sym)
-				       ,a
-				       (t/store-ref ,sym sto-y of-y))
-			    sto-y of-y)))
-       ,y)))
+	 (declare (type ,(store-type sym) ,@(unless apy? `(sto-x)) sto-y))
+	 (very-quickly
+	   (mod-dotimes (idx (dimensions ,y))
+	     :with (linear-sums
+		    ,@(unless apy? `((of-x (strides ,x) (head ,x))))
+		    (of-y (strides ,y) (head ,y)))
+	     :do (t/store-set ,sym (t/f+ ,(field-type sym)
+					 ,@(if apy?
+					       `(,a)
+					       `((t/f* ,(field-type sym)
+						       ,a (t/store-ref ,sym sto-x of-x))))
+					 (t/store-ref ,sym sto-y of-y))
+			      sto-y of-y)))
+	 ,y)))))
 ;;---------------------------------------------------------------;;
-
 (defgeneric axpy! (alpha x y)
   (:documentation
    " 
@@ -122,35 +99,47 @@
 ")
   (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
     (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
-	    'tensor-dimension-mismatch))
-  (:method ((alpha number) (x complex-tensor) (y real-tensor))
-    (error 'coercion-error :from 'complex-tensor :to 'real-tensor)))
+	    'tensor-dimension-mismatch)))
 
-(defmethod axpy! ((alpha number) (x (eql nil)) (y real-tensor))
-  (real-typed-num-axpy! (coerce-real alpha) y))
+(defmethod axpy! (alpha (x standard-tensor) (y standard-tensor))
+  (let ((clx (class-name (class-of x)))
+	(cly (class-name (class-of y))))
+    (assert (and (member clx *tensor-type-leaves*)
+		 (member cly *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list clx cly))
+    (cond
+      ((eq clx cly)
+       (compile-and-eval
+	`(defmethod axpy! ((alpha t) (x ,clx) (y ,cly))
+	   (let ((alpha (t/coerce ,(field-type clx) alpha)))
+	     (declare (type ,(field-type clx) alpha))
+	     ,(recursive-append
+	       (when (subtypep clx 'blas-numeric-tensor)
+		 `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
+		    (t/blas-axpy! ,clx alpha x (first strd) y (second strd))))
+	       `(t/axpy! ,clx alpha x y))
+	     y)))
+       (axpy! alpha x y))
+      ((coerceable? clx cly)
+       (axpy! alpha (coerce-tensor x cly) y))
+      (t
+       (error "Don't know how to apply axpy! to classes ~a, ~a." clx cly)))))
 
-(defmethod axpy! ((alpha number) (x (eql nil)) (y complex-tensor))
-  (complex-typed-num-axpy! (coerce-complex alpha) y))
-
-(defmethod axpy! ((alpha number) (x real-tensor) (y real-tensor))
-  (real-typed-axpy! (coerce-real alpha) x y))
-
-(defmethod axpy! ((alpha number) (x real-tensor) (y complex-tensor))
-  ;;Weird, shouldn't SBCL know this already ?
-  (declare (type complex-tensor y))
-  (let ((tmp (tensor-realpart~ y)))
-    (declare (type real-tensor tmp))
-    (etypecase alpha
-      (cl:real (real-typed-axpy! (coerce-real alpha) x tmp))
-      (cl:complex
-       (real-typed-axpy! (coerce-real (realpart alpha)) x tmp)
-       ;;Move tensor to the imagpart.
-       (incf (head tmp))
-       (real-typed-axpy! (coerce-real (realpart alpha)) x tmp))))
-  y)
-
-(defmethod axpy! ((alpha number) (x complex-tensor) (y complex-tensor))
-  (complex-typed-axpy! (coerce-complex alpha) x y))
+(defmethod axpy! (alpha (x (eql nil)) (y standard-tensor))
+  (let ((cly (class-name (class-of y))))
+    (assert (member cly *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class cly)
+    (compile-and-eval
+     `(defmethod axpy! ((alpha t) (x (eql nil)) (y ,cly))
+	(let ((alpha (t/coerce ,(field-type cly) alpha)))
+	  (declare (type ,(field-type cly) alpha))
+	  ,(recursive-append
+	    (when (subtypep cly 'blas-numeric-tensor)
+	      `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
+		 (t/blas-axpy! ,cly alpha nil nil y strd)))
+	    `(t/axpy! ,cly alpha nil y))
+	  y)))
+    (axpy! alpha nil y)))
 
 ;;
 (defgeneric axpy (alpha x y)
@@ -174,37 +163,5 @@
 
  X,Y must have the same dimensions.
 ")
-  (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
-    (unless (lvec-eq (dimensions x) (dimensions y) #'=)
-      (error 'tensor-dimension-mismatch))))
-
-(defmethod axpy ((alpha number) (x real-tensor) (y real-tensor))
-  (let ((ret (if (complexp alpha)
-		 (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))
-		 (copy y))))
-    (axpy! alpha x ret)))
-
-(defmethod axpy ((alpha number) (x complex-tensor) (y real-tensor))
-  (let ((ret (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))))
-    (axpy! alpha y ret)))
-
-(defmethod axpy ((alpha number) (x real-tensor) (y complex-tensor))
-  (let ((ret (copy y)))
-    (axpy! alpha x ret)))
-
-(defmethod axpy ((alpha number) (x complex-tensor) (y complex-tensor))
-  (let ((ret (copy y)))
-    (axpy! alpha x ret)))
-
-(defmethod axpy ((alpha number) (x (eql nil)) (y complex-tensor))
-  (let ((ret (copy y)))
-    (axpy! alpha nil ret)))
-
-(defmethod axpy ((alpha number) (x (eql nil)) (y real-tensor))
-  (let ((ret (if (complexp alpha)
-		 (copy! y (apply #'make-complex-tensor (lvec->list (dimensions y))))
-		 (copy y))))
-    (axpy! alpha nil ret)))
-
-(defmethod axpy ((alpha number) (x standard-tensor) (y (eql nil)))
-  (scal alpha x))
+  (:method (alpha x (y standard-tensor))
+    (axpy! alpha x (copy y))))

@@ -22,10 +22,11 @@
 
 (definline zeros (dims &optional (type 'real-tensor))
   (let ((*check-after-initializing?* nil))
-    (etypecase dims
-      (vector
-       (zeros-generic (lvec->list dims) type))
-      (cons
-       (zeros-generic dims type))
-      (fixnum
-       (zeros-generic (list dims) type)))))
+    (let ((type (etypecase type (standard-class (class-name type)) (symbol type))))
+      (etypecase dims
+	(vector
+	 (zeros-generic (lvec->list dims) type))
+	(cons
+	 (zeros-generic dims type))
+	(fixnum
+	 (zeros-generic (list dims) type))))))
