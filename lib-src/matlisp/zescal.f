@@ -1,7 +1,7 @@
       subroutine zescal (n,dx,incx,dy,incy)
       double complex dx(*),dy(*)
       integer incx,incy,n
-*     Multiplies the vector X and Y element-wise.
+*     Multiplies the vector Y by X element-wise.
 *
       integer i,ix,iy
 *     ..
@@ -16,7 +16,7 @@
       if (incx.lt.0) ix = (-n+1)*incx + 1
       if (incy.lt.0) iy = (-n+1)*incy + 1
       do 10 i = 1,n
-         dy(iy) = dx(ix) * dy(iy)
+         dy(iy) = dy(iy) * dx(ix)
          ix = ix + incx
          iy = iy + incy
    10 continue

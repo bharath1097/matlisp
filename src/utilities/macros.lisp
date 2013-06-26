@@ -204,7 +204,7 @@
      ,@body))
 
 (defmacro using-gensyms ((decl (&rest syms)) &rest body)
-  `(let ((,decl (zipsym (list ,@syms))))
+  `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))
      (destructuring-bind (,@syms) (mapcar #'car ,decl)
        ,@body)))
 

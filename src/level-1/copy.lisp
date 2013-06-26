@@ -37,82 +37,86 @@
 (deft/method t/blas-copy! (sym blas-numeric-tensor) (x st-x y st-y)
   (let ((ncp? (null st-x)))
     (using-gensyms (decl (x y))
-      `(let (,@decl)
-	 (declare (type ,sym ,@(unless ncp? `(,x)) ,y)
-		  ,@(when ncp? `((type ,(field-type sym) ,x))))
-	 (let ((sto-x ,(if ncp? `(t/store-allocator ,sym 1) `(store ,x)))
-	       (st-x ,(if ncp? 0 st-x)))
-	   (declare (type ,(store-type sym) sto-x)
-		    (type index-type st-x))
-	   ,@(when ncp?
-		   `((t/store-set real-tensor ,x sto-x 0)))
+      (with-gensyms (sto-x stp-x)
+	`(let (,@decl)
+	   (declare (type ,sym ,@(unless ncp? `(,x)) ,y)
+		    ,@(when ncp? `((type ,(field-type sym) ,x))))
+	   (let ((,sto-x ,(if ncp? `(t/store-allocator ,sym 1) `(store ,x)))
+		 (,stp-x ,(if ncp? 0 st-x)))
+	     (declare (type ,(store-type sym) ,sto-x)
+		      (type index-type ,stp-x))
+	     ,@(when ncp?
+		     `((t/store-set ,sym ,x ,sto-x 0)))
 	   (,(macroexpand-1 `(t/blas-copy-func ,sym))
 	     (the index-type (size ,y))
-	     (the ,(store-type sym) sto-x) (the index-type st-x)
+	     (the ,(store-type sym) ,sto-x) (the index-type ,stp-x)
 	     (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
 	     ,(if ncp? 0 `(head ,x)) (head ,y)))
-	 ,y))))
-
+	   ,y)))))
+  
 ;;
 (deft/generic (t/copy! #'(lambda (a b) (strict-compare (list #'subtypep #'subtypep) a b))) (clx cly) (x y))
 (deft/method t/copy! ((clx standard-tensor) (cly standard-tensor)) (x y)
   (using-gensyms (decl (x y))
-    `(let* (,@decl
-	    (sto-x (store ,x))
-	    (sto-y (store ,y)))
-       (declare (type ,clx ,x)
-		(type ,cly ,y)
-		(type ,(store-type clx) sto-x)
-		(type ,(store-type cly) sto-y))
-       (very-quickly
-	 (mod-dotimes (idx (dimensions ,x))
-	   :with (linear-sums
-		  (of-x (strides ,x) (head ,x))
-		  (of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly
-			    ,(recursive-append
-			      (unless (eq clx cly)
-				`(t/strict-coerce (,(field-type clx) ,(field-type cly)) ))
-			      `(t/store-ref ,clx sto-x of-x))
-			    sto-y of-y)))
-       ,y)))
+    (with-gensyms (sto-x sto-y of-x of-y idx)
+      `(let* (,@decl
+	      (,sto-x (store ,x))
+	      (,sto-y (store ,y)))
+	 (declare (type ,clx ,x)
+		  (type ,cly ,y)
+		  (type ,(store-type clx) ,sto-x)
+		  (type ,(store-type cly) ,sto-y))
+	 (very-quickly
+	   (mod-dotimes (,idx (dimensions ,x))
+	     :with (linear-sums
+		    (,of-x (strides ,x) (head ,x))
+		    (,of-y (strides ,y) (head ,y)))
+	     :do (t/store-set ,cly
+			      ,(recursive-append
+				(unless (eq clx cly)
+				  `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ))
+				`(t/store-ref ,clx ,sto-x ,of-x))
+			      ,sto-y ,of-y)))
+	 ,y))))
 
 ;;Coercion messes up optimization in SBCL, so we specialize.
 (deft/method t/copy! ((clx real-numeric-tensor) (cly complex-numeric-tensor)) (x y)
   (using-gensyms (decl (x y))
-    `(let* (,@decl
-	    (sto-x (store ,x))
-	    (sto-y (store ,y)))
-       (declare (type ,clx ,x)
-		(type ,cly ,y)
-		(type ,(store-type clx) sto-x)
-		(type ,(store-type cly) sto-y))
-       (very-quickly
-	 (mod-dotimes (idx (dimensions ,x))
-	   :with (linear-sums
-		  (of-x (strides ,x) (head ,x))
-		  (of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly
-			    (the ,(field-type cly) (complex (t/coerce ,(store-element-type cly) (t/store-ref ,clx sto-x of-x)) (t/fid+ ,(store-element-type cly))))
-			    sto-y of-y)))
-       ,y)))
+    (with-gensyms (sto-x sto-y of-x of-y idx)
+      `(let* (,@decl
+	      (,sto-x (store ,x))
+	      (,sto-y (store ,y)))
+	 (declare (type ,clx ,x)
+		  (type ,cly ,y)
+		  (type ,(store-type clx) ,sto-x)
+		  (type ,(store-type cly) ,sto-y))
+	 (very-quickly
+	   (mod-dotimes (,idx (dimensions ,x))
+	     :with (linear-sums
+		    (,of-x (strides ,x) (head ,x))
+		    (,of-y (strides ,y) (head ,y)))
+	     :do (t/store-set ,cly
+			      (the ,(field-type cly) (complex (t/coerce ,(store-element-type cly) (t/store-ref ,clx ,sto-x ,of-x)) (t/fid+ ,(store-element-type cly))))
+			      ,sto-y ,of-y)))
+	 ,y))))
 
 ;;
 (deft/method t/copy! ((clx t) (cly standard-tensor)) (x y)
   (using-gensyms (decl (x y))
-    `(let* (,@decl
-	    (sto-y (store ,y))
-	    (cx (t/coerce ,(field-type cly) ,x)))
-       (declare (type ,cly ,y)
-		(type ,(field-type cly) cx)
-		(type ,(store-type cly) sto-y))
-       ;;This should be safe
-       (very-quickly
-	 (mod-dotimes (idx (dimensions ,y))
-	   :with (linear-sums
-		  (of-y (strides ,y) (head ,y)))
-	   :do (t/store-set ,cly cx sto-y of-y)))
-       ,y)))
+    (with-gensyms (sto-y of-y idx cx)
+      `(let* (,@decl
+	      (,sto-y (store ,y))
+	      (,cx (t/coerce ,(field-type cly) ,x)))
+	 (declare (type ,cly ,y)
+		  (type ,(field-type cly) ,cx)
+		  (type ,(store-type cly) ,sto-y))
+	 ;;This should be safe
+	 (very-quickly
+	   (mod-dotimes (,idx (dimensions ,y))
+	     :with (linear-sums
+		    (,of-y (strides ,y) (head ,y)))
+	     :do (t/store-set ,cly ,cx ,sto-y ,of-y)))
+	 ,y))))
 
 ;;
 (defmethod copy! :before ((x standard-tensor) (y standard-tensor))
@@ -133,7 +137,7 @@
 	     (when (subtypep clx 'blas-numeric-tensor)
 	       `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
 		  (t/blas-copy! ,clx x (first strd) y (second strd))))
-	     `(very-quickly (t/copy! (,clx ,cly) x y)))
+	     `(t/copy! (,clx ,cly) x y))
 	   y)))
       ((coerceable? clx cly)
        (compile-and-eval
@@ -154,7 +158,7 @@
 	  (when (subtypep cly 'blas-numeric-tensor)
 	    `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
 	       (t/blas-copy! ,cly x nil y strd)))
-	  `(very-quickly (t/copy! (t ,cly) x y)))))
+	  `(t/copy! (t ,cly) x y))))
     (copy! x y)))
 
 ;;Generic function defined in src;base;generic-copy.lisp

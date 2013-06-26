@@ -43,40 +43,36 @@
 "
   (etypecase tensor
     (real-tensor tensor)
-    (complex-tensor (make-instance (case (rank tensor)
-				     (2 'real-matrix)
-				     (1 'real-vector)
-				     (t 'real-tensor))
-				   :parent-tensor tensor :store (store tensor) :store-size (length (store tensor))
-				   :dimensions (dimensions tensor)
-				   :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (strides tensor))
-				   :head (the index-type (* 2 (head tensor)))))
+    (complex-tensor (let ((*check-after-initializing?* nil))
+		      (make-instance 'real-tensor
+				     :parent-tensor tensor :store (store tensor)
+				     :dimensions (dimensions tensor)
+				     :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+				   :head (the index-type (* 2 (head tensor))))))
     (number (realpart tensor))))
 
 (definline tensor-imagpart~ (tensor)
   "
   Syntax
   ======
-  (tensor-imagpart~ tensor)
+  (tensor-realpart~ tensor)
  
   Purpose
   =======
-  Returns a new tensor object which points to  the \"imaginary\" part of TENSOR.
+  Returns a new tensor object which points to  the real part of TENSOR.
   Store is shared with TENSOR.
 
-  If TENSOR is a scalar, returns its imaginary part.
+  If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
     (real-tensor tensor)
-    (complex-tensor (make-instance (case (rank tensor)
-				     (2 'real-matrix)
-				     (1 'real-vector)
-				     (t 'real-tensor))
-				   :parent-tensor tensor :store (store tensor) :store-size  (length (store tensor))
-				   :dimensions (dimensions tensor)
-				   :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (strides tensor))
-				   :head (the index-type (+ 1 (* 2 (head tensor))))))
-    (number (imagpart tensor))))
+    (complex-tensor (let ((*check-after-initializing?* nil))
+		      (make-instance 'real-tensor
+				     :parent-tensor tensor :store (store tensor)
+				     :dimensions (dimensions tensor)
+				     :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+				     :head (the index-type (1+ (* 2 (head tensor)))))))
+    (number (realpart tensor))))
 
 (definline tensor-realpart (tensor)
   "
