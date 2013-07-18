@@ -1,5 +1,93 @@
 (in-package #:matlisp)
 
+(deft/generic (t/blas-gemv-func #'subtypep) sym ())
+(deft/method t/blas-gemv-func (sym real-tensor) ()
+  'dgemv)
+(deft/method t/blas-gemv-func (sym complex-tensor) ()
+  'zgemv)
+;;
+(deft/generic (t/blas-gemv! #'subtypep) sym (alpha A lda x st-x beta y st-y transp))
+
+(deft/method t/blas-gemv! (sym blas-numeric-tensor) (alpha A lda x st-x beta y st-y transp)
+ (using-gensyms (decl (alpha A lda x st-x beta y st-y transp))
+   (with-gensyms (m n)
+     `(let* (,@decl
+	     (,m (aref (the index-store-vector (dimensions ,A)) 0))
+	     (,n (aref (the index-store-vector (dimensions ,A)) 1)))
+	(declare (type ,sym ,A ,x ,y)
+		 (type ,(field-type sym) ,alpha ,beta)
+		 (type index-type ,st-x ,st-y ,lda ,m ,n))
+	(when (cl:char= (char-upcase ,transp) #\T)
+	  (rotatef ,m ,n))
+	(,(macroexpand-1 `(t/blas-gemv-func ,sym))
+	  ,transp ,m ,n
+	  ,alpha
+	  (the ,(store-type sym) (store ,A)) ,lda
+	  (the ,(store-type sym) (store ,x)) ,st-x
+	  ,beta
+	  (the ,(store-type sym) (store ,y)) ,st-y
+	  (the index-type (head ,A)) (the index-type (head ,x)) (the index-type (head ,y)))
+	y))))
+
+;;
+(deft/generic (t/gemv! #'subtypep) sym (alpha A x beta y transp))
+
+(deft/method t/gemv! (sym standard-tensor) (alpha A x beta y transp))
+
+(let ((A (copy! #2a((2 1) (3 4)) (zeros '(2 2 ))))
+	       (x (copy! #(1 2) (zeros 2)))
+	       (y (copy! #(0 1) (zeros 2))))
+	   (t/blas-gemv! real-tensor 1d0 A 2 x 1 0d0 y 1 t))
+
+
+(deft/method t/blas-axpy! (sym blas-numeric-tensor) (a x st-x y st-y)
+  (let ((apy? (null x)))
+    (using-gensyms (decl (a x y))
+      (with-gensyms (sto-x stp-x)
+	`(let (,@decl)
+	   (declare (type ,sym ,@(unless apy? `(,x)) ,y)
+		    ,@(when apy? `((ignore ,x))))
+	   (let ((,sto-x ,(if apy? `(t/store-allocator ,sym 1) `(store ,x)))
+		 (,stp-x ,(if apy? 0 st-x)))
+	     (declare (type ,(store-type sym) ,sto-x)
+		      (type index-type ,stp-x))
+	     ,@(when apy?
+		     `((t/store-set ,sym (t/fid* ,(field-type sym)) ,sto-x 0)))
+	     (,(macroexpand-1 `(t/blas-axpy-func ,sym))
+	       (the index-type (size ,y))
+	       (the ,(field-type sym) ,a)
+	       ,sto-x ,stp-x
+	       (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
+	       ,(if apy? 0 `(head ,x)) (head ,y))
+	     ,y))))))
+
+(deft/generic (t/axpy! #'subtypep) sym (a x y))
+(deft/method t/axpy! (sym standard-tensor) (a x y)
+  (let ((apy? (null x)))
+    (using-gensyms (decl (a x y))
+      (with-gensyms (idx sto-x sto-y of-x of-y)
+	`(let (,@decl)
+	   (declare (type ,sym ,@(unless apy? `(,x)) ,y)
+		    (type ,(field-type sym) ,a)
+		    ,@(when apy? `((ignore ,x))))
+	   (let (,@(unless apy? `((,sto-x (store ,x))))
+		 (,sto-y (store ,y)))
+	     (declare (type ,(store-type sym) ,@(unless apy? `(,sto-x)) ,sto-y))
+	     (very-quickly
+	       (mod-dotimes (,idx (dimensions ,y))
+		 :with (linear-sums
+			,@(unless apy? `((,of-x (strides ,x) (head ,x))))
+			(,of-y (strides ,y) (head ,y)))
+		 :do (t/store-set ,sym (t/f+ ,(field-type sym)
+					     ,@(if apy?
+						   `(,a)
+						   `((t/f* ,(field-type sym)
+							   ,a (t/store-ref ,sym ,sto-x ,of-x))))
+					     (t/store-ref ,sym ,sto-y ,of-y))
+				  ,sto-y ,of-y)))
+	     ,y))))))
+
+
 (defmacro generate-typed-gemv! (func
 				(tensor-class blas-gemv-func
 				 fortran-call-lb))

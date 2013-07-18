@@ -201,8 +201,8 @@
                  have converged.
  
 "
-  (jobvl :string :input)
-  (jobvr :string :input)
+  (jobvl :character :input)
+  (jobvr :character :input)
   (n :integer :input)
   (a (* :double-float) :input-output)
   (lda :integer :input)
@@ -330,7 +330,7 @@
            < 0:  if INFO = -i, the i-th argument had an illegal value
 
 "
-  (trans :string :input)
+  (trans :character :input)
   (n :integer :input)
   (nhrs :integer :input)
   (a (* :double-float) :input)
@@ -394,7 +394,7 @@
            = 0:  successful exit
            < 0:  if INFO = -i, the i-th argument had an illegal value
 "
-  (trans :string :input)
+  (trans :character :input)
   (n :integer :input)
   (nhrs :integer :input)
   (a (* :complex-double-float) :input)
@@ -528,8 +528,8 @@
                  above for details.
  
 "
-  (jobu :string :input)
-  (jobvt :string :input)
+  (jobu :character :input)
+  (jobvt :character :input)
   (m :integer :input)
   (n :integer :input)
   (a (* :double-float) :input-output)
@@ -705,8 +705,8 @@
                  converged.
  
 "
-  (jobvl :string :input)
-  (jobvr :string :input)
+  (jobvl :character :input)
+  (jobvr :character :input)
   (n :integer :input)
   (a (* :complex-double-float) :input-output)
   (lda :integer :input)
@@ -906,8 +906,8 @@
                  above for details.
  
 "
-  (jobu :string :input)
-  (jobvt :string :input)
+  (jobu :character :input)
+  (jobvt :character :input)
   (m :integer :input)
   (n :integer :input)
   (a (* :complex-double-float) :input-output)
@@ -1653,7 +1653,7 @@
   =====================================================================
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer :input)
   (a (* :double-float) :input-output)
   (lda :integer :input)
@@ -1718,7 +1718,7 @@
   =====================================================================
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer :input)
   (nrhs :integer :input)
   (a (* :double-float) :input)
@@ -1792,7 +1792,7 @@
   =====================================================================
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer :input)
   (a (* :complex-double-float) :input-output)
   (lda :integer :input)
@@ -1857,7 +1857,7 @@
   =====================================================================
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer :input)
   (nrhs :integer :input)
   (a (* :complex-double-float) :input)

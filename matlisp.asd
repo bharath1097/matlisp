@@ -128,7 +128,6 @@
 	    :components ((:file "numeric")
 			 #+maxima
 			 (:file "symbolic-tensor")
-			 #+nil
 			 (:file "matrix"
 				:depends-on ("numeric"))))
    (:module "matlisp-level-1"
@@ -150,7 +149,6 @@
 			 (
 			 (:file "trans"
 				:depends-on ("scal" "copy")))))
-
    #+nil
    (:module "matlisp-level-2"
 	    :pathname "level-2"

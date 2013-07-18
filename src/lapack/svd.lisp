@@ -140,8 +140,6 @@
 	 (work (allocate-real-store lwork))
 	 (a (copy a))
 	 (xxx (allocate-real-store 1)))
-
-
     (case job
       (:a
        (let ((s (make-real-matrix-dim p 1))

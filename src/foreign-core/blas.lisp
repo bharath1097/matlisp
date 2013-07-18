@@ -695,7 +695,7 @@
 
 
 "
-  (trans :string :input)
+  (trans :character :input)
   (m :integer )
   (n :integer )
   (alpha :double-float )
@@ -800,7 +800,7 @@
 
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer )
   (alpha :double-float )
   (a (* :double-float) )
@@ -906,9 +906,9 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
-  (diag :string :input)
+  (uplo :character :input)
+  (trans :character :input)
+  (diag :character :input)
   (n :integer )
   (a (* :double-float) )
   (lda :integer )
@@ -1013,9 +1013,9 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
-  (diag :string :input)
+  (uplo :character :input)
+  (trans :character :input)
+  (diag :character :input)
   (n :integer )
   (a (* :double-float) )
   (lda :integer )
@@ -1186,7 +1186,7 @@
 
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer )
   (alpha :double-float )
   (x (* :double-float) )
@@ -1285,7 +1285,7 @@
 
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer )
   (alpha :double-float )
   (x (* :double-float) )
@@ -1419,8 +1419,8 @@
 
 
 "
-  (transa :string :input)
-  (transb :string :input)
+  (transa :character :input)
+  (transb :character :input)
   (m :integer )
   (n :integer )
   (k :integer )
@@ -1545,8 +1545,8 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
+  (uplo :character :input)
+  (trans :character :input)
   (n :integer )
   (k :integer )
   (alpha :double-float )
@@ -1687,8 +1687,8 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
+  (uplo :character :input)
+  (trans :character :input)
   (n :integer )
   (k :integer )
   (alpha :double-float )
@@ -1820,10 +1820,10 @@
 
 
 "
-  (side :string :input)
-  (uplo :string :input)
-  (transa :string :input)
-  (diag :string :input)
+  (side :character :input)
+  (uplo :character :input)
+  (transa :character :input)
+  (diag :character :input)
   (m :integer )
   (n :integer )
   (alpha :double-float )
@@ -1955,10 +1955,10 @@
 
 
 "
-  (side :string :input)
-  (uplo :string :input)
-  (transa :string :input)
-  (diag :string :input)
+  (side :character :input)
+  (uplo :character :input)
+  (transa :character :input)
+  (diag :character :input)
   (m :integer )
   (n :integer )
   (alpha :double-float )
@@ -2101,7 +2101,7 @@
 
 
 "
-  (trans :string :input)
+  (trans :character :input)
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
@@ -2208,7 +2208,7 @@
 
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer )
   (alpha :complex-double-float )
   (a (* :complex-double-float) )
@@ -2314,9 +2314,9 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
-  (diag :string :input)
+  (uplo :character :input)
+  (trans :character :input)
+  (diag :character :input)
   (n :integer )
   (a (* :complex-double-float) )
   (lda :integer )
@@ -2421,9 +2421,9 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
-  (diag :string :input)
+  (uplo :character :input)
+  (trans :character :input)
+  (diag :character :input)
   (n :integer )
   (a (* :complex-double-float) )
   (lda :integer )
@@ -2692,7 +2692,7 @@
 
 
 "
-  (uplo :string :input)
+  (uplo :character :input)
   (n :integer )
   (alpha :complex-double-float )
   (x (* :complex-double-float) )
@@ -2826,8 +2826,8 @@
 
 
 "
-  (transa :string :input)
-  (transb :string :input)
+  (transa :character :input)
+  (transb :character :input)
   (m :integer )
   (n :integer )
   (k :integer )
@@ -2960,10 +2960,10 @@
 
 
 "
-  (side :string :input)
-  (uplo :string :input)
-  (transa :string :input)
-  (diag :string :input)
+  (side :character :input)
+  (uplo :character :input)
+  (transa :character :input)
+  (diag :character :input)
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
@@ -3094,10 +3094,10 @@
 
 
 "
-  (side :string :input)
-  (uplo :string :input)
-  (transa :string :input)
-  (diag :string :input)
+  (side :character :input)
+  (uplo :character :input)
+  (transa :character :input)
+  (diag :character :input)
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
@@ -3222,8 +3222,8 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
+  (uplo :character :input)
+  (trans :character :input)
   (n :integer )
   (k :integer )
   (alpha :double-float )
@@ -3368,8 +3368,8 @@
 
 
 "
-  (uplo :string :input)
-  (trans :string :input)
+  (uplo :character :input)
+  (trans :character :input)
   (n :integer )
   (k :integer )
   (alpha :complex-double-float )

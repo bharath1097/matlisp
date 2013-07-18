@@ -47,7 +47,7 @@
   (or (row-matrix-p matrix) (col-matrix-p matrix)))
 
 (definline square-matrix-p (matrix)
-  (and (square-p matrix) (matrix-p matrix)))
+  (and (tensor-matrixp matrix) (tensor-squarep matrix)))
 
 ;; ;;
 ;; (defgeneric fill-matrix (matrix fill-element)
