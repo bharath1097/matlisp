@@ -86,9 +86,8 @@
 			       :do (when (member ele idx-rem)
 				     (return nil))
 			       :finally (return t))
-			    (get-incs nil acc (cons nil decl)
-				      (cons `(setf ,(caar (cadr ofst)) ,(car (get-prop ten :head))) incs)
-				      ten ofst))
+			    (values (append (make-list (length idxs)) decl)
+				    (append (make-list (1- (length idxs))) (cons `(setf ,(caar (cadr ofst)) ,(car (get-prop ten :head))) incs))))
 			   (t
 			    (let* ((plst (get-prop ten))
 				   (dsym (gensym (string+ "d-stp-" (symbol-name cidx) "-" (symbol-name ten))))
