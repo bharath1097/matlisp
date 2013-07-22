@@ -4,13 +4,18 @@
 
 ;;(defparameter *tgemv* '(contract (ref y i) (+ (* alpha (sum (k) (ref A i k) (ref x k))) (* beta (ref y i)))))
 
-(defparameter *tclause* '(einstein-sum (ref C i j) (* (ref A i k) (ref B k j))))
+(defparameter *tclause* '(einstein-sum (ref C i j) (* (ref A i k) (ref A j k))))
+(defparameter *mclause* '(einstein-sum (ref C i j) (* (ref A i k) (ref B k j))))
 
 (defun get-cons (lst sym)
   (if (atom lst) nil
       (if (eq (car lst) sym)
 	  (list lst)
 	  (append (get-cons (car lst) sym) (get-cons (cdr lst) sym)))))
+
+(defun has-sym (lst sym)
+  (if (atom lst) (eql lst sym)
+      (or (has-sym (car lst) sym) (has-sym (cdr lst) sym))))
 
 (defun get-repeats (lst)
   (do ((tmp lst (cdr tmp))
@@ -22,126 +27,206 @@
 (defun gensym-list (n)
   (loop :repeat n :collect (gensym)))
 
-#+nil
-(defun loop-gen (idx ret einx)
-  (if (null idx) code
-      (destructuring-bind (var repeat) (car idx)
-	`(loop :for ,var :of-type index-type :from ,start :below ,end
-	    :do ,(loop-gen (cdr idx) code)))))
-
-(tensor-args (get-cons (cddr clause) 'ref))
-	 (code-idx (get-repeats (apply #'append (mapcar #'cddr tensor-args))))
-	 (arg-idx (let ((ret nil))
-		    (mapcar #'(lambda (x) (if (symbolp x) (setf ret (setadd ret x)))) (cddr arg))
-		    ret))
-	 (idxs (append arg-idx code-idx))
-	 (dims (apply #'append (mapcar #'(lambda (x) (loop :for idx :in (cddr x)
-							:counting t :into i
-							:when (member idx idxs)
-							:collect `(,idx (aref (dimensions ,(cadr x)) ,(1- i))))) tensor-args)))
-
-	 (osyms (zipsym (mapcar #'(lambda (x) `(head ,(car x))) tsyms)))
-	 (stosyms (zipsym (mapcar #'(lambda (x) `(store ,(car x))) tsyms)))
-    	 (stdsyms (zipsym (mapcar #'(lambda (x) `(strides ,(car x))) tsyms)))
-	 (dimsyms (zipsym (mapcar #'(lambda (x) `(dimensions ,(car x))) tsyms))))
-
 
 (defun mapcons (func lst keys)
-  (cond
-    ((atom lst) lst)
-    ((member (car lst) keys)
-     (funcall func lst))
-    (t
-     (mapcar #'(lambda (x) (mapcons func x keys)) lst))))
+  (if (atom lst) lst
+      (let ((tlst (if (member (car lst) keys)
+			(funcall func lst)
+			lst)))
+	(if (atom tlst) tlst
+	    (mapcar #'(lambda (x) (mapcons func x keys)) tlst)))))
 
-(mapcons #'(lambda (x) `(aref (store ,(cadr x)) ,@(cddr x)))
-	 *tclause* '(ref))
-
-	       
-	     (loopgen (idxs cclause place &optional (start? t))		
-		`(loop
-		    :with ... :of-type index-type := ...
-		    :with ... :of-type index-type := ...
-		    :for (car idxs) :of-type index-type :from 0 :below 
-		
-		))
+#+nil
+(mapcons #'(lambda (x) (let ((op (car x)))
+			 `(,(case op (* 't/f*) (+ 't/f+) (- 't/f-) (/ 't/f/))
+			    double-float
+			    ,@(cdr x))))
+	 '(* a (+ (ref a i j) c)) '(* + - /))
+#+nil
+(mapcons #'(lambda (x) t)
+	 '(* a (+ (ref a i j) c)) '(ref))
 
 
-(defun loop-generator (type clause &optional (testp t))
-  (let* ((ten-syms (mapcar #'(lambda (x)
-			    (let* ((sym (second x))
-				   (gsym (gensym (symbol-name sym))))
-			      `((,gsym ,sym)
-				(,(gensym (string+ "head-" (symbol-name sym))) (head ,gsym))
-				(,(gensym (string+ "store-" (symbol-name sym))) (store ,gsym))
-				(,(gensym (string+ "strides-" (symbol-name sym))) (strides ,gsym))
-				(,(gensym (string+ "dimensions-" (symbol-name sym))) (dimensions ,gsym)))))
-			   (get-cons (cdr clause) 'ref)))
-	 (offsets nil)
-	 (ranges nil))
-    (labels ((get-plst (x)
-	       (find x ten-syms :key #'cadar :test #'eql))
+(defun loop-generator (type index-order place clause &key (testp t) (tight-iloop nil))
+  (let* ((refs (let ((tmp (get-cons (list place clause) 'ref))
+		     (ret nil))
+		 (loop :for ele :in tmp
+		    :do (setf ret (setadd ret ele #'equal)))		 
+		 ret))
+	 (tens (let ((ret nil))
+		 (loop :for ele :in refs
+		    :do (setf ret (setadd ret (second ele))))
+		 ret))
+	 (tlist (mapcar #'(lambda (sym)
+			    (let* ((gsym (gensym (symbol-name sym)))
+				   (hsym (gensym (string+ "head-" (symbol-name sym)))))
+			      `(:tensor (,gsym ,sym :type ,type)
+				:head (,hsym (head ,gsym) :type index-type)
+				:store (,(gensym (string+ "store-" (symbol-name sym))) (store ,gsym) :type ,(store-type type))
+				:strides (,(gensym (string+ "strides-" (symbol-name sym))) (strides ,gsym) :type index-store-vector)
+				:dimensions (,(gensym (string+ "dimensions-" (symbol-name sym))) (dimensions ,gsym) :type index-store-vector))))
+			tens))
+	 (indices (let ((tmp nil)
+			(idx-pos (apply #'append (mapcar #'(lambda (x) (loop :for ele :in (cddr x)
+									  :counting t :into i
+									  :collect `(,ele (,(cadr x) ,(1- i))))) refs))))
+		    (loop :for ipos :in idx-pos
+		       :do (let ((cdim (find (car ipos) tmp :key #'car)))
+			     (if cdim
+				 (rplacd (last cdim) (cdr ipos))
+				 (push ipos tmp))))
+		    (loop :for idx :in tmp 
+		       :do (assert (member (car idx) index-order) nil  "Error index ~a not found in the index-order." (car idx)))
+		    (loop :for idx :in index-order
+		       :collect (let ((cdim (find idx tmp :key #'car)))
+				  (assert (not (null cdim)) nil "Error index ~a not found in the expression." idx)
+				  cdim))))
+	 (idx-d (let ((refrem (mapcons #'(lambda (x) (declare (ignore x)) t)
+				       clause '(ref))))
+		  (remove-if #'null (mapcar #'(lambda (x) (when (has-sym refrem x) x)) (mapcar #'car indices))))))
+    (labels ((get-prop (x &optional prop)
+	       (let ((plst (find x tlist :key #'(lambda (x) (cadr (getf x :tensor))))))
+		 (if prop
+		     (getf plst prop)
+		     plst)))
 	     (get-offset (x)
-	       (let ((ofst (find x offsets :key #'cadr :test #'equal)))
-		 (if ofst
-		     (car ofst)
-		     (let ((ofsym (gensym (string+ "offset-" (symbol-name (car x))))))
-		       (push (list ofsym x) offsets)
-		       ofsym))))
-	     (testgen ()
-	       (let ((dims (apply #'append (mapcar #'(lambda (x) (loop :for ele :in (cdr (cadr x))
-								    :counting t :into i
-								    :collect (let ((plst (get-plst (car (cadr x)))))
-									       `(,ele (aref ,(car (elt plst 4)) ,(1- i)))))) offsets))))
-		 (loop :for ele :in dims
-		    :do (let ((cdim (find (car ele) ranges :key #'car :test #'eql)))
-			  (if cdim
-			      (rplacd (last cdim) (cdr ele))
-			      (push ele ranges))))
-		 (when testp
-		   `((assert (and ,@(mapcar #'(lambda (x) `(= ,@(cdr x))) ranges)) nil "error: arguments are not of appropriate sizes.")))))
-	     (loopgen (idxs place clause &optional (startp t))
-		(let ((cidx (caar idxs)))
-		  `((let*-typed (,@(remove-if #'null
-					      (mapcar #'(lambda (x)
-							  (if (or (member cidx (cdr (cadr x))) startp)
-							      (let ((offset (gensym (string+ "of-" (symbol-name cidx) "-" (symbol-name (car (cadr x)))))))
-								`(:with ,offset :of-type index-type := ...
-									:for ,(car x) :of-type index-type := ,(if startp
-														  (let ((plst (get-plst (car (cadr x)))))
-														    (car (elt plst 1)))
-														  (car x))
-									:then (the index-type (+ ,offset ,(car x))))
-								nil))
-							  offsets)))
+	       (caar (second (find (cdr x) (get-prop (car x) :offsets) :key #'car :test #'list-eq)))))
+      ;;Populate offsets
+      (loop :for ref :in refs
+	 :do (let* ((plist (get-prop (second ref)))
+		    (ofsym (gensym (string+ "offset-" (symbol-name (second (getf plist :tensor))))))
+		    (ret `((,ofsym ,(car (getf plist :head)) :type index-type)
+			   (,(gensym (string+ "ref-" (symbol-name (second (getf plist :tensor))))) (t/store-ref ,type ,(car (getf plist :store)) ,ofsym) :type ,(field-type type)))))
+	       (if (getf plist :offsets)
+		   (setf (getf plist :offsets) (append (getf plist :offsets) (list (list (cddr ref) ret))))
+		   (rplacd (last plist) (list :offsets (list (list (cddr ref) ret)))))))
+      ;;Compute offset increments
+      (let ((rev (reverse indices)))
+      	(labels ((get-incs (idxs acc decl incs ten ofst)
+		   (if (null idxs) (values decl incs)
+		       (let* ((clst (car idxs))
+			      (cidx (car clst))
+			      (idx-rem (mapcar #'car idxs))
+			      (tloop (and tight-iloop (eql cidx (car (last index-order))))))
+			 (cond
+			   ((loop :for ele :in (car ofst)
+			       :do (when (member ele idx-rem)
+				     (return nil))
+			       :finally (return t))
+			    (get-incs nil acc (cons nil decl)
+				      (cons `(setf ,(caar (cadr ofst)) ,(car (get-prop ten :head))) incs)
+				      ten ofst))
+			   (t
+			    (let* ((plst (get-prop ten))
+				   (dsym (gensym (string+ "d-stp-" (symbol-name cidx) "-" (symbol-name ten))))
+				   (memp (member cidx (car ofst)))
+				   (stp (when memp `(aref ,(car (getf plst :strides)) ,(position cidx (car ofst))))))
+			      (get-incs (cdr idxs) (if memp (list `(the index-type (* ,(if tloop 1 stp) (aref ,(car (getf plst :dimensions)) ,(position cidx (car ofst)))))) nil)
+					(if (or tloop (and (null acc) (not memp))) (cons nil decl)
+					    (cons 
+					     (if memp
+						 `(,dsym ,(if (null acc) stp `(the index-type (- ,stp ,@acc))) :type index-type)
+						 `(,dsym (the index-type (- ,@acc)) :type index-type))
+					     decl))
+					(if (and (null acc) (not memp)) (cons nil incs)
+					    (cons `(incf ,(caar (cadr ofst)) ,@(unless tloop `(,dsym))) incs))
+					ten ofst))))))))
+	  (mapcar #'(lambda (ten)
+		      (loop :for ofst :in (get-prop ten :offsets)
+			 :do (rplacd (last ofst) (multiple-value-list (get-incs rev nil nil nil ten ofst)))))
+		  tens)))
+      ;;
+      (labels ((testgen ()
+		 `((assert (and ,@(mapcar #'(lambda (idx)
+					      `(= ,@(mapcar #'(lambda (x) `(aref ,(car (get-prop (car x) :dimensions)) ,(cadr x))) (cdr idx)))) indices))
+			   nil "error: arguments are not of appropriate sizes.")
+		   ,@(when tight-iloop
+			   `((assert (= 1 ,@(mapcar #'(lambda (x) `(aref ,(car (get-prop (car x) :strides)) ,(cadr x))) (cdar (last indices)))) nil "error: Inner loop strides are not 1.")))))
+	       (t/compile (place clause)
+		 (let* ((cclause (mapcons #'(lambda (x)	     
+					      (let* ((plst (get-prop (cadr x)))
+						     (ofset-sym (get-offset (cdr x))))
+						`(t/store-ref ,type ,(car (getf plst :store)) ,ofset-sym)))
+					  clause '(ref)))
+			(ftype (field-type type)))
+		   (setf cclause
+			 (mapcons #'(lambda (x)
+				      (let ((op (car x)))
+					`(,(case op (* 't/f*) (+ 't/f+) (- 't/f-) (/ 't/f/))
+					   ,ftype
+					   ,@(cdr x))))
+				  cclause '(* + - /)))
+		   (let ((plst (get-prop (cadr place)))
+			 (valsym (gensym "value")))
+		     `((let-typed ((,valsym (t/f+ ,ftype (t/store-ref ,type ,(car (getf plst :store)) ,(get-offset (cdr place)))
+						  ,cclause ) :type ,ftype))
+				  (t/store-set ,type ,valsym ,(car (getf plst :store)) ,(get-offset (cdr place))))))))
+ 	       (loopgen (idxs place clause)
+		  (if (null idxs) (t/compile place clause)
+		      (let ((cidx (caar idxs))
+			    (clst (car idxs)))
+			(let ((tdecl (let ((ilist (mapcar #'car idxs)))
+				       (remove-if #'null
+						  (apply #'append
+							 (mapcar #'(lambda (ten)
+								     (mapcar #'(lambda (ofs)
+										 (when (loop :for idx :in (car ofs)
+											  :do (when (member idx ilist)
+												(return nil))
+											  :finally (return t))
+										   (let ((decl (cadr (cadr ofs))))
+										     (setf clause (mapcons #'(lambda (x)
+													       (if (and (eql (cadr x) ten) (equal (cddr x) (car ofs)))
+														   (car decl)
+														   x))
+													   clause '(ref)))
+										     decl)))
+									     (get-prop ten :offsets)))
+								 (setrem tens (cadr place))))))))
+			  (list
+			   (recursive-append
+			    (unless (null tdecl)
+			      `(let-typed (,@tdecl)))
+			    `(loop ,@(let ((repl `(aref ,(car (get-prop (car (cadr clst)) :dimensions)) ,(cadr (cadr clst)))))
+					  (if (member cidx idx-d)
+					      `(:for ,cidx :of-type index-type :from 0 :below ,repl)
+					      `(:repeat ,repl)))
+				:do (progn
+				      ,@(loopgen (cdr idxs) place clause)
+				      ,@(remove-if #'null (apply #'append
+								 (mapcar #'(lambda (ten) (mapcar #'(lambda (x) (elt (fourth x) (position cidx index-order))) (get-prop ten :offsets))) tens))))))))))))
+	;;
+      `(let-typed (,@(mapcar #'(lambda (ten) (get-prop ten :tensor)) tens))
+	 (let-typed (,@(apply #'append (mapcar #'(lambda (ten) (mapcar #'(lambda (prop) (get-prop ten prop)) '(:head :store :strides :dimensions))) tens)))
+	   (let-typed (,@(apply #'append (mapcar #'(lambda (ten) (mapcar #'(lambda (x) (car (second x))) (get-prop ten :offsets))) tens))
+		       ,@(remove-if #'null (apply #'append (mapcar #'(lambda (ten) (apply #'append (mapcar #'third (get-prop ten :offsets)))) tens))))
+		      ,@(when testp (testgen))
+		      (very-quickly
+			,@(loopgen indices place clause)))))))))
+ 
+(loop-generator 'real-tensor '(k j i) (second *tclause*) (third *tclause*))
+(loop-generator 'real-tensor '(i j k) (second *mclause*) (third *mclause*) :tight-iloop t)
 
-		    (loop
-		       :for ,cidx :of-type index-type :from 0 :below ,(cadr (car idxs))
-		       ,@(apply #'append (remove-if #'null (mapcar #'(lambda (x)								       
-								       (if (or (member cidx (cdr (cadr x))) startp)
-									   (let ((offset (gensym (string+ "of-" (symbol-name cidx) "-" (symbol-name (car (cadr x)))))))
-									     `(:with ,offset :of-type index-type := ...
-									       :for ,(car x) :of-type index-type := ,(if startp
-															 (let ((plst (get-plst (car (cadr x)))))
-															   (car (elt plst 1)))
-															 (car x))
-										    :then (the index-type (+ ,offset ,(car x))))
-									   nil))
-								   offsets)))
-				)))))
-      (let* ((cclause (mapcons #'(lambda (x)
-				   (let* ((plst (get-plst (cadr x)))
-					  (ofset-sym (get-offset (cdr x))))
-				     `(t/store-ref ,type ,(caaddr plst) ,ofset-sym)))
-			       clause '(ref))))
-	`(let (,@(mapcar #'car ten-syms))
-	   (declare (type ,type ,@(mapcar #'caar ten-syms)))
-	   (let (,@(apply #'append (mapcar #'cdr ten-syms)))
-	     (declare (type index-type ,@(mapcar #'caadr ten-syms))
-		      (type ,(store-type type) ,@(mapcar #'caaddr ten-syms))
-		      (type index-store-vector ,@(mapcar #'car (apply #'append (mapcar #'cdddr ten-syms)))))
-	     ,@(testgen)
-	     ,@(loopgen ranges (cadr cclause) (caddr cclause) t)))))))
-	
 
-(loop-generator 'real-tensor *tclause*)
+(defmacro einstein-sum (type idx-order place clause)
+  (loop-generator type idx-order place clause :tight-iloop t))
+
+(defun mm-test (a b c)
+  (einstein-sum real-tensor (j k i) (ref c i j) (* (ref a i k) (ref b k j))))
+
+(let ((x (copy! #2a((1 2) (3 4)) (zeros '(2 2))))
+      (y (copy! #2a((4 5) (6 5)) (zeros '(2 2))))
+      (z (zeros '(2 2))))
+  (mm-test x y z)
+  z)
+
+(let ((x (zeros '(1000 1000)))
+      (y (zeros '(1000 1000)))
+      (z (zeros '(1000 1000))))
+  (let-typed ((sto-x (store x) :type (simple-array double-float))
+	      (sto-y (store y) :type (simple-array double-float)))
+	     (loop :for i :from 0 :below (* 1000 1000)
+		:do (setf (aref sto-x i) (random 1d0)
+			  (aref sto-y i) (random 1d0))))
+  (time (mm-test x y z))
+  t)

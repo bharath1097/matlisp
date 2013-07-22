@@ -1,3 +1,4 @@
+(in-package :matlisp)
 
 (defun tdcopy (n)
   (let* ((t-a (make-real-tensor-dims n n n))
@@ -36,9 +37,9 @@
   (make-array (length dims) :element-type 'index-type :initial-contents dims))
 
 (defun test-mm-lisp (n)
-  (let ((t-a (make-real-tensor n n))
-	(t-b (make-real-tensor n n))
-	(t-c (make-real-tensor n n)))
+  (let ((t-a (zeros (list n n)))
+	(t-b (zeros (list n n)))
+	(t-c (zeros (list n n))))
     (declare (type real-tensor t-a t-b t-c))
     (let ((st-a (store t-a))
 	  (st-b (store t-b))
@@ -55,7 +56,7 @@
 	  (hd-a (head t-a))
 	  (hd-b (head t-b))
 	  (hd-c (head t-c)))
-      (declare (type real-store-vector st-a st-b st-c)
+      (declare (type (simple-array double-float (*)) st-a st-b st-c)
 	       (type index-type rstrd-a cstrd-a rstrd-b cstrd-b rstrd-c cstrd-c nr-c
 		     nc-c nc-a hd-a hd-b hd-c))
       (mod-dotimes (idx (dimensions t-a))
@@ -77,7 +78,7 @@
 		  do (loop repeat nc-a
 			for of-a of-type index-type = rof-a then (+ of-a cstrd-a)
 			for of-b of-type index-type = cof-b then (+ of-b rstrd-b)
-			summing (* (aref st-a of-a) (aref st-b of-b)) into sum of-type real-type
+			summing (* (aref st-a of-a) (aref st-b of-b)) into sum of-type double
 			finally (setf (aref st-c of-c) sum))))
 	 #+nil
       	 (mod-dotimes (idx (dimensions t-c))
@@ -101,12 +102,17 @@
 	   do (incf (aref st-c of-c) (* (aref st-a of-a) (aref st-b of-b))))))
       (values t-a t-b t-c))))
 
+(deftype real-store-vector ()
+    '(simple-array double-float (*)))
+
+(deftype real-type ()
+  'double-float)
 
 (defun test-mm-lisp (n)
   (declare (type fixnum n))
-  (let ((A (make-real-tensor n n))
-	(B (make-real-tensor n n))
-	(C (make-real-tensor n n)))
+  (let ((A (zeros (list n n)))
+	(B (zeros (list n n)))
+	(C (zeros (list n n))))
     (let-typed ((nr-C (nrows C) :type index-type)
 		(nc-C (ncols C) :type index-type)
 		(dotl (ncols A) :type index-type)
@@ -140,8 +146,8 @@
 			       (loop :repeat nc-C
 				  :do (progn
 					(incf (aref sto-C of-C) (* ele-A (aref sto-B of-B)))
-					(incf of-C cstp-C)
-					(incf of-B cstp-B)))
+					(incf of-C #+nil cstp-C)
+					(incf of-B #+nil cstp-B)))
 			       (decf of-C r.cstp-C)
 			       (incf of-A cstp-A)
 			       (incf of-B d.rstp-B)))
@@ -149,6 +155,7 @@
 		      (incf of-A d.rstp-A)
 		      (setf of-B hd-B))))))
        t)))
+
 
 (defun test-mm-lisp-lin (n)
   (declare (type fixnum n))
