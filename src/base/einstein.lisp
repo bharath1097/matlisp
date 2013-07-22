@@ -1,12 +1,5 @@
 (in-package :matlisp)
 
-(defparameter *contract-ops* '(sum))
-
-;;(defparameter *tgemv* '(contract (ref y i) (+ (* alpha (sum (k) (ref A i k) (ref x k))) (* beta (ref y i)))))
-
-(defparameter *tclause* '(einstein-sum (ref C i j) (* (ref A i k) (ref A j k))))
-(defparameter *mclause* '(einstein-sum (ref C i j) (* (ref A i k) (ref B k j))))
-
 (defun get-cons (lst sym)
   (if (atom lst) nil
       (if (eq (car lst) sym)
@@ -17,17 +10,6 @@
   (if (atom lst) (eql lst sym)
       (or (has-sym (car lst) sym) (has-sym (cdr lst) sym))))
 
-(defun get-repeats (lst)
-  (do ((tmp lst (cdr tmp))
-       (ret nil (if (and (not (member (car tmp) ret)) (member (car tmp) (cdr tmp)))
-		    (cons (car tmp) ret)
-		    ret)))
-      ((null tmp) ret)))
-
-(defun gensym-list (n)
-  (loop :repeat n :collect (gensym)))
-
-
 (defun mapcons (func lst keys)
   (if (atom lst) lst
       (let ((tlst (if (member (car lst) keys)
@@ -36,29 +18,20 @@
 	(if (atom tlst) tlst
 	    (mapcar #'(lambda (x) (mapcons func x keys)) tlst)))))
 
-#+nil
-(mapcons #'(lambda (x) (let ((op (car x)))
-			 `(,(case op (* 't/f*) (+ 't/f+) (- 't/f-) (/ 't/f/))
-			    double-float
-			    ,@(cdr x))))
-	 '(* a (+ (ref a i j) c)) '(* + - /))
-#+nil
-(mapcons #'(lambda (x) t)
-	 '(* a (+ (ref a i j) c)) '(ref))
-
-
 (defun loop-generator (type index-order place clause &key (testp t) (tight-iloop nil))
   (let* ((refs (let ((tmp (get-cons (list place clause) 'ref))
 		     (ret nil))
 		 (loop :for ele :in tmp
-		    :do (setf ret (setadd ret ele #'equal)))		 
+		    :do (setf ret (setadd ret ele #'equal)))
 		 ret))
 	 (tens (let ((ret nil))
 		 (loop :for ele :in refs
-		    :do (setf ret (setadd ret (second ele))))
+		    :do (setf ret (setadd ret (if (symbolp (second ele))
+						  (second ele)
+						  (error "error: tensor argument is not a symbol.")))))
 		 ret))
 	 (tlist (mapcar #'(lambda (sym)
-			    (let* ((gsym (gensym (symbol-name sym)))
+			    (let* ((gsym sym)
 				   (hsym (gensym (string+ "head-" (symbol-name sym)))))
 			      `(:tensor (,gsym ,sym :type ,type)
 				:head (,hsym (head ,gsym) :type index-type)
@@ -196,37 +169,15 @@
 				      ,@(remove-if #'null (apply #'append
 								 (mapcar #'(lambda (ten) (mapcar #'(lambda (x) (elt (fourth x) (position cidx index-order))) (get-prop ten :offsets))) tens))))))))))))
 	;;
-      `(let-typed (,@(mapcar #'(lambda (ten) (get-prop ten :tensor)) tens))
+      `(locally
+	   (declare (type ,type ,@tens))
 	 (let-typed (,@(apply #'append (mapcar #'(lambda (ten) (mapcar #'(lambda (prop) (get-prop ten prop)) '(:head :store :strides :dimensions))) tens)))
 	   (let-typed (,@(apply #'append (mapcar #'(lambda (ten) (mapcar #'(lambda (x) (car (second x))) (get-prop ten :offsets))) tens))
 		       ,@(remove-if #'null (apply #'append (mapcar #'(lambda (ten) (apply #'append (mapcar #'third (get-prop ten :offsets)))) tens))))
 		      ,@(when testp (testgen))
 		      (very-quickly
-			,@(loopgen indices place clause)))))))))
- 
-(loop-generator 'real-tensor '(k j i) (second *tclause*) (third *tclause*))
-(loop-generator 'real-tensor '(i j k) (second *mclause*) (third *mclause*) :tight-iloop t)
+			,@(loopgen indices place clause))))
+	 ,(cadr place))))))
 
-
-(defmacro einstein-sum (type idx-order place clause)
-  (loop-generator type idx-order place clause :tight-iloop t))
-
-(defun mm-test (a b c)
-  (einstein-sum real-tensor (j k i) (ref c i j) (* (ref a i k) (ref b k j))))
-
-(let ((x (copy! #2a((1 2) (3 4)) (zeros '(2 2))))
-      (y (copy! #2a((4 5) (6 5)) (zeros '(2 2))))
-      (z (zeros '(2 2))))
-  (mm-test x y z)
-  z)
-
-(let ((x (zeros '(1000 1000)))
-      (y (zeros '(1000 1000)))
-      (z (zeros '(1000 1000))))
-  (let-typed ((sto-x (store x) :type (simple-array double-float))
-	      (sto-y (store y) :type (simple-array double-float)))
-	     (loop :for i :from 0 :below (* 1000 1000)
-		:do (setf (aref sto-x i) (random 1d0)
-			  (aref sto-y i) (random 1d0))))
-  (time (mm-test x y z))
-  t)
+(defmacro einstein-sum (type idx-order place clause &optional (tightp nil))
+  (loop-generator type idx-order place clause :tight-iloop tightp))

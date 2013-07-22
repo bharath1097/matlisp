@@ -112,6 +112,8 @@
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
+			 (:file "einstein"
+				:depends-on ("standard-tensor"))
 			 (:file "generic-copy"
 				:depends-on ("standard-tensor" "loopy"))
 			 (:file "generic-swap"
