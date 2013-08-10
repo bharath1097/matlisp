@@ -69,6 +69,7 @@
 		    tmp)))		    
     (values refs tlist indices)))
 
+;;Add options (allow function to compile the clause ?) for more compiler options.
 (defun loop-generator-base (type index-order place clause &key (testp t) (tight-iloop nil))
   (multiple-value-bind (refs tlist indices) (parse-loopx type place clause)
     (let* ((tens (mapcar #'(lambda (x) (second (getf x :tensor))) tlist))
@@ -219,8 +220,8 @@
 (defmacro einstein-sum (type idx-order place clause &optional (testp t))
   (loop-generator type idx-order place clause :testp testp))
 
-;;Yes this is slow, but if you're *really* worried about computation then roll your custom loops
-;;with einstein-sum-base. This is a super-adaptive on-the-fly loop generation function generation
+;;Yes this has an overhead, but if you're *really* worried about efficiency then roll your custom loops
+;;with einstein-sum-base. This is a super-adaptive on-the-fly-loop-generating-function generating
 ;;macro. You have the power now, without any of the tedium :)
 (defmacro define-einstein-sum (name args (type place clause &optional (testp t)))
   (multiple-value-bind (refs tlist indices) (parse-loopx type place clause)
@@ -236,7 +237,7 @@
 			    (let* ((code (loop-generator ',type idx-ord ',place ',clause :testp ,testp))
 				   (funcnew (compile-and-eval
 					     (list 'lambda '(,@args) code))))
-			      (format t "Compiling code for index-order : ~a~%" idx-ord)
+			      (format t "~a: Compiling code for index-order : ~a~%" ,(symbol-name name) idx-ord)
 			      (setf (gethash idx-ord ,functable) funcnew)
 			      funcnew))))
 	     (apply func (list ,@args))))))))

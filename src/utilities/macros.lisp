@@ -462,6 +462,14 @@
   Macro which encloses @arg{forms} inside
   (declare (optimize (speed 3) (safety 0) (space 0)))
   "
+  #+matlisp-debug
+  `(with-optimization
+       #+lispworks
+       (:safety 3)
+       #-lispworks
+       (:safety 3)
+     ,@forms)
+  #-matlisp-debug
   `(with-optimization
        #+lispworks
        (:safety 0 :space 0 :speed 3 :float 0 :fixnum-safety 0)

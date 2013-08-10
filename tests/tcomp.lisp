@@ -45,3 +45,11 @@
 			  (aref sto-y i) (random 1d0))))
   (time (mm-test x y z))
   t)
+
+(defun mv-test (A b c)
+  (t/gemv! real-tensor 1d0 A b 0d0 c nil))
+  
+(let ((A (copy! #2a((1 2) (3 4)) (zeros '(2 2))))
+      (b (copy! 1 (zeros 2)))
+      (c (copy! #(1 2) (zeros 2))))
+  (time (dotimes (i 1000) (mv-test A b c))))
