@@ -156,6 +156,54 @@
 		      (setf of-B hd-B))))))
        t)))
 
+(defun test-mm-lisp-blk (n bs)
+  (declare (type fixnum n))
+  (let ((*default-stride-ordering* :row-major))
+    (let ((A (zeros (list n n)))
+	  (B (zeros (list n n)))
+	  (C (zeros (list n n))))
+      (let-typed ((nr-C (nrows C) :type index-type)
+		  (nc-C (ncols C) :type index-type)
+		  (dotl (ncols A) :type index-type)
+					;
+		  (rstp-A (row-stride A) :type index-type)
+		  (cstp-A (col-stride A) :type index-type)
+		  (hd-A (head A) :type index-type)
+		  (sto-A (store A) :type real-store-vector)
+					;
+		  (rstp-B (row-stride B) :type index-type)
+		  (cstp-B (col-stride B) :type index-type)
+		  (hd-B (head B) :type index-type)
+		  (sto-B (store B) :type real-store-vector)
+					;
+		  (rstp-C (row-stride C) :type index-type)
+		  (cstp-C (col-stride C) :type index-type)
+		  (hd-C (head C) :type index-type)
+		  (sto-C (store C) :type real-store-vector))
+	 (time	
+	   (let-typed ((of-A hd-A :type index-type)
+		       (of-B hd-B :type index-type)
+		       (of-C hd-C :type index-type)
+		       (r.cstp-C (* cstp-C nc-C) :type index-type)
+		       (d.rstp-B (- rstp-B (* cstp-B nc-C)) :type index-type)
+		       (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type))
+		      (very-quickly			  
+			(loop :repeat (floor nr-C bs)
+			   :do (progn
+				 (loop :repeat (floor dotl bs)
+				    :do (loop :repeat (min (  (let-typed ((ele-A (aref sto-A of-A) :type real-type))
+					  (loop :repeat nc-C
+					     :do (progn
+						   (incf (aref sto-C of-C) (* ele-A (aref sto-B of-B)))
+						   (incf of-C #+nil cstp-C)
+						   (incf of-B #+nil cstp-B)))
+					  (decf of-C r.cstp-C)
+					  (incf of-A cstp-A)
+					  (incf of-B d.rstp-B)))
+				 (incf of-C (* rstp-C bs))
+				 (incf of-A d.rstp-A)
+				 (setf of-B hd-B))))))
+	 t))))
 
 (defun test-mm-lisp-lin (n)
   (declare (type fixnum n))
