@@ -131,11 +131,5 @@
 		  (t/dot ,clx x y t)
 		  (t/dot ,clx x y nil)))))
        (dot x y conjugate-p))
-      ;;You pay the piper if you like mixing types.
-      ;;This is (or should be) a rare enough to not matter.
-      ((coerceable? clx cly)
-       (dot (coerce-tensor x cly) y conjugate-p))
-      ((coerceable? cly clx)
-       (dot x (coerce-tensor y clx) conjugate-p))
       (t
        (error "Don't know how to compute the dot product of ~a , ~a." clx cly)))))

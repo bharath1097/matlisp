@@ -1,260 +1,56 @@
-;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved.
-;;;
-;;; Permission is hereby granted, without written agreement and without
-;;; license or royalty fees, to use, copy, modify, and distribute this
-;;; software and its documentation for any purpose, provided that the
-;;; above copyright notice and the following two paragraphs appear in all
-;;; copies of this software.
-;;;
-;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
-;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
-;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
-;;; THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
-;;; SUCH DAMAGE.
-;;;
-;;; THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-;;; INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-;;; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE
-;;; PROVIDED HEREUNDER IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF
-;;; CALIFORNIA HAS NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
-;;; ENHANCEMENTS, OR MODIFICATIONS.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (in-package #:matlisp)
 
-(defmacro generate-typed-gemm! (func (tensor-class blas-gemm-func fortran-lb-parameter))
-  (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
-		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
-	 (matrix-class (getf opt :matrix))
-	 (blas? blas-gemm-func))
-    `(progn
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	   (setf (getf opt :gemm) ',func
-		 (get-tensor-class-optimization ',tensor-class) opt)))
-       (defun ,func (alpha A B beta C job)
-	 (declare (type ,(getf opt :element-type) alpha beta)
-		  (type ,matrix-class A B C)
-		  (type symbol job))
-	 ,(let
-	      ((lisp-routine
-		 `(let-typed ((nr-C (nrows C) :type index-type)
-			      (nc-C (ncols C) :type index-type)
-			      (dotl (ecase job-A (:n (ncols A)) (:t (nrows A))) :type index-type)
-					;
-			      (rstp-A (row-stride A) :type index-type)
-			      (cstp-A (col-stride A) :type index-type)
-			      (hd-A (head A) :type index-type)
-					;
-			      (rstp-B (row-stride B) :type index-type)
-			      (cstp-B (col-stride B) :type index-type)
-			      (hd-B (head B) :type index-type)
-					;
-			      (rstp-C (row-stride C) :type index-type)
-			      (cstp-C (col-stride C) :type index-type)
-			      (hd-C (head C) :type index-type))
-			     ;;
-			     (when (eq job-A :t)
-			       (rotatef rstp-A cstp-A))
-			     (when (eq job-B :t)
-			       (rotatef rstp-B cstp-B))
-			     ;;
-			     (unless (,(getf opt :f=) beta (,(getf opt :fid*)))
-			       (,(getf opt :num-scal) beta C))
-			     ;;Most of these loop orderings are borrowed from the Fortran reference
-			     ;;implementation of BLAS.
-			     (cond
-			       ((and (= cstp-C 1) (= cstp-B 1))
-				(let-typed ((of-A hd-A :type index-type)
-					    (of-B hd-B :type index-type)
-					    (of-C hd-C :type index-type)
-					    (d.rstp-B (- rstp-B nc-C) :type index-type)
-					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type)
-					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-					   (very-quickly
-					     (loop :repeat nr-C
-						:do (progn
-						      (loop :repeat dotl
-							 :do (let-typed
-							      ((ele-A (,(getf opt :f*) alpha (,(getf opt :reader) sto-A of-A)) :type ,(getf opt :element-type)))
-							      (loop :repeat nc-C
-								 :do (progn
-								       (,(getf opt :value-incfer) (,(getf opt :f*) ele-A (,(getf opt :reader) sto-B of-B))
-									 sto-C of-C)
-								       (incf of-C)
-								       (incf of-B)))
-							      (decf of-C nc-C)
-							      (incf of-A cstp-A)
-							      (incf of-B d.rstp-B)))
-						      (incf of-C rstp-C)
-						      (incf of-A d.rstp-A)
-						      (setf of-B hd-B))))))
-			       ((and (= cstp-A 1) (= rstp-B 1))
-				(let-typed ((of-A hd-A :type index-type)
-					    (of-B hd-B :type index-type)
-					    (of-C hd-C :type index-type)
-					    (d.cstp-B (- cstp-B dotl) :type index-type)
-					    (d.rstp-C (- rstp-C (* nc-C cstp-C)) :type index-type)
-					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type)))
-					    (dot (,(getf opt :fid+)) :type ,(getf opt :element-type)))
-					   (very-quickly
-					     (loop :repeat nr-C
-						:do (progn
-						      (loop :repeat nc-C
-							 :do (progn
-							       (setf dot (,(getf opt :fid+)))
-							       (loop :repeat dotl
-								  :do (progn
-									(setf dot (,(getf opt :f+) dot (,(getf opt :f*) (,(getf opt :reader) sto-A of-A) (,(getf opt :reader) sto-B of-B))))
-									(incf of-A)
-									(incf of-B)))
-							       (,(getf opt :value-incfer) dot sto-C of-C)
-							       (incf of-C cstp-C)
-							       (decf of-A dotl)
-							       (incf of-B d.cstp-B)))
-						      (incf of-C d.rstp-C)
-						      (incf of-A rstp-A)
-						      (setf of-B hd-B))))))
-			       ((and (= cstp-A 1) (= rstp-B 1))
-				(let-typed ((of-A hd-A :type index-type)
-					    (of-B hd-B :type index-type)
-					    (of-C hd-C :type index-type)
-					    (d.cstp-B (- cstp-B dotl) :type index-type)
-					    (d.rstp-C (- rstp-C (* nc-C cstp-C)) :type index-type)
-					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type)))
-					    (dot (,(getf opt :fid+)) :type ,(getf opt :element-type)))
-					   (very-quickly
-					     (loop :repeat nr-C
-						:do (progn
-						      (loop :repeat nc-C
-							 :do (progn
-							       (setf dot (,(getf opt :fid+)))
-							       (loop :repeat dotl
-								  :do (progn
-									(setf dot (,(getf opt :f+) dot (,(getf opt :f*) (,(getf opt :reader) sto-A of-A) (,(getf opt :reader) sto-B of-B))))
-									(incf of-A)
-									(incf of-B)))
-							       (,(getf opt :value-incfer) dot sto-C of-C)
-							       (incf of-C cstp-C)
-							       (decf of-A dotl)
-							       (incf of-B d.cstp-B)))
-						      (incf of-C d.rstp-C)
-						      (incf of-A rstp-A)
-						      (setf of-B hd-B))))))
-			       ((and (= rstp-A 1) (= rstp-C 1))
-				(let-typed ((of-A hd-A :type index-type)
-					    (of-B hd-B :type index-type)
-					    (of-C hd-C :type index-type)
-					    (d.cstp-B (- cstp-B (* rstp-B dotl)) :type index-type)
-					    (d.cstp-A (- cstp-A nr-C) :type index-type)
-					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-					   (very-quickly
-					     (loop :repeat nc-C
-						:do (progn
-						      (loop :repeat dotl
-							 :do (let-typed
-							      ((ele-B (,(getf opt :f*) alpha (,(getf opt :reader) sto-B of-B)) :type ,(getf opt :element-type)))
-							      (loop :repeat nr-C
-								 :do (progn
-								       (,(getf opt :value-incfer) (,(getf opt :f*) ele-B (,(getf opt :reader) sto-A of-A))
-									 sto-C of-C)
-								       (incf of-C)
-								       (incf of-A)))
-							      (decf of-C nr-C)
-							      (incf of-A d.cstp-A)
-							      (incf of-B rstp-B)))
-						      (incf of-C cstp-C)
-						      (setf of-A hd-A)
-						      (incf of-B d.cstp-B))))))
-			       (t
-				(let-typed ((of-A hd-A :type index-type)
-					    (of-B hd-B :type index-type)
-					    (of-C hd-C :type index-type)
-					    (r.cstp-C (* cstp-C nc-C) :type index-type)
-					    (d.rstp-B (- rstp-B (* cstp-B nc-C)) :type index-type)
-					    (d.rstp-A (- rstp-A (* cstp-A dotl)) :type index-type)
-					    (sto-A (store A) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-B (store B) :type ,(linear-array-type (getf opt :store-type)))
-					    (sto-C (store C) :type ,(linear-array-type (getf opt :store-type))))
-					   (very-quickly
-					     (loop :repeat nr-C
-						:do (progn
-						      (loop :repeat dotl
-							 :do (let-typed
-							      ((ele-A (,(getf opt :f*) alpha (,(getf opt :reader) sto-A of-A)) :type ,(getf opt :element-type)))
-							      (loop :repeat nc-C
-								 :do (progn
-								       (,(getf opt :value-writer)
-									 (,(getf opt :f+)
-									   (,(getf opt :reader) sto-C of-C)
-									   (,(getf opt :f*) ele-A (,(getf opt :reader) sto-B of-B)))
-									 sto-C of-C)
-								       (incf of-C cstp-C)
-								       (incf of-B cstp-B)))
-							      (decf of-C r.cstp-C)
-							      (incf of-A cstp-A)
-							      (incf of-B d.rstp-B)))
-						      (incf of-C rstp-C)
-						      (incf of-A d.rstp-A)
-						      (setf of-B hd-B))))))))))
-	    ;;Tie together Fortran and lisp-routines.
-	    `(mlet* (((job-A job-B) (ecase job
-				      (:nn (values :n :n))
-				      (:nt (values :n :t))
-				      (:tn (values :t :n))
-				      (:tt (values :t :t)))
-		      :type (symbol symbol))
-		     ,@(when blas?
-			 `((call-fortran? (> (max (nrows C) (ncols C) (if (eq job-A :n) (ncols A) (nrows A)))
-					     ,fortran-lb-parameter))
-			   ((maj-A ld-A fop-A) (blas-matrix-compatible-p A job-A) :type (symbol index-type (string 1)))
-			   ((maj-B ld-B fop-B) (blas-matrix-compatible-p B job-B) :type (symbol index-type (string 1)))
-			   ((maj-C ld-C fop-C) (blas-matrix-compatible-p C :n) :type (symbol index-type nil)))))
-		    ,(if blas?
-			 `(cond
-			    (call-fortran?
-			     (if (and maj-A maj-B maj-C)
-				 (let-typed ((nr-C (nrows C) :type index-type)
-					     (nc-C (ncols C) :type index-type)
-					     (dotl (ecase job-A (:n (ncols A)) (:t (nrows A))) :type index-type))
-					    (when (eq maj-C :row-major)
-					      (rotatef A B)
-					      (rotatef ld-A ld-B)
-					      (rotatef maj-A maj-B)
-					      (rotatef nr-C nc-C)
-					      (setf (values fop-A fop-B)
-						    (values (fortran-snop fop-B) (fortran-snop fop-A))))
-					    (,blas-gemm-func fop-A fop-B nr-C nc-C dotl
-							     alpha (store A) ld-A (store B) ld-B
-							     beta (store C) ld-C
-							     (head A) (head B) (head C)))
-				 (let ((ret (,func alpha
-						   (if maj-A A (,(getf opt :copy) A (,(getf opt :zero-maker) (dimensions A))))
-						   (if maj-B B (,(getf opt :copy) B (,(getf opt :zero-maker) (dimensions B))))
-						   beta
-						   (if maj-C C (,(getf opt :copy) C (,(getf opt :zero-maker) (dimensions C))))
-						   job)))
-				   (unless maj-C
-				     (,(getf opt :copy) ret C)))))
-			    (t
-			     ,lisp-routine))
-			 lisp-routine)))
-	 C))))
+(deft/generic (t/blas-gemm-func #'subtypep) sym ())
+(deft/method t/blas-gemm-func (sym real-tensor) ()
+  'dgemm)
+(deft/method t/blas-gemm-func (sym complex-tensor) ()
+  'zgemm)
+;;
+(deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa transb))
+
+(deft/method t/blas-gemm! (sym blas-numeric-tensor) (alpha A lda B ldb beta C ldc transa transb)
+  (using-gensyms (decl (alpha A lda B ldb beta C ldc transa transb))
+    (with-gensyms (m n k)
+      `(let* (,@decl
+	      (,m (aref (the index-store-vector (dimensions ,C)) 0))
+	      (,n (aref (the index-store-vector (dimensions ,C)) 1))
+	      (,k (aref (the index-store-vector (dimensions ,A)) (ecase (char-upcase ,transa) ((#\N #\C) 1) ((#\T #\H) 0)))))
+	 (declare (type ,sym ,A ,B ,C)
+		  (type ,(field-type sym) ,alpha ,beta)
+		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
+		  (type character ,transa ,transb))
+	 (,(macroexpand-1 `(t/blas-gemm-func ,sym))
+	   ,transa ,transb
+	   ,m ,n ,k
+	   ,alpha
+	   (the ,(store-type sym) (store ,A)) ,lda
+	   (the ,(store-type sym) (store ,B)) ,ldb
+	   ,beta
+	   (the ,(store-type sym) (store ,C)) ,ldc
+	   (the index-type (head ,A)) (the index-type (head ,B)) (the index-type (head ,C)))
+	 ,C))))
+
+;;
+(deft/generic (t/gemm! #'subtypep) sym (alpha A B beta C transa transb))
+
+;;Witness the power of macros, muggles! :)
+(deft/method t/gemm! (sym standard-tensor) (alpha A B beta C transa transb)
+  (using-gensyms (decl (alpha A x beta y transp))
+   `(let (,@decl)
+      (declare (type ,sym ,A ,x ,y)
+	       (type ,(field-type sym) ,alpha ,beta)
+	       (type character ,transp))
+      (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
+	(t/scdi! ,sym ,beta ,y :scal? t :numx? t))
+      ;;These loops are optimized for column major matrices
+      (ecase (char-upcase ,transp)
+       (#\N (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (ref ,A i j) (ref ,x j)) nil))
+       (#\T (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (ref ,A j i) (ref ,x j)) nil))
+       (#\C (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A i j)) (ref ,x j)) nil))
+       (#\H (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A j i)) (ref ,x j)) nil)))
+      ,y)))
+
+
 ;;Real
 (generate-typed-gemm! real-base-typed-gemm!
     (real-tensor dgemm *real-l3-fcall-lb*))

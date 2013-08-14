@@ -17,8 +17,6 @@
 	 (declare (type ,sym ,A ,x ,y)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,st-x ,st-y ,lda ,m ,n))
-	 (when (cl:char= (char-upcase ,transp) #\T)
-	   (rotatef ,m ,n))
 	 (,(macroexpand-1 `(t/blas-gemv-func ,sym))
 	   ,transp ,m ,n
 	   ,alpha
@@ -27,7 +25,7 @@
 	   ,beta
 	   (the ,(store-type sym) (store ,y)) ,st-y
 	   (the index-type (head ,A)) (the index-type (head ,x)) (the index-type (head ,y)))
-	 y))))
+	 ,y))))
 
 ;;
 (deft/generic (t/gemv! #'subtypep) sym (alpha A x beta y transp))
@@ -37,20 +35,19 @@
   (using-gensyms (decl (alpha A x beta y transp))
    `(let (,@decl)
       (declare (type ,sym ,A ,x ,y)
-	       (type ,(field-type sym) ,alpha ,beta))
+	       (type ,(field-type sym) ,alpha ,beta)
+	       (type character ,transp))
       (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
 	(t/scdi! ,sym ,beta ,y :scal? t :numx? t))
       ;;These loops are optimized for column major matrices
-      (if ,transp
-	  (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (ref ,A j i) (ref ,x j)) nil)
-	  (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (ref ,A i j) (ref ,x j)) nil))
+      (ecase (char-upcase ,transp)
+       (#\N (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (ref ,A i j) (ref ,x j)) nil))
+       (#\T (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (ref ,A j i) (ref ,x j)) nil))
+       (#\C (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A i j)) (ref ,x j)) nil))
+       (#\H (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A j i)) (ref ,x j)) nil)))
       ,y)))
-
-;;Symbolic
-#+maxima
-(generate-typed-gemv! symbolic-base-typed-gemv!
-    (symbolic-tensor nil 0))
 ;;---------------------------------------------------------------;;
+
 (defgeneric gemv! (alpha A x beta y &optional job)
   (:documentation
    "
@@ -79,74 +76,75 @@
      :C                alpha * conjugate(A) * x + beta * y
      :H                alpha * transpose o conjugate(A) + beta * y
 ")
-  (:method :before ((alpha number) (A standard-matrix) (x standard-vector)
-		    (beta number) (y standard-vector)
+  (:method :before (alpha (A standard-tensor) (x standard-tensor)
+		    beta (y standard-tensor)
 		    &optional (job :n))
     (assert (member job '(:n :t :c :h)) nil 'invalid-value
 	    :given job :expected `(member job '(:n :t :c :h))
-	    :message "Inside gemv!")
+	    :message "GEMV!: Given an unknown job.")
     (assert (not (eq x y)) nil 'invalid-arguments
 	    :message "GEMV!: x and y cannot be the same vector")
     (assert (and
-	     (= (aref (dimensions x) 0)
-		(aref (dimensions A) (if (eq job :t) 0 1)))
-	     (= (aref (dimensions y) 0)
-		(aref (dimensions A) (if (eq job :t) 1 0))))
+	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
+	     (= (aref (the index-store-vector (dimensions x)) 0)
+		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :h)) 0 1)))
+	     (= (aref (the index-store-vector (dimensions y)) 0)
+		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :h)) 1 0))))
 	    nil 'tensor-dimension-mismatch)))
 
-(defmethod gemv! ((alpha number) (A real-matrix) (x real-vector)
-		  (beta number) (y real-vector) &optional (job :n))
-  (real-typed-gemv! (coerce-real alpha) A x
-		    (coerce-real beta) y job))
+(defun ieql (&rest args)
+  (loop :for ele :in (cdr args)
+     :do (unless (eql (car args) ele)
+	   (return nil))
+     :finally (return t)))
 
-(defmethod gemv! ((alpha number) (A complex-matrix) (x complex-vector)
-		  (beta number) (y complex-vector) &optional (job :n))
-  (complex-typed-gemv! (coerce-complex alpha) A x
-		       (coerce-complex beta) y job))
+(defun >class (cls)
+  (let ((clist (reverse (sort cls #'coerceable?))))
+    (loop :for ele :in (cdr clist)
+       :do (unless (coerceable? ele (car clist))
+	     (return nil))
+       :finally (return (car clist)))))
 
-(defmethod gemv! ((alpha number) (A real-matrix) (x real-vector)
-		  (beta number) (y complex-vector) &optional (job :n))
-  (unless (= beta 1)
-    (complex-typed-scal! (coerce-complex beta) y))
-  (unless (= alpha 0)
-    (if (not (zerop (imagpart alpha)))
-	(let ((A.x (make-real-tensor (aref (dimensions y) 0)))
-	      (vw-y (tensor-realpart~ y)))
-	  (real-typed-gemv! (coerce-real 1) A x (coerce-real 0) A.x job)
-	  ;;
-	  (real-typed-axpy! (coerce-real (realpart alpha)) A.x vw-y)
-	  ;;Move view to the imaginary part
-	  (incf (head vw-y))
-	  (real-typed-axpy! (coerce-real (imagpart alpha)) A.x vw-y))
-	(real-typed-gemv! (coerce-real alpha) A x
-			  (coerce-real 1) (tensor-realpart~ y) job)))
-  y)
+(defun tensor-coerce (ten cls &optional (duplicate? t))
+  (let ((clname (if (typep cls 'standard-class) (class-name cls) cls)))
+    (if (and (not duplicate?) (typep ten clname)) ten
+	(copy! ten (zeros (dimensions ten) clname)))))
 
-(defmethod gemv! ((alpha number) (A real-matrix) (x complex-vector)
-		  (beta number) (y complex-matrix) &optional (job :n))
-  (unless (= beta 1)
-    (complex-typed-scal! (coerce-complex beta) y))
-  (unless (= alpha 0)
-    (let ((A.x (make-complex-tensor (aref (dimensions y) 0))))
-      (let ((vw-x (tensor-realpart~ x))
-	    (vw-A.x (tensor-realpart~ x)))
-	;;Re
-	(real-typed-gemv! (coerce-real 1) A vw-x (coerce-real 0) vw-A.x job)
-	;;Im
-	(incf (head vw-x))
-	(incf (head vw-A.x))
-	(real-typed-gemv! (coerce-real 1) A vw-x (coerce-real 0) vw-A.x job))
-      (complex-typed-axpy! (coerce-complex alpha) A.x y)))
-  y)
-
-(defmethod gemv! ((alpha number) (A complex-matrix) (x real-vector)
-		  (beta number) (y complex-vector) &optional (job :n))
-  (let ((cplx-x (make-complex-tensor (aref (dimensions x) 0))))
-    (real-typed-copy! x (tensor-realpart~ cplx-x))
-    (complex-typed-gemv! (coerce-complex alpha) A cplx-x
-			 (coerce-complex beta) y job))
-  y)
-
+(defmethod gemv! (alpha (A standard-tensor) (x standard-tensor) beta (y standard-tensor) &optional (job :n))
+  (let ((clx (class-name (class-of x)))
+	(cly (class-name (class-of y)))
+	(cla (class-name (class-of y))))
+    (assert (and (member cla *tensor-type-leaves*)
+		 (member clx *tensor-type-leaves*)
+		 (member cly *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list cla clx cly))
+    (cond
+      ((ieql clx cly cla)
+       (compile-and-eval
+	`(defmethod gemv! (alpha (A ,cla) (x ,clx) beta (y ,cly) &optional (job :n))
+	   (let ((alpha (t/coerce ,(field-type clx) alpha))
+		 (beta (t/coerce ,(field-type clx) beta))
+		 (cjob (aref (symbol-name job) 0)))
+	     (declare (type ,(field-type clx) alpha beta)
+		      (type character trans-op))
+	     ,(recursive-append
+	       (when (subtypep clx 'blas-numeric-tensor)
+		 `(if (call-fortran? A (t/l2-lb ,cla))
+		      (let ((A-copy (if (blas-matrix-compatiblep A cjob) A
+					(let ((*default-stride-ordering* :col-major))
+					  (t/copy! (,cla ,cla) A (t/zeros ,clx (dimensions A)))))))
+			(multiple-value-bind (lda op maj) (blas-matrix-compatiblep A-copy cjob)
+			  (declare (ignore maj))
+			  (t/blas-gemv! ,cla alpha A-copy lda
+					x (aref (the index-store-vector (strides x)) 0)
+					beta
+					y (aref (the index-store-vector (strides y)) 0)
+					op)))))
+	       `(t/gemv! ,cla alpha A x beta y cjob)))
+	   y))
+       (gemv! alpha A x beta y job))
+      (t
+       (error "Don't know how to apply axpy! to classes ~a, ~a." clx cly)))))
 ;;---------------------------------------------------------------;;
 (defgeneric gemv (alpha A x beta y &optional job)
   (:documentation
@@ -174,26 +172,6 @@
      :H                alpha * transpose o conjugate(A) + beta * y
 "))
 
-(defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
-		 (beta number) (y complex-vector) &optional (job :n))
-  (let ((result (copy y)))
-    (gemv! alpha A x 1d0 result job)))
-
-(defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
-		 (beta number) (y real-vector) &optional (job :n))
-  (let ((result (if (or (complexp alpha) (complexp beta)
-			(typep A 'complex-matrix) (typep x 'complex-vector))
-		    (make-complex-tensor (aref (dimensions y) 0))
-		    (make-real-tensor (aref (dimensions y) 0)))))
-    (scal! y result)
-    (gemv! alpha A x beta result job)))
-
-(defmethod gemv ((alpha number) (A standard-matrix) (x standard-vector)
-		 (beta (eql nil)) (y (eql nil)) &optional (job :n))
-  (let ((result (apply
-		 (if (or (complexp alpha) (complexp beta)
-			 (typep A 'complex-matrix) (typep x 'complex-vector))
-		     #'make-complex-tensor
-		     #'make-real-tensor)
-		 (list (ecase job ((:n :c) (nrows A)) ((:t :h) (ncols A)))))))
-    (gemv! alpha A x 0 result job)))
+(defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
+		 beta (y standard-tensor) &optional (job :n))
+  (gemv! alpha A x beta (copy y) job))

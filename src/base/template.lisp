@@ -145,8 +145,6 @@
      :for eleb :in b
      :do (when (funcall func elea eleb)
 	   (return t))))
-)
-
 
 ;;This one is hard to get one's brain around.
 (deft/generic (t/strict-coerce
@@ -195,3 +193,5 @@
 ;; (t/strict-coerce (fixnum real) x) -> (COERCE X 'REAL)
 ;; (t/strict-coerce (double-float t) x) -> X
 ;; (t/strict-coerce (fixnum (complex integer)) x) -> (COERCE X '(COMPLEX INTEGER))
+
+)

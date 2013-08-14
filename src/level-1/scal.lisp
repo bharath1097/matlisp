@@ -114,8 +114,6 @@
 	     `(t/scdi! ,clx x y :scal? t :numx? nil))
 	   y))
        (scal! x y))
-      ((coerceable? clx cly)
-       (scal! (coerce-tensor x cly) y))
       (t
        (error "Don't know how to apply scal! to classes ~a, ~a." clx cly)))))
 
@@ -170,8 +168,6 @@
 	     `(t/scdi! ,clx x y :scal? nil :numx? nil))
 	   y))
        (div! x y))
-      ((coerceable? clx cly)
-       (div! (coerce-tensor x cly) y))
       (t
        (error "Don't know how to apply div! to classes ~a, ~a." clx cly)))))
 

@@ -99,3 +99,4 @@
   (defleaf scomplex-tensor (complex-numeric-tensor) ())
   (deft/method t/store-element-type (sym scomplex-tensor) ()
     'single-float))
+

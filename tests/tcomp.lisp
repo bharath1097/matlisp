@@ -47,9 +47,28 @@
   t)
 
 (defun mv-test (A b c)
-  (t/gemv! real-tensor 1d0 A b 0d0 c nil))
-  
+  (t/gemv! real-tensor 1d0 A b 2d0 c #\t))
+
+(let ((A (zeros '(1000 1000)))
+      (x (zeros 1000))
+      (y (zeros 1000)))
+  (let-typed ((sto-x (store x) :type (simple-array double-float))
+	      (sto-y (store y) :type (simple-array double-float))
+	      (sto-a (store A) :type (simple-array double-float)))
+	     (loop :for i :from 0 :below (array-dimension sto-x 0)
+		:do (setf (aref sto-x i) (random 1d0)
+			  (aref sto-y i) (random 1d0)))
+	     (loop :for i :from 0 :below (array-dimension sto-a 0)
+		:do (setf (aref sto-a i) (random 1d0))))
+  (time (let ((*real-l2-fcall-lb* (* 1000 2000))) (gemv! 1 A x 1 y)))
+  t)
+
 (let ((A (copy! #2a((1 2) (3 4)) (zeros '(2 2))))
       (b (copy! 1 (zeros 2)))
       (c (copy! #(1 2) (zeros 2))))
   (time (dotimes (i 1000) (mv-test A b c))))
+
+(let ((A (copy! #2a((1 2) (3 4)) (zeros '(2 2))))
+      (b (copy! 1 (zeros 2)))
+      (c (copy! #(1 2) (zeros 2))))
+  (time (dotimes (i 1000) (gemv! 1 A b 0 c :n))))

@@ -46,8 +46,8 @@
 	       (cs (aref stds 1) :type index-type))
     ;;Note that it is not required that (rs = nc * cs) or (cs = nr * rs)
     (cond
-      ((= cs 1) (values :row-major rs (fortran-nop op)))
-      ((= rs 1) (values :col-major cs op)))))
+      ((= cs 1) (values rs (fortran-nop op) :row-major))
+      ((= rs 1) (values cs op :col-major)))))
 
 ;;Stride makers.
 (definline make-stride-rmj (dims)

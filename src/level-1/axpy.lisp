@@ -122,8 +122,6 @@
 	       `(t/axpy! ,clx alpha x y))
 	     y)))
        (axpy! alpha x y))
-      ((coerceable? clx cly)
-       (axpy! alpha (coerce-tensor x cly) y))
       (t
        (error "Don't know how to apply axpy! to classes ~a, ~a." clx cly)))))
 
