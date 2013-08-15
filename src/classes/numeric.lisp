@@ -3,6 +3,12 @@
 (defclass numeric-tensor (standard-tensor) ())
 (deft/method t/field-type (sym numeric-tensor) ()
   'number)
+
+;;
+(defleaf integer-tensor (numeric-tensor) ())
+(deft/method t/field-type (sym integer-tensor) ()
+  'integer)
+
 ;;
 (defclass blas-numeric-tensor (numeric-tensor) ())
 (deft/generic (t/l1-lb #'subtypep) sym ())

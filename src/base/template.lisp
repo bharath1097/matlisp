@@ -33,6 +33,7 @@
        (declare (type ,ty ,@args))
        (cl:/ ,@args))))
 
+;;
 (deft/generic (t/fc #'subtypep) ty (num))
 (deft/method t/fc (ty number) (num)
   (with-gensyms (num-sym)
@@ -51,7 +52,9 @@
        `(defmethod fconj ((x ,clname))
 	  (t/fc ,clname x)))
       (fc x))))
-
+(defun field-realp (fil)
+  (eql (macroexpand-1 `(t/fc ,fil phi)) 'phi))
+;;
 (deft/generic (t/f= #'subtypep) ty (&rest nums))
 (deft/method t/f= (ty number) (&rest nums)
   (let* ((decl (zipsym nums))

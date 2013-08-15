@@ -14,7 +14,7 @@
       `(let* (,@decl
 	      (,m (aref (the index-store-vector (dimensions ,C)) 0))
 	      (,n (aref (the index-store-vector (dimensions ,C)) 1))
-	      (,k (aref (the index-store-vector (dimensions ,A)) (ecase (char-upcase ,transa) ((#\N #\C) 1) ((#\T #\H) 0)))))
+	      (,k (aref (the index-store-vector (dimensions ,A)) (ecase (char-upcase ,transa) (#\N 1) ((#\T #\C) 0)))))
 	 (declare (type ,sym ,A ,B ,C)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
@@ -33,69 +33,45 @@
 ;;
 (deft/generic (t/gemm! #'subtypep) sym (alpha A B beta C transa transb))
 
-;;Witness the power of macros, muggles! :)
 (deft/method t/gemm! (sym standard-tensor) (alpha A B beta C transa transb)
-  (using-gensyms (decl (alpha A x beta y transp))
+  (using-gensyms (decl (alpha A B beta C transa transb))
    `(let (,@decl)
-      (declare (type ,sym ,A ,x ,y)
+      (declare (type ,sym ,A ,B ,C)
 	       (type ,(field-type sym) ,alpha ,beta)
-	       (type character ,transp))
+	       (type character ,transa ,transb))
       (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
-	(t/scdi! ,sym ,beta ,y :scal? t :numx? t))
+	(t/scdi! ,sym ,beta ,C :scal? t :numx? t))
+      ,@(when (field-realp (field-type sym))
+	      `((when (char= ,transa #\C) (setq ,transa #\T))
+		(when (char= ,transb #\C) (setq ,transb #\T))))
       ;;These loops are optimized for column major matrices
-      (ecase (char-upcase ,transp)
-       (#\N (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (ref ,A i j) (ref ,x j)) nil))
-       (#\T (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (ref ,A j i) (ref ,x j)) nil))
-       (#\C (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A i j)) (ref ,x j)) nil))
-       (#\H (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A j i)) (ref ,x j)) nil)))
-      ,y)))
-
-
-;;Real
-(generate-typed-gemm! real-base-typed-gemm!
-    (real-tensor dgemm *real-l3-fcall-lb*))
-
-(definline real-typed-gemm! (alpha A B beta C job)
-  (real-base-typed-gemm! alpha A B beta C
-			 (apply #'combine-jobs
-				(mapcar #'(lambda (x)
-					    (ecase x ((:n :t) x) (:h :t) (:c :n)))
-					(multiple-value-list (split-job job))))))
-
-;;Complex
-(generate-typed-gemm! complex-base-typed-gemm!
-    (complex-tensor zgemm *complex-l3-fcall-lb*))
-
-(definline complex-typed-gemm! (alpha A B beta C job)
-  (declare (type complex-matrix A B C)
-	   (type complex-type alpha beta)
-	   (type symbol job))
-  (multiple-value-bind (job-A job-B) (split-job job)
-    (if (and (member job-A '(:n :t))
-	     (member job-B '(:n :t)))
-	(complex-base-typed-gemm! alpha A B beta C job)
-	(let ((A (ecase job-A
-		   ((:n :t) A)
-		   ((:h :c) (let ((ret (complex-typed-copy! A (complex-typed-zeros (dimensions A)))))
-			      (real-typed-num-scal! -1d0 (tensor-imagpart~ ret))
-			      ret))))
-	      (B (ecase job-B
-		   ((:n :t) B)
-		   ((:h :c) (let ((ret (complex-typed-copy! A (complex-typed-zeros (dimensions A)))))
-			      (real-typed-num-scal! -1d0 (tensor-imagpart~ ret))
-			      ret))))
-	      (tjob (combine-jobs (ecase job-A ((:n :t) job-A) (:h :t) (:c :n))
-				  (ecase job-B ((:n :t) job-B) (:h :t) (:c :n)))))
-	  (complex-base-typed-gemm! alpha A B
-				    beta C tjob)))))
-
-;;Symbolic
-#+maxima
-(generate-typed-gemm! symbolic-base-typed-gemm!
-    (symbolic-tensor nil 0))
-
+      ,(labels ((transpose-ref (mat)
+		  `(ref ,(cadr mat) ,@(reverse (cddr mat))))
+		(conjugate-ref (mat)
+		  `(t/fc ,(field-type sym) ,mat))
+		(generate-mm-code (transa transb)		  
+		  (destructuring-bind (A-ref B-ref) (mapcar #'(lambda (mat trans) (ecase trans
+										    ((#\N #\T) mat)
+										    ((#\C) (conjugate-ref mat))))					
+							    (mapcar #'(lambda (mat trans) (ecase trans
+											    ((#\N) mat)
+											    ((#\T #\C) (transpose-ref mat))))
+								    (list `(ref ,A i k) `(ref ,B k j)) (list transa transb))
+							    (list transa transb))
+		    (let ((loopo (let ((ta (member transa '(#\T #\C)))
+				       (tb (member transb '(#\T #\C))))
+				      (cond
+					((and (not ta) (not tb)) `(j k i))
+					((and (not ta) tb) `(k j i))
+					(t`(i j k))))))
+		      `(einstein-sum ,sym ,loopo (ref ,C i j) (* ,alpha ,A-ref ,B-ref) nil)))))
+	       `(ecase ,transa
+		  ,@(loop :for ta :across (if (field-realp (field-type sym)) "NT" "NTC")
+		       :collect `(,ta (ecase ,transb
+					,@(loop :for tb :across (if (field-realp (field-type sym)) "NT" "NTC")
+					     :collect `(,tb ,(generate-mm-code ta tb))))))))
+      ,C)))
 ;;---------------------------------------------------------------;;
-
 (defgeneric gemm! (alpha A B beta C &optional job)
   (:documentation
    "
@@ -118,20 +94,10 @@
   JOB must be a keyword with two of these alphabets
      N                 Identity
      T                 Transpose
-     C                 Complex conjugate
-     H                 Hermitian transpose {conjugate transpose}
-
-  so that (there are 4x4 operations in total).
-
-     JOB                    Operation
-  ---------------------------------------------------
-     :NN (default)      alpha * A * B + beta * C
-     :TN                alpha * transpose(A) * B + beta * C
-     :NH                alpha * A * transpose o conjugate(B) + beta * C
-     :HC                alpha * transpose o conjugate(A) * conjugate(B) + beta * C
+     C                 Hermitian transpose {conjugate transpose}
 ")
-  (:method :before ((alpha number) (A standard-matrix) (B standard-matrix)
-		    (beta number) (C standard-matrix)
+  (:method :before (alpha (A standard-tensor) (B standard-tensor)
+		    beta (C standard-tensor)
 		    &optional (job :nn))
     (let ((nr-a (nrows A))
 	  (nc-a (ncols A))
@@ -140,64 +106,46 @@
 	  (nr-c (nrows C))
 	  (nc-c (ncols C)))
       (declare (type index-type nr-a nc-a nr-b nc-b nr-c nc-c))
-      (let ((sjobs (multiple-value-list (split-job job))))
+      (let ((sjobs (split-job job)))
 	(assert (= (length sjobs) 2) nil 'invalid-arguments :message "Ill formed job")
-	(ecase (first sjobs) ((:n :c) t) ((:t :h) (rotatef nr-a nc-a)))
-	(ecase (second sjobs) ((:n :c) t) ((:t :h) (rotatef nr-b nc-b))))
+	(ecase (first sjobs) (#\N t) ((#\T #\C) (rotatef nr-a nc-a)))
+	(ecase (second sjobs) ((#\N) t) ((#\T #\C) (rotatef nr-b nc-b))))
       (assert (not (or (eq A C) (eq B C))) nil 'invalid-arguments
 	      :message "GEMM!: C = {A or B} is not allowed.")
-      (assert (and (= nr-c nr-a)
+      (assert (and (tensor-matrixp A) (tensor-matrixp B) (tensor-matrixp C)
+		   (= nr-c nr-a)
 		   (= nc-a nr-b)
 		   (= nc-b nc-c)) nil 'tensor-dimension-mismatch))))
-
-(defmethod gemm! ((alpha number) (a real-matrix) (b real-matrix)
-		  (beta number) (c real-matrix)
-		  &optional (job :nn))
-  (real-typed-gemm! (coerce-real alpha) a b
-		    (coerce-real beta) c job))
-
-(defmethod gemm! ((alpha number) (a complex-matrix) (b complex-matrix)
-		  (beta number) (c complex-matrix)
-		  &optional (job :nn))
-  (complex-typed-gemm! (coerce-complex alpha) a b
-		       (coerce-complex beta) c job))
-
-(defmethod gemm! ((alpha number) (a real-matrix) (b real-matrix)
-		  (beta number) (c complex-matrix)
-		  &optional (job :nn))
-  (unless (= beta 1)
-    (scal! beta c))
-  (unless (= alpha 0)
-    (if (complexp alpha)
-	(let ((A.x (make-real-tensor (nrows c) (ncols c)))
-	      (vw.c (tensor-realpart~ c)))
-	  (real-typed-gemm! (coerce-real 1) A B (coerce-real 0) A.x job)
-	  ;;Re
-	  (axpy! (realpart alpha) A.x vw.c)
-	  ;;Im
-	  (incf (head vw.c))
-	  (axpy! (imagpart alpha) A.x vw.c))
-	(let ((vw.c (tensor-realpart~ c)))
-	  (real-typed-gemm! (coerce-real alpha) A B
-			    (coerce-real 1) vw.c job))))
-  C)
-
-(defmethod gemm! ((alpha number) (a real-matrix) (b complex-matrix)
-		  (beta number) (c complex-matrix)
-		  &optional (job :nn))
-  (let ((A.cplx (copy! A (make-complex-tensor (nrows a) (ncols a)))))
-    (complex-typed-gemm! (coerce-complex alpha) A.cplx B
-			 (coerce-complex beta) C job))
-  C)
-
-(defmethod gemm! ((alpha number) (a complex-matrix) (b real-matrix)
-		  (beta number) (c complex-matrix)
-		  &optional (job :nn))
-  (let ((B.cplx (copy! B (make-complex-tensor (nrows B) (ncols B)))))
-    (complex-typed-gemm! (coerce-complex alpha) A B.cplx
-			 (coerce-complex beta) C job))
-  C)
-
+  
+(defmethod gemm! (alpha (A standard-tensor) (B standard-tensor) beta (C standard-tensor) &optional (job :nn))
+  (let ((cla (class-name (class-of A)))
+	(clb (class-name (class-of B)))
+	(clc (class-name (class-of C))))
+    (assert (and (member cla *tensor-type-leaves*)
+		 (member clb *tensor-type-leaves*)
+		 (member clc *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list cla clb clc))
+    (cond
+      ((ieql cla clb clc)
+       (compile-and-eval
+	`(defmethod gemm! (alpha (A ,cla) (B ,clb) beta (C ,clc) &optional (job :nn))
+	   (let ((alpha (t/coerce ,(field-type cla) alpha))
+		 (beta (t/coerce ,(field-type cla) beta)))
+	     (declare (type ,(field-type cla) alpha beta))
+	     (destructuring-bind (joba jobb) (split-job job)
+	       (declare (type character joba jobb))
+	       ,(recursive-append
+		 (when (subtypep clc 'blas-numeric-tensor)
+		   `(if (call-fortran? C (t/l3-lb ,clc))			
+			(with-columnification (,cla ((a joba) (b jobb)) (c))
+			  (multiple-value-bind (lda opa) (blas-matrix-compatiblep a joba)
+			    (multiple-value-bind (ldb opb) (blas-matrix-compatiblep b jobb)
+			      (t/blas-gemm! ,cla alpha A lda B ldb beta C ldb opa opb))))))
+		 `(t/gemm! ,cla alpha A B beta C joba jobb))))
+	   C))
+       (gemm! alpha A B beta C job))
+      (t
+       (error "Don't know how to apply gemm! to classes ~a." (list cla clb clc))))))
 ;;---------------------------------------------------------------;;
 (defgeneric gemm (alpha a b beta c &optional job)
   (:documentation
@@ -221,46 +169,9 @@
   JOB must be a keyword with two of these alphabets
      N                 Identity
      T                 Transpose
-     C                 Complex conjugate
-     H                 Hermitian transpose {conjugate transpose}
-
-  so that (there are 4x4 operations in total).
-
-     JOB                    Operation
-  ---------------------------------------------------
-     :NN (default)      alpha * A * B + beta * C
-     :TN                alpha * transpose(A) * B + beta * C
-     :NH                alpha * A * transpose o conjugate(B) + beta * C
-     :HC                alpha * transpose o conjugate(A) * conjugate(B) + beta * C
+     C                 Hermitian conjugate
 "))
 
-(defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
-		 (beta number) (c complex-matrix)
-		 &optional (job :nn))
-  (let ((result (copy C)))
-    (gemm! alpha A B beta result job)))
-
-;; if all args are not real then at least one of them
-;; is complex, so we need to call GEMM! with a complex C
-(defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
-		 (beta number) (c real-matrix)
-		 &optional (job :nn))
-  (let ((result (funcall (if (or (complexp alpha) (complexp beta)
-				 (typep a 'complex-matrix) (typep b 'complex-matrix))
-			     #'complex-typed-zeros
-			     #'real-typed-zeros)
-			 (dimensions C))))
-    (copy! C result)
-    (gemm! alpha A B beta result job)))
-
-(defmethod gemm ((alpha number) (a standard-matrix) (b standard-matrix)
-		 (beta (eql nil)) (c (eql nil))
-		 &optional (job :nn))
-  (multiple-value-bind (job-A job-B) (split-job job)
-    (let ((result (funcall (if (or (complexp alpha) (complexp beta)
-				   (typep a 'complex-matrix) (typep b 'complex-matrix))
-			       #'complex-typed-zeros
-			       #'real-typed-zeros)
-			   (make-index-store (list (if (member job-A '(:n :c)) (nrows A) (ncols A))
-						   (if (member job-B '(:n :c)) (ncols B) (nrows B)))))))
-      (gemm! alpha A B 0 result job))))
+(defmethod gemm (alpha (A standard-tensor) (B standard-tensor)
+		 beta (C standard-tensor) &optional (job :nn))
+  (gemm! alpha A B beta (copy C) job))

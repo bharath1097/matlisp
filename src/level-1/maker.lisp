@@ -4,7 +4,9 @@
 (deft/method t/zeros (class standard-tensor) (dims &optional initial-element)
   (with-gensyms (astrs adims sizs)
     `(let* ((,adims (make-index-store ,dims)))
+       (declare (type index-store-vector ,adims))
        (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
+	 (declare (type index-store-vector ,astrs))
 	 (make-instance ',class
 			:dimensions ,adims			  
 			:head 0

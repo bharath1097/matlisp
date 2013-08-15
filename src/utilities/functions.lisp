@@ -6,6 +6,12 @@
 (declaim (inline id))
 (defun id (x) x)
 
+(defun ieql (&rest args)
+  (loop :for ele :in (cdr args)
+     :do (unless (eql (car args) ele)
+	   (return nil))
+     :finally (return t)))
+
 (declaim (inline vectorify))
 (defun vectorify (seq n &optional (element-type t))
   (declare (type (or vector list) seq))

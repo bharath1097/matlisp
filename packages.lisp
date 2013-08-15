@@ -68,7 +68,7 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:matlisp-conditions)
-  (:export #:ensure-list #:id
+  (:export #:ensure-list #:id #:ieql
 	   #:vectorify #:copy-n
 	   #:ensure-args #:repsym #:findsym #:find-tag
 	   #:zip #:zip-eq #:zipsym
@@ -91,7 +91,6 @@
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
-
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:matlisp-utilities)

@@ -24,12 +24,12 @@
        (list csto-a? csto-b?)))))
 
 (definline fortran-nop (op)
-  (ecase op (#\t #\n) (#\n #\t)))
+  (ecase op (#\T #\N) (#\N #\T)))
 
 (defun split-job (job)
   (declare (type symbol job))
   (let-typed ((name (symbol-name job) :type string))
-    (loop :for x :across name :collect (char-downcase x))))
+    (loop :for x :across name :collect (char-upcase x))))
 
 (definline flip-major (job)
   (declare (type symbol job))
@@ -46,7 +46,7 @@
 	       (cs (aref stds 1) :type index-type))
     ;;Note that it is not required that (rs = nc * cs) or (cs = nr * rs)
     (cond
-      ((= cs 1) (values rs (fortran-nop op) :row-major))
+      ((and (char/= op #\C) (= cs 1)) (values rs (fortran-nop op) :row-major))
       ((= rs 1) (values cs op :col-major)))))
 
 ;;Stride makers.
@@ -77,6 +77,29 @@
 (defun make-stride (dims)
   (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
 
-(defun call-fortran? (x lb)
+(defun call-fortran? ( x lb)
   (declare (type standard-tensor x))
   (> (size x) lb))
+
+(defmacro with-columnification ((type (&rest input) (&rest output)) &rest body)
+  (with-gensyms (cfunc)
+    (let ((input-syms (mapcar #'(lambda (x)
+				  (assert (or (symbolp (second x)) (characterp (second x))) nil "Given a non-symbolic input.")
+				  (gensym (symbol-name (car x)))) input))
+	  (output-syms (mapcar #'(lambda (mat) (gensym (symbol-name mat))) output)))
+      `(labels ((,cfunc (a &optional b)
+		  (declare (type ,type a))
+		  (let ((ret (or b (let ((*default-stride-ordering* :col-major)) (t/zeros ,type (the index-store-vector (dimensions a)))))))
+		    (declare (type ,type a ret))
+		    (t/copy! (,type ,type) a ret))))
+	 (let (,@(mapcar #'(lambda (x sym) (let ((mat (first x)) (job (second x)))
+					     `(,sym (if (blas-matrix-compatiblep ,mat ,job) ,mat
+							(,cfunc ,mat))))) input input-syms)
+	       ,@(mapcar #'(lambda (mat sym) `(,sym (if (eql (third (multiple-value-list (blas-matrix-compatiblep ,mat #\N))) :col-major) ,mat
+							(,cfunc ,mat)))) output output-syms))
+	   (declare (type ,type ,@(append input-syms output-syms)))
+	   (symbol-macrolet (,@(mapcar #'(lambda (mat sym) `(,mat ,sym)) (append (mapcar #'car input) output) (append input-syms output-syms)))
+	     ,@body)
+	   ,@(mapcar #'(lambda (mat sym) `(unless (eql (third (multiple-value-list (blas-matrix-compatiblep ,mat #\N))) :col-major)
+	   				    (,cfunc ,sym ,mat))) output output-syms)
+	   nil)))))

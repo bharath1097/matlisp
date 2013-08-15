@@ -39,12 +39,14 @@
 	       (type character ,transp))
       (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
 	(t/scdi! ,sym ,beta ,y :scal? t :numx? t))
+      ,@(when (field-realp (field-type sym))
+	      `((when (char= ,transp #\C) (setq ,transp #\T))))
       ;;These loops are optimized for column major matrices
-      (ecase (char-upcase ,transp)
+      (ecase ,transp
        (#\N (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (ref ,A i j) (ref ,x j)) nil))
        (#\T (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (ref ,A j i) (ref ,x j)) nil))
-       (#\C (einstein-sum ,sym (j i) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A i j)) (ref ,x j)) nil))
-       (#\H (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A j i)) (ref ,x j)) nil)))
+       ,@(unless (field-realp (field-type sym))
+		 `((#\C (einstein-sum ,sym (i j) (ref ,y i) (* ,alpha (t/fc ,(field-type sym) (ref ,A j i)) (ref ,x j)) nil)))))
       ,y)))
 ;;---------------------------------------------------------------;;
 
@@ -72,48 +74,29 @@
      JOB                    Operation
   ---------------------------------------------------
      :N (default)      alpha * A * x + beta * y
-     :T                alpha * transpose(A)* x + beta * y
-     :C                alpha * conjugate(A) * x + beta * y
-     :H                alpha * transpose o conjugate(A) + beta * y
+     :T                alpha * A^T * x + beta * y
+     :C                alpha * A^H * x + beta * y
 ")
   (:method :before (alpha (A standard-tensor) (x standard-tensor)
 		    beta (y standard-tensor)
 		    &optional (job :n))
-    (assert (member job '(:n :t :c :h)) nil 'invalid-value
-	    :given job :expected `(member job '(:n :t :c :h))
+    (assert (member job '(:n :t :c)) nil 'invalid-value
+	    :given job :expected `(member job '(:n :t :c))
 	    :message "GEMV!: Given an unknown job.")
     (assert (not (eq x y)) nil 'invalid-arguments
 	    :message "GEMV!: x and y cannot be the same vector")
     (assert (and
 	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
 	     (= (aref (the index-store-vector (dimensions x)) 0)
-		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :h)) 0 1)))
+		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :c)) 0 1)))
 	     (= (aref (the index-store-vector (dimensions y)) 0)
-		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :h)) 1 0))))
+		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :c)) 1 0))))
 	    nil 'tensor-dimension-mismatch)))
-
-(defun ieql (&rest args)
-  (loop :for ele :in (cdr args)
-     :do (unless (eql (car args) ele)
-	   (return nil))
-     :finally (return t)))
-
-(defun >class (cls)
-  (let ((clist (reverse (sort cls #'coerceable?))))
-    (loop :for ele :in (cdr clist)
-       :do (unless (coerceable? ele (car clist))
-	     (return nil))
-       :finally (return (car clist)))))
-
-(defun tensor-coerce (ten cls &optional (duplicate? t))
-  (let ((clname (if (typep cls 'standard-class) (class-name cls) cls)))
-    (if (and (not duplicate?) (typep ten clname)) ten
-	(copy! ten (zeros (dimensions ten) clname)))))
 
 (defmethod gemv! (alpha (A standard-tensor) (x standard-tensor) beta (y standard-tensor) &optional (job :n))
   (let ((clx (class-name (class-of x)))
 	(cly (class-name (class-of y)))
-	(cla (class-name (class-of y))))
+	(cla (class-name (class-of A))))
     (assert (and (member cla *tensor-type-leaves*)
 		 (member clx *tensor-type-leaves*)
 		 (member cly *tensor-type-leaves*))
@@ -126,7 +109,7 @@
 		 (beta (t/coerce ,(field-type clx) beta))
 		 (cjob (aref (symbol-name job) 0)))
 	     (declare (type ,(field-type clx) alpha beta)
-		      (type character trans-op))
+		      (type character cjob))
 	     ,(recursive-append
 	       (when (subtypep clx 'blas-numeric-tensor)
 		 `(if (call-fortran? A (t/l2-lb ,cla))
@@ -144,7 +127,7 @@
 	   y))
        (gemv! alpha A x beta y job))
       (t
-       (error "Don't know how to apply axpy! to classes ~a, ~a." clx cly)))))
+       (error "Don't know how to apply gemv! to classes ~a." (list cla clx cly))))))
 ;;---------------------------------------------------------------;;
 (defgeneric gemv (alpha A x beta y &optional job)
   (:documentation
@@ -167,9 +150,8 @@
      JOB                    Operation
   ---------------------------------------------------
      :N (default)      alpha * A * x + beta * y
-     :T                alpha * A'* x + beta * y
-     :C                alpha * conjugate(A) * x + beta * y
-     :H                alpha * transpose o conjugate(A) + beta * y
+     :T                alpha * A^T * x + beta * y
+     :C                alpha * A^H * x + beta * y
 "))
 
 (defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
