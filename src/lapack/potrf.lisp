@@ -25,72 +25,39 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Written by Knut Gjerden (analogous to getrf.lisp by R. Toy)
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: potrf.lisp,v 1.1 2009/08/19 16:01:36 rtoy Exp $
-;;;
-;;; $Log: potrf.lisp,v $
-;;; Revision 1.1  2009/08/19 16:01:36  rtoy
-;;; Add support for interfacing to potrf and potrs.  Submitted by Knut
-;;; Gjerden.
-;;;
-;;; src/potrf.lisp:
-;;; o New file for matlisp interface to potrf.  Modeled after getrf.
-;;;
-;;; src/potrs.lisp:
-;;; o New file for matlisp interface to potrs.  Modeled after getrs.
-;;;
-;;; src/lapack.lisp:
-;;; o Add Fortran interface to dpotrf, zpotrf, dpotrs, and zpotrs.
-;;;
-;;; matlisp.mk.in:
-;;; o Add dpotrf.o, dpotf2.o dpotrs.o zpotrs.o to list of LAPACK files we
-;;;   need to compile.
-;;;
-;;; packages.lisp:
-;;; o Export DPOTRS, ZPOTRS, DPOTRF, and ZPOTRF
-;;; o Export POTRF! and POTRS!.
-;;;
-;;; start.lisp:
-;;; o Don't use verbose output from mk:oos.
-;;;
-;;; system.dcl:
-;;; o Add potrf and potrs to system.
-;;;
-;;; Revision 1.1   06.08.2009 12:40:40 knutgj
-;;; o Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(in-package #:matlisp)
 
-(in-package "MATLISP")
+(deft/generic (t/lapack-potrf-func #'subtypep) sym ())
+(deft/method t/lapack-potrf-func (sym real-tensor) ()
+  'dpotrf)
+(deft/method t/lapack-potrf-func (sym complex-tensor) ()
+  'zpotrf)
+;;
+(deft/generic (t/lapack-potrf! #'subtypep) sym (A lda uplo))
 
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
+(deft/method t/lapack-potrf! (sym blas-numeric-tensor) (A lda uplo)
+  (using-gensyms (decl (A lda uplo))
+    `(let* (,@decl)
+       (declare (type ,sym ,A)
+		(type index-type ,lda)
+		(type character ,uplo))
+       (,(macroexpand-1 `(t/lapack-potrf-func ,sym))
+	 ,uplo
+	 (nrows ,A)
+	 (the ,(store-type sym) (store ,A)) ,lda
+	 0))))
 
-#+nil (export '(potrf!))
-	  
-
-(defgeneric potrf! (a &key uplo)
-  (:documentation
-"
+;;
+(defgeneric potrf! (a &optional uplo)
+  (:documentation "
   Syntax
   ======
-  (POTRF a [:u :L])
+  (POTRF! a)
 
   Purpose
   =======
-  DPOTRF computes the Cholesky factorization of a real symmetric
+  POTRF computes the Cholesky factorization of a real symmetric
   positive definite matrix A.
-
-  The factorization has the form
-     A = U**T * U,  if UPLO = 'U', or
-     A = L  * L**T,  if UPLO = 'L',
-  where U is an upper triangular matrix and L is lower triangular.
 
   This is the block version of the algorithm, calling Level 3 BLAS.
 
@@ -100,46 +67,111 @@
           factorization A = U**T*U or A = L*L**T.
   [2] INFO = T: successful
              i:  U(i,i) is exactly zero. 
-"))
+")
+  (:method :before ((a standard-tensor) &optional (uplo :l))	   
+	   (assert (tensor-square-matrixp a) nil 'tensor-dimension-mismatch
+		   :message "Expected square matrix.")
+	   (assert (member uplo '(:l :u)) nil 'invalid-arguments
+		   :given uplo :expected `(member uplo '(:l :u)))))
 
+(defmethod potrf! ((a blas-numeric-tensor) &optional (uplo :l))
+  (let ((cla (class-name (class-of A))))
+    (assert (member cla *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class (list cla))
+    (compile-and-eval
+     `(defmethod potrf! ((A ,cla) &optional (uplo :l))
+	(with-columnification (,cla () (A))
+	  (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
+	    (declare (ignore opa))
+	    (multiple-value-bind (sto info) (t/lapack-potrf! ,cla A lda (char-upcase (aref (symbol-name uplo) 0)))
+	      (declare (ignore sto))
+	      (unless (= info 0)
+		(error "getrf returned ~a." info)))))
+	A))
+    (potrf! A uplo)))
+;;
 
+(deft/generic (t/lapack-potrs-func #'subtypep) sym ())
+(deft/method t/lapack-potrs-func (sym real-tensor) ()
+  'dpotrs)
+(deft/method t/lapack-potrs-func (sym complex-tensor) ()
+  'zpotrs)
+;;
+(deft/generic (t/lapack-potrs! #'subtypep) sym (A lda B ldb uplo))
 
+(deft/method t/lapack-potrs! (sym blas-numeric-tensor) (A lda B ldb uplo)
+  (using-gensyms (decl (A lda B ldb uplo))
+    `(let* (,@decl)
+       (declare (type ,sym ,A ,B)
+		(type index-type ,lda ,ldb)
+		(type character ,uplo))
+       (,(macroexpand-1 `(t/lapack-potrs-func ,sym))
+	 ,uplo
+	 (nrows ,A) (ncols ,B)
+	 (the ,(store-type sym) (store ,A)) ,lda
+	 (the ,(store-type sym) (store ,B)) ,ldb
+	 0))))
 
+;;
+#+nil
+(let ((a (copy! #2a((10 2) (2 10)) (zeros '(2 2))))
+      (b (copy! #2a((2 10) (1 2)) (zeros '(2 2)))))
+  (potrf! a)
+  
+  (time (dotimes (i 1000)
+	  (potrs! a b))))
 
-(defmethod potrf! ((a real-matrix) &key uplo)
-  (let* ((n (nrows a))
-	 (m (ncols a)))
+(defgeneric potrs! (A B &optional uplo)
+  (:documentation "
+  Syntax
+  ======
+  (POTRS! a b [:U :L])
 
-    (declare (type fixnum n m))
-    (multiple-value-bind (new-a info)
-	(dpotrf (case uplo
-                  (:L "L")
-                  (:U "U")
-                  (t "U")) ;; UPLO
-		m          ;; N
-		(store a)  ;; A
-		n          ;; LDA
-		0)         ;; INFO
-      (declare (ignore new-a))
-      (values a (if (zerop info)
-			 t
-		       info)))))
+  Purpose
+  =======
+  Solves a system of linear equations
+      A * X = B  or  A' * X = B
+  with a general N-by-N matrix A using the Cholesky LU factorization computed
+  by POTRF.  A and are the results from POTRF, UPLO specifies
+  the form of the system of equations: 
+           = 'U':   A = U**T*U 
+           = 'L':   A = L*L**T
 
-(defmethod potrf! ((a complex-matrix) &key uplo)
-  (let* ((n (nrows a))
-	 (m (ncols a)))
+  Return Values
+  =============
+  [1] The NxM matrix X. (overwriting B)
+  [4] INFO = T: successful
+             i:  U(i,i) is exactly zero.  The LU factorization
+                 used in the computation has been completed, 
+                 but the factor U is exactly singular.
+                 Solution could not be computed.
+")
+  (:method :before ((A standard-tensor) (B standard-tensor) &optional (uplo :l))
+	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
+			(= (nrows A) (ncols A) (nrows B)))
+		   nil 'tensor-dimension-mismatch)
+	   (assert (member uplo '(:l :u)) nil 'invalid-value
+		   :given uplo :expected `(member uplo '(:u :l)))))
 
-    (declare (type fixnum n m))
-    (multiple-value-bind (new-a info)
-	(zpotrf  (case uplo
-                  (:L "L")
-                  (:U "U")
-                  (t "U")) ;; UPLO
-		m          ;; N
-		(store a)  ;; A
-		n          ;; LDA
-		0)         ;; INFO
-      (declare (ignore new-a))
-      (values a (if (zerop info)
-			 t
-		       info)))))
+(defmethod potrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (uplo :l))
+  (let ((cla (class-name (class-of A)))
+	(clb (class-name (class-of B))))
+    (assert (and (member cla *tensor-type-leaves*) (member clb *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list cla clb))
+    (cond
+      ((eql cla clb)
+       (compile-and-eval	
+	`(defmethod potrs! ((A ,cla) (B ,clb) &optional (uplo :l))
+	   (with-columnification (,cla ((A #\N)) (B))
+	     (mlet* (((lda opa) (blas-matrix-compatiblep A #\N))
+		     (ldb (blas-matrix-compatiblep B #\N)))
+	       (multiple-value-bind (sto info) (t/lapack-potrs! ,cla A lda B ldb
+								(let ((cuplo (aref (symbol-name uplo) 0)))
+								  (ecase opa (#\N cuplo) (#\T (fortran-nuplo cuplo)))))
+		 (declare (ignore sto))
+		 (unless (= info 0)
+		   (error "potrs returned ~a." info)))))
+	   B))
+       (potrs! A B uplo))
+      (t
+       (error "Don't know how to apply getrs! to classes ~a." (list cla clb))))))

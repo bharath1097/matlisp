@@ -340,8 +340,12 @@
   (= (rank ten) 1))
 
 (definline tensor-squarep (tensor)
+  (declare (type standard-tensor tensor))
   (let-typed ((dims (dimensions tensor) :type index-store-vector))
-    (lvec-foldr #'(lambda (a b) (if (eq a b) a nil)) dims)))
+	     (loop :for i :from 1 :below (length dims)
+		:do (unless (= (aref dims i) (aref dims 0))
+		      (return nil))
+		:finally (return t))))
 
 ;;
 (defun sub-tensor~ (tensor subscripts &optional (preserve-rank nil))

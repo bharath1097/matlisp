@@ -231,7 +231,7 @@
   (getrf! a)
   (getrs! a b))
 
-(defgeneric getrs! (A B &optional job-a ipiv)
+(defgeneric getrs! (A B &optional job ipiv)
   (:documentation
    "
   Syntax
@@ -258,15 +258,15 @@
                  but the factor U is exactly singular.
                  Solution could not be computed.
 ")
-  (:method :before ((A standard-tensor) (B standard-tensor) &optional (job-a :n) ipiv)
+  (:method :before ((A standard-tensor) (B standard-tensor) &optional (job :n) ipiv)
 	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
 			(= (nrows A) (ncols A) (nrows B))
 			(or (not ipiv) (>= (permutation-size ipiv) (nrows A))))
 		   nil 'tensor-dimension-mismatch)
-	   (assert (member job-a '(:n :t :c)) nil 'invalid-value
-		   :given job-a :expected `(member job-a '(:n :t :c)))))
+	   (assert (member job '(:n :t :c)) nil 'invalid-value
+		   :given job :expected `(member job '(:n :t :c)))))
 
-(defmethod getrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (job-a :n) ipiv)
+(defmethod getrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (job :n) ipiv)
   (let ((cla (class-name (class-of A)))
 	(clb (class-name (class-of B))))
     (assert (and (member cla *tensor-type-leaves*) (member clb *tensor-type-leaves*))
@@ -274,14 +274,14 @@
     (cond
       ((eql cla clb)
        (compile-and-eval
-	`(defmethod getrs! ((A ,cla) (B ,clb) &optional (job-a :n) ipiv)
+	`(defmethod getrs! ((A ,cla) (B ,clb) &optional (job :n) ipiv)
 	   (let ((upiv (if ipiv
 			   (pflip.l->f (store (etypecase ipiv
 						(permutation-action (action->pivot-flip ipiv))
 						(permutation-cycle (action->pivot-flip (cycle->action ipiv)))
 						(permutation-pivot-flip ipiv))))
 			   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A."))))
-		 (cjob (aref (symbol-name job-a) 0)))
+		 (cjob (aref (symbol-name job) 0)))
 	     (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
 	     (with-columnification (,cla ((A #\C)) (B))
 	       (mlet* (((lda opa) (blas-matrix-compatiblep A cjob))
@@ -291,6 +291,6 @@
 		     (unless (= info 0)
 		       (error "getrs returned ~a." info))))))
 	   B))
-       (getrs! A B job-a ipiv))
+       (getrs! A B job ipiv))
       (t
        (error "Don't know how to apply getrs! to classes ~a." (list cla clb))))))

@@ -13,6 +13,7 @@
   (aref (the index-store-vector (strides matrix)) 1))
 
 ;;
+#+nil
 (definline row-matrix-p (matrix)
   "
   Syntax
@@ -24,6 +25,7 @@
   Return T if X is a row matrix (number of columns is 1)"
   (tensor-typep matrix '(1 *)))
 
+#+nil
 (definline col-matrix-p (matrix)
   "
   Syntax
@@ -35,6 +37,7 @@
   Return T if X is a column matrix (number of rows is 1)"
   (tensor-typep matrix '(* 1)))
 
+#+nil
 (definline row-or-col-matrix-p (matrix)
 "
   Syntax
@@ -46,7 +49,7 @@
   Return T if X is either a row or a column matrix."
   (or (row-matrix-p matrix) (col-matrix-p matrix)))
 
-(definline square-matrix-p (matrix)
+(definline tensor-square-matrixp (matrix)
   (and (tensor-matrixp matrix) (tensor-squarep matrix)))
 
 ;; ;;
