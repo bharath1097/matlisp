@@ -39,8 +39,8 @@
 
 ;;Class definitions----------------------------------------------;;
 (defclass permutation ()
-  ((store :accessor store :initarg :store)
-   (permutation-size :accessor permutation-size :type index-type)))
+  ((store :reader store :initarg :store)
+   (permutation-size :reader permutation-size :type index-type)))
 
 (defmethod print-object ((per permutation) stream)
   (print-unreadable-object (per stream :type t)
@@ -61,7 +61,7 @@
 		 (loop :for i :of-type index-type :from 0 :below (length repr)
 		    :with srepr :of-type pindex-store-vector := (sort (copy-seq repr) #'<)
 		    :do (assert (= (aref srepr i) i) nil 'permutation-invalid-error)))
-	       (setf (permutation-size perm) (length repr)))))
+	       (setf (slot-value perm 'permutation-size) (length repr)))))
 
 ;;
 (defclass permutation-cycle (permutation)
@@ -71,7 +71,7 @@
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (if (null (store per))
-	(setf (permutation-size per) 1)
+	(setf (slot-value per 'permutation-size) 1)
 	(loop
 	   :for cyc :of-type pindex-store-vector :in (store per)
 	   :with ss :of-type pindex-type := 0
@@ -81,7 +81,7 @@
 		    :with scyc :of-type pindex-store-vector := (sort (copy-seq cyc) #'<)
 		    :do (assert (/= (aref scyc (1- i)) (aref scyc i)) nil 'permutation-invalid-error)
 		    :finally (setf ss (max ss (aref scyc (1- (length scyc)))))))
-	   :finally (setf (permutation-size per) (1+ ss))))))
+	   :finally (setf (slot-value per 'permutation-size) (1+ ss))))))
 
 ;;
 (defclass permutation-pivot-flip (permutation)
@@ -95,7 +95,7 @@
 	       (very-quickly
 		 (loop :for i :of-type index-type :from 0 :below len
 		    :do (assert (< -1 (aref repr i) len) nil 'permutation-invalid-error)))
-	       (setf (permutation-size per) len))))
+	       (setf (slot-value per 'permutation-size) len))))
 
 ;;Generic permute! method.
 (defgeneric permute! (thing permutation &optional argument)

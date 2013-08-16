@@ -72,11 +72,11 @@
   (coerce 1 ty))
 
 ;;
-(deft/generic (t/random #'subtypep) ty (num &optional random-state))
-(deft/method t/random (sym real) ty (num &optional random-state)
-  (if random-state
-      `(random ,num ,random-state)
-      `(random ,num)))
+;; (deft/generic (t/random #'subtypep) ty (num &optional random-state))
+;; (deft/method t/random (sym real) (num &optional random-state)
+;;   (if random-state
+;;       `(random ,num ,random-state)
+;;       `(random ,num)))
 
 ;;Tensor specializations
 (deft/generic (t/field-type #'subtypep) sym ())

@@ -27,48 +27,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-;;Possibly add Lisp routine in the future.
-(defmacro generate-typed-getrf! (func-name (tensor-class lapack-func))
-  (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
-		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
-	 (matrix-class (getf opt :matrix)))
-    `(progn
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-	 (let ((opt (get-tensor-class-optimization-hashtable ',tensor-class)))
-	   (assert opt nil 'tensor-cannot-find-optimization :tensor-class ',tensor-class)
-	   (setf (getf opt :getrf) ',func-name
-		 (get-tensor-class-optimization ',tensor-class) opt)))
-       (defun ,func-name (A ipiv)
-	 (declare (type ,matrix-class A)
-		  (type permutation-pivot-flip ipiv))
-	 (mlet* (((maj-A ld-A fop-A) (blas-matrix-compatible-p A :n) :type (symbol index-type nil)))
-		(if (eq maj-A :col-major)
-		    (progn
-		      ;;Convert to 1-based indexing.
-		      (let-typed ((pidv (store ipiv) :type pindex-store-vector))
-				 (very-quickly
-				   (loop :for i :of-type index-type :from 0 :below (length pidv)
-				      :do (incf (aref pidv i)))))
-		      (multiple-value-bind (n-A n-ipiv info) (,lapack-func
-							      (nrows A) (ncols A) (store A)
-							      ld-A (store ipiv) 0)
-			(declare (ignore n-A n-ipiv))
-			(assert (= info 0) nil 'invalid-arguments :argnum (1- (- info)) :message (format-to-string "GETRF returned INFO: ~a." info))
-			;;Convert back to 0-based indexing.
-			(let-typed ((pidv (store ipiv) :type pindex-store-vector))
-				   (very-quickly
-				     (loop :for i :of-type index-type :from 0 :below (length pidv)
-					:do (decf (aref pidv i)))))
-			(values A ipiv info)))
-		    (let ((tmp (,(getf opt :copy) A (with-order :col-major (,(getf opt :zero-maker) (dimensions A))))))
-		      (multiple-value-bind (n-tmp n-ipiv info) (,func-name tmp ipiv)
-			(declare (ignore n-tmp n-ipiv))
-			(,(getf opt :copy) tmp A)
-			(values A ipiv info)))))))))
+(deft/generic (t/lapack-getrf-func #'subtypep) sym ())
+(deft/method t/lapack-getrf-func (sym real-tensor) ()
+  'dgetrf)
+(deft/method t/lapack-getrf-func (sym complex-tensor) ()
+  'zgetrf)
+;;
+(deft/generic (t/lapack-getrf! #'subtypep) sym (A lda ipiv))
 
-(generate-typed-getrf! real-typed-getrf! (real-tensor dgetrf))
-(generate-typed-getrf! complex-typed-getrf! (complex-tensor zgetrf))
+(deft/method t/lapack-getrf! (sym blas-numeric-tensor) (A lda ipiv)
+  (using-gensyms (decl (A lda ipiv))
+    (with-gensyms (m n)
+      `(let* (,@decl
+	      (,m (nrows A))
+	      (,n (ncols A)))
+	 (declare (type ,sym ,A)
+		  (type (simple-array (unsigned-byte 32) (*)) ,ipiv)
+		  (type index-type ,lda))
+	 (,(macroexpand-1 `(t/lapack-getrf-func ,sym))
+	   ,m ,n
+	   (the ,(store-type sym) (store ,A)) ,lda
+	   ,ipiv 0)))))
 
+;;
 (defgeneric getrf! (A)
   (:documentation
 "
@@ -99,21 +80,37 @@
   [2] IPIV
   [3] INFO = T: successful
 	     i:  U(i,i) is exactly zero.
-"))
+")
+  (:method :before ((A standard-tensor))
+	   (assert (tensor-matrixp A)
+		   nil 'tensor-dimension-mismatch)))
 
-(defmethod getrf! ((A real-matrix))
-  (let ((ipiv (let* ((*check-after-initializing?* nil)
-		     (ret (make-instance 'permutation-pivot-flip :store (pindex-id (lvec-min (dimensions A))))))
-		(setf (permutation-size ret) (length (store ret)))
-		ret)))
-    (real-typed-getrf! A ipiv)))
+(defmethod getrf! ((A blas-numeric-tensor))
+  (let ((cla (class-name (class-of A))))
+    (assert (member cla *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class (list cla))
+    (compile-and-eval
+     `(defmethod getrf! ((A ,cla))
+	(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type '(unsigned-byte 32))))
+	  (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
+	  (with-columnification (,cla () (A))
+	    (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
+	      (declare (ignore opa))
+	      (multiple-value-bind (sto piv info) (t/lapack-getrf! ,cla A lda upiv)
+		(declare (ignore sto piv))
+		(unless (= info 0)
+		  (error "getrf returned ~a." info)))))
+	  (let ((perm (let ((ret (let ((*check-after-initializing?* nil)) (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv)))))
+			(setf (slot-value ret 'permutation-size) (length upiv))
+			ret)))
+	    (setf (gethash 'getrf (attributes A)) upiv)
+	    (values A perm)))))
+    (getrf! A)))
 
-(defmethod getrf! ((A complex-matrix))
-  (let ((ipiv (let* ((*check-after-initializing?* nil)
-		     (ret (make-instance 'permutation-pivot-flip :store (pindex-id (lvec-min (dimensions A))))))
-		(setf (permutation-size ret) (length (store ret)))
-		ret)))
-    (complex-typed-getrf! A ipiv)))
+#+nil
+(let ((a (copy! #2a((1 2) (3 4)) (zeros '(2 2)))))
+  (multiple-value-bind (mat perm) (time (getrf! a))
+    (time (permute! mat perm))))
 
 ;;
 (defgeneric lu (a &optional split-lu?)
@@ -138,7 +135,7 @@
   By default WITH-L,WITH-U,WITH-P.
 "))
 
-;;Sure I can do this with a defmethod (slowly), but where's the fun in that ? :)
+#+nil
 (defmacro make-lu (tensor-class)
   (let* ((opt (if-ret (get-tensor-class-optimization-hashtable tensor-class)
 		      (error 'tensor-cannot-find-optimization :tensor-class tensor-class)))
@@ -205,5 +202,95 @@
 				 (values lmat lu ipiv)))
 		 (values lu ipiv)))))))
 
-(make-lu real-tensor)
-(make-lu complex-tensor)
+
+;;
+(deft/generic (t/lapack-getrs-func #'subtypep) sym ())
+(deft/method t/lapack-getrs-func (sym real-tensor) ()
+  'dgetrs)
+(deft/method t/lapack-getrs-func (sym complex-tensor) ()
+  'zgetrs)
+;;
+(deft/generic (t/lapack-getrs! #'subtypep) sym (A lda B ldb ipiv transp))
+
+(deft/method t/lapack-getrs! (sym blas-numeric-tensor) (A lda B ldb ipiv transp)
+  (using-gensyms (decl (A lda B ldb ipiv transp))
+   `(let* (,@decl)
+      (declare (type ,sym ,A ,B)
+	       (type (simple-array (unsigned-byte 32) (*)) ,ipiv)
+	       (type index-type ,lda ,ldb)
+	       (type character ,transp))
+      (,(macroexpand-1 `(t/lapack-getrs-func ,sym))
+	,transp
+	(nrows ,A) (ncols ,B)
+	(the ,(store-type sym) (store ,A)) ,lda ,ipiv	   
+	(the ,(store-type sym) (store ,B)) ,ldb
+	0))))
+
+(let ((a (copy! #2a((1 2) (3 1)) (zeros '(2 2))))
+      (b (copy! #2a((3 3) (2 1)) (zeros '(2 2)))))
+  (getrf! a)
+  (getrs! a b))
+
+(defgeneric getrs! (A B &optional job-a ipiv)
+  (:documentation
+   "
+  Syntax
+  ======
+  (GETRS! a b [:trans :N])
+
+  Purpose
+  =======
+  Solves a system of linear equations
+      A * X = B  or  A' * X = B
+  with a general N-by-N matrix A using the LU factorization computed
+  by GETRF.  A and IPIV are the results from GETRF, TRANS specifies
+  the form of the system of equations: 
+           = 'N':  A * X = B  (No transpose)
+           = 'T':  A'* X = B  (Transpose)
+           = 'C':  A'* X = B  (Conjugate transpose)
+
+  Return Values
+  =============
+  [1] The NxM matrix X. (overwriting B)
+  [4] INFO = T: successful
+             i:  U(i,i) is exactly zero.  The LU factorization
+                 used in the computation has been completed, 
+                 but the factor U is exactly singular.
+                 Solution could not be computed.
+")
+  (:method :before ((A standard-tensor) (B standard-tensor) &optional (job-a :n) ipiv)
+	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
+			(= (nrows A) (ncols A) (nrows B))
+			(or (not ipiv) (>= (permutation-size ipiv) (nrows A))))
+		   nil 'tensor-dimension-mismatch)
+	   (assert (member job-a '(:n :t :c)) nil 'invalid-value
+		   :given job :expected `(member job '(:n :t :c)))))
+
+(defmethod getrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (job-a :n) ipiv)
+  (let ((cla (class-name (class-of A)))
+	(clb (class-name (class-of B))))
+    (assert (and (member cla *tensor-type-leaves*) (member clb *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list cla clb))
+    (cond
+      ((eql cla clb)
+       (compile-and-eval
+	`(defmethod getrs! ((A ,cla) (B ,clb) &optional (job-a :n) ipiv)
+	   (let ((upiv (if ipiv
+			   (pflip.l->f (store (etypecase ipiv
+						(permutation-action (action->pivot-flip ipiv))
+						(permutation-cycle (action->pivot-flip (cycle->action ipiv)))
+						(permutation-pivot-flip ipiv))))
+			   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A."))))
+		 (cjob (aref (symbol-name job-a) 0)))
+	     (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
+	     (with-columnification (,cla ((A #\C)) (B))
+	       (mlet* (((lda opa) (blas-matrix-compatiblep A cjob))
+		       (ldb (blas-matrix-compatiblep B #\N)))
+		 (multiple-value-bind (sto info) (t/lapack-getrs! ,cla A lda B ldb upiv opa)
+		     (declare (ignore sto))
+		     (unless (= info 0)
+		       (error "getrs returned ~a." info))))))
+	   B))
+       (getrs! A B job-a ipiv))
+      (t
+       (error "Don't know how to apply getrs! to classes ~a." (list cla clb))))))

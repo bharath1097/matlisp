@@ -14,7 +14,7 @@
 		:unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
 		:finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
 
-(defun blas-copyablep (ten-a ten-b)
+(definline blas-copyablep (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (when (= (rank ten-a) (rank ten-b))
     (mlet*
@@ -26,7 +26,7 @@
 (definline fortran-nop (op)
   (ecase op (#\T #\N) (#\N #\T)))
 
-(defun split-job (job)
+(definline split-job (job)
   (declare (type symbol job))
   (let-typed ((name (symbol-name job) :type string))
     (loop :for x :across name :collect (char-upcase x))))
@@ -74,10 +74,10 @@
 	       (setf (aref stds i) st))
 	 :finally (return (values stds st))))))
 
-(defun make-stride (dims)
+(definline make-stride (dims)
   (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
 
-(defun call-fortran? ( x lb)
+(definline call-fortran? ( x lb)
   (declare (type standard-tensor x))
   (> (size x) lb))
 
@@ -103,3 +103,22 @@
 	   ,@(mapcar #'(lambda (mat sym) `(unless (eql (third (multiple-value-list (blas-matrix-compatiblep ,mat #\N))) :col-major)
 	   				    (,cfunc ,sym ,mat))) output output-syms)
 	   nil)))))
+
+
+(definline pflip.f->l (uidiv)
+  (declare (type (simple-array (unsigned-byte 32) (*)) uidiv))
+  (let ((ret (make-array (length uidiv) :element-type 'pindex-type)))
+    (declare (type pindex-store-vector ret))
+    (very-quickly
+      (loop :for i :from 0 :below (length uidiv)
+	 :do (setf (aref ret i) (1- (aref uidiv i)))))
+    ret))
+
+(definline pflip.l->f (idiv)
+  (declare (type pindex-store-vector idiv))
+  (let ((ret (make-array (length idiv) :element-type '(unsigned-byte 32))))
+    (declare (type (simple-array (unsigned-byte 32) (*)) ret))
+    (very-quickly
+      (loop :for i :from 0 :below (length idiv)
+	 :do (setf (aref ret i) (1+ (aref idiv i)))))
+    ret))

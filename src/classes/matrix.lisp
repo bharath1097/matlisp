@@ -1,16 +1,16 @@
 (in-package #:matlisp)
 
 (definline nrows (matrix)
-  (aref (dimensions matrix) 0))
+  (aref (the index-store-vector (dimensions matrix)) 0))
 
 (definline ncols (matrix)
-  (aref (dimensions matrix) 1))
+  (aref (the index-store-vector (dimensions matrix)) 1))
 
 (definline row-stride (matrix)
-  (aref (strides matrix) 0))
+  (aref (the index-store-vector (strides matrix)) 0))
 
 (definline col-stride (matrix)
-  (aref (strides matrix) 1))
+  (aref (the index-store-vector (strides matrix)) 1))
 
 ;;
 (definline row-matrix-p (matrix)

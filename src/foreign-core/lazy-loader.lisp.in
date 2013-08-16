@@ -88,12 +88,13 @@
 
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
+  (cffi:use-foreign-library matlisp)
   (cffi:use-foreign-library blas)
   (cffi:use-foreign-library lapack)
-  (cffi:use-foreign-library matlisp)
   (cffi:use-foreign-library dfftpack)
-  (cffi:use-foreign-library toms715))
-  ;;(cffi:use-foreign-library odepack)
+  (cffi:use-foreign-library toms715)
+  #+nil(cffi:use-foreign-library colnew)
+  #+nil(cffi:use-foreign-library odepack))
 
 #+:allegro
 (defun load-blas-&-lapack-libraries ()
