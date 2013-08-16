@@ -226,7 +226,7 @@
 	(the ,(store-type sym) (store ,B)) ,ldb
 	0))))
 
-(let ((a (copy! #2a((1 2) (3 1)) (zeros '(2 2))))
+#+nil(let ((a (copy! #2a((1 2) (3 1)) (zeros '(2 2))))
       (b (copy! #2a((3 3) (2 1)) (zeros '(2 2)))))
   (getrf! a)
   (getrs! a b))
@@ -264,7 +264,7 @@
 			(or (not ipiv) (>= (permutation-size ipiv) (nrows A))))
 		   nil 'tensor-dimension-mismatch)
 	   (assert (member job-a '(:n :t :c)) nil 'invalid-value
-		   :given job :expected `(member job '(:n :t :c)))))
+		   :given job-a :expected `(member job-a '(:n :t :c)))))
 
 (defmethod getrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (job-a :n) ipiv)
   (let ((cla (class-name (class-of A)))
