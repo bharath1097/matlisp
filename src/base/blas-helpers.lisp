@@ -26,6 +26,9 @@
 (definline fortran-nop (op)
   (ecase op (#\T #\N) (#\N #\T)))
 
+(definline fortran-nuplo (op)
+  (ecase op (#\U #\L) (#\L #\U)))
+
 (definline split-job (job)
   (declare (type symbol job))
   (let-typed ((name (symbol-name job) :type string))
