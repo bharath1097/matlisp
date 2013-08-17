@@ -45,7 +45,8 @@
 	 ,uplo
 	 (nrows ,A)
 	 (the ,(store-type sym) (store ,A)) ,lda
-	 0))))
+	 0
+	 (the index-type (head ,A))))))
 
 ;;
 (defgeneric potrf! (a &optional uplo)
@@ -110,16 +111,15 @@
 	 (nrows ,A) (ncols ,B)
 	 (the ,(store-type sym) (store ,A)) ,lda
 	 (the ,(store-type sym) (store ,B)) ,ldb
-	 0))))
+	 0
+	 (the index-type (head ,A)) (the index-type (head ,B))))))
 
 ;;
 #+nil
 (let ((a (copy! #2a((10 2) (2 10)) (zeros '(2 2))))
       (b (copy! #2a((2 10) (1 2)) (zeros '(2 2)))))
-  (potrf! a)
-  
-  (time (dotimes (i 1000)
-	  (potrs! a b))))
+  (potrf! a)  
+  (potrs! a b))
 
 (defgeneric potrs! (A B &optional uplo)
   (:documentation "

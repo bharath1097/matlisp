@@ -47,7 +47,8 @@
 	 (,(macroexpand-1 `(t/lapack-getrf-func ,sym))
 	   ,m ,n
 	   (the ,(store-type sym) (store ,A)) ,lda
-	   ,ipiv 0)))))
+	   ,ipiv 0
+	   (the index-type (head ,A)))))))
 
 ;;
 (defgeneric getrf! (A)
@@ -224,7 +225,8 @@
 	(nrows ,A) (ncols ,B)
 	(the ,(store-type sym) (store ,A)) ,lda ,ipiv	   
 	(the ,(store-type sym) (store ,B)) ,ldb
-	0))))
+	0
+	(the index-type (head ,A)) (the index-type (head ,B))))))
 
 #+nil(let ((a (copy! #2a((1 2) (3 1)) (zeros '(2 2))))
       (b (copy! #2a((3 3) (2 1)) (zeros '(2 2)))))

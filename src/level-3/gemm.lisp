@@ -116,7 +116,7 @@
 		   (= nr-c nr-a)
 		   (= nc-a nr-b)
 		   (= nc-b nc-c)) nil 'tensor-dimension-mismatch))))
-  
+
 (defmethod gemm! (alpha (A standard-tensor) (B standard-tensor) beta (C standard-tensor) &optional (job :nn))
   (let ((cla (class-name (class-of A)))
 	(clb (class-name (class-of B)))
