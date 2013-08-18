@@ -48,7 +48,7 @@
   ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
     :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    ;;
-   (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type standard-tensor
+   (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type (or null standard-tensor)
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
    ;;
    (head :initarg :head :initform 0 :reader head :type index-type
