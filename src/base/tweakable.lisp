@@ -16,6 +16,8 @@
   returns a 10x10 matrix with Column major order.
 ")
 
+(defparameter *default-tensor-type* 'real-tensor)
+
 (defparameter *check-after-initializing?* t
   "
   If t, then check for invalid values in the field of

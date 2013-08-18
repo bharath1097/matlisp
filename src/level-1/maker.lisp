@@ -22,7 +22,7 @@
 	(t/zeros ,dtype dims)))
     (zeros-generic dims dtype)))
 
-(definline zeros (dims &optional (type 'real-tensor))
+(definline zeros (dims &optional (type *default-tensor-type*))
   (let ((*check-after-initializing?* nil))
     (let ((type (etypecase type (standard-class (class-name type)) (symbol type))))
       (etypecase dims

@@ -121,7 +121,7 @@
 				     (stp (when memp `(aref ,(car (getf plst :strides)) ,(position cidx (car ofst))))))
 				(get-incs (cdr idxs) (if memp (list `(the index-type (* ,(if tloop 1 stp) (aref ,(car (getf plst :dimensions)) ,(position cidx (car ofst)))))) nil)
 					  (if (or tloop (and (null acc) (not memp))) (cons nil decl)
-					      (cons 
+					      (cons
 					       (if memp
 						   `(,dsym ,(if (null acc) stp `(the index-type (- ,stp ,@acc))) :type index-type)
 						   `(,dsym (the index-type (- ,@acc)) :type index-type))

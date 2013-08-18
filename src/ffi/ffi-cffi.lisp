@@ -146,6 +146,10 @@
 (deftype matlisp-specialized-array ()
   `(or (simple-array double-float (*))
        (simple-array single-float (*))
+       #+sbcl
+       (simple-array (complex double-float) (*))
+       #+sbcl
+       (simple-array (complex single-float) (*))
        ;;
        (simple-array (signed-byte 64) *)
        (simple-array (signed-byte 32) *)
