@@ -52,6 +52,12 @@
 
 (deft/generic (t/lapack-geev-workspace-inquiry #'subtypep) sym (n jobvl jobvr))
 
+#+nil
+(deft/method t/lapack-geev-workspace-inquiry (sym blas-numeric-tensor) (n jobvl jobvr)
+  (with-gensyms (n-sym)
+    `(let ((,n-sym ,n))
+       (* 10 ,n-sym))))
+
 (deft/method t/lapack-geev-workspace-inquiry (sym blas-numeric-tensor) (n jobvl jobvr)
   (using-gensyms (decl (n jobvl jobvr))
     (with-gensyms (xxx)
