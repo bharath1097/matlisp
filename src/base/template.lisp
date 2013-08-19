@@ -86,6 +86,16 @@
 (defun field-type (clname)
   (macroexpand-1 `(t/field-type ,clname)))
 
+;;Hack? Yes.
+(defun complexified-type (ten)
+  (let ((ty (macroexpand-1 `(t/field-type ,ten))))
+    (if (subtypep ty 'complex) ten
+	(let* ((cty `(complex ,ty))
+	       (table-entry (or (gethash 't/field-type matlisp-template::*template-table*) (ERROR "Undefined template : ~a~%" 'T/FIELD-TYPE))))
+	  (car (find cty (mapcar #'(lambda (x) (list (cadr x) (funcall (car x) (cadr x))))
+				 (getf table-entry :methods))
+		     :key #'second :test #'list-eq))))))
+
 ;;Beware of infinite loops here.
 (deft/generic (t/store-element-type #'subtypep) sym ())
 (deft/method t/store-element-type (sym standard-tensor) ()

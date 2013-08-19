@@ -94,51 +94,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-geev-func #'subtypep) sym ())
-
-(deft/method t/lapack-geev-func (sym real-tensor) ()
-  'dgeev)
-;;Make API for real and complex versions similar.
-(definline mzgeev (jobvl jobvr n a lda w rwork vl ldvl vr ldvr work lwork info)
-  (zgeev jobvl jobvr n a lda w vl ldvl vr ldvr work lwork rwork info))
-(deft/method t/lapack-geev-func (sym complex-tensor) ()
-  'mzgeev)
-;;
-
-(deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
-(deft/method t/geev-output-fix (sym real-numeric-tensor) (wr wi)
-  (using-gensyms (decl (wr wi))
-    (with-gensyms (ret)
-      `(let* (,@decl
-	      (,ret (t/store-allocator ,sym (* 2 (length ,wr)))))
-	 (declare (type ,(store-type sym) ,wr ,wi ,ret))
-	 (very-quickly
-	   (loop :for i :from 0 :below (length ,wr)
-	      :do (setf (aref ,ret (* 2 i)) (aref ,wr i)
-			(aref ,ret (1+ (* 2 i))) (aref ,wi i))))
-	 ,ret))))
-
-(deft/method t/geev-output-fix (sym complex-numeric-tensor) (wr wi)
-  (using-gensyms (decl (wr))
-    `(let (,@decl)
-       (declare (type ,(store-type sym) ,wr))
-       ,wr)))
-	     
-(deft/generic (t/lapack-geev! #'subtypep) sym (A lda vl ldvl vr ldvr w st-w))
-	      
-(deft/method t/lapack-potrf! (sym blas-numeric-tensor) (A lda uplo)
-  (using-gensyms (decl (A lda uplo))
-    `(let* (,@decl)
-       (declare (type ,sym ,A)
-		(type index-type ,lda)
-		(type character ,uplo))
-       (,(macroexpand-1 `(t/lapack-potrf-func ,sym))
-	 ,uplo
-	 (nrows ,A)
-	 (the ,(store-type sym) (store ,A)) ,lda
-	 0))))
-
-
 (defgeneric geev (a &optional job)
   (:documentation
    "
