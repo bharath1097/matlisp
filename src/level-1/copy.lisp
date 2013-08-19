@@ -157,7 +157,7 @@
 	,(recursive-append
 	  (when (subtypep cly 'blas-numeric-tensor)
 	    `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
-	       (t/blas-copy! ,cly x nil y strd)))
+	       (t/blas-copy! ,cly (t/coerce ,(field-type cly) x) nil y strd)))
 	  `(t/copy! (t ,cly) x y))))
     (copy! x y)))
 
