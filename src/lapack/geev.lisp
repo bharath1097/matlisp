@@ -372,11 +372,9 @@
 	  (:nn (values "N" "N"))
 	  ((:vn t) (values "N" "V"))
 	  (:nv (values "V" "N"))
-	  (:vv (values "V" "V")))
-      
+	  (:vv (values "V" "V")))      
       (let* ((ldvr (if (equal jobvr "V") n 1))
 	     (ldvl (if (equal jobvl "V") n 1)))
-
 	(multiple-value-bind (store-a store-w store-vl store-vr work info)
 	    (zgeev jobvl
 		   jobvr

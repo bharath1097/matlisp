@@ -39,8 +39,10 @@
   (with-gensyms (num-sym)
     `(let ((,num-sym ,num))
        (cl:conjugate ,num-sym))))
+
 (deft/method t/fc (ty real) (num)
   num)
+
 (defgeneric fc (x)
   (:method ((x complex))
     (cl:conjugate x))
@@ -54,6 +56,26 @@
       (fc x))))
 (defun field-realp (fil)
   (eql (macroexpand-1 `(t/fc ,fil phi)) 'phi))
+;;
+(deft/generic (t/frealpart #'subtypep) ty (num))
+
+(deft/method t/frealpart (ty number) (num)
+   (with-gensyms (num-sym)
+     `(let ((,num-sym ,num))
+	(cl:realpart ,num-sym))))
+
+(deft/method t/frealpart (ty real) (num)
+  num)
+;;
+(deft/generic (t/fimagpart #'subtypep) ty (num))
+
+(deft/method t/fimagpart (ty number) (num)
+   (with-gensyms (num-sym)
+     `(let ((,num-sym ,num))
+	(cl:imagpart ,num-sym))))
+
+(deft/method t/fimagpart (ty real) (num)
+  `(t/fid+ ,ty))
 ;;
 (deft/generic (t/f= #'subtypep) ty (&rest nums))
 (deft/method t/f= (ty number) (&rest nums)

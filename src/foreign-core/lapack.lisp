@@ -717,7 +717,7 @@
   (ldvr :integer :input)
   (work (* :complex-double-float) :workspace-output)
   (lwork :integer :input)
-  (rwork (* :double-float) :workspace)
+  (rwork (* :double-float) :workspace-output)
   (info :integer :output)
 )
 

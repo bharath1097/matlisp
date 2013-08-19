@@ -50,6 +50,30 @@
 	 (the index-type (head ,A)) (if ,vl (the index-type (head ,vl)) 0) (if ,vr (the index-type (head ,vr)) 0)))))
 ;;
 
+(deft/generic (t/lapack-geev-workspace-inquiry #'subtypep) sym (n jobvl jobvr))
+
+(deft/method t/lapack-geev-workspace-inquiry (sym blas-numeric-tensor) (n jobvl jobvr)
+  (using-gensyms (decl (n jobvl jobvr))
+    (with-gensyms (xxx)
+     `(let (,@decl
+	    (,xxx (t/store-allocator ,sym 1)))
+	(declare (type index-type ,n)
+		 (type character ,jobvl ,jobvr)
+		 (type ,(store-type sym) ,xxx))
+	(,(macroexpand-1 `(t/lapack-geev-func ,sym))
+	  ,jobvl ,jobvr
+	  ,n
+	  ,xxx ,n
+	  ,xxx ,xxx
+	  ,xxx ,n
+	  ,xxx ,n
+	  ,xxx -1
+	  0)
+	(ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))))
+
+#+nil
+(t/lapack-geev-workspace-inquiry complex-tensor 2 #\V #\V)
+
 ;;
 #+nil
 (progn
@@ -122,6 +146,49 @@
                     [3] INFO       
       
   where INFO is T if successful, NIL otherwise.
-"))
+")
+  (:method :before ((a standard-tensor) &optional vl vr)
+	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
+	   (when vl
+	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
+	   (when vr
+	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
 
-
+(defmethod geev! ((a blas-numeric-tensor) &optional vl vr)
+  (let ((cla (class-name (class-of A))))
+    (assert (member cla *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class (list cla))
+        (compile-and-eval
+	 `(defmethod geev! ((A ,cla) &optional vl vr)
+	    (let* ((n (nrows A))
+		   (jobvl (if vl #\V #\N))
+		   (jobvr (if vr #\V #\N))
+		   (work (t/store-allocator ,cla (t/lapack-geev-workspace-inquiry ,cla n jobvl jobvr)))
+		   (wr (t/store-allocator ,cla n))
+		   (wi (t/store-allocator ,cla n)))
+	      (ecase jobvl
+		,@(loop :for jvl :in '(#\N #\V)
+		     :collect `(,jvl
+				(ecase jobvr
+				  ,@(loop :for jvr :in '(#\N #\V)
+				       :collect `(,jvr
+						  (with-columnification (,cla () (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
+						    (multiple-value-bind (osto owr owi ovl ovr owork info)
+							(t/lapack-geev! ,cla
+									A (or (blas-matrix-compatiblep A #\N) 0)
+									,@(if (char= jvl #\N) `(nil 1) `(vl (or (blas-matrix-compatiblep vl #\N) 0)))
+									,@(if (char= jvr #\N) `(nil 1) `(vr (or (blas-matrix-compatiblep vr #\N) 0)))
+									wr wi work)
+						      (declare (ignore osto owr owi ovl ovr owork))
+						      (unless (= info 0)
+							(error "geev returned ~a~%" info))))))))))
+	      (values-list (remove-if #'null
+				      (list
+				       (let ((*check-after-initializing?* nil))
+					 (make-instance 'complex-tensor ;',(complexified-type cla)
+							:dimensions (make-index-store (list (nrows A)))
+							:strides (make-index-store (list 1))
+							:head 0
+							:store (t/geev-output-fix ,cla wr wi)))
+				       vl vr)))))))
+  (geev! A vl vr))
