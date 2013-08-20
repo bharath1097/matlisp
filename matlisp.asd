@@ -148,7 +148,9 @@
 			 (:file "realimag"
 				:depends-on ("copy"))
 			 (:file "trans"
-				:depends-on ("scal" "copy"))))
+				:depends-on ("scal" "copy"))
+			 (:file "sum"
+				:depends-on ("dot" "copy"))))
    (:module "matlisp-level-2"
 	    :pathname "level-2"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")

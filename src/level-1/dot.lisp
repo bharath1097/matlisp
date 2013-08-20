@@ -34,41 +34,48 @@
   (if conjp 'zdotc 'zdotu))
 ;;
 
-(deft/generic (t/blas-dot #'subtypep) sym (x y &optional conjp))
-(deft/method t/blas-dot (sym blas-numeric-tensor) (x y &optional (conjp t))
-  (using-gensyms (decl (x y))
-   `(let (,@decl)
-      (declare (type ,sym ,x ,y))
-      (,(macroexpand-1 `(t/blas-dot-func ,sym ,conjp))
-       (aref (the index-store-vector (dimensions ,x)) 0)
-       (the ,(store-type sym) (store ,x)) (aref (the index-store-vector (strides ,x)) 0)
-       (the ,(store-type sym) (store ,y)) (aref (the index-store-vector (strides ,y)) 0)
-       (head ,x) (head ,y)))))
+(deft/generic (t/blas-dot #'subtypep) sym (x y &optional conjp num-y?))
+(deft/method t/blas-dot (sym blas-numeric-tensor) (x y &optional (conjp t) (num-y? nil))
+   (using-gensyms (decl (x y))
+     (with-gensyms (sto)
+       `(let (,@decl
+	      ,@(when num-y? `((,sto (t/store-allocator ,sym 1)))))
+	  (declare (type ,sym ,x ,@(unless num-y? `(,y)))
+		   ,@(when num-y? `((type ,(field-type sym) ,y)
+				    (type ,(store-type sym) ,sto))))
+	  ,@(when num-y? `((t/store-set ,sym ,y ,sto 0)))
+	  (,(macroexpand-1 `(t/blas-dot-func ,sym ,conjp))
+	    (aref (the index-store-vector (dimensions ,x)) 0)
+	    (the ,(store-type sym) (store ,x)) (aref (the index-store-vector (strides ,x)) 0)
+	    (the ,(store-type sym) ,(if num-y? sto `(store ,y))) ,(if num-y? 0 `(aref (the index-store-vector (strides ,y)) 0))
+	    (head ,x) ,(if num-y? 0 `(head ,y)))))))
 
-(deft/generic (t/dot #'subtypep) sym (x y &optional conjp))
-(deft/method t/dot (sym standard-tensor) (x y &optional (conjp t))
+(deft/generic (t/dot #'subtypep) sym (x y &optional conjp num-y?))
+(deft/method t/dot (sym standard-tensor) (x y &optional (conjp t) (num-y? nil))
   (using-gensyms (decl (x y))
     (with-gensyms (sto-x sto-y of-x of-y stp-x stp-y dot)
       `(let (,@decl)
-	 (declare (type ,sym ,x ,y))
+	 (declare (type ,sym ,x ,@(unless num-y? `(,y)))
+		  ,@(when num-y? `((type ,(field-type sym) ,y))))
 	 (let ((,sto-x (store ,x))
 	       (,stp-x (aref (the index-store-vector (strides ,x)) 0))
 	       (,of-x (head ,x))
-	       (,sto-y (store ,y))
-	       (,stp-y (aref (the index-store-vector (strides ,y)) 0))
-	       (,of-y (head ,y))
+	       ,@(unless num-y?
+		   `((,sto-y (store ,y))
+		     (,stp-y (aref (the index-store-vector (strides ,y)) 0))
+		     (,of-y (head ,y))))
 	       (,dot (t/fid+ ,(field-type sym))))
-	   (declare (type ,(store-type sym) ,sto-x ,sto-y)
-		    (type index-type ,stp-x ,stp-y ,of-x ,of-y)
+	   (declare (type ,(store-type sym) ,sto-x ,@(unless `(,sto-y)))
+		    (type index-type ,stp-x ,of-x ,@(unless num-y? `(,stp-y  ,of-y)))
 		    (type ,(field-type sym) ,dot))
 	   (very-quickly
 	     (loop :repeat (aref (the index-store-vector (dimensions ,x)) 0)
 		:do (setf ,dot (t/f+ ,(field-type sym) ,dot
 				     (t/f* ,(field-type sym)
 					   ,(recursive-append (when conjp `(t/fc ,(field-type sym))) `(t/store-ref ,sym ,sto-x ,of-x))
-					   (t/store-ref ,sym ,sto-y ,of-y)))
+					   ,(if num-y? y `(t/store-ref ,sym ,sto-y ,of-y))))
 			  ,of-x (+ ,of-x ,stp-x)
-			  ,of-y (+ ,of-y ,stp-y))))
+			  ,@(unless num-y? `(,of-y (+ ,of-y ,stp-y))))))
 	   ,dot)))))
 ;;---------------------------------------------------------------;;
 (defgeneric dot (x y &optional conjugate-p)
@@ -133,3 +140,24 @@
        (dot x y conjugate-p))
       (t
        (error "Don't know how to compute the dot product of ~a , ~a." clx cly)))))
+
+(defmethod dot ((x standard-tensor) (y t) &optional (conjugate-p t))
+  (let ((clx (class-name (class-of x))))
+    (assert (member clx *tensor-type-leaves*)	    
+	    nil 'tensor-abstract-class :tensor-class (list clx))    
+    (compile-and-eval
+     `(defmethod dot ((x ,clx) (y t) &optional (conjugate-p t))
+	(let ((y (t/coerce ,(field-type clx) y)))
+	  (declare (type ,(field-type clx) y))
+	  ,(recursive-append
+	    (when (subtypep clx 'blas-numeric-tensor)
+	      `(if (call-fortran? x (t/l1-lb ,clx))
+		   (if conjugate-p
+		       (t/blas-dot ,clx x y t t)
+		       (t/blas-dot ,clx x y nil t))))
+	    `(if conjugate-p
+		 ;;Please do your checks before coming here.
+		 (t/dot ,clx x y t t)
+		 (t/dot ,clx x y nil t))))))
+    (dot x y conjugate-p)))
+
