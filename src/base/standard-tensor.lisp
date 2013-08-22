@@ -58,9 +58,21 @@
    (store :initarg :store :reader store
     :documentation "The actual storage for the tensor.")
    ;;
-   (attributes :initarg :attributes :reader attributes :initform (make-hash-table)
+   (attributes :initarg :attributes :initform nil
     :documentation "Place for computable attributes of an object instance."))
   (:documentation "Basic tensor class."))
+
+;;Create hash-table only when necessary
+(definline attributes (x)
+  (declare (type standard-tensor x))
+  (or (slot-value x 'attributes)
+      (let ((htbl (make-hash-table)))
+	(setf (slot-value x 'attributes) htbl)
+	htbl)))
+
+(declaim (ftype (function (standard-tensor) index-store-vector) strides dimensions)
+	 (ftype (function (standard-tensor) index-type) head)
+	 (ftype (function (standard-tensor) hash-table) attributes))
 
 (defmacro memoizing ((tensor name) &rest body)
   (declare (type symbol name))
@@ -95,6 +107,7 @@
   (declare (type standard-tensor tensor))
   (lvec-foldr #'* (the index-store-vector (dimensions tensor))))
 
+;;
 (defgeneric store-size (tensor)
   (:documentation "
   Syntax
@@ -424,3 +437,14 @@
 				       :strides (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type))
 				       :store (store tensor)
 				       :parent-tensor tensor)))))))
+
+(definline slice~ (x axis &optional (idx 0))
+  (let ((slst (make-list (rank x) :initial-element '(* * *))))
+    (rplaca (nthcdr axis slst) (list idx '* (1+ idx)))
+    (sub-tensor~ x slst nil)))
+
+(definline row-slice~ (x idx)
+  (slice~ x 0 idx))
+
+(definline col-slice~ (x idx)
+  (slice~ x 1 idx))

@@ -8,7 +8,7 @@
    ccl:run-program
    gnuplot-binary nil :input :stream :wait nil :output t))
 
-(defun plot2d (data &key (color (list "#FF0000")))
+(defun gnuplot-send (str &rest args)
   (unless *current-gnuplot-process*
     (setf *current-gnuplot-process* (open-gnuplot-stream)))
   (let ((stream (#+:sbcl
@@ -16,23 +16,16 @@
 		 #+:ccl
 		 ccl:external-process-input-stream
 		 *current-gnuplot-process*)))
-    (with-open-file (s "/tmp/matlisp-gnuplot.out" :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (loop :for i :from 0 :below (loop :for x :in data :minimizing (number-of-elements x))
-	 :do (loop :for x :in data :do (format s "~a " (tensor-ref x i)) :finally (format s "~%"))))
-    (format stream "plot '/tmp/matlisp-gnuplot.out' with lines linecolor rgb ~s~%" color)
+    (apply #'format (append (list stream str) args))
     (finish-output stream)))
 
-(defun gnuplot-send (str)
-  (unless *current-gnuplot-process*
-    (setf *current-gnuplot-process* (open-gnuplot-stream)))
-  (let ((stream (#+:sbcl
-		 sb-ext:process-input
-		 #+:ccl
-		 ccl:external-process-input-stream
-		 *current-gnuplot-process*)))
-    (format stream "~a~%" str)
-    (finish-output stream)))
-
+(defun plot2d (data &key (lines t) (color (list "#FF0000")))
+  (with-open-file (s "/tmp/matlisp-gnuplot.out" :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
+       :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
+  (if lines
+      (gnuplot-send "plot '/tmp/matlisp-gnuplot.out' with lines linecolor rgb ~s~%" color)
+      (gnuplot-send "plot '/tmp/matlisp-gnuplot.out'~%")))
 
 ;; (defclass gnuplot-plot-info ()
 ;;   ((title
