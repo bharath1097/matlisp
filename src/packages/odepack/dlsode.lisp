@@ -68,12 +68,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun pend-field (neq time y ydot)
-	(setf (fv-ref ydot 0) (fv-ref y 1)
-	      (fv-ref ydot 1) (- (sin (fv-ref y 0)))))
+  (setf (fv-ref ydot 0) (fv-ref y 1)
+	(fv-ref ydot 1) (- (sin (fv-ref y 0)))))
 
 (defun pend-report (ts y)
   (format t "~A ~A ~A ~%" ts (aref y 0) (aref y 1)))
-
 
 (defun pcart-field (neq time y ydot)
   (declare (ignore neq time))

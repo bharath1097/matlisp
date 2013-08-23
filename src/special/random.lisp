@@ -1,17 +1,18 @@
 (in-package #:matlisp)
 
-(declaim (inline draw-standard-exponential))
-(defun draw-standard-exponential ()
+(declaim (ftype (function () double-float) draw-standard-normal draw-standard-normal-marsaglia draw-standard-exponential))
+
+(definline draw-standard-exponential ()
   "Return a random variable from the Exponential(1) distribution, which has density exp(-x)."
+  ;; Adapted from cl-random, originally written by Tamas Papp
   ;; need 1-random, because there is a small but nonzero chance of getting a 0.
   (- (log (- 1d0 (random 1d0)))))
 
-(declaim (ftype (function () double-float) draw-standard-normal-leva draw-standard-normal-marsaglia))
-(definline draw-standard-normal-leva ()
+(definline draw-standard-normal ()
   "Draw a random number from N(0,1)."
   ;; Method from Leva (1992).  This is considered much better/faster than the Box-Muller method.
   ;; Adapted from cl-random, originally written by Tamas Papp
-  ;; This tends to be just as fast as Marsaglia with storage.
+  ;; This seems to be just as fast as Marsaglia with storage.
   (very-quickly
     (loop
        :do (let* ((u (random 1d0))
@@ -43,25 +44,33 @@
 		       (setf prev (* y mult))
 		       (return (* x mult))))))))))
 
-;;	      
-(defun randn (dims)
-  (let* ((ret (zeros dims 'real-tensor))
-	 (sto (store ret)))
-    (declare (type (simple-array double-float (*)) sto))
-    (very-quickly
-      (mod-dotimes (idx (dimensions ret))
-	:with (linear-sums
-	       (of-ret (strides ret)))
-	:do (setf (aref sto of-ret) (the double-float (draw-standard-normal-leva)))))
-    ret))
+;;
+(defmacro fill-tensor (type (func tensor))
+  (using-gensyms (decl (tensor))
+    (with-gensyms (sto ofst)
+      `(let* (,@decl
+	      (,sto (store ,tensor)))
+       (declare (type ,type ,tensor)
+		(type ,(store-type type) ,sto))
+       (very-quickly
+	 (mod-dotimes (idx (dimensions ,tensor))
+	   :with (linear-sums
+		  (,ofst (strides ,tensor)))
+	   :do (t/store-set ,type ,(etypecase func (symbol `(,func)) (cons func))  ,sto ,ofst)))
+       ,tensor))))
 
-(defun rand (dims)
-  (let* ((ret (zeros dims 'real-tensor))
-	 (sto (store ret)))
-    (declare (type (simple-array double-float (*)) sto))
-    (very-quickly
-      (mod-dotimes (idx (dimensions ret))
-	:with (linear-sums
-	       (of-ret (strides ret)))
-	:do (setf (aref sto of-ret) (random 1d0))))
-    ret))
+(macrolet ((generate-rand (func clause)
+	     (let ((clause (etypecase clause
+			     (symbol `(,clause))
+			     (cons clause))))
+	       `(defun ,func (&optional dims)
+		  (if dims
+		      (fill-tensor real-tensor (,clause (zeros dims 'real-tensor)))
+		      ,clause))))
+	   (generate-rands ((&rest args))
+	     `(progn
+		,@(mapcar #'(lambda (x) `(generate-rand ,(car x) ,(cadr x))) args))))
+  (generate-rands ((randn (draw-standard-normal))
+		   (rand (random 1d0))
+		   (rande (draw-standard-exponential)))))
+
