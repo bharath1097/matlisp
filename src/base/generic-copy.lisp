@@ -78,6 +78,10 @@
 	y))
     (copy! x y)))
 
+(defmethod copy! ((x cons) (y standard-tensor))
+  ;;You seriously weren't expecting efficiency were you :) ?
+  (let ((arr (make-array (list-dimensions x) :initial-contents x)))
+    (copy! arr y)))
 ;;
 (defgeneric copy (object)
   (:documentation 

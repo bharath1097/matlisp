@@ -168,7 +168,9 @@
    (:module "matlisp-special"
 	    :pathname "special"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
-	    :components ((:file "random")))
+	    :components ((:file "random")
+			 (:file "map")
+			 (:file "seq")))
    #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"

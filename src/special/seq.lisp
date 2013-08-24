@@ -27,22 +27,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(defun arange (start end &optional (h 1d0))
+(defun range (start end &optional (h 1d0))
   (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
     (if (= quo 0) nil
-	(let*-typed ((ret (real-typed-zeros (idxv quo)) :type real-tensor)
-		     (sto-r (store ret) :type real-store-vector)
-		     (h (coerce-real-unforgiving (if (> start end) (- h) h)) :type real-type))
-		    (loop :for i :from 0 :below quo
-		       :for ori := (coerce-real-unforgiving start) :then (+ ori h)
-		       :do (setf (aref sto-r i) ori))
-		    ret))))
+	(let* ((ret (zeros quo 'real-tensor))
+	       (sto (store ret))
+	       (h (coerce (if (> start end) (- h) h) 'double-float)))
+	  (declare (type (simple-array double-float (*)) sto)
+		   (type double-float h))
+	  (very-quickly
+	    (loop :for i :from 0 :below quo
+	       :for ori := (coerce start 'double-float) :then (+ ori h)
+	       :do (t/store-set real-tensor ori sto i)))
+	  ret))))
 
-(defun alinspace (start end &optional (num-points (1+ (abs (- start end)))))
-  (let ((h (/ (- end start) (1- num-points))))
-    (arange start (+ h end) (abs h))))
+(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))  
+  (let* ((num-points (floor num-points))
+	 (h (/ (- end start) (1- num-points))))
+    (range start (+ h end) (abs h))))
 
-(defun range (start end &optional (h 1))
+(defun list-range (start end &optional (h 1))
   (declare (type real start end h))
   (let ((quo (ceiling (if (> start end) (- start end) (- end start)) h)))
     (if (= quo 0) nil
@@ -51,6 +55,8 @@
 	     :for ori := start :then (+ ori h)
 	     :collect ori)))))
 
-(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))
-  (let ((h (/ (- end start) (1- num-points))))
-    (range start (+ h end) (abs h))))
+(defun list-linspace (start end &optional (num-points (1+ (abs (- start end)))))  
+  (let* ((num-points (floor num-points))
+	 (h (/ (- end start) (1- num-points))))
+    (list-range start (+ h end) (abs h))))
+

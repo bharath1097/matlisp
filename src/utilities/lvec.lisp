@@ -5,7 +5,7 @@
     (declare (type vector))
     (loop
       :for i :of-type fixnum :from 0 :below (length vec)
-      :for ret = (aref vec 0) :then (funcall func (aref vec i) ret)
+      :for ret = (aref vec 0) :then (funcall func ret (aref vec i))
       :finally (return ret)))
 
   (definline lvec-foldr (func vec)

@@ -53,8 +53,9 @@
 (deft/method t/l3-lb (sym complex-numeric-tensor) ()
   '*complex-l3-fcall-lb*)
 
-;;SBCL uses specialized arrays for floating complex arrays.
-#-sbcl
+;;Comment this block if you want to use (simple-array (complex double-float) (*))
+;;as the underlying store. This will make Lisp-implementations of gemm .. faster
+;;but you'll lose the ability to use tensor-realpart~/imagpart~. 
 (progn
   (deft/method t/store-element-type (sym complex-numeric-tensor) ()	     
 	       (let ((cplx-type (macroexpand-1 `(t/field-type ,sym))))
