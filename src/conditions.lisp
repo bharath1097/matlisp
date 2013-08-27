@@ -218,6 +218,13 @@
 	     (declare (ignore c))
 	     (format stream "The dimensions of the given tensors are not suitable for continuing with the operation."))))
 
+(define-condition tensor-type-mismatch (tensor-error)
+  ()
+  (:documentation "The types of the given tensors are not suitable for continuing with the operation.")
+  (:report (lambda (c stream)
+	     (declare (ignore c))
+	     (format stream "The types of the given tensors are not suitable for continuing with the operation."))))
+
 (define-condition tensor-store-not-consecutive (tensor-error)
   ()
   (:documentation "The strides of the store, of the given tensor are not conscutive.")

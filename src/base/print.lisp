@@ -29,13 +29,13 @@
 (in-package #:matlisp)
 ;; Routines for printing a tensors/matrices nicely.
 
-(defparameter *print-max-len* 5
+(defparameter *print-max-len* 10
 "
 Maximum number of elements in any particular argument to print.
 Set this to T to print all the elements.
 ")
 
-(defparameter *print-max-args* 2
+(defparameter *print-max-args* 5
 "
 Maximum number of arguments of the tensor to print.
 Set this to T to print all the arguments.

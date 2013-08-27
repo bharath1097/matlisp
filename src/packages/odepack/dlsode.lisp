@@ -15,7 +15,7 @@
 	  (c-y (* :double-float :size c-neq) :input)
 	  (c-ydot (* :double-float :size c-neq) :output)))
   (neq :integer :input)
-  (y (* :double-float) :input-output)
+  (y (* :double-float :inc head-y) :input-output)
   (ts :double-float :input-output)
   (tout :double-float :input)
   (itol :integer :input)
@@ -40,6 +40,55 @@
   (mf :integer :input))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ode-evolve (field y0 t-array)
+  (declare (type real-tensor y0 t-array))
+  (assert (and (tensor-vectorp t-array) (tensor-vectorp y0)) nil 'tensor-dimension-mismatch)
+  (let* ((neq (size y0))
+	 (nt (size t-array))
+	 (t0 (ref t-array 0))
+	 (ts t0)
+	 (ret (zeros (list neq nt) 'real-tensor))
+	 ;;
+	 (lrw (+ 22 (* 9 neq) (* neq neq) 5))
+	 (liw (+ 20 neq 5))
+	 (itol 1)
+	 (atol (make-array 1 :element-type 'double-float :initial-element 1d-12))
+	 (rtol (make-array 1 :element-type 'double-float :initial-element 1d-12))
+	 (itask 1)
+	 (istate 1)
+	 (iopt 0)
+	 (mf 22)
+	 (rwork (make-array lrw :element-type 'double-float :initial-element 0d0))
+	 (iwork (make-array liw :element-type '(signed-byte 32) :initial-element 0))
+	 ;;
+	 (view (slice~ ret 1))
+	 (stv (aref (strides ret) 1))
+	 ;;
+	 (y-tmp (zeros neq 'real-tensor))
+	 (stoy (store y-tmp)))
+    (copy! y0 view)
+    (incf (slot-value view 'head) stv)
+    (labels ((field-sugar (neq time yf ydotf)
+	       (loop :for i :from 0 :below neq
+		  :do (t/store-set real-tensor (fv-ref yf i) stoy i))
+	       ;;Because of some black magic, this does not seem to
+	       ;;affect the amount of memory allocated!
+	       (let ((ydot (funcall field time y-tmp)))
+		 (loop :for i :from 0 :below neq
+		    :do (setf (fv-ref ydotf i) (ref ydot i))))
+	       nil))
+      (loop :for i :from 1 :below nt
+	 :do (let ((tout (ref t-array i)))
+	       (multiple-value-bind (y-out ts-out istate-out rwork-out iwork-out)
+		   (dlsode #'field-sugar neq (store y0) ts tout itol rtol atol itask istate iopt rwork lrw iwork liw #'(lambda (&rest th) (declare (ignore th))) mf (head y0))
+		 (declare (ignore y-out rwork-out iwork-out))
+		 (setq ts ts-out)
+		 (setq istate istate-out))
+	       (copy! y0 view)
+	       (incf (slot-value view 'head) stv))))
+    ret))
+;;
+  
 (defun lsode-evolve (field y t-array report)
   ;;
   (let* ((neq (length y))
@@ -61,7 +110,7 @@
        do (progn
 	    (setq tout (aref t-array i))
 	    (multiple-value-bind (y-out ts-out istate-out rwork-out iwork-out)
-		(dlsode field neq y ts tout itol rtol atol itask istate iopt rwork lrw iwork liw #'(lambda (&rest th) (declare (ignore th))) mf)
+		(dlsode field neq (store y) ts tout itol rtol atol itask istate iopt rwork lrw iwork liw #'(lambda (&rest th) (declare (ignore th))) mf)
 	      (setq ts ts-out)
 	      (setq istate istate-out))
 	    (funcall report ts y)))))
@@ -74,10 +123,32 @@
 (defun pend-report (ts y)
   (format t "~A ~A ~A ~%" ts (aref y 0) (aref y 1)))
 
-(defun pcart-field (neq time y ydot)
-  (declare (ignore neq time))
-  (very-quickly
-  (destructuring-bind (x theta xdot thetadot) (mapcar #'(lambda (n) (fv-ref y n)) '(0 1 2 3))
+(defun pcart-field (time y ydot)
+  (declare (ignore time))
+  (destructuring-bind (x theta xdot thetadot) (mapslice #'id y)
+    (setf (ref ydot 0) xdot
+	  (ref ydot 1) thetadot
+	  (ref ydot 2) (/ (+ (* (cos theta) (sin theta)) (* (sin theta) (expt thetadot 2))) (- 2 (expt (cos theta) 2)))
+          (ref ydot 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2)))))
+
+(defun pcart-field (time y)
+  (declare (ignore time))
+  (let ((ydot (zeros 4 'real-tensor)))
+    (destructuring-bind (x theta xdot thetadot) (mapslice #'id y)
+      (setf (ref ydot 0) xdot
+	    (ref ydot 1) thetadot
+	    (ref ydot 2) (/ (+ (* (cos theta) (sin theta)) (* (sin theta) (expt thetadot 2))) (- 2 (expt (cos theta) 2)))
+	    (ref ydot 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2))))
+    ydot))
+
+
+(defun pcart-report (ts y)
+  (format t "~A ~A ~A ~A ~A ~%" ts (aref y 0) (aref y 1) (aref y 2) (aref y 3)))
+
+
+(defun pcart-field (time y ydot)
+  (declare (ignore time))
+    (destructuring-bind (x theta xdot thetadot) (mapcar #'(lambda (n) (fv-ref y n)) '(0 1 2 3))
     (declare (type double-float x theta xdot thetadot))
     (setf (fv-ref ydot 0) xdot
 	  (fv-ref ydot 1) thetadot
@@ -87,12 +158,15 @@
 (defun pcart-report (ts y)
   (format t "~A ~A ~A ~A ~A ~%" ts (aref y 0) (aref y 1) (aref y 2) (aref y 3)))
 
+
 #+nil
 (let ((y (make-array 2 :element-type 'double-float :initial-contents `(,(/ pi 2) 0d0))))
   (lsode-evolve #'pend-field y #(0d0 1d0 2d0) #'pend-report))
 ;; Should return
 ;; 1.0d0 1.074911802207049d0 -0.975509986605856d0
 ;; 2.0d0 -0.20563950412081608d0 -1.3992359518735706d0
+
+(ode-evolve #'pcart-field (copy! (list 0 (/ pi 3) 0 0) (zeros 4)) (range 0 10))
 
 
 #+nil

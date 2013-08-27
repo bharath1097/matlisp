@@ -397,46 +397,54 @@
   (declare (type standard-tensor tensor)
 	   (type list subscripts)
 	   (type boolean preserve-rank))
-  (let-typed ((dims (dimensions tensor) :type index-store-vector)
-	      (stds (strides tensor) :type index-store-vector)
-	      (rank (rank tensor) :type index-type))
-    (loop :for (start step end) :in subscripts
-       :for i :of-type index-type := 0 :then (1+ i)
-       :with ndims :of-type index-store-vector := (allocate-index-store rank)
-       :with nstds :of-type index-store-vector := (allocate-index-store rank)
-       :with nrank :of-type index-type := 0
-       :with nhd :of-type index-type := (head tensor)
-       :do (assert (< i rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
-       :do (let* ((start (if (eq start '*) 0
-			     (progn
-			       (assert (and (typep start 'index-type) (< -1 start (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
-			       start)))
-		  (step (if (eq step '*) 1
-			    (progn
-			      (assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
-			      step)))
-		  (end (if (eq end '*) (aref dims i)
-			   (progn
-			     (assert (and (typep end 'index-type) (<= 0 end (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
-			     end))))
-	     (declare (type index-type start step end))
-	     ;;
-	     (let-typed ((dim (ceiling (the index-type (- end start)) step) :type index-type))
-	       (unless (and (= dim 1) (not preserve-rank))
-		 (setf (aref ndims nrank) dim
-		       (aref nstds nrank) (* step (aref stds i)))
-		 (incf nrank))
-	       (when (/= start 0)
-		 (incf nhd (the index-type (* start (aref stds i)))))))
-       :finally (return
-		  (if (= nrank 0) (store-ref tensor nhd)
-		      (let ((*check-after-initializing?* nil))
-			(make-instance (class-of tensor)
-				       :head nhd
-				       :dimensions (very-quickly (vectorify (the index-store-vector ndims) nrank 'index-type))
-				       :strides (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type))
-				       :store (store tensor)
-				       :parent-tensor tensor)))))))
+  (if (null subscripts)
+      (let ((*check-after-initializing?* nil))
+	(make-instance (class-of tensor)
+		       :head (head tensor)
+		       :dimensions (copy-seq (dimensions tensor))
+		       :strides (copy-seq (strides tensor))
+		       :store (store tensor)
+		       :parent-tensor tensor))		       
+      (let-typed ((dims (dimensions tensor) :type index-store-vector)
+		  (stds (strides tensor) :type index-store-vector)
+		  (rank (rank tensor) :type index-type))
+		 (loop :for (start step end) :in subscripts
+		    :for i :of-type index-type := 0 :then (1+ i)
+		    :with ndims :of-type index-store-vector := (allocate-index-store rank)
+		    :with nstds :of-type index-store-vector := (allocate-index-store rank)
+		    :with nrank :of-type index-type := 0
+		    :with nhd :of-type index-type := (head tensor)
+		    :do (assert (< i rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
+		    :do (let* ((start (if (eq start '*) 0
+					  (progn
+					    (assert (and (typep start 'index-type) (< -1 start (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
+					    start)))
+			       (step (if (eq step '*) 1
+					 (progn
+					   (assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
+					   step)))
+			       (end (if (eq end '*) (aref dims i)
+					(progn
+					  (assert (and (typep end 'index-type) (<= 0 end (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
+					  end))))
+			  (declare (type index-type start step end))
+			  ;;
+			  (let-typed ((dim (ceiling (the index-type (- end start)) step) :type index-type))
+				     (unless (and (= dim 1) (not preserve-rank))
+				       (setf (aref ndims nrank) dim
+					     (aref nstds nrank) (* step (aref stds i)))
+				       (incf nrank))
+				     (when (/= start 0)
+				       (incf nhd (the index-type (* start (aref stds i)))))))
+		    :finally (return
+			       (if (= nrank 0) (store-ref tensor nhd)
+				   (let ((*check-after-initializing?* nil))
+				     (make-instance (class-of tensor)
+						    :head nhd
+						    :dimensions (very-quickly (vectorify (the index-store-vector ndims) nrank 'index-type))
+						    :strides (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type))
+						    :store (store tensor)
+						    :parent-tensor tensor))))))))
 
 (definline slice~ (x axis &optional (idx 0))
   (let ((slst (make-list (rank x) :initial-element '(* * *))))

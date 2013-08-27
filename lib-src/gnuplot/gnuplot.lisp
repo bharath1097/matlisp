@@ -2,11 +2,20 @@
 (defvar *current-gnuplot-process* nil)
 
 (defun open-gnuplot-stream (&optional (gnuplot-binary (pathname "/usr/bin/gnuplot")))
-  (#+:sbcl
-   sb-ext:run-program
-   #+:ccl
-   ccl:run-program
-   gnuplot-binary nil :input :stream :wait nil :output t))
+  (setf *current-gnuplot-process* (#+:sbcl
+				   sb-ext:run-program
+				   #+:ccl
+				   ccl:run-program
+				   gnuplot-binary nil :input :stream :wait nil :output t))
+  (gnuplot-send "
+set datafile fortran
+")
+  *current-gnuplot-process*)
+
+(defun close-gnuplot-stream ()
+  (when *current-gnuplot-process*
+    (gnuplot-send "quit~%")
+    (setf *current-gnuplot-process* nil)))
 
 (defun gnuplot-send (str &rest args)
   (unless *current-gnuplot-process*
@@ -19,14 +28,35 @@
     (apply #'format (append (list stream str) args))
     (finish-output stream)))
 
-(defun plot2d (data &key (lines t) (color (list "#FF0000")))
-  (with-open-file (s "/tmp/matlisp-gnuplot.out" :direction :output :if-exists :supersede :if-does-not-exist :create)
-    (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
-       :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
-  (if lines
-      (gnuplot-send "plot '/tmp/matlisp-gnuplot.out' with lines linecolor rgb ~s~%" color)
-      (gnuplot-send "plot '/tmp/matlisp-gnuplot.out'~%")))
+(defun splitcol (num)
+  (multiple-value-bind (a b0) (floor num 256)
+    (multiple-value-bind (b2 b1) (floor a 256)
+      (list b2 b1 b0))))
 
+(defun plot2d (data &key (lines t) (color nil))
+  (let ((fname "/tmp/matlisp-gnuplot.out"))
+    (with-open-file (s fname :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
+	 :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
+    (let ((col (if (listp color) color
+		   (let ((lst (list color)))
+		     (setf (cdr lst) lst)
+		     lst))))      
+      (let ((cmd (apply #'string+ (cons "plot " (loop :for x :in (cdr data)
+						   :for i := 2 :then (1+ i)
+						   :for clist := col :then (cdr clist)
+						   :collect (string+ "'" fname "' using 1:" (format nil "~a " i)
+								     "with " (if lines "lines" "points") " "
+								     (if (car clist)
+									 (apply #'(lambda (r g b) (format nil "linecolor rgb(~a, ~a, ~a)" r g b))
+										(splitcol (car clist)))
+									 "")
+								     (format nil "title \"~a\"" (1- i))
+								     ", "))))))
+	(setf (aref cmd (- (length cmd) 2)) #\;
+	      (aref cmd (- (length cmd) 1)) #\Newline)
+	(gnuplot-send cmd)))))
+	 
 ;; (defclass gnuplot-plot-info ()
 ;;   ((title
 ;;     :initform "GNU PLOT"

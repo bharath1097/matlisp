@@ -61,6 +61,7 @@
    #:tensor-cannot-find-counter-class
    #:tensor-cannot-find-optimization
    #:tensor-dimension-mismatch
+   #:tensor-type-mismatch
    #:tensor-store-not-consecutive
    #:tensor-method-does-not-exist
    #:tensor-abstract-class
