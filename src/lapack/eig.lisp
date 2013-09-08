@@ -198,3 +198,56 @@
 							:store (t/geev-output-fix ,cla wr wi)))
 				       vl vr)))))))
   (geev! A vl vr))
+;;
+
+
+(defgeneric eig (matrix &optional job)
+  (:method :before ((matrix standard-tensor) &optional (job :nn))
+	   (assert (tensor-matrixp matrix) nil 'tensor-dimension-mismatch)
+	   (assert (member job '(:nn :nv :vn :vv)) nil 'invalid-arguments)))
+
+(defmethod eig ((matrix complex-numeric-tensor) &optional (job :nn))
+  (mlet* ((n (nrows matrix))
+	  ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
+	  (vl (when levec? (zeros (list n n) (class-of matrix))))
+	  (vr (when revec? (zeros (list n n) (class-of matrix)))))
+    (geev! (copy matrix) vl vr)))
+
+(defun geev-fix-up-eigvec (n eigval eigvec)
+  (declare (type complex-tensor eigval)
+	   (type real-tensor eigvec))
+  (let* ((evec (copy! eigvec (zeros (list n n) 'complex-tensor)))
+	 (cviewa (col-slice~ evec 0))
+	 (cviewb (col-slice~ evec 0))
+	 (cst (aref (strides evec) 1)))
+    (loop
+       :with i := 0
+       :do (if (< i n)
+	       (if (zerop (imagpart (ref eigval i)))
+		   (incf i)
+		   (progn
+		     (setf (slot-value cviewa 'head) (* i cst)
+			   (slot-value cviewb 'head) (* (1+ i) cst))
+		     (axpy! #c(0d0 1d0) cviewb cviewa)
+		     (scal! #c(0d0 -2d0) cviewb)
+		     (axpy! #c(1d0 0d0) cviewa cviewb)
+		     (incf i 2)))
+	       (return nil)))
+    evec))
+
+(defmethod eig ((matrix real-tensor) &optional (job :nn))
+  (mlet* ((n (nrows matrix))
+	  ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
+	  (ret (multiple-value-list
+		(geev! (copy matrix)
+		       (when levec? (zeros (list n n) 'real-tensor))
+		       (when revec? (zeros (list n n) 'real-tensor)))))
+	  (eig (car ret)))
+    (if (let ((stoe (store eig)))
+	  (loop :for i :from 0 :below n
+	     :do (unless (zerop (t/fc (t/field-type complex-tensor) (t/store-ref complex-tensor stoe i)))
+		   (return nil))
+	     :finally (return t)))
+	(values-list ret)
+	  (values-list (cons eig (mapcar #'(lambda (mat) (geev-fix-up-eigvec n eig mat)) (cdr ret)))))))
+

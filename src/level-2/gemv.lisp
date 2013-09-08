@@ -157,3 +157,8 @@
 (defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
 		 beta (y standard-tensor) &optional (job :n))
   (gemv! alpha A x beta (copy y) job))
+
+(defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
+		 (beta (eql nil)) (y (eql nil)) &optional (job :n))
+  (let ((ret (zeros (nrows A) (class-of A))))
+    (gemv! alpha A x 1 ret job)))

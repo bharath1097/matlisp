@@ -236,4 +236,3 @@ For example, (HELP matlisp) (HELP mapcar)")
 	(format stream "~&~%No documentation available for symbol ~a"
 		item)
 	(values)))))
-
