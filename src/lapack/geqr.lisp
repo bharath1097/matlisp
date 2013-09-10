@@ -32,7 +32,7 @@
 ;;; Initial revision for QR routines.
 ;;;
 
-(in-package "MATLISP")
+(in-package #:matlisp)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set up the methods required to handle general matricies of Real

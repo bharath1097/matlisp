@@ -191,7 +191,7 @@
 	      (values-list (remove-if #'null
 				      (list
 				       (let ((*check-after-initializing?* nil))
-					 (make-instance 'complex-tensor ;',(complexified-type cla)
+					 (make-instance ',(complexified-type cla)
 							:dimensions (make-index-store (list (nrows A)))
 							:strides (make-index-store (list 1))
 							:head 0
@@ -213,10 +213,10 @@
 	  (vr (when revec? (zeros (list n n) (class-of matrix)))))
     (geev! (copy matrix) vl vr)))
 
+
 (defun geev-fix-up-eigvec (n eigval eigvec)
-  (declare (type complex-tensor eigval)
-	   (type real-tensor eigvec))
-  (let* ((evec (copy! eigvec (zeros (list n n) 'complex-tensor)))
+  (let* ((evec (copy! eigvec (zeros (list n n) (complexified-type (class-of eigvec)))))
+	 (tmp (zeros n (complexified-type (class-of eigvec))))
 	 (cviewa (col-slice~ evec 0))
 	 (cviewb (col-slice~ evec 0))
 	 (cst (aref (strides evec) 1)))
@@ -228,9 +228,10 @@
 		   (progn
 		     (setf (slot-value cviewa 'head) (* i cst)
 			   (slot-value cviewb 'head) (* (1+ i) cst))
-		     (axpy! #c(0d0 1d0) cviewb cviewa)
-		     (scal! #c(0d0 -2d0) cviewb)
-		     (axpy! #c(1d0 0d0) cviewa cviewb)
+		     (copy! cviewb tmp)
+		     (copy! cviewa cviewb)
+		     (axpy! #c(0 1) tmp cviewa)
+		     (axpy! #c(0 -1) tmp cviewb)
 		     (incf i 2)))
 	       (return nil)))
     evec))

@@ -13,5 +13,4 @@ compat.f\
 descal.f\
 zescal.f\
 dediv.f\
-zediv.f\
-xerbla.f
+zediv.f

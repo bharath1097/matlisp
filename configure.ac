@@ -313,6 +313,14 @@ AC_HELP_STRING([--with-external-blas-lapack=libpath], [Location of the BLAS/LAPA
 ])
 AM_CONDITIONAL([EXT_BLAPACK], [test x$ext_blapack = xtrue])
 
+#Create libdir if missing (seems to be an issue on the Mac)
+if test -d $libdir; then
+   echo "libdir: Directory present"
+else
+   echo "libdir: Directory not present, creating."
+   mkdir $libdir
+fi;
+ 
 # Check to see if the BLAS library is compatible with matlisp's
 # ffi.  Basically the same test as above that checks to see if -ff2c
 # is needed.  We call zdotu which is a Fortran function returning a

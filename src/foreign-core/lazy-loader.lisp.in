@@ -72,10 +72,10 @@
     (progn
       (push "@BLAS_LAPACK_DIR@" cffi:*foreign-library-directories*)
       (cffi:define-foreign-library blas
-	(:darwin "libblas.dylib")
+	(:darwin (:or "libBLAS.dylib" "libblas.dylib"))
 	(t (:default "@BLAS_LAPACK_DIR@/libblas")))
       (cffi:define-foreign-library lapack
-	(:darwin "liblapack.dylib")
+	(:darwin (:or "libLAPACK.dylib" "liblapack.dylib"))
 	(t (:default "@BLAS_LAPACK_DIR@/liblapack"))))
     (progn
       ;; Use our blas and lapack libraries
@@ -88,8 +88,8 @@
 
 (defun load-blas-&-lapack-libraries ()
   ;; Load the additional matlisp libraries
-  (cffi:use-foreign-library matlisp)
   (cffi:use-foreign-library blas)
+  (cffi:use-foreign-library matlisp)
   (cffi:use-foreign-library lapack)
   (cffi:use-foreign-library dfftpack)
   (cffi:use-foreign-library toms715)
