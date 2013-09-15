@@ -1,43 +1,26 @@
-;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
-;;;
-;;; $Id: geqr.lisp,v 1.7 2002/01/20 00:42:25 simsek Exp $
-;;;
-;;; $Log: geqr.lisp,v $
-;;; Revision 1.7  2002/01/20 00:42:25  simsek
-;;; o removed a spurious ignore
-;;;
-;;; Revision 1.6  2002/01/08 19:40:45  rtoy
-;;; The functions we use are exported now.
-;;;
-;;; Revision 1.5  2001/10/29 18:00:28  rtoy
-;;; Updates from M. Koerber to support QR routines with column pivoting:
-;;;
-;;; o Add an integer4 type and allocate-integer4-store routine.
-;;; o Add the necessary Fortran routines
-;;; o Add Lisp interface to the Fortran routines
-;;; o Update geqr for the new routines.
-;;;
-;;; Revision 1.4  2001/10/29 17:34:34  rtoy
-;;; I (RLT) stupidly deleted too much from M. Koerber's update.  This is
-;;; his latest version.
-;;;
-;;; Revision 1.3  2001/10/26 15:19:25  rtoy
-;;; Renamed optional SKINNY parameter to ECON.
-;;;
-;;; Revision 1.2  2001/10/26 13:37:03  rtoy
-;;; Correctly handle the case when rows > cols and we want the [q1 q2]
-;;; form.  Fix from M. Koerber.
-;;;
-;;; Revision 1.1  2001/10/25 21:51:58  rtoy
-;;; Initial revision for QR routines.
-;;;
-
 (in-package #:matlisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Set up the methods required to handle general matricies of Real
-;; and complex types.  There are numerous other special cases, but
-;; they will not be considered for this first release.  mak
+(deft/generic (t/lapack-geqrf-func #'subtypep) sym ())
+(deft/method t/lapack-geqrf-func (sym real-tensor) ()
+  'matlisp-lapack:dgeqrf)
+(deft/method t/lapack-geqrf-func (sym complex-tensor) ()
+  'matlisp-lapack:zgeqrf)
+;;
+(deft/generic (t/lapack-geqrf-workspace-inquiry #'subtypep) sym (m n))
+(deft/method t/lapack-geqrf-workspace-inquiry (sym blas-numeric-tensor) (m n)
+  (using-gensyms (decl (m n))
+    (with-gensyms (xxx)
+      `(let (,@decl
+	     (,xxx (t/store-allocator ,sym 1)))
+	 (declare (type index-type ,m ,n)
+		  (type ,(store-type sym) ,xxx))
+	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
+	   ,m ,n
+	   ,xxx ,m
+	   ,xxx ,xxx -1 0)
+	 (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))))
+
+;;
 (defgeneric geqr! (a)
   (:documentation
    "
@@ -61,68 +44,59 @@
    [2] R
       
  If the factorization can not be done, Q and R are set to NIL.
-
- NOTE:  THIS FUNCTION IS DESTRUCTIVE.
-"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; One could simply use LWORK = (MAX 1 N), but this call might result
-;; in some optimization in performance.  For small matricies this is
-;; probably a 'no-net-gain' operation...but I seldom use small matricies
-;; in my work ;-) ... mak
-(let ((xx (allocate-real-store 1))
-      (work (allocate-real-store 1)))
-
-  (defun dgeqrf-workspace-inquiry (m n)
-    (multiple-value-bind (store-a store-tau store-work lwork info)
-	(lapack:dgeqrf m n xx m xx work -1 0)
-
-      (declare (ignore store-a store-tau store-work lwork info))
-
-      (values (ceiling (realpart (aref work 0)))))))
+")
+  (:method :before ((a standard-tensor))
+	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(let ((xx (allocate-complex-store 1))
-      (work (allocate-complex-store 1)))
+(defmacro loop-upper-triangle (cla 
+(deft/generic t/copy-upper-triangle (sym #'subtypep) (a b)
+  (using-gensyms (decl (a b))
+    (with-gensyms (sto-a sto-b strd-a strd-b)
+    `(let (,@decl
+	   (,sto-a (store ,a))
+	   (,strd-a (strides ,a))
+	   (,sto-b (store ,b))
+	   (,strd-b (strides ,b)))
+       (declare (type ,sym ,a ,b)
+		(type ,(store-type sym) ,sto-a ,sto-b)
+		(type index-store-vector ,strd-a ,strd-b))
+       (very-quickly
+	 (loop :repeat (nrows ,a)
+	    :for rof-a :of-type index-type := (head a) :then (+ rof-a (aref strd-a 0))
+	    :for rof-a :of-type index-type := (head a) :then (+ rof-a (aref strd-a 0))	    
+	    :do (loop :repeat (ncols b)
+		   :do (t/store-set ,sym (t/store-ref ,sym sto-a ..) sto-b ..))))))))))  
 
-  (defun zgeqrf-workspace-inquiry (m n)
+(defmethod geqr! ((a standard-tensor))
+  (let ((cla (class-name (class-of A))))
+    (assert (member cla *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class (list cla))
+    (compile-and-eval
+     `(defmethod geqr! ((a ,cla))
+	(let* ((m (nrows a))
+	       (n (ncols a))
+	       (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
+	       (tau (t/store-allocator ,cla k))	; reflection factors
+	       (lwork (t/lapack-geqrf-workspace-inquiry m n))	; optimum work array size
+	       (work (t/store-allocator ,cla lwork))) ; and the work area
+	  (declare (type index-type lwork m n k)
+		   (type ,(store-type cla) tau work))
+	  ;; Do the Householder portion of the decomposition
+	  (with-columnification (,cla () (A))
+	    (multiple-value-bind (q-r new-tau new-work info)
+		(,(macroexpand-1 `(t/lapack-geqrf-func ,cla))
+		  m n
+		  (the ,(store-type cla) (store A)) (or (blas-matrix-compatiblep A #\N) 0)
+		  tau work lwork 0 (the index-type (head A)))
+	      (declare (ignore q-r new-tau new-work))
+	      (unless (= info 0)
+		(error "geqrf returned ~a~%" info))
+	      
+		
 
-    (multiple-value-bind (store-a store-tau store-work lwork info)
-	(lapack:zgeqrf m n xx m xx work -1 0)
-
-      (declare (ignore store-a store-tau store-work lwork info))
-      
-      (values (ceiling (realpart (aref work 0)))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Okay...now we build up the specific method for real and comples
-(defmethod geqr! ((a real-matrix))
-
-  (let* ((m (nrows a))
-	 (n (ncols a))
-	 (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
-	 (tau (allocate-real-store k))	; reflection factors
-	 (lwork (dgeqrf-workspace-inquiry m n))	; optimum work array size
-	 (work (allocate-real-store lwork))) ; and the work area
-
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Do the Householder portion of the decomposition
-    (multiple-value-bind (q-r new-tau new-work info)
-	(lapack:dgeqrf m n (store a) m tau work lwork 0)
-
-      (declare (ignore new-work))
-      ;; Q-R and NEW-TAU aren't needed either since the (STORE A) and WORK
-      ;; get modified 
-
-      (if (not (zerop info))
-	  ;; If INFO is not zero, then an error occured.  Return Nil
-	  ;; for the Q and R and print a warning
-	  (progn (warn "QR Decomp failed:  Argument ~d in call to DGEQRF is bad" (- info))
-		 (values nil nil))
-
-	;; If we are here, then INFO == 0 and all is well...
-	(let ((r (make-real-matrix k n)))
+	  ;; If we are here, then INFO == 0 and all is well...
+	  (let ((r (make-real-matrix k n)))
 	  ;; Extract the matrix R from Q-R
 	  (dotimes (row k)
 	    (loop for col from row below n do
