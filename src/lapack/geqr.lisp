@@ -48,8 +48,22 @@
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
 
-
-(defmacro loop-upper-triangle (cla 
+(defmacro loop-upper-triangle ((dims-e &rest mats) &rest body)
+  (let ((syms (mapcar #'(lambda (x)
+			  (let ((mat-sym (gensyms)))
+			    `((,mat-sym ,x)
+			      (,(gensym "sto") (store ,mat-sym))
+			      (,(gensym "strides") (strides ,mat-sym))
+			      (,(gensym "dimensions") (dimensions ,mat-sym)))))
+		      mats)))
+    (with-gensyms (i j dims)
+      `(let (,@(apply #'append syms)
+	     (,dims ,dims-e))
+	 (loop :for ,i :from 0 :below (aref ,dims 0)
+	    :do (loop :for ,j :from 0 :below (aref ,dims 1)
+		   :do (progn
+			 ,@body)))))))
+  
 (deft/generic t/copy-upper-triangle (sym #'subtypep) (a b)
   (using-gensyms (decl (a b))
     (with-gensyms (sto-a sto-b strd-a strd-b)
