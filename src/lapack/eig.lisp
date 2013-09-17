@@ -199,8 +199,6 @@
 				       vl vr)))))))
   (geev! A vl vr))
 ;;
-
-
 (defgeneric eig (matrix &optional job)
   (:method :before ((matrix standard-tensor) &optional (job :nn))
 	   (assert (tensor-matrixp matrix) nil 'tensor-dimension-mismatch)
@@ -212,7 +210,6 @@
 	  (vl (when levec? (zeros (list n n) (class-of matrix))))
 	  (vr (when revec? (zeros (list n n) (class-of matrix)))))
     (geev! (copy matrix) vl vr)))
-
 
 (defun geev-fix-up-eigvec (n eigval eigvec)
   (let* ((evec (copy! eigvec (zeros (list n n) (complexified-type (class-of eigvec)))))
@@ -236,19 +233,17 @@
 	       (return nil)))
     evec))
 
-(defmethod eig ((matrix real-tensor) &optional (job :nn))
+(defmethod eig ((matrix real-numeric-tensor) &optional (job :nn))
   (mlet* ((n (nrows matrix))
 	  ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
 	  (ret (multiple-value-list
 		(geev! (copy matrix)
-		       (when levec? (zeros (list n n) 'real-tensor))
-		       (when revec? (zeros (list n n) 'real-tensor)))))
+		       (when levec? (zeros (list n n) (class-of matrix)))
+		       (when revec? (zeros (list n n) (class-of matrix))))))
 	  (eig (car ret)))
-    (if (let ((stoe (store eig)))
-	  (loop :for i :from 0 :below n
-	     :do (unless (zerop (t/fc (t/field-type complex-tensor) (t/store-ref complex-tensor stoe i)))
-		   (return nil))
-	     :finally (return t)))
-	(values-list ret)
-	  (values-list (cons eig (mapcar #'(lambda (mat) (geev-fix-up-eigvec n eig mat)) (cdr ret)))))))
-
+	 (if (loop :for i :from 0 :below n
+		:do (unless (zerop (imagpart (ref eig i)))
+		      (return nil))
+		:finally (return t))
+	     (values-list ret)
+	     (values-list (cons eig (mapcar #'(lambda (mat) (geev-fix-up-eigvec n eig mat)) (cdr ret)))))))
