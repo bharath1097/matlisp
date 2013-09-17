@@ -1,22 +1,8 @@
 (in-package :matlisp)
 
-(defun get-cons (lst sym)
-  (if (atom lst) nil
-      (if (eq (car lst) sym)
-	  (list lst)
-	  (append (get-cons (car lst) sym) (get-cons (cdr lst) sym)))))
-
 (defun has-sym (lst sym)
   (if (atom lst) (eql lst sym)
       (or (has-sym (car lst) sym) (has-sym (cdr lst) sym))))
-
-(defun mapcons (func lst keys)
-  (if (atom lst) lst
-      (let ((tlst (if (member (car lst) keys)
-			(funcall func lst)
-			lst)))
-	(if (atom tlst) tlst
-	    (mapcar #'(lambda (x) (mapcons func x keys)) tlst)))))
 
 ;;Only works for distinct objects
 (defun generate-permutations (lst)
@@ -26,18 +12,8 @@
 				    (mapcar #'(lambda (y) (cons x y)) (generate-permutations pop-x))))
 			      lst))))
 
-(defun set-eq (a b &key (test #'eql))
-  (and (loop :for ele :in a
-	  :do (unless (member ele b :test test)
-		(return nil))
-	  :finally (return t))
-       (loop :for ele :in b
-	  :do (unless (member ele a :test test)
-		(return nil))
-	  :finally (return t))))
-
 (defun parse-loopx (type place clause)
-  (let* ((refs (let ((tmp (get-cons (list place clause) 'ref))
+  (let* ((refs (let ((tmp (getcons (list place clause) 'ref))
 		     (ret nil))
 		 (loop :for ele :in tmp
 		    :do (setf ret (setadd ret ele #'equal)))

@@ -56,6 +56,16 @@
 	(cdr lst)
 	(cons (car lst) (setrem (cdr lst) a test)))))
 
+(defun set-eq (a b &key (test #'eql))
+  (and (loop :for ele :in a
+	  :do (unless (member ele b :test test)
+		(return nil))
+	  :finally (return t))
+       (loop :for ele :in b
+	  :do (unless (member ele a :test test)
+		(return nil))
+	  :finally (return t))))
+
 (declaim (inline copy-n))
 (defun copy-n (vec lst n)
   (declare (type vector vec)
@@ -65,6 +75,20 @@
      :for vlst := lst :then (cdr vlst)
      :do (setf (car vlst) (aref vec i)))
   lst)
+
+(defun getcons (lst sym)
+  (if (atom lst) nil
+      (if (eq (car lst) sym)
+	  (list lst)
+	  (append (getcons (car lst) sym) (getcons (cdr lst) sym)))))
+
+(defun mapcons (func lst keys)
+  (if (atom lst) lst
+      (let ((tlst (if (member (car lst) keys)
+			(funcall func lst)
+			lst)))
+	(if (atom tlst) tlst
+	    (mapcar #'(lambda (x) (mapcons func x keys)) tlst)))))
 
 (defun find-tag (lst tag)
   (let ((car (car lst)))

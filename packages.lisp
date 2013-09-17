@@ -73,7 +73,7 @@
 	   #:vectorify #:copy-n
 	   #:ensure-args #:repsym #:findsym #:find-tag
 	   #:zip #:zip-eq #:zipsym
-	   #:list-eq #:setadd #:setrem
+	   #:list-eq #:setadd #:setrem #:set-eq
 	   #:cut-cons-chain!
 	   #:slot-values #:remmeth
 	   #:recursive-append #:unquote-args #:flatten
@@ -84,6 +84,7 @@
 	   #:lvec-map-foldl! #:lvec-map-foldr!
 	   #:lvec->list #:lvec->list!
 	   #:compile-and-eval
+	   #:getcons #:mapcons
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec #:using-gensyms
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed

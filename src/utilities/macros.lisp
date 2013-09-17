@@ -10,6 +10,57 @@
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,@(when doc (list doc))))
 
+(defmacro with-marking (&rest body)
+  "
+ This macro basically declares local-variables globally,
+ while keeping semantics and scope local.
+
+Example:
+  > (macroexpand-1
+      `(with-marking
+	   (loop :for i := 0 :then (1+ i)
+	      :do (mark* ((xi (* 10 2) :type index-type)
+			  (sum 0 :type index-type))
+			 (incf sum (mark (* 10 2)))
+			 (if (= i 10)
+			     (return sum))))))
+
+      (LET* ((#:G1083 (* 10 2)) (#:SUM1082 0) (#:XI1081 (* 10 2)))
+	(DECLARE (TYPE INDEX-TYPE #:SUM1082)
+		 (TYPE INDEX-TYPE #:XI1081))
+	(LOOP :FOR I := 0 :THEN (1+ I)
+	      :DO (SYMBOL-MACROLET ((XI #:XI1081) (SUM #:SUM1082))
+		    (INCF SUM #:G1083)
+		    (IF (= I 10)
+			(RETURN SUM)))))
+     T
+  > 
+"
+  (let* ((decls nil)
+	 (types nil)
+	 (code (mapcons #'(lambda (mrk)
+			    (ecase (car mrk)
+			      (mark*
+			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
+									       (let ((rsym (gensym (symbol-name ref))))
+										 (push `(,rsym ,code) decls)
+										 (when type
+										   (push `(type ,type ,rsym) types))
+										 `(,ref ,rsym))))
+							    (cadr mrk)))
+				  ,@(cddr mrk)))
+			      (mark
+			       (destructuring-bind (code &key type) (cdr mrk)
+				 (let ((rsym (gensym)))
+				   (push `(,rsym ,code) decls)
+				   (when type
+				     (push `(type ,type ,rsym) types))
+				   rsym)))))
+			body '(mark* mark))))
+    `(let* (,@decls)
+       ,@(when types `((declare ,@types)))
+       ,@code)))
+
 (defmacro mlet* (vars &rest body)
   "
   This macro extends the syntax of let* to handle multiple values, it also handles

@@ -47,45 +47,6 @@
 ")
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
-
-
-(defmacro with-marking (&rest body)
-  (let* ((decls nil)
-	 (types nil)
-	 (code (mapcons #'(lambda (mrk)
-			    (ecase (car mrk)
-			      (mark*
-			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
-									       (let ((rsym (gensym (symbol-name ref))))
-										 (push `(,rsym ,code) decls)
-										 (when type
-										   (push `(type ,type ,rsym) types))
-										 `(,ref ,rsym))))
-							    (cadr mrk)))
-				  ,@(cddr mrk)))
-			      (mark
-			       (destructuring-bind (code &key type) (cdr mrk)
-				 (let ((rsym (gensym)))
-				   (push `(,rsym ,code) decls)
-				   (when type
-				     (push `(type ,type ,rsym) types))
-				   rsym)))))
-			body '(mark* mark))))
-    `(let* (,@decls)
-       ,@(when types `((declare ,@types)))
-       ,@code)))
-
-(with-marking
-    (loop :for i := 0 :then (1+ i)
-       :do (mark* ((xi (* 10 2) :type index-type)
-		   (sum 0 :type index-type))
-		  (incf sum (mark (* 10 2)))
-		  (if (= i 10)
-		      (return sum)))))
-
-(loop-upper-triangle ((dimensions x)
-		      (of-a a)
-		      (of-b b)))
    
 (defmacro loop-lt ((dims-e &rest mats) &rest body)
   (let ((syms (mapcar #'(lambda (x)

@@ -160,5 +160,5 @@
 
 (defmethod gemv (alpha (A standard-tensor) (x standard-tensor)
 		 (beta (eql nil)) (y (eql nil)) &optional (job :n))
-  (let ((ret (zeros (nrows A) (class-of A))))
+  (let ((ret (zeros (ecase job (:n (nrows A)) (:t (ncols A))) (class-of A))))
     (gemv! alpha A x 1 ret job)))
