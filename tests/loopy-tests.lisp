@@ -1,15 +1,20 @@
 (in-package :matlisp)
 
-(defun tdcopy (n)
-  (let* ((t-a (make-real-tensor-dims n n n))
+
+(defun tcopy (n &optional (rank 2))
+  (let* ((dims (make-list rank :initial-element n))
+	 (t-a (zeros  dims))
 	 (st-a (store t-a))
-	 (t-b (make-real-tensor-dims n n n))
+	 (t-b (zeros dims))
 	 (st-b (store t-b)))
-     (with-optimization (:speed 3 :safety 0 :space 0)
-       (mod-dotimes (idx (idxv n n))
-	 with (linear-sums
-	       (of (idxv (* n n) n)))
-	 do (dcopy n st-a 1 st-b 1 of of)))))
+    (declare (type (simple-array double-float (*)) st-a st-b))
+    (time 
+    (very-quickly
+      (mod-dotimes (idx (dimensions t-a))
+	:with (linear-sums
+	       (of-a (strides t-a) (head t-a))
+	       (of-b (strides t-b) (head t-b)))
+	:do (setf (aref st-b of-b) (aref st-a of-a)))))))
 
 (defun tcopy (n)
   (let* ((t-a (make-real-tensor-dims n n n))

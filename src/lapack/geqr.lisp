@@ -48,21 +48,62 @@
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
 
-(defmacro loop-upper-triangle ((dims-e &rest mats) &rest body)
+
+(defmacro with-marking (&rest body)
+  (let* ((decls nil)
+	 (types nil)
+	 (code (mapcons #'(lambda (mrk)
+			    (ecase (car mrk)
+			      (mark*
+			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
+									       (let ((rsym (gensym (symbol-name ref))))
+										 (push `(,rsym ,code) decls)
+										 (when type
+										   (push `(type ,type ,rsym) types))
+										 `(,ref ,rsym))))
+							    (cadr mrk)))
+				  ,@(cddr mrk)))
+			      (mark
+			       (destructuring-bind (code &key type) (cdr mrk)
+				 (let ((rsym (gensym)))
+				   (push `(,rsym ,code) decls)
+				   (when type
+				     (push `(type ,type ,rsym) types))
+				   rsym)))))
+			body '(mark* mark))))
+    `(let* (,@decls)
+       ,@(when types `((declare ,@types)))
+       ,@code)))
+
+(with-marking
+    (loop :for i := 0 :then (1+ i)
+       :do (mark* ((xi (* 10 2) :type index-type)
+		   (sum 0 :type index-type))
+		  (incf sum (mark (* 10 2)))
+		  (if (= i 10)
+		      (return sum)))))
+
+(loop-upper-triangle ((dimensions x)
+		      (of-a a)
+		      (of-b b)))
+   
+(defmacro loop-lt ((dims-e &rest mats) &rest body)
   (let ((syms (mapcar #'(lambda (x)
-			  (let ((mat-sym (gensyms)))
-			    `((,mat-sym ,x)
-			      (,(gensym "sto") (store ,mat-sym))
-			      (,(gensym "strides") (strides ,mat-sym))
-			      (,(gensym "dimensions") (dimensions ,mat-sym)))))
+			  (let ((mat-sym (gensym)))
+			    `((,mat-sym ,(cadr x))
+			      (,(gensym "strd") (strides ,mat-sym))
+			      (,(car x) (head x)))))
 		      mats)))
     (with-gensyms (i j dims)
-      `(let (,@(apply #'append syms)
-	     (,dims ,dims-e))
-	 (loop :for ,i :from 0 :below (aref ,dims 0)
-	    :do (loop :for ,j :from 0 :below (aref ,dims 1)
-		   :do (progn
-			 ,@body)))))))
+      `(let* (,@(apply #'append syms)
+	      (,dims ,dims-e))
+	 (with-marking
+	     (loop :for ,j :from 0 :below (mark (aref ,dims 1))
+		:do (progn
+		      ,@(mapcar #'(lambda (x) `(incf ,(car (third x)) (mark (aref ,(car (second x)) 1)))))
+		      (loop :repeat :from 0 :below (mark (aref ,dims 0))
+			 :do (progn
+			       ,@body))))))))
   
 (deft/generic t/copy-upper-triangle (sym #'subtypep) (a b)
   (using-gensyms (decl (a b))
