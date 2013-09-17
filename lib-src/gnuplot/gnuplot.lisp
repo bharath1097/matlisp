@@ -1,7 +1,11 @@
 (in-package :matlisp)
 (defvar *current-gnuplot-process* nil)
 
-(defun open-gnuplot-stream (&optional (gnuplot-binary (pathname "/usr/bin/gnuplot")))
+(defun open-gnuplot-stream (&optional (gnuplot-binary
+				       #+darwin
+				       (pathname "/opt/local/bin/gnuplot")
+				       #+linux
+				       (pathname "/usr/bin/gnuplot")))
   (setf *current-gnuplot-process* (#+:sbcl
 				   sb-ext:run-program
 				   #+:ccl
