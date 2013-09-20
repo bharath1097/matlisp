@@ -40,7 +40,7 @@ Example:
 	 (types nil)
 	 (code (mapcons #'(lambda (mrk)
 			    (ecase (car mrk)
-			      (mark*
+			      (:mark*
 			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
 									       (let ((rsym (gensym (symbol-name ref))))
 										 (push `(,rsym ,code) decls)
@@ -49,14 +49,14 @@ Example:
 										 `(,ref ,rsym))))
 							    (cadr mrk)))
 				  ,@(cddr mrk)))
-			      (mark
+			      (:mark
 			       (destructuring-bind (code &key type) (cdr mrk)
 				 (let ((rsym (gensym)))
 				   (push `(,rsym ,code) decls)
 				   (when type
 				     (push `(type ,type ,rsym) types))
 				   rsym)))))
-			body '(mark* mark))))
+			body '(:mark* :mark))))
     `(let* (,@decls)
        ,@(when types `((declare ,@types)))
        ,@code)))
@@ -531,9 +531,9 @@ Example:
 (defmacro slowly (&body forms)
   "
   Macro which encloses @arg{forms} inside
-  (declare (optimize (speed 1)))
+  (declare (optimize (speed 1) (debug 3)))
   "
-  `(with-optimization (:speed 1)
+  `(with-optimization (:speed 1 :debug 3)
      ,@forms))
 
 )

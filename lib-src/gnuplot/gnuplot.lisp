@@ -1,11 +1,12 @@
 (in-package :matlisp)
 (defvar *current-gnuplot-process* nil)
 
-(defun open-gnuplot-stream (&optional (gnuplot-binary
-				       #+darwin
-				       (pathname "/opt/local/bin/gnuplot")
-				       #+linux
-				       (pathname "/usr/bin/gnuplot")))
+(defun open-gnuplot-stream (&key (gnuplot-binary
+				  #+darwin
+				  (pathname "/opt/local/bin/gnuplot")
+				  #+linux
+				  (pathname "/usr/bin/gnuplot"))
+			      (terminal "wxt"))
   (setf *current-gnuplot-process* (#+:sbcl
 				   sb-ext:run-program
 				   #+:ccl
@@ -13,7 +14,8 @@
 				   gnuplot-binary nil :input :stream :wait nil :output t))
   (gnuplot-send "
 set datafile fortran
-")
+set term ~a
+" terminal)
   *current-gnuplot-process*)
 
 (defun close-gnuplot-stream ()
@@ -37,7 +39,7 @@ set datafile fortran
     (multiple-value-bind (b2 b1) (floor a 256)
       (list b2 b1 b0))))
 
-(defun plot2d (data &key (lines t) (color nil))
+(defun plot (data &key (lines t) (color nil))
   (let ((fname "/tmp/matlisp-gnuplot.out"))
     (with-open-file (s fname :direction :output :if-exists :supersede :if-does-not-exist :create)
       (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
@@ -45,7 +47,7 @@ set datafile fortran
     (let ((col (if (listp color) color
 		   (let ((lst (list color)))
 		     (setf (cdr lst) lst)
-		     lst))))      
+		     lst))))
       (let ((cmd (apply #'string+ (cons "plot " (loop :for x :in (cdr data)
 						   :for i := 2 :then (1+ i)
 						   :for clist := col :then (cdr clist)
@@ -60,6 +62,14 @@ set datafile fortran
 	(setf (aref cmd (- (length cmd) 2)) #\;
 	      (aref cmd (- (length cmd) 1)) #\Newline)
 	(gnuplot-send cmd)))))
+
+(defun splot (data)
+  (let ((fname "/tmp/matlisp-gnuplot.out"))
+    (with-open-file (s fname :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
+	 :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
+    (gnuplot-send (string+ "splot \'" fname "\'
+"))))
 	 
 ;; (defclass gnuplot-plot-info ()
 ;;   ((title

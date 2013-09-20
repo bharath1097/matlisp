@@ -47,42 +47,6 @@
 ")
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
-   
-(defmacro loop-lt ((dims-e &rest mats) &rest body)
-  (let ((syms (mapcar #'(lambda (x)
-			  (let ((mat-sym (gensym)))
-			    `((,mat-sym ,(cadr x))
-			      (,(gensym "strd") (strides ,mat-sym))
-			      (,(car x) (head x)))))
-		      mats)))
-    (with-gensyms (i j dims)
-      `(let* (,@(apply #'append syms)
-	      (,dims ,dims-e))
-	 (with-marking
-	     (loop :for ,j :from 0 :below (mark (aref ,dims 1))
-		:do (progn
-		      ,@(mapcar #'(lambda (x) `(incf ,(car (third x)) (mark (aref ,(car (second x)) 1)))))
-		      (loop :repeat :from 0 :below (mark (aref ,dims 0))
-			 :do (progn
-			       ,@body))))))))
-  
-(deft/generic t/copy-upper-triangle (sym #'subtypep) (a b)
-  (using-gensyms (decl (a b))
-    (with-gensyms (sto-a sto-b strd-a strd-b)
-    `(let (,@decl
-	   (,sto-a (store ,a))
-	   (,strd-a (strides ,a))
-	   (,sto-b (store ,b))
-	   (,strd-b (strides ,b)))
-       (declare (type ,sym ,a ,b)
-		(type ,(store-type sym) ,sto-a ,sto-b)
-		(type index-store-vector ,strd-a ,strd-b))
-       (very-quickly
-	 (loop :repeat (nrows ,a)
-	    :for rof-a :of-type index-type := (head a) :then (+ rof-a (aref strd-a 0))
-	    :for rof-a :of-type index-type := (head a) :then (+ rof-a (aref strd-a 0))	    
-	    :do (loop :repeat (ncols b)
-		   :do (t/store-set ,sym (t/store-ref ,sym sto-a ..) sto-b ..))))))))))  
 
 (defmethod geqr! ((a standard-tensor))
   (let ((cla (class-name (class-of A))))

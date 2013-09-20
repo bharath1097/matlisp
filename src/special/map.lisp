@@ -39,6 +39,10 @@
 	      :do (t/store-set ,cly (funcall func (t/store-ref ,clx sto-x of-x)) sto-y of-y))))
 	y)))
   (mapsor! func x y))
+
+(definline mapsor (func x)
+  (let ((ret (zeros (dimensions x) (class-of x))))
+    (mapsor! func x ret)))
 ;;
 
 (defun mapslice (func x &optional (axis 0))
