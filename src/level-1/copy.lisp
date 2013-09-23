@@ -145,7 +145,7 @@
 				   :do (progn
 					 ,(if diag?
 					      `(if (= 
-					 (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b))))))
+					 (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b))))))))))
 	   ,b))))
 
 ;;
