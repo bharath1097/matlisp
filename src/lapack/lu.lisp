@@ -136,8 +136,8 @@
   By default WITH-L,WITH-U,WITH-P.
 "))
 
-(defmethod lu ((a standard-tensor) &optional split-lu?)
-  (let ((lu (getrf! (copy a))
+;; (defmethod lu ((a standard-tensor) &optional split-lu?)
+;;   (let ((lu (getrf! (copy a))
   
 #+nil
 (defmacro make-lu (tensor-class)

@@ -1,21 +1,151 @@
 # -*- Mode: org -*-
-
-MatLisp - a base for scientific computation in Lisp.
+MatLisp is intended to be a base for scientific computation in Lisp.
 This is the development branch of Matlisp.
+
+MatLisp is made from a mixture of CLOS, lots of macros and the disdain
+for other programming languages :) The old version aimed mostly towards handling
+matrices, and was more of a Lispy-interface for Fortran. This version can handle
+general dense tensors, and is in part inspired by the architecture of femlisp.matlisp.
+It can also generate very fast generic BLAS routines lazily at run-time and reduce
+the overhead of FFI calls.
+
+* Why MatLisp(and Lisp)?
+  Lisp is a very hacker friendly language - the difference between
+  source and binary is almost non-existent. When you use Matlisp we
+  are being selfish in that we hope that when you do use Matlisp, you
+  hack matlisp and contribute changes back.
+
+  With Lisp, you have at your disposable the complete Lisp language and CLOS,
+  and the fabled macros. This allows you to write clean, object-oriented code
+  that can utilize the LAPACK matrix routines.  Thus, you can think about your
+  problem in the natural way instead of trying to force-fit your problem in
+  matrices, like some other packages do.
+
+** How does this compare to Matlab, SciPy, Octave, R etc?
+   These packages are much in a much more mature stage than Matlisp; we
+   also lack most of the features in these packages. However, Matlisp was
+   built with the hope that expressibility and performance don't necessarily
+   have to mutually exclusive; in that we're not alone: Lush, and
+   Julia both have similar goals.
+
+   In all the popular scientific packages, one sacrifices performance for
+   generally having the language manage your datastructures (ahem, matrices).
+   This has been changing of course with Cython, Numba, and Matlab's very own
+   JIT; nevertheless, there are lots of constraints on what can be expressed
+   efficiently, and succinctly in these language. In nearly all of them you'd
+   have to write lots of boiler plate code in C to get something to run reasonably
+   quickly; of course Matrices are passed straight in BLAS/LAPACK so "vectorised"
+   code becomes second nature. Few if any languages have anything close to macros.
+   So matlisp, in essence is for the kind of people who use (and love) lisp.
+
+   With all things equal(which they are not), Matlisp(+SBCL) beats or is about as
+   fast as any of these packages; if you really want to squeeze every bit of
+   computational power, you can in most cases optimize loops, so that they're
+   as fast as C. However, there are limitations to what you can do vs C, because
+   of the Lisp implementation overheads (things like SSE, blocked computation).
+
+   CCL does not unbox floats for multiplication, so your performance will suffer
+   if you choose CCL.
+
+* How to Install
+  Matlisp uses CFFI for callng foreign functions. That said, the FFI
+  capabilities of different lisps are quite different. So if your Lisp
+  implementation supports callbacks and calling plain C functions and
+  maps float simple-arrays into C-type arrays in memory, it shouldn't
+  be too hard to get it working (if it doesn't work already). We've tested
+  Matlisp on CCL and SBCL. The build system is cranky with all the new changes.
+
+
+  Linux/Unix Installation:
+  ========================
+
+  One of the design goals of Matlisp was to ensure the consistency of
+  installation.  Matlisp is currently distributed as source code and the
+  user must do a compilation.  A great deal of effort was put into a
+  configure script that determines machine parameters, system libraries
+  and without bothering the user.
+
+  The installation follows in a few easy steps:
+
+  Download and install quicklisp http://www.quicklisp.org/beta/; make sure the quicklisp directory is "~/quicklisp/"
+  (This step makes sure that CFFI is available, more advanced users can skip this and install
+  CFFI and make it visible to ASDF).
+
+  Download the Matlisp:
+  > git clone git://git.code.sf.net/p/matlisp/git matlisp-git
+  > cd matlisp-git
+  > git checkout tensor
+
+  Install all the configuration scripts the first time.
+  > autoreconf --install
+
+  Create a build directory.  (You can use any name you like).
+  > mkdir build
+  > cd build
+
+  Use the following if you want to build and use the reference blas/lapack implementation.
+  > ../configure --libdir=$PWD/lib --enable-static=no --enable-<lisp> --with-lisp-exec=<exec>
+  (<lisp> \in {sbcl, ccl, cmucl, acl})
+  You don't need to build matlisp in order to use a different lisp implementations (yes, this
+  is quite redundant).
+
+  If you already have a optimized version of BLAS/LAPACK:
+  > ../configure --libdir=$PWD/lib --enable-static=no --enable-<lisp> --with-lisp-exec=<exec> --with-external-blas-lapack=<path>
+  On linux, <path> is usually /usr/lib/
+  On Mac OSX, you can use vecLib by setting <path> to /System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/
+
+  If configure does not select the desired Fortran compiler and
+  compiler flags, you can specify them like this:
+  ../configure F77=f77 FFLAGS='-g -O -KPIC' ...
+
+  Avanti!
+  > make
+  This should land you in a lisp shell at the end.
+
+  To use matlisp after building just call
+  CL-USER> (load "<matlisp-path>/build/start.lisp")
+  CL-USER> (in-package :matlisp)
+
+* Example usage
+  More documentation will be added as things reach a nicer stage of development.
+
+  ;;Creation
+  MATLISP> (copy! (randn '(2 2)) (zeros '(2 2) 'complex-tensor))
+  #<COMPLEX-TENSOR #(2 2)
+  -1.5330     -1.67578E-2
+  -.62578     -.63278
+  >
+
+  ;;gemv
+  MATLISP> (let ((a (randn '(2 2)))
+		 (b (randn 2)))
+	     (gemv 1 a b nil nil))
+  #<REAL-TENSOR #(2)
+  1.1885     0.95746
+  >
+
+  ;;Tensor contraction
+  MATLISP> (let ((H (randn '(2 2 2)))
+		 (b (randn 2))
+		 (c (randn 2))
+		 (f (zeros 2)))
+	     (einstein-sum real-tensor (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
+  #<REAL-TENSOR #(2)
+  0.62586     -1.1128
+  >
 
 * Progress Tracker
 ** What works ?
-   * Basic {real, complex} tensor structure in place.
-   * Added a specialisation agnostic macros {copy, scal} which generate
-     functions by getting special method producing macros - produced
-     by another macro {tensor-store-defs}.
-   * copy, scal, dot, swap, axpy work
-   * tensor-{real, imag}part(~) work
-   * sub-tensor~ works
-   * print methods work
+   * Generic template structure.
+   * Double real, complex tensor structures in place.
+   * Templates for optimized BLAS methods in Lisp.
+   * Automatic switching between Lisp routines and BLAS.
+   * Inplace slicing, real - imag views for complex tensors.
+   * copy, scal, dot, swap, axpy, gemv, gemm, getrf/getrs (lu), geev(eig), potrf/potrs(chol), geqr
    * permutation class, sorting, conversion between action and
      cycle representations.
    * mod-loop works, can produce very quick multi-index loops.
+   * einstein macro works, can produce optimized loops.
 
 ** TODO : What remains ? (Help!)
 *** Functionality
@@ -23,17 +153,19 @@ This is the development branch of Matlisp.
    * Add negative stride support, ala Python.
    * Tensor contraction: Hard to do very quickly.
      Might have to copy stuff into a contiguous array; like Femlisp.
-   * BLAS level-2 and level-3: most importantly Matrix multiplication.
-   * LAPACK: solving Linear equations, Eigenvalue decomposition.
+   * LAPACK: Add interfaces to remaining functions.
    * DFFTPACK: computing FFTs
    * QUADPACK: Move from f2cl-ed version to the Fortran one.
    * MINPACK: Move from f2cl-ed version to the Fortran one.
    * ODEPACK: Add abstraction for DLSODE, and DLSODAR may others too.
-   * Add a Lisp generic wrapper for every BLAS func {low priority}.
 
 *** Syntactic sugar
    * Add array slicing macros
    * Might have to add something to make it compatible with old Matlisp.
+
+*** Gnuplot interface
+   * Make gnuplot interface more usable.
+
 *** Python-bridge
     (C)Python has far too many things, that we cannot even begin to hope to replicate.
     Burgled-batteries has a lot of things which could be useful in talking to CPython.
@@ -46,7 +178,7 @@ This is the development branch of Matlisp.
     although changes are not strictly local.
 
 *** Support linking to libraries ?
-    Might have to parse header files with cffi-grovel.
+    Parse header files with cffi-grovel.
 
 *** Documentation, tests
     * Write documentation.
@@ -57,120 +189,5 @@ This is the development branch of Matlisp.
 *** Symbolics, AD, more fancy stuff {wishlist}
    * Use things like macrofy to work with Maxima
    * Provide seamless AD, Symbolic differentiation and numerical function calls, ala scmutils.
-
-
-* What is MatLisp?
-
-  MatLisp is a set of CLOS classes for handling multidimensional
-  arrays with real-valued or complex-valued elements.
-
-  However, a implementation of the matrix operations entirely in Lisp
-  could have been done, but such an approach completely ignores the
-  excellent packages available for matrices.  In particular, LAPACK is
-  used to handle the matrix operations.
-
-  Thus, MatLisp supplies a set of wrapper classes and functions around
-  the core LAPACK routines.
-
-
-* Why MatLisp?
-
-  Lisp is a very hacker friendly language - the difference between
-  source and binary is almost non-existent. When you use Matlisp we
-  are being selfish in that we hope that when you do use Matlisp, you
-  hack matlisp and contribute changes back.
-
-  While MatLisp essentially supplies a wrapper around the BLAS/LAPACK
-  routines, it is more than just that.  You have at your disposable the
-  complete Lisp language and CLOS, and the fabled macros.
-
-  This allows you to write clean, object-oriented code that can utilize
-  the LAPACK matrix routines.  Thus, you can think about your problem in
-  the natural way instead of trying to force-fit your problem in
-  matrices, like some other packages do.
-
-* What about Matlab, SciPy, Octave, etc?
-
-  While all of these are good at what they do, they all have a
-  fundamental limitation:  Everything is a matrix.  You have no
-  alternative.  Either you make your problem fit into a matrix, or you
-  can't use these languages.  The exception is Rlab, which does have
-  simple lists in addition to matrices.  However, that's as far as it goes.
-
-  MatLisp frees you from this limitation---you have at your disposal,
-  the complete functionality of Common Lisp, including structures, hash
-  tables, lists, arrays, and the Common Lisp Object System (CLOS).
-  MatLisp adds to this richness by giving you a matrix fast class based
-  on the well-known and well-tested LAPACK library.
-
-  Thus, you can think about your problem in the most natura
-  l way, without having to force everything into a matrix.  If the natural way,
-  you can then use a matrix, and achieve performance close to Matlab and
-  the other languages.
-
-
-* How to Install
-
-  See the file INSTALL.
-
-* Usage
-
-  This is very short.  Here is a list of available routines
-
-  make-float-matrix
-  create a float matrix
-  (make-float-matrix n m)
-  creates an n x m matrix initialize to zero.
-  (make-float-matrix #2a(...))
-  creates a matrix with the same dimensions as the array and
-  initializes the matrix with those elements.
-  (make-float-matrix '((...) (...) ...))
-  creats a matrix of the appropriate dimensions and initializes
-  it to the elements in the list.
-
-  make-complex-matrix
-  create a complex matrix
-  (make-complex-matrix n m)
-  creates an n x m matrix initialize to zero.
-  (make-complex-matrix #2a(...))
-  creates a matrix with the same dimensions as the array and
-  initializes the matrix with those elements.
-  (make-complex-matrix '((...) (...) ...))
-  creats a matrix of the appropriate dimensions and initializes
-  it to the elements in the list.
-
-
-  []
-  create a float or complex matrix
-  [1 2 ; 3 4]
-  creates a 2x2 matrix
-  [[1 3]' [2 4]']
-  creates the same 2x2 matrix
-  [[1 2] ; [3 4]]
-  creates the same 2x2 matrix
-
-  matrix-ref
-  access the elements of the matrix.  Indices are 0-based.
-  (matrix-ref mat r)
-  access the array as if it were really 1-dimensional.  Matrix
-  is stored in column-major order.
-  (matrix-ref mat r c)
-  access element r,c
-  (matrix-ref mat ridx)
-  if ridx is a matrix or a sequence, ridx is used as the indices
-  to extract the corresponding elements from the matrix.
-
-  m+
-  add two matrices
-
-  m-
-  subtract two matrices.  If only one matrix is given, return
-  the negative of the matrix.
-
-  m*
-  multiply two matrices
-
-  m/
-  divide two matrices.  (m/ a b) means the same as inv(B)*A.
-  (m/ a) is the same as inv(A).
-
+   * Symbolic stuff tends to fit in easily with the lisp-based BLAS routines.
+     Port code from src/classes/symbolic-tensor.lisp
