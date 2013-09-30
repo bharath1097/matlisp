@@ -120,8 +120,8 @@
 ;;
 ;;This macro is used for interfacing with lapack
 ;;Only to be used with matrices!
-(deft/generic (t/copy-triangle! #'subtypep) sym (a b &optional upper? diag?))
-(deft/method t/copy-triangle! (sym standard-tensor) (a b &optional (upper? nil) (diag? t))
+(deft/generic (t/copy-triangle! #'subtypep) sym (a b &optional upper?))
+(deft/method t/copy-triangle! (sym standard-tensor) (a b &optional (upper? t))
   (using-gensyms (decl (a b))
     (with-gensyms (sto-a sto-b strd-a strd-b dof-a dof-b of-a of-b)
       `(let* (,@decl
@@ -141,13 +141,27 @@
 			    :do (loop :for j :from 0 :below ,(if upper? `(1+ i) `(- ndiags i))
 				   :for ,of-a :of-type index-type := ,dof-a :then (,(if upper? '- '+) ,of-a (:mark (aref ,strd-a 0)))
 				   :for ,of-b :of-type index-type := ,dof-b :then (,(if upper? '- '+) ,of-b (:mark (aref ,strd-b 0)))
-				   ,@(unless diag? `(:unless (= j 0)))
-				   :do (progn
-					 ,(if diag?
-					      `(if (= 
-					 (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b))))))))))
+				   :do (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b))))))
 	   ,b))))
-
+;;
+(deft/generic (t/copy-diagonal! #'subtypep) sym (a b &optional num?))
+(deft/method t/copy-diagonal! (sym standard-tensor) (a b &optional (num? nil))
+  (using-gensyms (decl (a b))
+    (with-gensyms (sto-a sto-b of-a of-b)
+      `(let* (,@decl
+	      ,@(unless num? `((,sto-a (store ,a))))
+	      (,sto-b (store ,b)))
+	 (declare (type ,sym ,@(unless num? `(,a)) ,b)
+		  (type ,(store-type sym) ,@(unless num? `(,sto-a)) ,sto-b)
+		  ,@(when num? `((type ,(field-type sym) ,a))))
+	 (with-marking 
+	     (very-quickly
+	       (:mark* ((ndiags (lvec-min (dimensions ,b))))
+		       (loop :for i :from 0 :below ndiags
+			  ,@(unless num? `(:for ,of-a :of-type index-type := (head ,a) :then (+ ,of-a (:mark (lvec-foldr #'+ (strides ,a)) :type index-type))))
+			  :for ,of-b :of-type index-type := (head ,b) :then (+ ,of-b (:mark (lvec-foldr #'+ (strides ,b)) :type index-type))
+			  :do (t/store-set ,sym ,@(if num? `(,a) `((t/store-ref ,sym ,sto-a ,of-a))) ,sto-b ,of-b)))))
+	 ,b))))
 ;;
 (defmethod copy! :before ((x standard-tensor) (y standard-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
