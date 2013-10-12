@@ -154,7 +154,7 @@
    #:dgeqrf #:zgeqrf #:dgeqp3 #:zgeqp3
    #:dorgqr #:zungqr
    #:dpotrs #:zpotrs #:dpotrf #:zpotrf
-   #:dgelsy)
+   #:dgelsy #:zgelsy)
   (:documentation "LAPACK routines"))
 
 (defpackage "MATLISP-DFFTPACK"

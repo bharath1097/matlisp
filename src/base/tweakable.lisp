@@ -28,6 +28,11 @@
   which case, may lead to memory error. Use at your own risk.
 ")
 
+(defparameter *default-rcond* 1d-15
+  "
+  The default value of condition number to be used for
+  determining the rank of a matrix (used in gelsy).
+")
 ;;Level 1--------------------------------------------------------;;
 (defparameter *real-l1-fcall-lb* 5000
   "If the size of the array is less than this parameter, the

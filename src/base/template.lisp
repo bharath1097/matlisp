@@ -130,6 +130,10 @@
 (deft/method t/compute-store-size (sym standard-tensor) (size)
   size)
 
+(deft/generic (t/store-size #'subtypep) sym (ele))
+(deft/method t/store-size (sym standard-tensor) (ele)
+  `(length ,ele))
+
 (deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
 (deft/method t/store-allocator (sym standard-tensor) (size &optional initial-element)
   (let ((size-sym (gensym))

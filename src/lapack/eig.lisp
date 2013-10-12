@@ -45,7 +45,7 @@
 	 ,wr ,wi
 	 (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (if ,vl ,ldvl 1)
 	 (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (if ,vr ,ldvr 1)
-	 ,work (length ,work)
+	 ,work (t/store-size ,sym ,work)
 	 0
 	 (the index-type (head ,A)) (if ,vl (the index-type (head ,vl)) 0) (if ,vr (the index-type (head ,vr)) 0)))))
 ;;

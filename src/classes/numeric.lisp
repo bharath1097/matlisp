@@ -64,6 +64,9 @@
   (deft/method t/compute-store-size (sym complex-numeric-tensor) (size)
 	       `(* 2 ,size))
 
+  (deft/method t/store-size (sym complex-numeric-tensor) (vec)
+	       `(/ (length ,vec) 2))
+
   (deft/method t/store-ref (sym complex-numeric-tensor) (store idx)
 	       (let ((store-s (gensym))
 		     (idx-s (gensym))
