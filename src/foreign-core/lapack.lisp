@@ -2000,5 +2000,5 @@
   (rank :integer :output)
   (work (* :complex-double-float) :workspace-output)
   (lwork :integer :input)
-  (rwork (* :double-float) :workspace-output)
+  (rwork (* :double-float) :workspace) ;;Not workspace-output (!)
   (info :integer :output))
