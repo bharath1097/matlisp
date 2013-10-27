@@ -165,3 +165,7 @@
 ")
   (:method (alpha x (y standard-tensor))
     (axpy! alpha x (copy y))))
+
+(defmethod axpy (alpha (x standard-tensor) (y (eql nil)))
+  (let ((tmp (zeros (dimensions x) (class-of x))))
+    (axpy! alpha x tmp)))
