@@ -67,15 +67,18 @@
 	   :collect (prog1 (funcall func (sub-tensor~ v-x nil))
 		      (incf (slot-value v-x 'head) st-x))))))
 
-(defmacro tensor-foldl (type func ten init &optional (init-type (field-type type)))
+(defmacro tensor-foldl (type func ten init &key (init-type (field-type type)) (key nil))
   (using-gensyms (decl (ten init))
-    (with-gensyms (sto idx of funcsym)
+    (with-gensyms (sto idx of funcsym keysym)
     `(let* (,@decl
 	    ,@(unless (symbolp func)
 	        `((,funcsym ,func)))
+	    ,@(unless (symbolp key)
+	        `((,keysym ,key)))
 	    (,sto (store ,ten)))
        (declare (type ,type ,ten)
 		,@(unless (symbolp func) `((type function ,funcsym)))
+		,@(unless (symbolp key) `((type function ,keysym)))
 		(type ,(store-type type) ,sto)
 		,@(when init-type
 			`((type ,init-type ,init))))
@@ -85,5 +88,10 @@
 		  (,of (strides ,ten)))
 	   :do (setf ,init (,@(if (symbolp func)
 				  `(,func)
-				  `(funcall ,funcsym)) ,init (t/store-ref ,type ,sto ,of)))))
+				  `(funcall ,funcsym)) ,init ,(recursive-append
+							       (when key
+								 (if (symbolp key)
+								     `(,key)
+								     `(funcall ,keysym)))
+							       `(t/store-ref ,type ,sto ,of))))))
        ,init))))
