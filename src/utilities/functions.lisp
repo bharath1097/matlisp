@@ -95,7 +95,7 @@
     (if (atom car)
 	(if (or (null car) (eq car tag))
 	    (cadr lst)
-	    (find-tag (cddr lst) tag))
+	    (find-tag (cdr lst) tag))
 	(or (find-tag car tag) (find-tag (cdr lst) tag)))))
 
 (defun ensure-args (args)

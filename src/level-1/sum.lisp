@@ -11,7 +11,7 @@
 		      (type index-type ,axis))
 	     (let ((,view (let ((slst (make-list (rank ,x) :initial-element '(* * *))))
 			    (rplaca (nthcdr ,axis slst) (list 0 '* 1))
-			    (sub-tensor~ ,x slst nil)))
+			    (subtensor~ ,x slst nil)))
 		   (,argstd (aref (the index-store-vector (strides ,x)) ,axis)))
 	       (declare (type ,sym ,view)
 			(type index-type ,argstd))
@@ -60,6 +60,4 @@
 	  (declare (ignore axis))
 	  (t/sum ,clx x nil))))
     (sum! x y axis)))
-
-
 

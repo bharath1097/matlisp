@@ -138,14 +138,14 @@
 	     (let* ((rank-A 0)
 		    (mn (max (nrows A) (ncols A)))
 		    (X (let ((*default-stride-ordering* :col-major)) (zeros (list mn (ncols B)) ',cla))))
-	       (copy! B (sub-tensor~ X `((0 * ,(nrows A)) (* * *)) t))
+	       (copy! B (subtensor~ X `((0 * ,(nrows A)) (* * *)) t))
 	       (multiple-value-bind (sto-a sto-b jpvt rank work-out info) (t/lapack-gelsy! ,cla A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond work)
 		 ;;TODO: Implement inverse permutation-action, and return jpvt.
 		 (declare (ignore sto-a sto-b work-out jpvt))
 		 (setf rank-a rank)
 		 (unless (= info 0)
 		   (error "gelsy returned ~a." info)))
-	       (values (copy (sub-tensor~ X `((0 * ,(ncols A)) (* * *)) t)) rank-a)))))
+	       (values (copy (subtensor~ X `((0 * ,(ncols A)) (* * *)) t)) rank-a)))))
        (gelsy A B rcond))
       (t
        (error "Don't know how to apply getrs! to classes ~a." (list cla clb))))))

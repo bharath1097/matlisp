@@ -41,7 +41,15 @@ returning two values: the string and the number of bytes read."
   (split-seq #'(lambda (x) (or (char= x #\Newline) (char= x #\Return))) string))
 
 ;;
-(defun loadtxt (fname &key (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)))
+;; (defmacro apply* ((&rest funcl) expr)
+;;   (let ((syms (zip (mapcar #'gensym funcl) funcl))) 
+;;     `(multiple-value-bind (,@(mapcar #'car syms)) ,expr
+;;        (values ,@(mapcar #'(lambda (x) `(apply ,(second x) ,(first x))) syms)))))
+
+;; (apply* (#'(lambda (x) (+ x 1)) #'(lambda (x) (- x 1))) (values 1 2))
+
+
+(defun loadtxt (fname &key (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)) (skip-rows 0))
   (let* ((f-string (file->string fname)))
     (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
       (unless (null lns)

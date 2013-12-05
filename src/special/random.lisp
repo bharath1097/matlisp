@@ -74,3 +74,8 @@
 		   (rand (random 1d0))
 		   (rande (draw-standard-exponential)))))
 
+(defun randi (&optional dims (arg 2))
+  (if dims
+      ;;Macro is used without hygiene: "arg".
+      (fill-tensor real-tensor ((coerce (random arg) 'double-float)  (zeros dims 'real-tensor)))
+      (random arg)))

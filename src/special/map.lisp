@@ -64,7 +64,7 @@
       (let* ((v-x (slice~ x axis))
 	     (st-x (aref (strides x) axis)))
 	(loop :for i :from 0 :below (aref (the index-store-vector (dimensions x)) axis)
-	   :collect (prog1 (funcall func (sub-tensor~ v-x nil))
+	   :collect (prog1 (funcall func (subtensor~ v-x nil))
 		      (incf (slot-value v-x 'head) st-x))))))
 
 (defmacro tensor-foldl (type func ten init &key (init-type (field-type type)) (key nil))

@@ -107,6 +107,11 @@
   (declare (type standard-tensor tensor))
   (lvec-foldr #'* (the index-store-vector (dimensions tensor))))
 
+(definline dims (tensor)
+  (declare (type standard-tensor tensor))
+  (memoizing (tensor dims)
+	     (lvec->list (the index-store-vector (dimensions tensor)))))
+
 ;;
 (defgeneric store-size (tensor)
   (:documentation "
@@ -361,11 +366,11 @@
 		:finally (return t))))
 
 ;;
-(defun sub-tensor~ (tensor subscripts &optional (preserve-rank nil))
+(defun subtensor~ (tensor subscripts &optional (preserve-rank nil))
   "
   Syntax
   ======
-  (SUB-TENSOR~ TENSOR SUBSCRIPTS)
+  (SUBTENSOR~ TENSOR SUBSCRIPTS)
 
   Purpose
   =======
@@ -379,13 +384,13 @@
   X
 
   ;; Get (:, 0, 0)
-  > (sub-tensor~ X '((* * *) (0 * 1) (0 * 1)))
+  > (subtensor~ X '((* * *) (0 * 1) (0 * 1)))
 
   ;; Get (:, 2:5, :)
-  > (sub-tensor~ X '((* * *) (2 * 5)))
+  > (subtensor~ X '((* * *) (2 * 5)))
 
   ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
-  > (sub-tensor~ X '((* * *) (* * *) (0 2 10)))
+  > (subtensor~ X '((* * *) (* * *) (0 2 10)))
 
   Commentary
   ==========
@@ -449,7 +454,7 @@
 (definline slice~ (x axis &optional (idx 0))
   (let ((slst (make-list (rank x) :initial-element '(* * *))))
     (rplaca (nthcdr axis slst) (list idx '* (1+ idx)))
-    (sub-tensor~ x slst nil)))
+    (subtensor~ x slst nil)))
 
 (definline row-slice~ (x idx)
   (slice~ x 0 idx))

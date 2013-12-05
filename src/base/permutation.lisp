@@ -198,7 +198,7 @@
 (defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
   (multiple-value-bind (t1 t2) (let ((slst (make-list (rank A) :initial-element '(* * *))))
 				 (rplaca (nthcdr arg slst) (list 0 '* 1))
-				 (values (sub-tensor~ A slst nil) (sub-tensor~ A slst nil)))
+				 (values (subtensor~ A slst nil) (subtensor~ A slst nil)))
     (let-typed ((argstd (aref (strides A) arg) :type index-type)
 		(hd-sl (head t2) :type index-type)
 		(idiv (store perm) :type pindex-store-vector))
