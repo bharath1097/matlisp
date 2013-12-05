@@ -35,8 +35,8 @@
        lst))
 
 (defun list-eq (a b &optional (test #'eq))
-  (if (or (atom a) (atom b)) (eq a b)
-      (and (funcall test (car a) (car b)) (list-eq (cdr a) (cdr b) test))))
+  (if (or (atom a) (atom b)) (funcall test a b)
+      (and (list-eq (car a) (car b)) (list-eq (cdr a) (cdr b) test))))
 
 (defun remmeth (func spls &optional quals)
   (let ((meth (find-method func quals (mapcar #'(lambda (x) (if (consp x) x (find-class x))) spls) nil)))

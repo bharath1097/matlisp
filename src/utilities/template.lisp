@@ -36,10 +36,10 @@
 		     (error "undefined template : ~a~%" name)))
 	   (pred (getf data :predicate))
 	   (meth (getf data :methods)))
-      (or (car (loop :for spl :in meth
-		  :do (when (funcall pred args (second spl))
-			(return spl))))
-	  (error "could not find a \"~a\" template for : ~a~%" name args)))))
+      (car (or
+	    (find args meth :test #'list-eq :key #'second)
+	    (find args meth :test pred :key #'second)
+	    (error "could not find a \"~a\" template for : ~a~%" name args))))))
 
 ;;
 (defun single-argp (name)
