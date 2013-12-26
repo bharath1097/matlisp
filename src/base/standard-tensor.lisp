@@ -124,7 +124,12 @@
   Returns the number of elements the store of the tensor can hold
   (which is not necessarily equal to its vector length).")
   (:method ((tensor standard-tensor))
-    (length (store tensor))))
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-size ((tensor ,clname))
+	  (t/store-size ,clname (store tensor))))
+      (store-size tensor))))
 
 (defgeneric print-element (tensor
 			   element stream)
