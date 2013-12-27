@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-geev-func #'subtypep) sym ())
+(deft/generic (t/lapack-geev-func #'subfieldp) sym ())
 
 (deft/method t/lapack-geev-func (sym real-tensor) ()
   'dgeev)
@@ -12,7 +12,7 @@
 ;;
 (deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
 (deft/method t/geev-output-fix (sym real-numeric-tensor) (wr wi)
-  (let ((csym (or (complexified-type sym) (error "No corresponding complex-tensor defined for type ~a." sym))))
+  (let ((csym (complexified-type sym)))
     (using-gensyms (decl (wr wi))
       (with-gensyms (ret i)
 	`(let* (,@decl

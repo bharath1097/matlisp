@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-getrf-func #'subtypep) sym ())
+(deft/generic (t/lapack-getrf-func #'subfieldp) sym ())
 (deft/method t/lapack-getrf-func (sym real-tensor) ()
   'dgetrf)
 (deft/method t/lapack-getrf-func (sym complex-tensor) ()
@@ -142,7 +142,7 @@
 ;; 	(let* ((min (lvec-min (dimensions lu)))
 ;; 	       (
 ;;
-(deft/generic (t/lapack-getrs-func #'subtypep) sym ())
+(deft/generic (t/lapack-getrs-func #'subfieldp) sym ())
 (deft/method t/lapack-getrs-func (sym real-tensor) ()
   'dgetrs)
 (deft/method t/lapack-getrs-func (sym complex-tensor) ()

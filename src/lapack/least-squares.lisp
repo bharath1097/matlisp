@@ -1,6 +1,6 @@
 (in-package :matlisp)
 
-(deft/generic (t/lapack-gelsy-func #'subtypep) sym ())
+(deft/generic (t/lapack-gelsy-func #'subfieldp) sym ())
 (deft/method t/lapack-gelsy-func (sym real-tensor) ()
   'dgelsy)
 

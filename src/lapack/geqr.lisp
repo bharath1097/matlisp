@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-geqrf-func #'subtypep) sym ())
+(deft/generic (t/lapack-geqrf-func #'subfieldp) sym ())
 (deft/method t/lapack-geqrf-func (sym real-tensor) ()
   'matlisp-lapack:dgeqrf)
 (deft/method t/lapack-geqrf-func (sym complex-tensor) ()

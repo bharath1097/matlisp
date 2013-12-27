@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-potrf-func #'subtypep) sym ())
+(deft/generic (t/lapack-potrf-func #'subfieldp) sym ())
 (deft/method t/lapack-potrf-func (sym real-tensor) ()
   'dpotrf)
 (deft/method t/lapack-potrf-func (sym complex-tensor) ()
@@ -92,7 +92,7 @@
     (potrf! A uplo)))
 ;;
 
-(deft/generic (t/lapack-potrs-func #'subtypep) sym ())
+(deft/generic (t/lapack-potrs-func #'subfieldp) sym ())
 (deft/method t/lapack-potrs-func (sym real-tensor) ()
   'dpotrs)
 (deft/method t/lapack-potrs-func (sym complex-tensor) ()
