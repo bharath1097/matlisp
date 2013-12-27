@@ -143,6 +143,9 @@
 
 ;; Supporting multidimensional arrays is a pain.
 ;; Only support types that we currently use.
+(definline allowed-fv-type? (x)
+  (member (fv-type x) '(:double :float :int :uint :int64 :uint64)))
+
 (deftype matlisp-specialized-array ()
   `(or (simple-array double-float (*))
        (simple-array single-float (*))
@@ -157,7 +160,8 @@
        (simple-array (unsigned-byte 64) *)
        (simple-array (unsigned-byte 32) *)
        ;;
-       cffi:foreign-pointer))
+       cffi:foreign-pointer
+       (and foreign-vector (satisfies allowed-fv-type?))))
 
 ;; Very inefficient - compilation wise, not runtime wise- 
 ;; (but portable!) way of supporting both SAPs and simple-arrays.
@@ -177,16 +181,18 @@ Example:
 >>
 "  
   (labels ((with-pointer-or-vector-data-address (vlist body)
-	     (let ((inc-body (ecase (length vlist)
-			       (2 nil)
-			       (4 `((incf-sap ,(nth 2 vlist) ,(nth 0 vlist) ,(nth 3 vlist)))))))
-	       `(if (cffi:pointerp ,(cadr vlist))
-		    (let (,(car vlist) ,(cadr vlist))
-		      ,@inc-body
-		      ,@body)
-		    (cffi-sys:with-pointer-to-vector-data (,(car vlist) ,(cadr vlist))
-		      ,@inc-body
-		      ,@body))))
+	     (destructuring-bind (addr vec &key inc-type inc) vlist
+	       (let ((inc-body (when inc-type
+				 `((incf-sap ,addr ,inc-type ,@(when inc `(,inc)))))))
+		 `(etypecase vec
+		    ((simple-array * (*))
+		     (cffi-sys:with-pointer-to-vector-data (,addr ,vec)
+		       ,@inc-body
+		       ,@body))
+		    ((or foreign-vector cffi:foreign-pointer)
+		     (let ((,addr (if (typep vec foreign-vector) (fv-pointer ,vec) ,vec)))
+		       ,@inc-body
+		       ,@body))))))
 	     (frob (v body)
 		   (if (null v)
 		       body

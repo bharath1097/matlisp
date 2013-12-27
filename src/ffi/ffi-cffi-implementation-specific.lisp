@@ -53,15 +53,8 @@
 (defun vector-data-address (vec)
   "
 Returns the pointer address of where the actual data store of the object VEC.
-
-VEC - must be a either a (complex double-float), (complex single-float)
-or a specialized array type in CMU Lisp.  This currently means
-VEC is a simple-array of one dimension of one of the following types:
-
-              double-float
-              single-float
-    or a
-              system-area-pointer
+VEC is a simple-array of one dimension of type 'matlisp-specialized-array.
+VEC can also be a foreign-vector.
 
 Returns
   1   - system area pointer to the actual data
@@ -75,9 +68,13 @@ Returns
   (with-optimization (:speed 3 :safety 0 :space 0)
     ;;vec is either a simple-array or a system-area-pointer itself.
     (declare (type matlisp-specialized-array vec))
-    (if (typep vec '(simple-array * (*)))
-	(vector-sap-interpreter-specific vec)
-	vec)))
+    (etypecase vec
+      ((simple-array * (*))
+       (vector-sap-interpreter-specific vec))
+      (cffi:foreign-pointer
+       vec)
+      (foreign-vector
+       (fv-pointer vec)))))
 
 #+(or sbcl cmu ccl)
 (defmacro with-vector-data-addresses (vlist &body body)
