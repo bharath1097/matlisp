@@ -3,42 +3,28 @@
 ;;Field templates
 (deft/generic (t/f+ #'subtypep) ty (&rest nums))
 (deft/method t/f+ (ty number) (&rest nums)
-  (let* ((decl (zipsym nums))
-	 (args (mapcar #'car decl)))
-    `(let (,@decl)
-       (declare (type ,ty ,@args))
-       (cl:+ ,@args))))
+ `(cl:+ ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
 (deft/generic (t/f- #'subtypep) ty (&rest nums))
 (deft/method t/f- (ty number) (&rest nums)
-  (let* ((decl (zipsym nums))
-	 (args (mapcar #'car decl)))
-    `(let (,@decl)
-       (declare (type ,ty ,@args))
-       (cl:- ,@args))))
+ `(cl:- ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
 (deft/generic (t/f* #'subtypep) ty (&rest nums))
 (deft/method t/f* (ty number) (&rest nums)
-  (let* ((decl (zipsym nums))
-	 (args (mapcar #'car decl)))
-    `(let (,@decl)
-       (declare (type ,ty ,@args))
-       (cl:* ,@args))))
+ `(cl:* ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
 (deft/generic (t/f/ #'subtypep) ty (&rest nums))
 (deft/method t/f/ (ty number) (&rest nums)
-  (let* ((decl (zipsym nums))
-	 (args (mapcar #'car decl)))
-    `(let (,@decl)
-       (declare (type ,ty ,@args))
-       (cl:/ ,@args))))
+ `(cl:/ ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
+
+(deft/generic (t/f= #'subtypep) ty (&rest nums))
+(deft/method t/f= (ty number) (&rest nums)
+ `(cl:= ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
 ;;
 (deft/generic (t/fc #'subtypep) ty (num))
 (deft/method t/fc (ty number) (num)
-  (with-gensyms (num-sym)
-    `(let ((,num-sym ,num))
-       (cl:conjugate ,num-sym))))
+ `(cl:conjugate ,num))
 
 (deft/method t/fc (ty real) (num)
   num)
@@ -70,21 +56,11 @@
 (deft/generic (t/fimagpart #'subtypep) ty (num))
 
 (deft/method t/fimagpart (ty number) (num)
-   (with-gensyms (num-sym)
-     `(let ((,num-sym ,num))
-	(cl:imagpart ,num-sym))))
+  `(cl:imagpart ,num))
 
 (deft/method t/fimagpart (ty real) (num)
   `(t/fid+ ,ty))
 ;;
-(deft/generic (t/f= #'subtypep) ty (&rest nums))
-(deft/method t/f= (ty number) (&rest nums)
-  (let* ((decl (zipsym nums))
-	 (args (mapcar #'car decl)))
-    `(let (,@decl)
-       (declare (type ,ty ,@args))
-       (cl:= ,@args))))
-
 (deft/generic (t/fid+ #'subtypep) ty ())
 (deft/method t/fid+ (ty number) ()
   (coerce 0 ty))
@@ -107,16 +83,11 @@
 
 (defun field-type (clname)
   (macroexpand-1 `(t/field-type ,clname)))
+;;This is useful for Eigenvalue decompositions
+(deft/generic (t/complexified-type #'subtypep) sym ())
 
-;;Hack? Yes.
-(defun complexified-type (ten)
-  (let ((ty (macroexpand-1 `(t/field-type ,ten))))
-    (if (subtypep ty 'complex) ten
-	(let* ((cty `(complex ,ty))
-	       (table-entry (or (gethash 't/field-type matlisp-template::*template-table*) (ERROR "Undefined template : ~a~%" 'T/FIELD-TYPE))))
-	  (car (find cty (mapcar #'(lambda (x) (list (cadr x) (funcall (car x) (cadr x))))
-				 (getf table-entry :methods))
-		     :key #'second :test #'list-eq))))))
+(defun complexified-type (type)
+  (macroexpand-1 `(t/complexified-type ,type)))
 
 ;;Beware of infinite loops here.
 (deft/generic (t/store-element-type #'subtypep) sym ())
@@ -150,26 +121,11 @@
 
 (deft/generic (t/store-ref #'subtypep) sym (store idx))
 (deft/method t/store-ref (sym standard-tensor) (store idx)
-  (let ((store-s (gensym))
-	(idx-s (gensym)))
-    `(let ((,store-s ,store)
-	   (,idx-s ,idx))
-       (declare (type ,(store-type sym) ,store-s))
-       (aref ,store-s ,idx-s))))
+  `(aref (the ,(store-type sym) ,store) (the index-type ,idx)))
 
 (deft/generic (t/store-set #'subtypep) sym (value store idx))
 (deft/method t/store-set (sym standard-tensor) (value store idx)
-  (let ((store-s (gensym))
-	(idx-s (gensym))
-	(value-s (gensym))
-	(type (macroexpand-1 `(t/field-type ,sym))))
-    `(let ((,store-s ,store)
-	   (,idx-s ,idx)
-	   (,value-s ,value))
-       (declare (type ,(store-type sym) ,store-s)
-		(type ,type ,value-s))
-       (setf (aref ,store-s ,idx-s) ,value-s)
-       nil)))
+  `(setf (aref (the ,(store-type sym) ,store) (the index-type ,idx)) (the ,(field-type sym) ,value)))
 
 (deft/generic (t/coerce #'subtypep) ty (val))
 (deft/method t/coerce (ty number) (val)
@@ -195,7 +151,7 @@
 ;;This one is hard to get one's brain around.
 (deft/generic (t/strict-coerce
 	       #'(lambda (a b) (strict-compare (list #'subtypep #'(lambda (x y) (subtypep y x))) a b))
-	       #'(lambda (a b) (dict-compare (list #'subtypep #'subtypep) b a)))	       
+	       #'(lambda (a b) (dict-compare (list #'subtypep #'subtypep) b a)))
     (from to) (val))
 
 ;;Anything can be coerced into type "t"
