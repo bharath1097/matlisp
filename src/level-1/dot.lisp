@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-dot-func #'subtypep) sym (&optional conjp))
+(deft/generic (t/blas-dot-func #'subfieldp) sym (&optional conjp))
 (deft/method t/blas-dot-func (sym real-tensor) (&optional conjp)
   'ddot)
 (deft/method t/blas-dot-func (sym complex-tensor) (&optional (conjp t))

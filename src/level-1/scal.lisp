@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-scdi-func #'subtypep) sym (&optional scal?))
+(deft/generic (t/blas-scdi-func #'subfieldp) sym (&optional scal?))
 
 (deft/method t/blas-scdi-func (sym real-tensor) (&optional (scal? t))
   (if scal?
@@ -39,7 +39,7 @@
       'zescal
       'zediv))
 ;;
-(deft/generic (t/blas-scdi! #'subtypep) sym (x st-x y st-y &optional scal?))
+(deft/generic (t/blas-scdi! #'subfieldp) sym (x st-x y st-y &optional scal?))
 (deft/generic (t/scdi! #'subtypep) sym (x y &key scal? numx?))
 
 (deft/method t/blas-scdi! (sym blas-numeric-tensor) (x st-x y st-y &optional (scal? t))

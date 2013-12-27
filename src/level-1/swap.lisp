@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-swap-func #'subtypep) sym ())
+(deft/generic (t/blas-swap-func #'subfieldp) sym ())
 (deft/method t/blas-swap-func (sym real-tensor) ()
   'dswap)
 (deft/method t/blas-swap-func (sym complex-tensor) ()

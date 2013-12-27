@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-copy-func #'subtypep) sym ())
+(deft/generic (t/blas-copy-func #'subfieldp) sym ())
 (deft/method t/blas-copy-func (sym real-tensor) ()
   'dcopy)
 (deft/method t/blas-copy-func (sym complex-tensor) ()
@@ -117,110 +117,6 @@
 		    (,of-y (strides ,y) (head ,y)))
 	     :do (t/store-set ,cly ,cx ,sto-y ,of-y)))
 	 ,y))))
-;;
-;;This macro is used for interfacing with lapack
-;;Only to be used with matrices!
-
-#|
-(deft/generic (t/copy-triangle! #'subtypep) sym (a b &optional upper?))
-(deft/method t/copy-triangle! (sym standard-tensor) (a b &optional (upper? t))
-  (using-gensyms (decl (diag a b))
-    (with-gensyms (sto-a sto-b strd-a strd-b dof-a dof-b of-a of-b)
-      `(let* (,@decl
-	      (,sto-a (store ,a))
-	      (,strd-a (strides ,a))
-	      (,sto-b (store ,b))
-	      (,strd-b (strides ,b)))
-       (declare (type ,sym ,a ,b)
-		(type ,(store-type sym) ,sto-a ,sto-b)
-		(type index-store-vector ,strd-a ,strd-b))
-       (ecase ,diag
-	 (t
-           (with-marking 
-	       (very-quickly
-		 (:mark* ((ndiags (min (nrows ,a) (ncols ,a))))
-			 (loop :for i :from 0 :below ndiags
-			    :for ,dof-a :of-type index-type := (head ,a) :then (+ ,dof-a (:mark (lvec-foldr #'+ ,strd-a) :type index-type))
-			    :for ,dof-b :of-type index-type := (head ,b) :then (+ ,dof-b (:mark (lvec-foldr #'+ ,strd-b) :type index-type))
-			    :do (loop :for j :from 0 :below ,(if upper? `(1+ i) `(- ndiags i))
-				   :for ,of-a :of-type index-type := ,dof-a :then (,(if upper? '- '+) ,of-a (:mark (aref ,strd-a 0)))
-				   :for ,of-b :of-type index-type := ,dof-b :then (,(if upper? '- '+) ,of-b (:mark (aref ,strd-b 0)))
-				   :do (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b)))))))
-	 
-	   ,b))))
-;;
-(deft/generic (t/copy-triangle! #'subtypep) sym (a b &optional upper?))
-(deft/method t/copy-triangle! (sym standard-tensor) (a b &optional (upper? t))
-  (using-gensyms (decl (a b))
-    (with-gensyms (sto-a sto-b strd-a strd-b dof-a dof-b of-a of-b)
-      `(let* (,@decl
-	      (,sto-a (store ,a))
-	      (,strd-a (strides ,a))
-	      (,sto-b (store ,b))
-	      (,strd-b (strides ,b)))
-       (declare (type ,sym ,a ,b)
-		(type ,(store-type sym) ,sto-a ,sto-b)
-		(type index-store-vector ,strd-a ,strd-b))
-           (with-marking 
-	       (very-quickly
-		 (:mark* ((ndiags (min (nrows ,a) (ncols ,a))))
-			 (loop :for i :from 0 :below ndiags
-			    :for ,dof-a :of-type index-type := (head ,a) :then (+ ,dof-a (:mark (lvec-foldr #'+ ,strd-a) :type index-type))
-			    :for ,dof-b :of-type index-type := (head ,b) :then (+ ,dof-b (:mark (lvec-foldr #'+ ,strd-b) :type index-type))
-			    :do (loop :for j :from 0 :below ,(if upper? `(1+ i) `(- ndiags i))
-				   :for ,of-a :of-type index-type := ,dof-a :then (,(if upper? '- '+) ,of-a (:mark (aref ,strd-a 0)))
-				   :for ,of-b :of-type index-type := ,dof-b :then (,(if upper? '- '+) ,of-b (:mark (aref ,strd-b 0)))
-				   :do (t/store-set ,sym (t/store-ref ,sym ,sto-a ,of-a) ,sto-b ,of-b))))))
-	   ,b))))
-;;
-(deft/generic (t/copy-diagonal! #'subtypep) sym (a b &optional num?))
-(deft/method t/copy-diagonal! (sym standard-tensor) (a b &optional (num? nil))
-  (using-gensyms (decl (a b))
-    (with-gensyms (sto-a sto-b of-a of-b)
-      `(let* (,@decl
-	      ,@(unless num? `((,sto-a (store ,a))))
-	      (,sto-b (store ,b)))
-	 (declare (type ,sym ,@(unless num? `(,a)) ,b)
-		  (type ,(store-type sym) ,@(unless num? `(,sto-a)) ,sto-b)
-		  ,@(when num? `((type ,(field-type sym) ,a))))
-	 (with-marking 
-	     (very-quickly
-	       (:mark* ((ndiags (lvec-min (dimensions ,b))))
-		       (loop :for i :from 0 :below ndiags
-			  ,@(unless num? `(:for ,of-a :of-type index-type := (head ,a) :then (+ ,of-a (:mark (lvec-foldr #'+ (strides ,a)) :type index-type))))
-			  :for ,of-b :of-type index-type := (head ,b) :then (+ ,of-b (:mark (lvec-foldr #'+ (strides ,b)) :type index-type))
-			  :do (t/store-set ,sym ,@(if num? `(,a) `((t/store-ref ,sym ,sto-a ,of-a))) ,sto-b ,of-b)))))
-	 ,b))))
-
-;;
-(defgeneric copy-triangle! (x y &key upper? diag?)
-  (:method :before ((x standard-tensor) (y standard-tensor) &key upper? diag?)
-	   (assert (and (tensor-matrixp x) (tensor-matrixp y)
-			(= (lvec-min (dimensions x)) (lvec-min (dimensions y))))
-		   nil 'tensor-dimension-mismatch)))
-
-
-(defmethod copy-triangle! ((x standard-tensor) (y standard-tensor) &key (upper? t) (diag? t))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*)
-		 (eql clx cly))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (compile-and-eval
-     (let ((expr `())))
-       `(defmethod copy-triangle! ((x ,clx) (y ,cly) &key (upper? t) (diag? t))
-	  (ecase diag?
-	    (t ;;copy diagonal
-	     (if upper? (t/copy-triangle! ,clx x y t) (t/copy-triangle! ,clx x y nil)))
-	    (number
-	     (let ((num (t/coerce ,(t/field-type clx) diag?)))
-	       (if upper? (t/copy-triangle! ,clx x y t) (t/copy-triangle! ,clx x y nil))
-	       (t/copy-diagonal! ,clx num y t)))
-	    (nil
-	     (let ((num 
-
-|#		    
 
 ;;
 (defmethod copy! :before ((x standard-tensor) (y standard-tensor))
@@ -266,6 +162,18 @@
     (copy! x y)))
 
 ;;Generic function defined in src;base;generic-copy.lisp
-(defmethod copy ((tensor standard-tensor))
-  (let* ((ret (zeros (the index-store-vector (dimensions tensor)) (class-name (class-of tensor)))))
-    (copy! tensor ret)))
+(defmethod copy-generic ((tensor standard-tensor) type)
+  (cond
+    ((eql type 'array)
+     (let ((ret (make-array (lvec->list (dimensions tensor)))))
+       (copy! tensor ret)))
+    ((member type '(list cons))
+     (labels ((mtree (arr idx)
+		(let ((n (length idx)))
+		  (if (= n (rank arr)) (apply #'ref arr idx)
+		      (loop :for i :from 0 :below (aref (dimensions arr) n)
+			 :collect (mtree arr (append idx (list i))))))))
+       (mtree tensor nil)))
+    ((or (not type) (subtypep type 'standard-tensor))
+     (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)))))
+       (copy! tensor ret)))))

@@ -1,6 +1,6 @@
 (in-package #:matlisp)
 
-(deft/generic (t/blas-gemm-func #'subtypep) sym ())
+(deft/generic (t/blas-gemm-func #'subfieldp) sym ())
 (deft/method t/blas-gemm-func (sym real-tensor) ()
   'dgemm)
 (deft/method t/blas-gemm-func (sym complex-tensor) ()

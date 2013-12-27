@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-axpy-func #'subtypep) sym ())
+(deft/generic (t/blas-axpy-func #'subfieldp) sym ())
 (deft/method t/blas-axpy-func (sym real-tensor) ()
   'daxpy)
 (deft/method t/blas-axpy-func (sym complex-tensor) ()
