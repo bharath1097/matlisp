@@ -1,19 +1,17 @@
 (in-package #:matlisp-ffi)
 
 (defstruct (foreign-vector
-	     (:conc-name fv-)
-	     (:print-function (lambda (obj stream depth)
-				(declare (ignore depth))
-				(format stream "#F(")
-				(let ((sz (fv-size obj)))
-				  (dotimes (i sz)
-				    (format stream (if (= i (- sz 1))
-						       "~A)"
-						       "~A ") (fv-ref obj i)))))))
+	     (:conc-name fv-))
   (pointer (cffi:null-pointer)
 	   :type cffi:foreign-pointer)
   (size 0 :type fixnum)
   (type nil :type symbol))
+
+(defmethod print-object ((obj foreign-vector) stream)
+  (format stream "#F(")
+  (dotimes (i (fv-size obj))
+    (format stream "~A " (fv-ref obj i)))
+  (format stream ")"))
 
 (defun fv-ref (x n)
   (declare (type foreign-vector x)
