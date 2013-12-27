@@ -93,11 +93,6 @@
   tensor, for example #.(make-tensors ...)"
   (make-load-form-saving-slots tensor :environment env))
 
-;;
-(definline coerce-tensor (x cly)
-  (declare (type standard-tensor x))	  
-  (copy! x (zeros (the index-store-vector (dimensions x)) cly)))
-
 ;;These should ideally be memoised (or not)
 (definline rank (tensor)
   (declare (type standard-tensor tensor))
