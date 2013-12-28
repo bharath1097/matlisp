@@ -13,13 +13,13 @@
     (format stream "~A " (fv-ref obj i)))
   (format stream ")"))
 
-(defun fv-ref (x n)
+(definline fv-ref (x n)
   (declare (type foreign-vector x)
 	   (type fixnum n))
   (assert (< -1 n (fv-size x)) nil 'out-of-bounds-error :requested n :bound (fv-size x) :message "From inside fv-ref.")
   (cffi:mem-aref (fv-pointer x) (fv-type x) n))
 
-(defun (setf fv-ref) (value x n)
+(definline (setf fv-ref) (value x n)
   (declare (type foreign-vector x)
 	   (type fixnum n))
   (assert (< -1 n (fv-size x)) nil 'out-of-bounds-error :requested n :bound (fv-size x) :message "From inside fv-ref.")
