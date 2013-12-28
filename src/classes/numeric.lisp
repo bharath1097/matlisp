@@ -1,5 +1,8 @@
 (in-package #:matlisp)
 
+(defun subfieldp (a b)
+  (subtypep (field-type a) (field-type b)))
+
 (defclass numeric-tensor (standard-tensor) ())
 (deft/method t/field-type (sym numeric-tensor) ()
   'number)
@@ -29,16 +32,18 @@
 (defmethod print-element ((tensor real-numeric-tensor)
 			  element stream)
   (format stream "~11,5,,,,,'Eg" element))
+
 ;;Real tensor
 (defleaf real-tensor (real-numeric-tensor) ())
 (deft/method t/field-type (sym real-tensor) ()
   'double-float)
 
-#+nil
-(progn
-  (defleaf sreal-tensor (real-numeric-tensor) ())
-  (deft/method t/field-type (sym sreal-tensor) ()
-    'single-float))
+(deft/method t/complexified-type (sym real-tensor) ()
+  'complex-tensor)
+
+(defleaf sreal-tensor (real-numeric-tensor) ())
+(deft/method t/field-type (sym sreal-tensor) ()
+  'single-float)
 
 ;;Complex tensor
 (defclass complex-numeric-tensor (blas-numeric-tensor) ())
@@ -55,9 +60,9 @@
 
 ;;Comment this block if you want to use (simple-array (complex double-float) (*))
 ;;as the underlying store. This will make Lisp-implementations of gemm .. faster
-;;but you'll lose the ability to use tensor-realpart~/imagpart~. 
+;;but you'll lose the ability to use tensor-realpart~/imagpart~.
 (progn
-  (deft/method t/store-element-type (sym complex-numeric-tensor) ()	     
+  (deft/method t/store-element-type (sym complex-numeric-tensor) ()
 	       (let ((cplx-type (macroexpand-1 `(t/field-type ,sym))))
 		 (second cplx-type)))
 
@@ -72,7 +77,7 @@
 		     (idx-s (gensym))
 		     (type (macroexpand-1 `(t/store-element-type ,sym))))
 		 `(let ((,store-s ,store)
-			(,idx-s ,idx)) 
+			(,idx-s ,idx))
 		    (declare (type (simple-array ,type) ,store-s))
 		    (complex (aref ,store-s (* 2 ,idx-s)) (aref ,store-s (1+ (* 2 ,idx-s)))))))
 
@@ -107,8 +112,6 @@
 (deft/method t/field-type (sym complex-tensor) ()
   '(complex double-float))
 
-#+nil
-(progn
-  (defleaf scomplex-tensor (complex-numeric-tensor) ())
-  (deft/method t/store-element-type (sym scomplex-tensor) ()
-    'single-float))
+(defleaf scomplex-tensor (complex-numeric-tensor) ())
+(deft/method t/store-element-type (sym scomplex-tensor) ()
+  '(complex single-float))
