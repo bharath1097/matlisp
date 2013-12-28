@@ -106,20 +106,24 @@
 ;;
 (deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
 (deft/method t/store-allocator (sym standard-tensor) (size &optional initial-element)
-  (let ((size-sym (gensym))
-	(type (macroexpand-1 `(t/store-element-type ,sym))))
-    `(let ((,size-sym (t/compute-store-size ,sym ,size)))
-       (make-array ,size-sym :element-type ',type :initial-element ,(or initial-element (if (subtypep type 'number) `(t/fid+ ,type) nil))))))
+  (with-gensyms (size-sym arr idx init)
+    (let ((type (macroexpand-1 `(t/store-element-type ,sym))))
+      `(let*-typed ((,size-sym (t/compute-store-size ,sym ,size))
+		    ,@(when initial-element `((,init ,initial-element :type ,(field-type sym))))
+		    (,arr (make-array ,size-sym :element-type ',type :initial-element ,(if (subtypep type 'number) `(t/fid+ ,type) nil)) :type ,(store-type sym)))
+	,@(when initial-element
+		`((very-quickly
+		    (loop :for ,idx :from 0 :below ,size-sym
+		       :do (t/store-set ,sym ,init ,arr ,idx)))))
+	,arr))))
 ;;
 (deft/generic (with-field-element #'subtypep) sym (decl &rest body))
 (deft/method with-field-element (sym standard-tensor) (decl &rest body)
-  (destructuring-bind (var val) decl
-    `(let-typed ((,var (t/store-allocator ,sym 1) :type ,(store-type sym)))
-       (t/store-set ,sym ,val ,var 0)
+  (destructuring-bind (var init &optional (count 1)) decl
+    `(let-typed ((,var (t/store-allocator ,sym ,count ,init) :type ,(store-type sym)))
        (locally
 	   ,@body))))
 ;;
-
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (deft/method t/store-type (sym standard-tensor) (&optional (size '*))
  `(simple-array ,(store-element-type sym) (,size)))
