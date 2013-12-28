@@ -37,23 +37,20 @@
 (deft/method t/blas-copy! (sym blas-numeric-tensor) (x st-x y st-y)
   (let ((ncp? (null st-x)))
     (using-gensyms (decl (x y))
-      (with-gensyms (sto-x stp-x)
+      (with-gensyms (sto-x)
 	`(let (,@decl)
 	   (declare (type ,sym ,@(unless ncp? `(,x)) ,y)
 		    ,@(when ncp? `((type ,(field-type sym) ,x))))
-	   (let ((,sto-x ,(if ncp? `(t/store-allocator ,sym 1) `(store ,x)))
-		 (,stp-x ,(if ncp? 0 st-x)))
-	     (declare (type ,(store-type sym) ,sto-x)
-		      (type index-type ,stp-x))
-	     ,@(when ncp?
-		     `((t/store-set ,sym ,x ,sto-x 0)))
-	   (,(macroexpand-1 `(t/blas-copy-func ,sym))
-	     (the index-type (size ,y))
-	     (the ,(store-type sym) ,sto-x) (the index-type ,stp-x)
-	     (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-	     ,(if ncp? 0 `(head ,x)) (head ,y)))
+	   ,(recursive-append
+	     (when ncp?
+	       `(with-field-element ,sym (,sto-x ,x)))
+	     `(,(macroexpand-1 `(t/blas-copy-func ,sym))
+		(the index-type (size ,y))
+		,(if ncp? sto-x `(the ,(store-type sym) (store ,x))) (the index-type ,(if ncp? 0 st-x))
+		(the ,(store-type sym) (store ,y)) (the index-type ,st-y)
+		,(if ncp? 0 `(head ,x)) (head ,y)))
 	   ,y)))))
-  
+
 ;;
 (deft/generic (t/copy! #'(lambda (a b) (strict-compare (list #'subtypep #'subtypep) a b))) (clx cly) (x y))
 (deft/method t/copy! ((clx standard-tensor) (cly standard-tensor)) (x y)

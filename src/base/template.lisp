@@ -85,7 +85,6 @@
   (macroexpand-1 `(t/field-type ,clname)))
 ;;This is useful for Eigenvalue decompositions
 (deft/generic (t/complexified-type #'subtypep) sym ())
-
 (defun complexified-type (type)
   (macroexpand-1 `(t/complexified-type ,type)))
 
@@ -96,21 +95,30 @@
 
 (defun store-element-type (clname)
   (macroexpand-1 `(t/store-element-type ,clname)))
-
+;;
 (deft/generic (t/compute-store-size #'subtypep) sym (size))
 (deft/method t/compute-store-size (sym standard-tensor) (size)
   size)
-
+;;
 (deft/generic (t/store-size #'subtypep) sym (ele))
 (deft/method t/store-size (sym standard-tensor) (ele)
   `(length ,ele))
-
+;;
 (deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
 (deft/method t/store-allocator (sym standard-tensor) (size &optional initial-element)
   (let ((size-sym (gensym))
 	(type (macroexpand-1 `(t/store-element-type ,sym))))
     `(let ((,size-sym (t/compute-store-size ,sym ,size)))
        (make-array ,size-sym :element-type ',type :initial-element ,(or initial-element (if (subtypep type 'number) `(t/fid+ ,type) nil))))))
+;;
+(deft/generic (with-field-element #'subtypep) sym (decl &rest body))
+(deft/method with-field-element (sym standard-tensor) (decl &rest body)
+  (destructuring-bind (var val) decl
+    `(let-typed ((,var (t/store-allocator ,sym 1) :type ,(store-type sym)))
+       (t/store-set ,sym ,val ,var 0)
+       (locally
+	   ,@body))))
+;;
 
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
 (deft/method t/store-type (sym standard-tensor) (&optional (size '*))

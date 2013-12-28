@@ -32,23 +32,23 @@
   'ddot)
 (deft/method t/blas-dot-func (sym complex-tensor) (&optional (conjp t))
   (if conjp 'zdotc 'zdotu))
-;;
+;;a
 
 (deft/generic (t/blas-dot #'subtypep) sym (x y &optional conjp num-y?))
 (deft/method t/blas-dot (sym blas-numeric-tensor) (x y &optional (conjp t) (num-y? nil))
    (using-gensyms (decl (x y))
      (with-gensyms (sto)
-       `(let (,@decl
-	      ,@(when num-y? `((,sto (t/store-allocator ,sym 1)))))
-	  (declare (type ,sym ,x ,@(unless num-y? `(,y)))
-		   ,@(when num-y? `((type ,(field-type sym) ,y)
-				    (type ,(store-type sym) ,sto))))
-	  ,@(when num-y? `((t/store-set ,sym ,y ,sto 0)))
-	  (,(macroexpand-1 `(t/blas-dot-func ,sym ,conjp))
-	    (aref (the index-store-vector (dimensions ,x)) 0)
-	    (the ,(store-type sym) (store ,x)) (aref (the index-store-vector (strides ,x)) 0)
-	    (the ,(store-type sym) ,(if num-y? sto `(store ,y))) ,(if num-y? 0 `(aref (the index-store-vector (strides ,y)) 0))
-	    (head ,x) ,(if num-y? 0 `(head ,y)))))))
+       `(let (,@decl)
+	  (declare (type ,sym ,x)
+		   (type ,(if num-y? (field-type sym) sym) ,y))
+	  ,(recursive-append
+	    (when num-y?
+	      `(with-field-element ,sym (,sto ,y)))
+	    `(,(macroexpand-1 `(t/blas-dot-func ,sym ,conjp))
+	       (aref (dimensions ,x) 0)
+	       (the ,(store-type sym) (store ,x)) (aref (strides ,x) 0)
+	       ,(if num-y? sto `(the ,(store-type sym) (store ,y))) ,(if num-y? 0 `(aref (strides ,y) 0))
+	       (head ,x) ,(if num-y? 0 `(head ,y))))))))
 
 (deft/generic (t/dot #'subtypep) sym (x y &optional conjp num-y?))
 (deft/method t/dot (sym standard-tensor) (x y &optional (conjp t) (num-y? nil))
@@ -143,8 +143,8 @@
 
 (defmethod dot ((x standard-tensor) (y t) &optional (conjugate-p t))
   (let ((clx (class-name (class-of x))))
-    (assert (member clx *tensor-type-leaves*)	    
-	    nil 'tensor-abstract-class :tensor-class (list clx))    
+    (assert (member clx *tensor-type-leaves*)
+	    nil 'tensor-abstract-class :tensor-class (list clx))
     (compile-and-eval
      `(defmethod dot ((x ,clx) (y t) &optional (conjugate-p t))
 	(let ((y (t/coerce ,(field-type clx) y)))
@@ -160,4 +160,3 @@
 		 (t/dot ,clx x y t t)
 		 (t/dot ,clx x y nil t))))))
     (dot x y conjugate-p)))
-
