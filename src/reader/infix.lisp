@@ -255,7 +255,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *version* "1.3  28-JUN-96")
-  (defparameter *print-infix-copyright* nil
+  (defparameter *print-infix-copyright* t
     "If non-NIL, prints a copyright notice upon loading this file.")
 
   (defun infix-copyright (&optional (stream *standard-output*))
@@ -280,6 +280,26 @@
 	     (not (get :infix :dont-print-copyright)))
     (infix-copyright)))
 
+;; Matlisp helpers
+(defparameter *ref-list* '((cons elt) (array aref) (matlisp:standard-tensor matlisp:ref)))
+
+(defmacro generic-ref (x &rest args)
+  `(etypecase ,x
+     ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) *ref-list*)))
+
+(define-setf-expander generic-ref (x &rest args &environment env)
+  (multiple-value-bind (dummies vals newval setter getter)
+      (get-setf-expansion x env)
+    (with-gensyms (store)
+      (values (append dummies newval)
+	      (append vals (list getter))
+	      `(,store)
+	      (let ((arr (car newval)))
+		`(prog1 (etypecase ,arr
+			  ,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) *ref-list*))
+		   ,setter))
+	      `(generic-ref ,getter ,@args)))))
+
 ;;; ********************************
 ;;; Readtable **********************
 ;;; ********************************
@@ -290,7 +310,6 @@
 (defmacro infix-error (format-string &rest args)
   `(let ((*readtable* *normal-readtable*))
      (error 'parser-error :message (format-to-string ,format-string ,@args))))
-
 
 (define-constant +blank-characters+ '(#\^m #\space #\tab #\return #\newline))
 (define-constant +newline-characters+ '(#\newline #\^m #\linefeed #\return))
@@ -857,7 +876,7 @@
     :infix (let ((indices (infix-read-delimited-list '\] '\, stream)))
 	     (if (null indices)
 		 (infix-error "No indices found in array reference.")
-		 `(aref ,left ,@indices))))
+		 `(generic-ref ,left ,@indices))))
 
 (define-character-tokenization #\(
     #'(lambda (stream char)

@@ -183,8 +183,8 @@
 			 (:file "mtimesdivide")))
    (:module "matlisp-reader"
 	    :pathname "reader"	    
-	    :components (#+nil(:file "infix")
-			      (:file "loadsave")))))
+	    :components ((:file "infix")
+			 (:file "loadsave")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)

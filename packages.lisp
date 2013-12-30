@@ -180,15 +180,14 @@
 	   #:head #:strides #:store-size #:store
 	   #:parent-tensor
 	   ;;Sub-tensor
-	   #:sub-tensor~ #:sub-tensor
+	   #:subtensor~ #:subtensor
 	   ;;Store indexers
 	   #:store-indexing
 	   #:store-indexing-vec #:store-indexing-lst
 	   ;;Store accessors
-	   #:tensor-store-ref
-	   #:tensor-ref
+	   #:ref #:store-ref
 	   ;;Type checking
-	   #:tensor-type-p #:vector-p #:matrix-p #:square-p)
+	   #:tensor-typep #:tensor-vectorp #:tensor-matrixp #:tensor-squarep)
   (:documentation "MATLISP routines"))
 
 ;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
