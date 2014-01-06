@@ -106,9 +106,10 @@
 	    :depends-on ("foreign-core")
 	    :pathname "base"
 	    :components ((:file "tweakable")
-			 (:file "template")
+			 (:file "numeric-template")
+			 (:file "tensor-template")			 
 			 (:file "standard-tensor"
-				:depends-on ("tweakable" "template"))
+				:depends-on ("tweakable" "tensor-template" "numeric-template"))
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
