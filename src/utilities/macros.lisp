@@ -535,5 +535,9 @@ Example:
   "
   `(with-optimization (:speed 1 :debug 3)
      ,@forms))
+;;
+(defmacro eval-every (&body forms)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     ,@forms))
 
 )

@@ -109,4 +109,3 @@ of a matrix (default 0)
 	(format stream "~A~,4T:DISPLACED~%" (dimensions tensor))
 	(format stream "~A~%" (dimensions tensor)))
     (print-tensor tensor stream)))
-

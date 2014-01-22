@@ -52,34 +52,6 @@
       ((and (char/= op #\C) (= cs 1)) (values rs (fortran-nop op) :row-major))
       ((= rs 1) (values cs op :col-major)))))
 
-;;Stride makers.
-(definline make-stride-rmj (dims)
-  (declare (type index-store-vector dims))
-  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
-    (very-quickly
-      (loop
-	 :for i  :of-type index-type :downfrom (1- (length dims)) :to 0
-	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))	 
-	 :do (progn
-	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
-	       (setf (aref stds i) st))
-	 :finally (return (values stds st))))))
-
-(definline make-stride-cmj (dims)
-  (declare (type index-store-vector dims))
-  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
-    (very-quickly
-      (loop
-	 :for i :of-type index-type :from 0 :below (length dims)
-	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))
-	 :do (progn
-	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
-	       (setf (aref stds i) st))
-	 :finally (return (values stds st))))))
-
-(definline make-stride (dims)
-  (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
-
 (definline call-fortran? ( x lb)
   (declare (type standard-tensor x))
   (> (size x) lb))
