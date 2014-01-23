@@ -97,10 +97,11 @@
   (declare (type base-tensor tensor))
   (lvec-foldr #'* (the index-store-vector (dimensions tensor))))
 
-(definline dims (tensor)
+(definline dims (tensor &optional idx)
   (declare (type base-tensor tensor))
-  (memoizing (tensor dims)
-	     (lvec->list (the index-store-vector (dimensions tensor)))))
+  (if idx (aref (dimensions tensor) idx)
+      (memoizing (tensor dims)
+		 (lvec->list (the index-store-vector (dimensions tensor))))))
 ;;
 (defmethod initialize-instance :after ((tensor base-tensor) &rest initargs)
   (declare (ignore initargs))

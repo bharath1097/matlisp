@@ -176,7 +176,6 @@
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "seq")))
-   #+nil
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
@@ -185,7 +184,6 @@
 			 (:file "mplusminus")
 			 #+nil
 			 (:file "mtimesdivide")))
-   #+nil
    (:module "matlisp-reader"
 	    :pathname "reader"	    
 	    :components ((:file "infix")
