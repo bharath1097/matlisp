@@ -16,7 +16,7 @@
 (defgeneric zeros-generic (dims dtype)
   (:documentation "Create a tensor with dimensions @arg{dims} of class @arg{dtype}.")
   (:method ((dims cons) (dtype t))
-    (assert (member dtype *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class dtype)
+    ;; (assert (member dtype *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class dtype)
     (compile-and-eval
      `(defmethod zeros-generic ((dims cons) (dtype (eql ',dtype)))
 	(t/zeros ,dtype dims)))

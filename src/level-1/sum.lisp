@@ -9,7 +9,7 @@
 	  `(let* (,@decl)
 	     (declare (type ,sym ,x ,ret)
 		      (type index-type ,axis))
-	     (let ((,view (let ((slst (make-list (rank ,x) :initial-element '(* * *))))
+	     (let ((,view (let ((slst (make-list (order ,x) :initial-element '(* * *))))
 			    (rplaca (nthcdr ,axis slst) (list 0 '* 1))
 			    (subtensor~ ,x slst nil)))
 		   (,argstd (aref (the index-store-vector (strides ,x)) ,axis)))
@@ -33,12 +33,12 @@
 ")
   (:method :before ((x standard-tensor) (y standard-tensor) &optional (axis 0))
 	   (assert (and
-		    (= (1- (rank x)) (rank y))
+		    (= (1- (order x)) (order y))
 		    (let ((dims-x (dimensions x))
 			  (dims-y (dimensions y)))
 		      (declare (type index-store-vector dims-x dims-y))
 		      (loop
-			 :for i :from 0 :below (rank x)
+			 :for i :from 0 :below (order x)
 			 :and j := 0 :then (if (= i axis) j (1+ j)) 
 			 :do (unless (or (= i axis) (= (aref dims-x i) (aref dims-y j)))
 			       (return nil))

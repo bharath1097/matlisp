@@ -16,7 +16,7 @@
 
 (definline blas-copyablep (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
-  (when (= (rank ten-a) (rank ten-b))
+  (when (= (order ten-a) (order ten-b))
     (mlet*
      (((csto-a? pdims-a tmp perm-a) (consecutive-storep ten-a) :type (t index-store-vector nil pindex-store-vector))
       ((csto-b? pdims-b tmp perm-b) (consecutive-storep ten-b) :type (t index-store-vector nil pindex-store-vector)))

@@ -48,7 +48,7 @@ of a matrix (default 0)
 ")
 
 (defun print-tensor (tensor stream)
-  (let ((rank (rank tensor))
+  (let ((rank (order tensor))
 	(dims (dimensions tensor))
 	(two-print-calls 0))
     (labels ((two-print (tensor subs)

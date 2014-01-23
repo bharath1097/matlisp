@@ -51,7 +51,7 @@
       (progn
 	(permute! (strides A) permutation)
 	(permute! (dimensions A) permutation))
-      (let-typed ((rnk (rank A) :type index-type)
+      (let-typed ((rnk (order A) :type index-type)
 		  (dim-A (dimensions A) :type index-store-vector)
 		  (strd-A (strides A) :type index-store-vector))
 		 (rotatef (aref dim-A (1- rnk)) (aref dim-A 0))

@@ -17,7 +17,7 @@
 	    (assert (<= (+ (head tensor) size) (store-size tensor)) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (+ (head tensor) (1- (size tensor))) :tensor tensor))
 	  (very-quickly
 	    (let-typed ((stds (strides tensor) :type index-store-vector))
-	      (loop :for i :of-type index-type :from 0 :below (rank tensor)
+	      (loop :for i :of-type index-type :from 0 :below (order tensor)
 		 :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
 		 :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
 		 :do (progn
@@ -111,7 +111,7 @@
   (destructuring-bind (cls &optional subscripts) (ensure-list subs)
     (and (typep tensor cls)
 	 (if subscripts
-	     (let-typed ((rank (rank tensor) :type index-type)
+	     (let-typed ((rank (order tensor) :type index-type)
 			 (dims (dimensions tensor) :type index-store-vector))
 			(very-quickly 
 			  (loop :for val :in subscripts
@@ -123,11 +123,11 @@
 
 (definline tensor-matrixp (ten)
   (declare (type base-tensor ten))
-  (= (rank ten) 2))
+  (= (order ten) 2))
 
 (definline tensor-vectorp (ten)
   (declare (type base-tensor ten))
-  (= (rank ten) 1))
+  (= (order ten) 1))
 
 (definline tensor-squarep (tensor)
   (declare (type base-tensor tensor))
@@ -184,7 +184,7 @@
 		       :parent-tensor tensor))		       
       (let-typed ((dims (dimensions tensor) :type index-store-vector)
 		  (stds (strides tensor) :type index-store-vector)
-		  (rank (rank tensor) :type index-type))
+		  (rank (order tensor) :type index-type))
 		 (loop :for (start step end) :in subscripts
 		    :for i :of-type index-type := 0 :then (1+ i)
 		    :with ndims :of-type index-store-vector := (allocate-index-store rank)
@@ -224,7 +224,7 @@
 						    :parent-tensor tensor))))))))
 
 (definline slice~ (x axis &optional (idx 0))
-  (let ((slst (make-list (rank x) :initial-element '(* * *))))
+  (let ((slst (make-list (order x) :initial-element '(* * *))))
     (rplaca (nthcdr axis slst) (list idx '* (1+ idx)))
     (subtensor~ x slst nil)))
 

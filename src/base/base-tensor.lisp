@@ -86,10 +86,13 @@
   (make-load-form-saving-slots tensor :environment env))
 
 ;;These should ideally be memoised (or not)
-(definline rank (tensor)
+;;We use order (against cl convention) so as not to cause confusion with matrix rank.
+(definline order (tensor)
   (declare (type base-tensor tensor))
   (length (the index-store-vector (dimensions tensor))))
+;; (definline tensor-rank (tensor) (order tensor))
 
+;;
 (definline size (tensor)
   (declare (type base-tensor tensor))
   (lvec-foldr #'* (the index-store-vector (dimensions tensor))))

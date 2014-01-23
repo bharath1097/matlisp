@@ -108,5 +108,5 @@
   '(complex double-float))
 
 (defleaf scomplex-tensor (complex-numeric-tensor) ())
-(deft/method t/store-element-type (sym scomplex-tensor) ()
+(deft/method t/field-type (sym scomplex-tensor) ()
   '(complex single-float))

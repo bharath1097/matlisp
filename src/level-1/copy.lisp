@@ -167,7 +167,7 @@
     ((member type '(list cons))
      (labels ((mtree (arr idx)
 		(let ((n (length idx)))
-		  (if (= n (rank arr)) (apply #'ref arr idx)
+		  (if (= n (order arr)) (apply #'ref arr idx)
 		      (loop :for i :from 0 :below (aref (dimensions arr) n)
 			 :collect (mtree arr (append idx (list i))))))))
        (mtree tensor nil)))

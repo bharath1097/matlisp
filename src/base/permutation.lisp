@@ -196,7 +196,7 @@
   seq)
 
 (defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
-  (multiple-value-bind (t1 t2) (let ((slst (make-list (rank A) :initial-element '(* * *))))
+  (multiple-value-bind (t1 t2) (let ((slst (make-list (order A) :initial-element '(* * *))))
 				 (rplaca (nthcdr arg slst) (list 0 '* 1))
 				 (values (subtensor~ A slst nil) (subtensor~ A slst nil)))
     (let-typed ((argstd (aref (strides A) arg) :type index-type)
