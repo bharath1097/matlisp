@@ -179,8 +179,7 @@
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
-	    :components ((:file "seq")
-			 #+nil
+	    :components (#+nil
 			 (:file "mplusminus")
 			 #+nil
 			 (:file "mtimesdivide")))
