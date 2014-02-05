@@ -107,20 +107,19 @@ returning two values: the string and the number of bytes read."
 	  ((null line) mtx)
 	(let ((dat (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delimiters)) line))))
 	  (setf (ref mtx (mapcar #'1- (subseq dat 0 2))) (third dat)))))))
-	       
 	
-  (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
-      (loop :for 
-      (unless (null lns)
-	(let* ((ncols (second (multiple-value-list (split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
-	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) 'real-tensor)))
-	  (if (> ncols 1)
-	      (loop :for line :in lns
-		 :for i := 0 :then (1+ i)
-		 :do (loop :for num :in (split-seq #'(lambda (x) (member x delimiters)) line)
-			:for j := 0 :then (1+ j)
-			:do (setf (ref ret i j) (t/coerce (t/field-type real-tensor) (read-from-string num)))))
-	      (loop :for line :in lns
-		 :for i := 0 :then (1+ i)
-		 :do (setf (ref ret i) (t/coerce (t/field-type real-tensor) (read-from-string (car (split-seq #'(lambda (x) (member x delimiters)) line)))))))
-	  ret)))))
+  ;; (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
+  ;;     (loop :for 
+  ;;     (unless (null lns)
+  ;; 	(let* ((ncols (second (multiple-value-list (split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
+  ;; 	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) 'real-tensor)))
+  ;; 	  (if (> ncols 1)
+  ;; 	      (loop :for line :in lns
+  ;; 		 :for i := 0 :then (1+ i)
+  ;; 		 :do (loop :for num :in (split-seq #'(lambda (x) (member x delimiters)) line)
+  ;; 			:for j := 0 :then (1+ j)
+  ;; 			:do (setf (ref ret i j) (t/coerce (t/field-type real-tensor) (read-from-string num)))))
+  ;; 	      (loop :for line :in lns
+  ;; 		 :for i := 0 :then (1+ i)
+  ;; 		 :do (setf (ref ret i) (t/coerce (t/field-type real-tensor) (read-from-string (car (split-seq #'(lambda (x) (member x delimiters)) line)))))))
+  ;; 	  ret)))))

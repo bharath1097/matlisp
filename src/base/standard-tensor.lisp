@@ -43,7 +43,7 @@
 	       (sto (store tensor)))
 	  (t/store-set ,clname (t/coerce ,(field-type clname) value) sto idx)
 	  (t/store-ref ,clname sto idx))))
-    (setf (ref tensor subscripts) value)))
+    (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
 
 ;;
 (defgeneric store-size (tensor)

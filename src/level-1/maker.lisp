@@ -13,16 +13,31 @@
 			:strides ,astrs
 			:store (t/store-allocator ,class ,sizs ,@(when initial-element `(,initial-element))))))))
 
-(deft/method t/zeros (class coordinate-sparse-tensor) (dims &optional initial-element)
-  (with-gensyms (astrs adims sizs)
-    `(let* ((,adims (make-index-store ,dims)))
-       (declare (type index-store-vector ,adims))
-       (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
-	 (declare (type index-store-vector ,astrs))
-	 (make-instance ',class
-			:dimensions ,adims
-			:strides ,astrs
-			:store (t/store-allocator ,class ,sizs))))))
+;; (deft/method t/zeros (class coordinate-sparse-tensor) (dims &optional initial-element)
+;;   (with-gensyms (astrs adims sizs)
+;;     `(let* ((,adims (make-index-store ,dims)))
+;;        (declare (type index-store-vector ,adims))
+;;        (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
+;; 	 (declare (type index-store-vector ,astrs))
+;; 	 (make-instance ',class
+;; 			:dimensions ,adims
+;; 			:strides ,astrs
+;; 			:store (t/store-allocator ,class ,sizs))))))
+
+;; (deft/method t/zeros (class compressed-sparse-matrix) (dims &optional initial-element)
+;;   (assert (= (length dims) 2) nil 'tensor-not-matrix)
+;;   (with-gensyms (adims az ar ac)
+;;     `(let* ((,adims (make-index-store ,dims))
+;; 	    (,ar ,(first dims))
+;; 	    (,ac ,(second dims))
+;; 	    (,az (min (ceiling (* ,ar ,ac *default-sparsity*)) *max-sparse-size*)))
+;;        (declare (type index-store-vector ,adims))
+;;        (destructuring-bind (idxp idxi dat) (t/store-allocator ,class (t/compute-store-size ,class (list ,ar ,ac ,az)))
+;; 	 (make-instance ',class
+;; 			:dimensions ,adims
+;; 			:index-position idxp
+;; 			:indices idxi
+;; 			:store dat)))))
 
 ;;
 (defgeneric zeros-generic (dims dtype)
