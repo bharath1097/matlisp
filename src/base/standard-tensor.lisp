@@ -3,7 +3,6 @@
 ;;Is it a tensor, is a store ? It is both!
 (defclass standard-tensor (dense-tensor linear-store) ())
 
-
 (defmethod initialize-instance :after ((tensor standard-tensor) &rest initargs)
   (declare (ignore initargs))
   (when *check-after-initializing?*

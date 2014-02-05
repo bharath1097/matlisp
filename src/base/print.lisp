@@ -109,3 +109,10 @@ of a matrix (default 0)
 	(format stream "~A~,4T:DISPLACED~%" (dimensions tensor))
 	(format stream "~A~%" (dimensions tensor)))
     (print-tensor tensor stream)))
+
+(defmethod print-object ((tensor sparse-tensor) stream)
+  (print-unreadable-object (tensor stream :type t)
+    (format stream (if (slot-value tensor 'parent-tensor)
+		       "~A~,4T:DISPLACED"
+		       "~A")
+	    (dimensions tensor))))

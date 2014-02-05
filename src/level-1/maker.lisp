@@ -8,11 +8,23 @@
        (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
 	 (declare (type index-store-vector ,astrs))
 	 (make-instance ',class
-			:dimensions ,adims			  
+			:dimensions ,adims
 			:head 0
 			:strides ,astrs
 			:store (t/store-allocator ,class ,sizs ,@(when initial-element `(,initial-element))))))))
 
+(deft/method t/zeros (class coordinate-sparse-tensor) (dims &optional initial-element)
+  (with-gensyms (astrs adims sizs)
+    `(let* ((,adims (make-index-store ,dims)))
+       (declare (type index-store-vector ,adims))
+       (multiple-value-bind (,astrs ,sizs) (make-stride ,adims)
+	 (declare (type index-store-vector ,astrs))
+	 (make-instance ',class
+			:dimensions ,adims
+			:strides ,astrs
+			:store (t/store-allocator ,class ,sizs))))))
+
+;;
 (defgeneric zeros-generic (dims dtype)
   (:documentation "Create a tensor with dimensions @arg{dims} of class @arg{dtype}.")
   (:method ((dims cons) (dtype t))

@@ -111,7 +111,7 @@
 		       :do (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))))))
 
 ;;
-(defclass sparse-tensor (base-tensor) ())
+(defclass sparse-tensor (base-tensor) ())				       
 (defclass dense-tensor (base-tensor) ())
 
 (defgeneric ref (tensor &rest subscripts)
