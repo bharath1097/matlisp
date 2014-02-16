@@ -77,7 +77,7 @@
 	   #:cut-cons-chain!
 	   #:slot-values #:remmeth
 	   #:recursive-append #:unquote-args #:flatten
-	   #:format-to-string #:string+
+	   #:format-to-string #:string+ #:file->string #:split-seq #:splitlines
 	   #:linear-array-type
 	   #:list-dimensions
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
@@ -129,9 +129,13 @@
    ;;Real-double
    #:ddot #:dnrm2 #:dasum #:dscal #:daxpy #:drot
    #:dswap #:dcopy #:idamax
+   ;;Real-single
+   #:saxpy #:scopy
    ;;Complex-double
    #:zdotc #:zdotu #:zdscal #:zscal #:zswap #:zcopy #:zaxpy
    #:dcabs1 #:dzasum #:dznrm2 #:izamax
+   ;;Complex-single
+   #:caxpy #:ccopy
    ;;BLAS Level 2
    ;;------------
    ;;Real-double
