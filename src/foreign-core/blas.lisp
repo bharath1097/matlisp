@@ -28,7 +28,6 @@
 
 (in-package #:matlisp-blas)
 
-
 (def-fortran-routine daxpy :void
   "
   Syntax
@@ -72,6 +71,16 @@
   (incy :integer :input)
 )
 
+(def-fortran-routine saxpy :void
+  (n :integer :input)
+  (da :single-float :input)
+  (dx (* :single-float :inc head-x))
+  (incx :integer :input)
+  (dy (* :single-float :inc head-y) :output)
+  (incy :integer :input)
+)
+;;
+
 (def-fortran-routine dcopy :void
   "
   Syntax
@@ -112,6 +121,15 @@
   (dy (* :double-float :inc head-y) :output)
   (incy :integer :input)
 )
+
+(def-fortran-routine scopy :void
+  (n :integer :input)
+  (dx (* :single-float :inc head-x))
+  (incx :integer :input)
+  (dy (* :single-float :inc head-y) :output)
+  (incy :integer :input)
+)
+;;
 
 (def-fortran-routine drot :void
   "    
@@ -245,6 +263,16 @@
   (incy :integer :input)
 )
 
+(def-fortran-routine caxpy :void
+  (n :integer :input)
+  (za :complex-single-float)
+  (zx (* :complex-single-float :inc head-x))
+  (incx :integer :input)
+  (zy (* :complex-single-float :inc head-y) :output)
+  (incy :integer :input)
+)
+
+;;
 (def-fortran-routine zcopy :void
   "
   Syntax
@@ -287,6 +315,15 @@
   (incy :integer :input)
   )
 
+(def-fortran-routine ccopy :void
+  (n :integer :input)
+  (zx (* :complex-single-float :inc head-x))
+  (incx :integer :input)
+  (zy (* :complex-single-float :inc head-y) :output)
+  (incy :integer :input)
+)
+
+;;
 (def-fortran-routine zdscal :void
   "
   Syntax

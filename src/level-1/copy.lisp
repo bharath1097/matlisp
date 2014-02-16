@@ -30,8 +30,12 @@
 (deft/generic (t/blas-copy-func #'subfieldp) sym ())
 (deft/method t/blas-copy-func (sym real-tensor) ()
   'dcopy)
+(deft/method t/blas-copy-func (sym sreal-tensor) ()
+  'scopy)
 (deft/method t/blas-copy-func (sym complex-tensor) ()
   'zcopy)
+(deft/method t/blas-copy-func (sym scomplex-tensor) ()
+  'ccopy)
 ;;
 (deft/generic (t/blas-copy! #'subtypep) sym (x st-x y st-y))
 (deft/method t/blas-copy! (sym blas-numeric-tensor) (x st-x y st-y)

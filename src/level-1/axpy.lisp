@@ -30,9 +30,13 @@
 (deft/generic (t/blas-axpy-func #'subfieldp) sym ())
 (deft/method t/blas-axpy-func (sym real-tensor) ()
   'daxpy)
+(deft/method t/blas-axpy-func (sym sreal-tensor) ()
+  'saxpy)
 (deft/method t/blas-axpy-func (sym complex-tensor) ()
   'zaxpy)
-;;    
+(deft/method t/blas-axpy-func (sym scomplex-tensor) ()
+  'caxpy)
+;;
 (deft/generic (t/blas-axpy! #'subtypep) sym (a x st-x y st-y))
 (deft/method t/blas-axpy! (sym blas-numeric-tensor) (a x st-x y st-y)
   (let ((apy? (null x)))
@@ -99,6 +103,24 @@
   (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
     (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	    'tensor-dimension-mismatch)))
+
+;;
+
+;; (defgeneric testg (a))
+;; (define-tensor-method testg ((x standard-tensor :output))
+;;   `(t/copy! (t ,(cl x)) 1 x)
+;;   'x)
+
+;; (defgeneric axpy-test (alpha x y))
+
+;; (define-tensor-method axpy-test (alpha (x standard-tensor :input) (y standard-tensor :output))
+;;   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
+;;      (declare (type ,(field-type (cl x)) alpha))
+;;      ,(recursive-append
+;;        (when (subtypep (cl x) 'blas-numeric-tensor)
+;;   	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+;;   	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
+;;        `(t/axpy! ,(cl x) alpha x y))))
 
 (defmethod axpy! (alpha (x standard-tensor) (y standard-tensor))
   (let ((clx (class-name (class-of x)))

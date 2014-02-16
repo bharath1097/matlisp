@@ -86,3 +86,72 @@
    (assert (null (cdr idx)) nil "given more than one index for linear-store")
   `(setf (aref (the ,(store-type sym) ,store) (the index-type ,(car idx))) (the ,(field-type sym) ,value)))
 ;;
+;;A helper macro which takes of care of the class checking and stuff.
+(defparameter *generated-methods* (make-hash-table))
+
+(definline lazy-coerce (x out)
+  (if (typep x out) x
+      (copy x out)))
+
+(defun cclass-max (lst)
+  (let ((max nil))
+    (loop :for ele :in lst
+       :do (when (or (null max) (and (coerceable? max ele)
+				     (or (not (coerceable? ele max))
+					 (and (subtypep ele 'blas-numeric-tensor) (subtypep max 'blas-numeric-tensor)
+					      (> (float-digits (coerce 0 (store-element-type ele)))
+						 (float-digits (coerce 0 (store-element-type max))))))))	     
+	     (setf max ele)))
+    max))
+
+(defmacro define-tensor-method (name (&rest args) &body body)
+  (let* ((inputs (mapcar #'car (remove-if-not #'(lambda (x) (and (consp x) (eql (third x) :input))) args)))
+	 (outputs (mapcar #'car (remove-if-not #'(lambda (x) (and (consp x) (eql (third x) :output))) args)))
+	 (iclsym (zipsym inputs))
+	 (oclsym (zipsym outputs)))
+    ;;
+    (multiple-value-bind (val exists?) (gethash name *generated-methods*)
+      (if exists?
+	  (let ((type-meths (assoc (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr val) :test #'list-eq)))
+	    (if type-meths
+		(progn
+		  (loop :for ele in (cdr type-meths)
+		     :do (remove-method (symbol-function name) ele))
+		  (setf (cdr type-meths) nil))
+		(setf (cdr val) (list* (list (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args)) (cdr val)))))
+	  (setf (gethash name *generated-methods*) (list name (list (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args))))))
+    ;;
+    (with-gensyms (x classes iclasses oclasses)
+      `(defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) args))
+	 (let* (,@(mapcar #'(lambda (lst) `(,(car lst) (class-name (class-of ,(cadr lst))))) (append iclsym oclsym))
+		(,iclasses (list ,@(mapcar #'car iclsym)))
+		(,oclasses (list ,@(mapcar #'car oclsym)))
+		(,classes (append ,iclasses ,oclasses)))
+	   (labels ((generate-code (class)
+		      (let ((args (mapcar #'(lambda (x) (if (and (consp x) (member (third x) '(:input :output)))
+							    (list (car x) class)
+							    x))
+					  '(,@args)))
+			    (ebody (macrolet ((cl (,x)
+						(let ((slook '(,@(mapcar #'(lambda (x) `(,(cadr x) class)) iclsym)
+							       ,@(mapcar #'(lambda (x) `(,(cadr x) class)) oclsym))))
+						  (or (cadr (assoc ,x slook)) (error "Can't find class of ~a" ,x)))))
+				     (list ,@body))))
+			`(defmethod ,',name (,@args)
+			   ,@ebody))))
+	     (cond
+	       ((every #'(lambda (,x) (eql ,x (car ,classes))) ,classes)
+		(assert (member (car ,classes) *tensor-type-leaves*)
+			nil 'tensor-abstract-class :tensor-class ,classes)
+		(let* ((method (compile-and-eval (generate-code (car ,classes))))
+		       (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr (gethash ',name *generated-methods*)) :test #'list-eq)))
+		  (assert lst nil "Method table missing from *generated-methods* !")
+		  (setf (cdr lst) (list* method (cdr lst))))
+		(,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) args)))
+	       ((and (every #'(lambda (,x) (eql ,x (car ,oclasses))) ,oclasses)
+		     (or (null ,oclasses) (coerceable? (cclass-max ,iclasses) (car ,oclasses))))
+		(let* ((clm (or (car ,oclasses) (cclass-max ,iclasses)))
+		       ,@(mapcar #'(lambda (x) `(,x (lazy-coerce ,x clm))) inputs))
+		  (,name ,@(mapcar #'(lambda (x) (if (consp x) (car x) x)) args))))
+	       (t
+		(error "Don't know how to apply ~a to classes ~a, ~a." ',name ,iclasses ,oclasses)))))))))
