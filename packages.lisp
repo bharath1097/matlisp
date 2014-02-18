@@ -116,7 +116,7 @@
    #:foreign-vector #:make-foreign-vector #:foreign-vector-p
    #:fv-ref #:fv-pointer #:fv-size #:fv-type
    ;;Interface functions
-   #:def-fortran-routine
+   #:def-fortran-routine #:parse-fortran-file
    #:with-vector-data-addresses
    )
   (:documentation "Fortran foreign function interface"))

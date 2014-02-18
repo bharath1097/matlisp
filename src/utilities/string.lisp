@@ -30,36 +30,52 @@ returning two values: the string and the number of bytes read."
 	(sb-posix:close fd))
       (values data fsize)))
 
-  (defun split-seq (test seq &key (filter-empty? t) max-cuts from-end?)
+  (definline split-seq (test seq &key max-cuts)
     "Split a sequence, wherever the given character occurs."
-    (if (not from-end?)
-	(let ((split-list nil)
-	      (split-count 0))
-	    (loop :for i :from 0 :to (length seq)
-	       :with len := (length seq)
-	       :with prev := 0
-	       :do (let ((cuts-exceeded? (and max-cuts (>= split-count max-cuts))))
-		     (when (or (= i len) cuts-exceeded? (funcall test (aref seq i)))
-		       (let* ((str (subseq seq prev (if cuts-exceeded? len i))))
-			 (when (or cuts-exceeded? (< prev i) (not filter-empty?))
-			   (incf split-count)
-			   (push str split-list))
-			 (setf prev (1+ i))))
-		     (when cuts-exceeded? (return))))
-	    (values (reverse split-list) (1- split-count)))
-	(let ((split-list nil)
-	      (split-count 0))       
-	  (loop :for i :from (1- (length seq)) :downto -1
-	     :with prev := (length seq)
-	     :do (let ((cuts-exceeded? (and max-cuts (>= split-count max-cuts))))
-		   (when (or (< i 0) cuts-exceeded? (funcall test (aref seq i)))
-		     (let ((str (subseq seq (if cuts-exceeded? 0 (1+ i)) prev)))
-		       (when (or cuts-exceeded? (< (1+ i) prev) (not filter-empty?))
-			 (incf split-count)
-			 (push str split-list))
-		       (setf prev i)))
-		   (when cuts-exceeded? (return))))
-	  (values split-list split-count))))
+    (let ((split-list nil) (split-count 0) (deletes nil))
+      (labels ((left-split (prev i)
+		 (if (not deletes)
+		     (when (< prev i)
+		       (push (subseq seq prev i) split-list)
+		       (incf split-count))
+		     (do ((dlst deletes (or (cdr dlst) (cons (1- prev) t)))
+			  (pele i (car dlst))
+			  (ret nil))
+			 ((eql dlst t) (progn (setf deletes nil)
+					      (when ret
+						(push (apply #'string+ ret) split-list)
+						(incf split-count))))
+		       (let ((ele (car dlst)))
+			 (when (< (1+ ele) pele)
+			   (push (subseq seq (1+ ele) pele) ret)))))))
+	(loop :for i :from 0 :to (length seq)
+	   :with len := (length seq)
+	   :with prev := 0
+	   :do (let ((cmd nil))
+		 (cond
+		   ((or (= i len) (and max-cuts (>= split-count max-cuts)))
+		    (left-split prev len)
+		    (return))
+		   ((setf cmd (funcall test (aref seq i)))
+		    (case cmd
+		      (:left
+		       (left-split prev (1+ i))
+		       (setf prev (1+ i)))
+		      (:right
+		       (left-split prev i)
+		       (setf prev i))
+		      (:keep
+		       (left-split prev i)
+		       (push (string (aref seq i)) split-list)
+		       (incf split-count)
+		       (setf prev (1+ i)))
+		      (:delete
+		       (push i deletes))
+		      (t
+		       (left-split prev i)
+		       (setf prev (1+ i)))))))))
+      (values (nreverse split-list) (1- split-count))))
+
   ;;
   (defun splitlines (string)
     "Split the given string wherever the Carriage-return occurs."

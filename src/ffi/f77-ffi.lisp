@@ -150,10 +150,13 @@
 	      ((%f77.callback-type-p type)
 	       (let* ((callback-name (second type))
 		      (field-gvar (intern (string+ "*" (symbol-name (gensym (symbol-name var))) "*")))
-		      (c-callback-code (%f77.def-fortran-callback field-gvar callback-name (third type) (cdddr type))))		   
+		      (c-callback-code (%f77.def-fortran-callback field-gvar callback-name (third type) (cdddr type))))
 		 (nconsc callback-code `((defvar ,field-gvar nil) ,@c-callback-code))
 		 (nconsc callback-args `((,field-gvar ,var)))
 		 (setq ffi-var `(cffi:callback ,callback-name))))
+	      ;;
+	      ((and (listp type) (eq (car type) '*) (eq (cadr type) :void))
+	       (setq ffi-var var))
 	      ;; Can't really enforce "style" when given an array.
 	      ;; Complex numbers do not latch onto this case, they
 	      ;; are passed by value.
@@ -317,7 +320,7 @@
 	    (when (and (%f77.output-p style) (not (eq type :string)))
 	      (nconsc return-vars
 		      `((,func-var ,ffi-var ,type)))))))
-      
+
       (let ((retvar (gensym)))
 	`(
 	  ,(recursive-append
@@ -367,7 +370,7 @@
   which copies the vector Y of N double-float's to the vector X.
   The function name in libblas.a is \"dcopy_\" (by Fortran convention).
 
-  (DEF-FORTRAN-ROUTINE DCOPY :void 
+  (DEF-FORTRAN-ROUTINE DCOPY :void
     (N :integer :input)
     (X (* :double-float) :output)
     (INCX :integer :input)
@@ -398,13 +401,13 @@
   NAME    Name of the lisp interface function that will be created.
   The name of the raw FFI will be derived from NAME via
   the function MAKE-FFI-NAME.  The name of foreign function
-  (presumable a Fortran Function in an external library) 
+  (presumable a Fortran Function in an external library)
   will be derived from NAME via MAKE-FORTRAN-NAME.
 
   RETURN-TYPE
   The type of data that will be returned by the external
   (presumably Fortran) function.
-  
+
   (MEMBER RETURN-TYPE '(:VOID :INTEGER :SINGLE-FLOAT :DOUBLE-FLOAT
 			:COMPLEX-SINGLE-FLOAT :COMPLEX-DOUBLE-FLOAT))
 
@@ -453,18 +456,18 @@
 	  as one of the values from the lisp function
 	  NAME.
 
-          ** Note:  In all 3 cases above the input VARIABLE will not be destroyed
+	  ** Note:  In all 3 cases above the input VARIABLE will not be destroyed
 	  or modified directly, a copy is taken and a pointer of that
 	  copy is passed to the (presumably Fortran) external routine.
 
-          (OR (* X)     :INPUT           Array entries are used but not modified.
-              :STRING)  :OUTPUT          Array entries need not be initialized on input,
+	  (OR (* X)     :INPUT           Array entries are used but not modified.
+	      :STRING)  :OUTPUT          Array entries need not be initialized on input,
 	      but will be *modified*.  In addition, the array
 	      will be returned via the Lisp command VALUES
 	      from the lisp function NAME.
 
 	      :INPUT-OUTPUT    Like :OUTPUT but initial values on entry may be used.
-	      
+
 	      The keyword :WORKSPACE is a nickname for :INPUT.  The
 	      keywords :INPUT-OR-OUTPUT, :WORKSPACE-OUTPUT,
 	      :WORKSPACE-OR-OUTPUT are nicknames for :OUTPUT.
@@ -546,7 +549,7 @@
 			    (,hidden-var-name ,hack-return-type :output)
 			    ,@pars))
 	  (setq hack-return-type :void)))
-      
+
       `(progn
 	 (cffi:defcfun (,fortran-name ,lisp-name) ,(%f77.get-return-type hack-return-type)
 	   ,@(%f77.parse-fortran-parameters hack-body))
