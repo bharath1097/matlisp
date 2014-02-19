@@ -117,46 +117,28 @@
       (* (conjugate x) y)
       (* x y)))
 
-(defmethod dot ((x standard-tensor) (y standard-tensor) &optional (conjugate-p t))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (cond
-      ((eq clx cly)
-       (compile-and-eval
-	`(defmethod dot ((x ,clx) (y ,cly) &optional (conjugate-p t))
-	   ,(recursive-append
-	     (when (subtypep clx 'blas-numeric-tensor)
-	       `(if (call-fortran? x (t/l1-lb ,clx))
-		    (if conjugate-p
-			(t/blas-dot ,clx x y t)
-			(t/blas-dot ,clx x y nil))))
-	     `(if conjugate-p
-		  ;;Please do your checks before coming here.
-		  (t/dot ,clx x y t)
-		  (t/dot ,clx x y nil)))))
-       (dot x y conjugate-p))
-      (t
-       (error "Don't know how to compute the dot product of ~a , ~a." clx cly)))))
+(define-tensor-method dot ((x standard-tensor :input) (y standard-tensor :input) &optional (conjugate-p t))
+  (recursive-append
+   (when (subtypep (cl x) 'blas-numeric-tensor)
+     `(if (call-fortran? x (t/l1-lb ,(cl x)))
+	  (if conjugate-p
+	      (t/blas-dot ,(cl x) x y t)
+	      (t/blas-dot ,(cl x) x y nil))))
+   `(if conjugate-p
+	;;Please do your checks before coming here.
+	(t/dot ,(cl x) x y t)
+	(t/dot ,(cl x) x y nil))))
 
-(defmethod dot ((x standard-tensor) (y t) &optional (conjugate-p t))
-  (let ((clx (class-name (class-of x))))
-    (assert (member clx *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class (list clx))
-    (compile-and-eval
-     `(defmethod dot ((x ,clx) (y t) &optional (conjugate-p t))
-	(let ((y (t/coerce ,(field-type clx) y)))
-	  (declare (type ,(field-type clx) y))
-	  ,(recursive-append
-	    (when (subtypep clx 'blas-numeric-tensor)
-	      `(if (call-fortran? x (t/l1-lb ,clx))
-		   (if conjugate-p
-		       (t/blas-dot ,clx x y t t)
-		       (t/blas-dot ,clx x y nil t))))
-	    `(if conjugate-p
-		 ;;Please do your checks before coming here.
-		 (t/dot ,clx x y t t)
-		 (t/dot ,clx x y nil t))))))
-    (dot x y conjugate-p)))
+(define-tensor-method dot ((x standard-tensor :input) (y t) &optional (conjugate-p t))
+  `(let ((y (t/coerce ,(field-type (cl x)) y)))
+     (declare (type ,(field-type (cl x)) y))
+     ,(recursive-append
+       (when (subtypep (cl x) 'blas-numeric-tensor)
+	 `(if (call-fortran? x (t/l1-lb ,(cl x)))
+	      (if conjugate-p
+		  (t/blas-dot ,(cl x) x y t t)
+		  (t/blas-dot ,(cl x) x y nil t))))
+       `(if conjugate-p
+	    ;;Please do your checks before coming here.
+	    (t/dot ,(cl x) x y t t)
+	    (t/dot ,(cl x) x y nil t)))))

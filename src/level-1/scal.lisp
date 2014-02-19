@@ -93,97 +93,24 @@
 	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 		   'tensor-dimension-mismatch)))
 
-(defmethod scal! ((x standard-tensor) (y standard-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (cond
-      ((eq clx cly)
-       (compile-and-eval
-	`(defmethod scal! ((x ,clx) (y ,cly))
-	   ,(recursive-append
-	     (when (subtypep clx 'blas-numeric-tensor)
-	       `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		  (t/blas-scdi! ,clx x (first strd) y (second strd) t)))
-	     `(t/scdi! ,clx x y :scal? t :numx? nil))
-	   y))
-       (scal! x y))
-      (t
-       (error "Don't know how to apply scal! to classes ~a, ~a." clx cly)))))
+(define-tensor-method scal! ((x standard-tensor :input) (y standard-tensor :output))
+  (recursive-append
+   (when (subtypep (cl x) 'blas-numeric-tensor)
+     `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+	(t/blas-scdi! ,(cl x) x (first strd) y (second strd) t)))
+   `(t/scdi! ,(cl x) x y :scal? t :numx? nil))
+  'y)
 
-(defmethod scal! ((x t) (y standard-tensor))
-  (let ((cly (class-name (class-of y))))
-    (assert (member cly *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class cly)
-    (compile-and-eval
-     `(defmethod scal! ((x t) (y ,cly))
-	(let ((x (t/coerce ,(field-type cly) x)))
-	  (declare (type ,(field-type cly) x))
-	  ,(recursive-append
-	    (when (subtypep cly 'blas-numeric-tensor)
-	      `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
-		 (t/blas-scdi! ,cly x nil y strd t)))
-	    `(t/scdi! ,cly x y :scal? t :numx? t))
-	  y)))
-    (scal! x y)))
+(define-tensor-method scal! ((x t) (y standard-tensor :output))
+  `(let ((x (t/coerce ,(field-type (cl y)) x)))
+     (declare (type ,(field-type (cl y)) x))
+     ,(recursive-append
+       (when (subtypep (cl y) 'blas-numeric-tensor)
+	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	    (t/blas-scdi! ,(cl y) x nil y strd t)))
+       `(t/scdi! ,(cl y) x y :scal? t :numx? t))
+     y))
 
-;;These should've auto-generated.
-(defgeneric div! (alpha x)
-  (:documentation
-   "
-  Syntax
-  ======
-  (DIV! alpha x)
-
-  Purpose
-  =======
-  X <- X ./ alpha
-
-  Yes the calling order is twisted.
-")
-  (:method :before ((x standard-tensor) (y standard-tensor))
-	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
-		   'tensor-dimension-mismatch)))
-
-(defmethod div! ((x standard-tensor) (y standard-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (cond
-      ((eq clx cly)
-       (compile-and-eval
-	`(defmethod div! ((x ,clx) (y ,cly))
-	   ,(recursive-append
-	     (when (subtypep clx 'blas-numeric-tensor)
-	       `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		  (t/blas-scdi! ,clx x (first strd) y (second strd) nil)))
-	     `(t/scdi! ,clx x y :scal? nil :numx? nil))
-	   y))
-       (div! x y))
-      (t
-       (error "Don't know how to apply div! to classes ~a, ~a." clx cly)))))
-
-(defmethod div! ((x t) (y standard-tensor))
-  (let ((cly (class-name (class-of y))))
-    (assert (member cly *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class cly)
-    (compile-and-eval
-     `(defmethod div! ((x t) (y ,cly))
-	(let ((x (t/coerce ,(field-type cly) x)))
-	  (declare (type ,(field-type cly) x))
-	  ,(recursive-append
-	    (when (subtypep cly 'blas-numeric-tensor)
-	      `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
-		 (t/blas-scdi! ,cly x nil y strd nil)))
-	    `(t/scdi! ,cly x y :scal? nil :numx? t))
-	  y)))
-    (div! x y)))
-
-;;
 (defgeneric scal (alpha x)
   (:documentation
    "
@@ -204,7 +131,44 @@
      (scal! alpha (copy x)))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
   (:method ((alpha standard-tensor) (x t))
-	   (scal! alpha (copy! x (zeros (dimensions alpha) (class-of alpha))))))
+    ;;We assume commutation of course.
+    (scal! x (copy alpha))))
+
+;;These should've been auto-generated.
+(defgeneric div! (alpha x)
+  (:documentation
+   "
+  Syntax
+  ======
+  (DIV! alpha x)
+
+  Purpose
+  =======
+  X <- X ./ alpha
+
+  Yes the calling order is twisted.
+")
+  (:method :before ((x standard-tensor) (y standard-tensor))
+	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
+		   'tensor-dimension-mismatch)))
+
+(define-tensor-method div! ((x standard-tensor :input) (y standard-tensor :output))
+  (recursive-append
+   (when (subtypep (cl x) 'blas-numeric-tensor)
+     `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+	(t/blas-scdi! ,(cl x) x (first strd) y (second strd) nil)))
+   `(t/scdi! ,(cl x) x y :scal? nil :numx? nil))
+  'y)
+
+(define-tensor-method div! ((x t) (y standard-tensor :output))
+  `(let ((x (t/coerce ,(field-type (cl y)) x)))
+     (declare (type ,(field-type (cl y)) x))
+     ,(recursive-append
+       (when (subtypep (cl y) 'blas-numeric-tensor)
+	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	    (t/blas-scdi! ,(cl y) x nil y strd nil)))
+       `(t/scdi! ,(cl y) x y :scal? nil :numx? t))
+     y))
 
 (defgeneric div (x y)
   (:documentation "

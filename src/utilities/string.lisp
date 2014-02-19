@@ -30,7 +30,8 @@ returning two values: the string and the number of bytes read."
 	(sb-posix:close fd))
       (values data fsize)))
 
-  (definline split-seq (test seq &key max-cuts)
+  (declaim (inline split-seq))
+  (defun split-seq (test seq &key max-cuts)
     "Split a sequence, wherever the given character occurs."
     (let ((split-list nil) (split-count 0) (deletes nil))
       (labels ((left-split (prev i)

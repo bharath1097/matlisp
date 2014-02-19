@@ -60,4 +60,3 @@
 	  (declare (ignore axis))
 	  (t/sum ,clx x nil))))
     (sum! x y axis)))
-

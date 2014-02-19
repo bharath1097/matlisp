@@ -147,11 +147,30 @@
 		       (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr (gethash ',name *generated-methods*)) :test #'list-eq)))
 		  (assert lst nil "Method table missing from *generated-methods* !")
 		  (setf (cdr lst) (list* method (cdr lst))))
-		(,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) args)))
+		(,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (and (not (consp x)) (char= (aref (symbol-name x) 0) #\&))) args))))
 	       ((and (every #'(lambda (,x) (eql ,x (car ,oclasses))) ,oclasses)
 		     (or (null ,oclasses) (coerceable? (cclass-max ,iclasses) (car ,oclasses))))
 		(let* ((clm (or (car ,oclasses) (cclass-max ,iclasses)))
 		       ,@(mapcar #'(lambda (x) `(,x (lazy-coerce ,x clm))) inputs))
-		  (,name ,@(mapcar #'(lambda (x) (if (consp x) (car x) x)) args))))
+		  (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (and (not (consp x)) (char= (aref (symbol-name x) 0) #\&))) args)))))
 	       (t
 		(error "Don't know how to apply ~a to classes ~a, ~a." ',name ,iclasses ,oclasses)))))))))
+
+
+;;
+
+;; (defgeneric testg (a))
+;; (define-tensor-method testg ((x standard-tensor :output))
+;;   `(t/copy! (t ,(cl x)) 1 x)
+;;   'x)
+
+;; (defgeneric axpy-test (alpha x y))
+
+;; (define-tensor-method axpy-test (alpha (x standard-tensor :input) (y standard-tensor :output))
+;;   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
+;;      (declare (type ,(field-type (cl x)) alpha))
+;;      ,(recursive-append
+;;        (when (subtypep (cl x) 'blas-numeric-tensor)
+;;   	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+;;   	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
+;;        `(t/axpy! ,(cl x) alpha x y))))

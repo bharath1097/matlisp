@@ -104,62 +104,25 @@
     (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	    'tensor-dimension-mismatch)))
 
-;;
+(define-tensor-method axpy! (alpha (x standard-tensor :input) (y standard-tensor :output))
+  `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
+     (declare (type ,(field-type (cl x)) alpha))
+     ,(recursive-append
+       (when (subtypep (cl x) 'blas-numeric-tensor)
+	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
+       `(t/axpy! ,(cl x) alpha x y))
+     y))
 
-;; (defgeneric testg (a))
-;; (define-tensor-method testg ((x standard-tensor :output))
-;;   `(t/copy! (t ,(cl x)) 1 x)
-;;   'x)
-
-;; (defgeneric axpy-test (alpha x y))
-
-;; (define-tensor-method axpy-test (alpha (x standard-tensor :input) (y standard-tensor :output))
-;;   `(let ((alpha (t/coerce ,(field-type (cl x)) alpha)))
-;;      (declare (type ,(field-type (cl x)) alpha))
-;;      ,(recursive-append
-;;        (when (subtypep (cl x) 'blas-numeric-tensor)
-;;   	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
-;;   	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
-;;        `(t/axpy! ,(cl x) alpha x y))))
-
-(defmethod axpy! (alpha (x standard-tensor) (y standard-tensor))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (cond
-      ((eq clx cly)
-       (compile-and-eval
-	`(defmethod axpy! ((alpha t) (x ,clx) (y ,cly))
-	   (let ((alpha (t/coerce ,(field-type clx) alpha)))
-	     (declare (type ,(field-type clx) alpha))
-	     ,(recursive-append
-	       (when (subtypep clx 'blas-numeric-tensor)
-		 `(if-let (strd (and (call-fortran? x (t/l1-lb ,clx)) (blas-copyablep x y)))
-		    (t/blas-axpy! ,clx alpha x (first strd) y (second strd))))
-	       `(t/axpy! ,clx alpha x y))
-	     y)))
-       (axpy! alpha x y))
-      (t
-       (error "Don't know how to apply axpy! to classes ~a, ~a." clx cly)))))
-
-(defmethod axpy! (alpha (x (eql nil)) (y standard-tensor))
-  (let ((cly (class-name (class-of y))))
-    (assert (member cly *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class cly)
-    (compile-and-eval
-     `(defmethod axpy! ((alpha t) (x (eql nil)) (y ,cly))
-	(let ((alpha (t/coerce ,(field-type cly) alpha)))
-	  (declare (type ,(field-type cly) alpha))
-	  ,(recursive-append
-	    (when (subtypep cly 'blas-numeric-tensor)
-	      `(if-let (strd (and (call-fortran? y (t/l1-lb ,cly)) (consecutive-storep y)))
-		 (t/blas-axpy! ,cly alpha nil nil y strd)))
-	    `(t/axpy! ,cly alpha nil y))
-	  y)))
-    (axpy! alpha nil y)))
-
+(define-tensor-method axpy! (alpha (x (eql nil)) (y standard-tensor :output))
+  `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
+     (declare (type ,(field-type (cl y)) alpha))
+     ,(recursive-append
+       (when (subtypep (cl y) 'blas-numeric-tensor)
+	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	    (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
+       `(t/axpy! ,(cl y) alpha nil y))
+     y))
 ;;
 (defgeneric axpy (alpha x y)
   (:documentation
@@ -186,5 +149,7 @@
     (axpy! alpha x (copy y))))
 
 (defmethod axpy (alpha (x standard-tensor) (y (eql nil)))
-  (let ((tmp (zeros (dimensions x) (class-of x))))
-    (axpy! alpha x tmp)))
+  (axpy! alpha x (zeros (dimensions x) (class-of x))))
+
+(defmethod axpy ((alpha complex) (x real-numeric-tensor) (y (eql nil)))
+  (axpy! alpha x (zeros (dimensions x) 'complex-tensor)))

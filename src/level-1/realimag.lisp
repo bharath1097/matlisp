@@ -42,14 +42,14 @@
   If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    (real-tensor tensor)
-    (complex-tensor (let ((*check-after-initializing?* nil))
-		      (make-instance 'real-tensor
-				     :parent-tensor tensor :store (store tensor)
-				     :dimensions (dimensions tensor)
-				     :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
-				   :head (the index-type (* 2 (head tensor))))))
-    (number (realpart tensor))))
+    ((or real-tensor sreal-tensor) tensor)
+    ((or complex-tensor scomplex-tensor) (let ((*check-after-initializing?* nil))
+					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
+							  :parent-tensor tensor :store (store tensor)
+							  :dimensions (dimensions tensor)
+							  :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+							  :head (the index-type (* 2 (head tensor))))))
+    (number (cl:realpart tensor))))
 
 (definline tensor-imagpart~ (tensor)
   "
@@ -65,13 +65,13 @@
   If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    (real-tensor tensor)
-    (complex-tensor (let ((*check-after-initializing?* nil))
-		      (make-instance 'real-tensor
-				     :parent-tensor tensor :store (store tensor)
-				     :dimensions (dimensions tensor)
-				     :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
-				     :head (the index-type (1+ (* 2 (head tensor)))))))
+    ((or real-tensor sreal-tensor) tensor)
+    ((or complex-tensor scomplex-tensor) (let ((*check-after-initializing?* nil))
+					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
+							  :parent-tensor tensor :store (store tensor)
+							  :dimensions (dimensions tensor)
+							  :strides (map 'index-store-vector #'(lambda (x) (* 2 x)) (the index-store-vector (strides tensor)))
+							  :head (the index-type (1+ (* 2 (head tensor)))))))
     (number (realpart tensor))))
 
 (definline tensor-realpart (tensor)
