@@ -40,7 +40,7 @@ line continuations.
 	     line))
 ;;
 (defparameter *%f77.typemap* 
-  '((("character") :char)
+  '((("character") :character)
     (("character*") :string)
     (("character*1") :string)
     (("character*6") :string)
@@ -52,6 +52,7 @@ line continuations.
     (("complex*16") :complex-double-float)
     (("external") (* :void))
     (("dimension") nil)
+    (("logical") :integer)
     (("none") :void)))
 ;;
 (defun %f77.type (line)
@@ -98,4 +99,3 @@ line continuations.
 	(when (or (member "function" line :test #'string=)
 		  (member "subroutine" line :test #'string=))
 	  (push (parse-procedure line) defns))))))
-

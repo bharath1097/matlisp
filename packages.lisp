@@ -122,7 +122,7 @@
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP-BLAS"
-  (:use #:common-lisp #:matlisp-ffi)
+  (:use #:common-lisp #:matlisp-ffi #:matlisp-utilities)
   (:export
    ;;BLAS Level 1
    ;;------------
