@@ -93,41 +93,27 @@
 		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :c)) 1 0))))
 	    nil 'tensor-dimension-mismatch)))
 
-(defmethod gemv! (alpha (A standard-tensor) (x standard-tensor) beta (y standard-tensor) &optional (job :n))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y)))
-	(cla (class-name (class-of A))))
-    (assert (and (member cla *tensor-type-leaves*)
-		 (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list cla clx cly))
-    (cond
-      ((ieql clx cly cla)
-       (compile-and-eval
-	`(defmethod gemv! (alpha (A ,cla) (x ,clx) beta (y ,cly) &optional (job :n))
-	   (let ((alpha (t/coerce ,(field-type clx) alpha))
-		 (beta (t/coerce ,(field-type clx) beta))
-		 (cjob (aref (symbol-name job) 0)))
-	     (declare (type ,(field-type clx) alpha beta)
-		      (type character cjob))
-	     ,(recursive-append
-	       (when (subtypep clx 'blas-numeric-tensor)
-		 `(if (call-fortran? A (t/l2-lb ,cla))
-		      (let ((A-copy (if (blas-matrix-compatiblep A cjob) A
-					(let ((*default-stride-ordering* :col-major))
-					  (t/copy! (,cla ,cla) A (t/zeros ,clx (dimensions A)))))))
-			(multiple-value-bind (lda op maj) (blas-matrix-compatiblep A-copy cjob)
-			  (declare (ignore maj))
-			  (t/blas-gemv! ,cla alpha A-copy lda
-					x (aref (the index-store-vector (strides x)) 0)
-					beta
-					y (aref (the index-store-vector (strides y)) 0)
-					op)))))
-	       `(t/gemv! ,cla alpha A x beta y cjob)))
-	   y))
-       (gemv! alpha A x beta y job))
-      (t
-       (error "Don't know how to apply gemv! to classes ~a." (list cla clx cly))))))
+(define-tensor-method gemv! (alpha (A standard-tensor :input) (x standard-tensor :input) beta (y standard-tensor :output) &optional (job :n))
+  `(let ((alpha (t/coerce ,(field-type (cl x)) alpha))
+	 (beta (t/coerce ,(field-type (cl x)) beta))
+	 (cjob (aref (symbol-name job) 0)))
+     (declare (type ,(field-type (cl x)) alpha beta)
+	      (type character cjob))
+     ,(recursive-append
+       (when (subtypep (cl x) 'blas-numeric-tensor)
+	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
+	      (let ((A-copy (if (blas-matrix-compatiblep A cjob) A
+				(let ((*default-stride-ordering* :col-major))
+				  (t/copy! (,(cl a) ,(cl a)) A (t/zeros ,(cl x) (dimensions A)))))))
+		(multiple-value-bind (lda op maj) (blas-matrix-compatiblep A-copy cjob)
+		  (declare (ignore maj))
+		  (t/blas-gemv! ,(cl a) alpha A-copy lda
+				x (aref (the index-store-vector (strides x)) 0)
+				beta
+				y (aref (the index-store-vector (strides y)) 0)
+				op)))))
+       `(t/gemv! ,(cl a) alpha A x beta y cjob)))
+  'y)
 ;;---------------------------------------------------------------;;
 (defgeneric gemv (alpha A x beta y &optional job)
   (:documentation

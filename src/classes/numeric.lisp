@@ -100,7 +100,7 @@
 	(imagpart (imagpart element)))
     (format stream (if (zerop imagpart)
 		       "~11,5,,,,,'Eg"
-		       "#C(~0,4,,,,,'Ee, ~0,4,,,,,'Ee)")
+		       "#C(~11,5,,,,,'Eg, ~11,5,,,,,'Eg)")
 	    realpart imagpart)))
 ;;
 (defleaf complex-tensor (complex-numeric-tensor) ())

@@ -136,8 +136,8 @@
 			 (:file "symbolic-tensor")
 			 (:file "matrix"
 				:depends-on ("numeric"))))
-   (:module "matlisp-level-1"
-	    :pathname "level-1"
+   (:module "matlisp-blas"
+	    :pathname "blas"
 	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
 	    :components ((:file "maker")
 			 (:file "copy"
@@ -154,31 +154,27 @@
 			 (:file "trans"
 				:depends-on ("scal" "copy"))
 			 (:file "sum"
-				:depends-on ("dot" "copy"))))
-   (:module "matlisp-level-2"
-	    :pathname "level-2"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1")
-	    :components ((:file "gemv")))
-   (:module "matlisp-level-3"
-	    :pathname "level-3"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core" "matlisp-level-1" "matlisp-level-2")
-	    :components ((:file "gemm")))
+				:depends-on ("dot" "copy"))
+			 (:file "gemv"
+				:depends-on ("copy"))
+			 (:file "gemm"
+				:depends-on ("copy"))))
    (:module "matlisp-lapack"
 	    :pathname "lapack"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
 	    :components ((:file "lu")
 			 (:file "chol")
 			 (:file "eig")
 			 (:file "least-squares")))
    (:module "matlisp-special"
 	    :pathname "special"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
 	    :components ((:file "random")
 			 (:file "map")
 			 (:file "seq")))
    (:module "matlisp-sugar"
 	    :pathname "sugar"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-level-1" "matlisp-level-2" "matlisp-level-3")
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
 	    :components (#+nil
 			 (:file "mplusminus")
 			 #+nil
