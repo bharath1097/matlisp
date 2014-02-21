@@ -12,8 +12,9 @@
   (let* ((f-string (file->string fname))
 	 (*read-default-float-format* 'double-float))
     (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
+      (incf nrows)
       (unless (null lns)
-	(let* ((ncols (second (multiple-value-list (split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
+	(let* ((ncols (1+ (nth-value 1(split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
 	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) 'real-tensor)))
 	  (if (> ncols 1)
 	      (loop :for line :in lns
