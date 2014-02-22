@@ -175,7 +175,8 @@
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
-	    :components ((:file "arithmetic")))
+	    :components ((:file "arithmetic")
+			 (:file "oneseye")))
    (:module "matlisp-reader"
 	    :pathname "reader"	    
 	    :components ((:file "infix")
