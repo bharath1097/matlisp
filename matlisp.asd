@@ -175,10 +175,7 @@
    (:module "matlisp-sugar"
 	    :pathname "sugar"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
-	    :components (#+nil
-			 (:file "mplusminus")
-			 #+nil
-			 (:file "mtimesdivide")))
+	    :components ((:file "arithmetic")))
    (:module "matlisp-reader"
 	    :pathname "reader"	    
 	    :components ((:file "infix")
