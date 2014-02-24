@@ -2,7 +2,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
 ;;Note to self: do not indent!
-  
+
 (defmacro define-constant (name value &optional doc)
   "
   Keeps the lisp implementation from defining constants twice.
@@ -34,7 +34,7 @@ Example:
 		    (IF (= I 10)
 			(RETURN SUM)))))
      T
-  > 
+  >
 "
   (let* ((decls nil)
 	 (types nil)
@@ -55,8 +55,18 @@ Example:
 				   (push `(,rsym ,code) decls)
 				   (when type
 				     (push `(type ,type ,rsym) types))
-				   rsym)))))
-			body '(:mark* :mark))))
+				   rsym)))
+			      (:memo
+			       (destructuring-bind (code &key type) (cdr mrk)
+				 (let ((memo (find code decls :key #'cadr :test #'list-eq)))
+				   (if memo
+				       (car memo)
+				       (let ((rsym (gensym)))
+					 (push `(,rsym ,code) decls)
+					 (when type
+					   (push `(type ,type ,rsym) types))
+					 rsym)))))))
+			body '(:mark* :mark :memo))))
     `(let* (,@decls)
        ,@(when types `((declare ,@types)))
        ,@code)))
@@ -71,16 +81,16 @@ Example:
   @lisp
   > (macroexpand-1
        `(mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
-                ((a b) (floor 3) :type (nil fixnum)))
-           (+ x b)))
+		((a b) (floor 3) :type (nil fixnum)))
+	   (+ x b)))
   => (LET ((X 2))
        (DECLARE (OPTIMIZE (SAFETY 0) (SPEED 3))
-                (TYPE FIXNUM X))
+		(TYPE FIXNUM X))
        (MULTIPLE-VALUE-BIND (A B)
-          (FLOOR 3)
-          (DECLARE (IGNORE A)
-                   (TYPE FIXNUM B))
-          (+ X B)))
+	  (FLOOR 3)
+	  (DECLARE (IGNORE A)
+		   (TYPE FIXNUM B))
+	  (+ X B)))
   @end lisp
   "
   (labels ((mlet-decl (vars type decls)
@@ -130,10 +140,10 @@ Example:
   @lisp
   > (macroexpand-1
       `(let-typed ((x 1 :type fixnum))
-          (+ 1 x)))
+	  (+ 1 x)))
   => (LET ((X 1))
-        (DECLARE (TYPE FIXNUM X))
-        (+ 1 X))
+	(DECLARE (TYPE FIXNUM X))
+	(+ 1 X))
   @end lisp
   "
   (labels ((parse-bindings (bdng let-decl type-decl)
@@ -172,10 +182,10 @@ Example:
   @lisp
   > (macroexpand-1
       `(let*-typed ((x 1 :type fixnum))
-          (+ 1 x)))
+	  (+ 1 x)))
   => (LET* ((X 1))
-        (DECLARE (TYPE FIXNUM X))
-        (+ 1 X))
+	(DECLARE (TYPE FIXNUM X))
+	(+ 1 X))
   @end lisp
   "
   (labels ((parse-bindings (bdng let-decl type-decl)
@@ -214,17 +224,17 @@ Example:
   @lisp
   > (macroexpand-1
       `(let-rec rev ((x '(1 2 3 4)) (ret nil))
-         (if (null x) ret
-           (rev (cdr x) (cons (car x) ret)))))
+	 (if (null x) ret
+	   (rev (cdr x) (cons (car x) ret)))))
   => (LABELS ((REV (X RET)
-                (IF (NULL X)
-                   RET
-                  (REV (CDR X) (CONS (CAR X) RET)))))
+		(IF (NULL X)
+		   RET
+		  (REV (CDR X) (CONS (CAR X) RET)))))
        (REV '(1 2 3 4) NIL))
 
   > (let-rec rev ((x '(1 2 3 4)) (ret nil))
        (if (null x) ret
-          (rev (cdr x) (cons (car x) ret))))
+	  (rev (cdr x) (cons (car x) ret))))
   => (4 3 2 1)
   @end lisp
   "
@@ -242,11 +252,11 @@ Example:
   @lisp
   > (macroexpand-1
        `(with-gensyms (a b c)
-           `(let ((,a 1) (,b 2) (,c 3))
-                 (+ ,a ,b ,c))))
+	   `(let ((,a 1) (,b 2) (,c 3))
+		 (+ ,a ,b ,c))))
   => (LET ((A (GENSYM \"A\")) (B (GENSYM \"B\")) (C (GENSYM \"C\")))
       `(LET ((,A 1) (,B 2) (,C 3))
-          (+ ,A ,B ,C)))
+	  (+ ,A ,B ,C)))
   @end lisp
   "
   `(let ,(mapcar #'(lambda (sym)
@@ -275,7 +285,7 @@ Example:
   > (let ((x (list 'a 'b 'c)))
       (nconsc x (list 1 2 3))
        x)
-  => (A B C 1 2 3)  
+  => (A B C 1 2 3)
   @end lisp
   "
   (assert (and (symbolp var) (not (member var '(t nil)))))
@@ -295,9 +305,9 @@ Example:
   @lisp
   > (macroexpand-1
       `(if-ret (when (evenp x) x)
-             (+ x 1)))
+	     (+ x 1)))
   => (LET ((#:G927 (WHEN (EVENP X) X)))
-         (OR #:G927 (PROGN (+ X 1))))
+	 (OR #:G927 (PROGN (+ X 1))))
   @end lisp
   "
   (let ((ret (gensym)))
@@ -315,9 +325,9 @@ Example:
   @lisp
   > (macroexpand-1
       `(when-let (parity (evenp x))
-             (+ x 1)))
+	     (+ x 1)))
   => (LET ((PARITY (EVENP X)))
-        (WHEN PARITY (+ X 1)))
+	(WHEN PARITY (+ X 1)))
   @end lisp
   "
   (check-type var symbol)
@@ -334,12 +344,12 @@ Example:
   @lisp
   > (macroexpand-1
       `(if-let (parity (evenp x))
-             (+ x 1)
-             x))
+	     (+ x 1)
+	     x))
   => (LET ((PARITY (EVENP X)))
-        (IF PARITY
-           (+ X 1)
-           X))
+	(IF PARITY
+	   (+ X 1)
+	   X))
   @end lisp
   "
   (check-type var symbol)
@@ -374,7 +384,7 @@ Example:
   @lisp
   > (macroexpand-1 `(macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))))
   =>   (LAMBDA (X Y Z)
-           (LIST '+ (LIST 'SIN X) Y (LIST 'APPLY (LIST 'FUNCTION 'COS) (LIST 'LIST Z))))
+	   (LIST '+ (LIST 'SIN X) Y (LIST 'APPLY (LIST 'FUNCTION 'COS) (LIST 'LIST Z))))
   T
 
   > (funcall (macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))) 'a 'b 'c)
@@ -385,7 +395,7 @@ Example:
   (destructuring-bind (labd args &rest body) lambda-func
     (assert (eq labd 'lambda))
     `(lambda ,args ,@(cdr (unquote-args body args)))))
-    
+
 (defmacro looped-mapcar ((func lst) &rest body)
   "
   A macro to use when caught between the efficiency of imperative looping, and
@@ -401,11 +411,11 @@ Example:
       `(looped-mapcar (lmap '(1 2 3 4 5 6 7 8 9 10))
 			(cons (lmap #'even) (lmap #'(lambda (x) (+ x 1))))))
   => (LET ((#:|lst1118| '(1 2 3 4 5 6 7 8 9 10)))
-        (LOOP FOR #:|ele1117| IN #:|lst1118|
-            COLLECT (FUNCALL #'(LAMBDA (X) (+ X 1))
-                             #:|ele1117|) INTO #:|collect1116|
-            COLLECT (FUNCALL #'EVEN #:|ele1117|) INTO #:|collect1115|
-            FINALLY (RETURN (PROGN (CONS #:|collect1115| #:|collect1116|)))))
+	(LOOP FOR #:|ele1117| IN #:|lst1118|
+	    COLLECT (FUNCALL #'(LAMBDA (X) (+ X 1))
+			     #:|ele1117|) INTO #:|collect1116|
+	    COLLECT (FUNCALL #'EVEN #:|ele1117|) INTO #:|collect1115|
+	    FINALLY (RETURN (PROGN (CONS #:|collect1115| #:|collect1116|)))))
   @end lisp
   "
   (let ((ret nil))
@@ -453,7 +463,7 @@ Example:
   @lisp
   > (macroexpand-1
       `(inlining
-         (defun sum (a b) (+ a b))))
+	 (defun sum (a b) (+ a b))))
   => (PROGN (DECLAIM (INLINE SUM)) (DEFUN SUM (A B) (+ A B)))
   "
   `(progn ,@(loop :for def :in definitions :when (eq (first def) 'defun) :collect
@@ -482,7 +492,7 @@ Example:
   @lisp
   > (macroexpand-1
       `(with-optimization (:speed 2 :safety 3)
-          (+ 1d0 2d0)))
+	  (+ 1d0 2d0)))
   => (LOCALLY (DECLARE (OPTIMIZE (SPEED 2) (SAFETY 3))) (+ 1.0d0 2.0d0))
   @end lisp
   "
@@ -492,9 +502,9 @@ Example:
 						    (loop :for ele :in args
 						       :counting t :into cnt
 						       :if (oddp cnt)
-						         :collect ele into key
+							 :collect ele into key
 						       :else
-						         :collect (progn (assert (member ele '(0 1 2 3))) ele) into val
+							 :collect (progn (assert (member ele '(0 1 2 3))) ele) into val
 						       :finally (return (values key val))))))
 	 (when (and (consp (car forms)) (eq (caar forms) 'declare))
 	   (cdar forms)))
