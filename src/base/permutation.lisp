@@ -31,11 +31,23 @@
 (definline pidxv (&rest contents)
   (make-array (length contents) :element-type 'pindex-type :initial-contents contents))
 
-;;Write a uniform randomiser
-(defun seqrnd (seq)
+(defun pick-random (k n)
+  (let ((ret nil)
+	(perm (allocate-pindex-store k)))
+    (loop :for i :from 0 :below k
+       :do (let ((sd (random (- n i))))
+	     (loop :for ele :in ret
+		:do (if (> ele sd) (return) (incf sd)))
+	     (setf (aref perm i) sd)
+	     (setf ret (merge 'list (list sd) ret #'<))))
+    (values ret perm)))
+
+(defun shuffle (seq)
   "Randomize the elements of a sequence. Destructive on SEQ."
-  (sort seq #'> :key #'(lambda (x) (declare (ignore x))
-			       (random 1.0))))
+  (let* ((len (length seq))
+	 (perm (nth-value 1 (pick-random len len))))
+    (apply-action! seq perm)))
+#+nil(sort seq #'> :key #'(lambda (x) (declare (ignore x)) (random 1.0)))
 
 ;;Class definitions----------------------------------------------;;
 (defclass permutation ()
