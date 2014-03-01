@@ -2,6 +2,10 @@
 
 ;;diagonal-copy
 ;; i, j; must be indices in some tensor.
+;; (with-tensors ((a .. :type real-tensor)
+;; 	       (b .. :type real-tensor))
+;;   :do (forall (i j) :st (= i j) :do (setf (ref a i j) (ref b i j))))
+
 (defparameter *code*
   `((forall (i j) :st (= i j) :do (setf (ref a i j) (ref b i j)))
     (forall (i j) :st (= i j) :do (setf (ref a i j) (ref b i j)))
@@ -12,6 +16,12 @@
     ((forall a b c) (i j) :do (setf (ref a i j) (+ (* alpha (sum (k) (* (ref b i k) (ref c k i)))) (* beta (ref a i j)))))
     ;;mod-loop
     (forall (&rest idx) :order :col-major :st (< idx (dimensions a)) :do (setf (ref a idx) (ref b idx)))))
+
+;; `(let (,@stores
+;;        ,@dimensions
+;;        ,@strides
+;;        ,@heads)
+   
 
 (defparameter *expr*
   (mapcar #'(lambda (x) (find-tag x :do)) *code*))

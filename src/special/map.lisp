@@ -7,7 +7,7 @@
    (MAPSOR! func x y)
 
    Purpose
-   =======
+   =======  
    Applies the function element-wise on x, and sets the corresponding
    elements in y to the value returned by the function.
 
@@ -28,15 +28,16 @@
     (compile-and-eval
      `(defmethod mapsor! ((func function) (x ,clx) (y ,cly))
 	(let ((sto-x (store x))
-	      (sto-y (store y)))
+	      (sto-y (store y))
+	      (idxlst (make-list (order x))))
 	  (declare (type ,(store-type clx) sto-x)
-		   (type ,(store-type cly) sto-y))
-	  (very-quickly
+		   (type ,(store-type cly) sto-y))	  
+	  (very-quickly	    
 	    (mod-dotimes (idx (dimensions x))
 	      :with (linear-sums
 		     (of-x (strides x))
 		     (of-y (strides y)))
-	      :do (t/store-set ,cly (funcall func (t/store-ref ,clx sto-x of-x)) sto-y of-y))))
+	      :do (t/store-set ,cly (funcall func (lvec->list! idx idxlst) (t/store-ref ,clx sto-x of-x) (t/store-ref ,cly sto-y of-y)) sto-y of-y))))
 	y)))
   (mapsor! func x y))
 

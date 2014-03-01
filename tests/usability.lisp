@@ -1,28 +1,26 @@
 (defpackage #:mpc
   (:use (:cl :matlisp)))
 
-(defun pcart-field (time y &optional (ydot (real-typed-zeros (dimensions y))))
+(defun pcart-field (time y &optional (ydot (zeros (dims y))))
   (declare (ignore time))
   (assert (= 4 (length (store y)) (length (store ydot))) nil "nooo!")
-  (let*-typed ((sto-y (store y) :type real-store-vector)
-	       (sto-yd (store ydot) :type real-store-vector)
-	       (theta (aref sto-y 1) :type double-float)
-	       (xdot (aref sto-y 2) :type double-float)
-	       (thetadot (aref sto-y 3) :type double-float))
-	      (very-quickly
-		(setf (aref sto-yd 0) xdot
-		      (aref sto-yd 1) thetadot
-		      (aref sto-yd 2) (/ (+ (* (cos theta) (sin theta)) (* (sin theta) (expt thetadot 2))) (- 2 (expt (cos theta) 2)))
-		      (aref sto-yd 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2)))))
+  (let* ((theta (ref y 1))
+	 (xdot (ref y 2))
+	 (thetadot (ref y 3)))
+    (with-marking
+	(setf (ref ydot 0) xdot
+	      (ref ydot 1) thetadot
+	      (ref ydot 2) (/ (+ (* (:memo (cos theta)) (:memo (sin theta))) (* (:memo (sin theta)) (expt thetadot 2))) (- 2 (expt (:memo (cos theta)) 2)))
+	      (ref ydot 3) (/ (+ (* 2 (:memo (sin theta)) (* (:memo (cos theta)) (:memo (sin theta)) (expt thetadot 2))) (- (expt (:memo (cos theta)) 2) 2))))))
   ydot)
 
 (defun rk4-stepper (field dim)
   (compile-and-eval
-   `(let ((k1 (make-real-tensor ,dim))
-	  (k2 (make-real-tensor ,dim))
-	  (k3 (make-real-tensor ,dim))
-	  (k4 (make-real-tensor ,dim))
-	  (xtmp (make-real-tensor ,dim)))
+   `(let ((k1 (zeros ,dim))
+	  (k2 (zeros ,dim))
+	  (k3 (zeros ,dim))
+	  (k4 (zeros ,dim))
+	  (xtmp (zeros ,dim)))
       (lambda (dtm tm x0)
 	(declare (type double-float dtm tm)
 		 (type real-tensor x0))

@@ -112,7 +112,7 @@ of a matrix (default 0)
 
 (defmethod print-object ((tensor sparse-tensor) stream)
   (print-unreadable-object (tensor stream :type t)
-    (format stream (if (slot-value tensor 'parent-tensor)
-		       "~A~,4T:DISPLACED"
-		       "~A")
-	    (dimensions tensor))))
+    (format stream
+	    (string+ "~A, store-size: ~A"
+		     (if (slot-value tensor 'parent-tensor) ",4T:DISPLACED" ""))
+	    (dimensions tensor) (store-size tensor))))

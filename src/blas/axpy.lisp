@@ -100,7 +100,7 @@
   Same as AXPY except that the result
   is stored in Y and Y is returned.
 ")
-  (:method :before ((alpha number) (x standard-tensor) (y standard-tensor))
+  (:method :before ((alpha number) (x base-tensor) (y base-tensor))
     (assert (lvec-eq (dimensions x) (dimensions y) #'=) nil
 	    'tensor-dimension-mismatch)))
 

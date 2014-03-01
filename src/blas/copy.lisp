@@ -120,7 +120,7 @@
 	 ,y))))
 
 ;;
-(defmethod copy! :before ((x standard-tensor) (y standard-tensor))
+(defmethod copy! :before ((x base-tensor) (y base-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 
@@ -178,3 +178,4 @@
     ((or (not type) (subtypep type 'standard-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)))))
        (copy! tensor ret)))))
+  
