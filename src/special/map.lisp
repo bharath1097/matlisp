@@ -1,19 +1,29 @@
 (in-package #:matlisp)
 
 (defgeneric mapsor! (func x y)
-  (:documentation "
-   Syntax
-   ======
-   (MAPSOR! func x y)
+  (:documentation
+"
+    Syntax
+    ======
+    (MAPSOR! func x y)
 
-   Purpose
-   =======  
-   Applies the function element-wise on x, and sets the corresponding
-   elements in y to the value returned by the function.
+    Purpose
+    =======  
+    Applies the function element-wise on x, and sets the corresponding
+    elements in y to the value returned by the function.
 
-   Example
-   =======
-   > (mapsor! #'sin (randn '(2 2)) (zeros '(2 2)))
+    Example
+    =======
+    > (mapsor! #'(lambda (idx x y)
+		  (if (= (car idx) (cadr idx))
+		      (sin x)
+		      y))
+       (randn '(2 2)) (zeros '(2 2)))
+    #<REAL-TENSOR #(2 2)
+    -9.78972E-2  0.0000     
+     0.0000     -.39243     
+    >
+    >
 ")
   (:method :before ((func function) (x standard-tensor) (y standard-tensor))
 	   (assert (very-quickly (lvec-eq (dimensions x) (dimensions y))) nil 'tensor-dimension-mismatch)))
@@ -27,23 +37,38 @@
 	    nil 'tensor-abstract-class :tensor-class (list clx cly))
     (compile-and-eval
      `(defmethod mapsor! ((func function) (x ,clx) (y ,cly))
-	(let ((sto-x (store x))
-	      (sto-y (store y))
-	      (idxlst (make-list (order x))))
-	  (declare (type ,(store-type clx) sto-x)
-		   (type ,(store-type cly) sto-y))	  
-	  (very-quickly	    
-	    (mod-dotimes (idx (dimensions x))
-	      :with (linear-sums
-		     (of-x (strides x))
-		     (of-y (strides y)))
-	      :do (t/store-set ,cly (funcall func (lvec->list! idx idxlst) (t/store-ref ,clx sto-x of-x) (t/store-ref ,cly sto-y of-y)) sto-y of-y))))
+	(let-typed ((sto-x (store x) :type ,(store-type clx))
+		    (sto-y (store y) :type ,(store-type cly)))
+	  (mod-dotimes (idx (dimensions x))
+	    :with (linear-sums
+		   (of-x (strides x) (head x))
+		   (of-y (strides y) (head y)))
+	    :do (t/store-set ,cly (funcall func (lvec->list idx) (t/store-ref ,clx sto-x of-x) (t/store-ref ,cly sto-y of-y)) sto-y of-y)))
 	y)))
   (mapsor! func x y))
 
-(definline mapsor (func x)
-  (let ((ret (zeros (dimensions x) (class-of x))))
-    (mapsor! func x ret)))
+(defmethod mapsor! ((func function) (x standard-tensor) (y standard-tensor))
+  (let ((clx (class-name (class-of x)))
+	(cly (class-name (class-of y))))
+    (assert (and
+	     (member clx *tensor-type-leaves*)
+	     (member cly *tensor-type-leaves*))
+	    nil 'tensor-abstract-class :tensor-class (list clx cly))
+    (compile-and-eval
+     `(defmethod mapsor! ((func function) (x ,clx) (y ,cly))
+	(let-typed ((sto-x (store x) :type ,(store-type clx))
+		    (sto-y (store y) :type ,(store-type cly)))
+	  (mod-dotimes (idx (dimensions x))
+	    :with (linear-sums
+		   (of-x (strides x) (head x))
+		   (of-y (strides y) (head y)))
+	    :do (t/store-set ,cly (funcall func (lvec->list idx) (t/store-ref ,clx sto-x of-x) (t/store-ref ,cly sto-y of-y)) sto-y of-y)))
+	y)))
+  (mapsor! func x y))
+
+(definline mapsor (func x &optional output-type)
+  (let ((ret (zeros (dimensions x) (or output-type (class-of x)))))
+    (mapsor! #'(lambda (idx x y) (declare (ignore y)) (funcall func idx x)) x ret)))
 ;;
 
 (defun mapslice (func x &optional (axis 0))

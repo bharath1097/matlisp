@@ -126,12 +126,15 @@
 			 (:file "blas-helpers"
 				:depends-on ("standard-tensor" "permutation"))
 			 (:file "print"
-				:depends-on ("standard-tensor"))))
+				:depends-on ("base-tensor" "standard-tensor"))
+			 (:file "coordinate-sparse")
+			 (:file "compressed-sparse")))
 
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
 	    :components ((:file "numeric")
+			 (:file "sparse")
 			 #+maxima
 			 (:file "symbolic-tensor")
 			 (:file "matrix"

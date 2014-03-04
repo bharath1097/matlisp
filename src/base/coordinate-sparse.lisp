@@ -12,9 +12,9 @@
 (deft/method t/sparse-fill (sym sparse-tensor) ()
  `(t/fid+ (t/field-type ,sym)))
 
-(deft/method t/store-allocator (sym coordinate-sparse-tensor) (size &optional initial-element)
+(deft/method t/store-allocator (sym coordinate-sparse-tensor) (size &optional nz)
   (with-gensyms (size-sym)
-    `(let ((,size-sym (t/compute-store-size ,sym ,size)))
+    `(let ((,size-sym (or ,nz (min (max sb-impl::+min-hash-table-size+ (ceiling (/ ,size *default-sparsity*))) *max-sparse-size*))))
        (make-hash-table :size ,size-sym))))
 
 (deft/method t/store-ref (sym coordinate-sparse-tensor) (store &rest idx)
@@ -37,16 +37,8 @@
 (deft/method t/store-type (sym coordinate-sparse-tensor) (&optional (size '*))
   'hash-table)
 
-(deft/method t/compute-store-size (sym coordinate-sparse-tensor) (size)
- `(max (min sb-impl::+min-hash-table-size+ (ceiling (/ ,size *default-sparsity*))) *max-sparse-size*))
-
 (defmethod head ((tensor coordinate-sparse-tensor))
   0)
-;firefox;
-(defleaf real-coordinate-sparse-tensor (coordinate-sparse-tensor) ())
-
-(deft/method t/field-type (sym real-coordinate-sparse-tensor) ()
-  'double-float)
 ;;
 (defmethod ref ((tensor coordinate-sparse-tensor) &rest subscripts)
   (let ((clname (class-name (class-of tensor))))
@@ -69,14 +61,3 @@
 	  (t/store-ref ,clname sto idx))))
     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
 ;;
-
-(deft/method t/zeros (class coordinate-sparse-tensor) (dims &optional initial-element)
-  (with-gensyms (astrs adims sizs)
-    `(let* ((,adims (make-index-store ,dims)))
-       (declare (type index-store-vector ,adims))
-       (multiple-value-bind (,astrs ,sizs) (make-stride-cmj ,adims)
-	 (declare (type index-store-vector ,astrs))
-	 (make-instance ',class
-			:dimensions ,adims
-			:strides ,astrs
-			:store (t/store-allocator ,class ,sizs))))))
