@@ -30,7 +30,7 @@
 		 (lb (aref nst col) :type index-type)
 		 (ub (aref nst (1+ col)) :type index-type))
        (declare (type index-type row col))
-       (if (or (= lb ub) (< row (aref nid lb)) (> row (aref nid (1- ub)))) -1
+       (if (or (= lb ub) (< row (aref nid lb)) (> row (aref nid (1- ub)))) (values -1 row col)
 	   (values
 	    (very-quickly
 	      (loop :with j := (ash (+ lb ub) -1)
@@ -87,28 +87,63 @@
 	      (t/store-ref ,clname (store tensor) idx)))))
     (apply #'ref (cons tensor subscripts))))
 
-;; (defmethod (setf ref) (value (tensor compressed-sparse-matrix) &rest subscripts)
-;;   (let ((clname (class-name (class-of tensor))))
-;;     (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
-;;     (compile-and-eval
-;;      `(defmethod (setf ref) (value (tensor ,clname) &rest subscripts)
-;; 	(multiple-value-bind (idx row col) (compressed-sparse-indexing (if (numberp (car subscripts)) subscripts (car subscripts)) tensor)
-;; 	  (if (< idx 0)
-;; 	      (let ((ns (neighbour-start tensor))
-;; 		    (ni (neighbour-id tensor))
-;; 		    (vi (store tensor)))
-;; 		(unless (> (store-size tensor) (aref ns (1- (length ns))))
-;; 		  (let ((sto-new (make-a-bigger-array)))
-;; 		    (move-things forward)
-;; 		    copy-back-to-vi..))
-;; 		(let ((row-data (merge 'list
-;; 				       (cons row (t/coerce ,(field-type clname) value))
-;; 				       (loop :for j :from (aref ns col) :to (aref ns (1+ col))
-;; 					  :collect (cons (aref ni j) (aref vi j)))
-;; 				       #'< :key #'car)))
-		  
-		
-;; 		)
-;; 	      (t/store-set ,clname (t/coerce ,(field-type clname) value) (store tensor) idx)))))
-;;     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
-;;
+(defmethod (setf ref) (value (tensor compressed-sparse-matrix) &rest subscripts)
+  (let ((clname (class-name (class-of tensor))))
+    (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+    (compile-and-eval
+     `(defmethod (setf ref) (value (tensor ,clname) &rest subscripts)
+	(multiple-value-bind (idx row col) (compressed-sparse-indexing (if (numberp (car subscripts)) subscripts (car subscripts)) tensor)
+	  (declare (type index-type idx row col))
+	  (let-typed ((value (t/coerce ,(field-type clname) value) :type ,(field-type clname)))
+	    (if (/= value (t/fid+ ,(field-type clname)))
+	      (if (< idx 0)
+		  (let* ((ns (neighbour-start tensor))
+			 (value (t/coerce ,(field-type clname) value))
+			 (row-data (let ((ni (neighbour-id tensor))
+					 (vi (store tensor)))
+				     (merge 'list
+					    (list (cons row value))
+					    (loop :for j :from (aref ns col) :below (aref ns (1+ col))
+					       :collect (cons (aref ni j) (aref vi j)))
+					    #'< :key #'car))))
+		    (unless (> (store-size tensor) (aref ns (1- (length ns))))
+		      (destructuring-bind (ni vi) (t/store-allocator ,clname (dims tensor) (+ (store-size tensor) *default-sparse-store-increment*))
+			(let ((nio (neighbour-id tensor))
+			      (vio (store tensor)))
+			  (very-quickly
+			    (declare (type index-store-vector nio ni ns)
+				     (type ,(store-type clname) vio vi))
+			    (loop :for i :from 0 :below (aref ns col)
+			       :do (setf (aref nio i) (aref ni i)
+					 (aref vio i) (aref vi i)))
+			    (loop :for i :from (aref ns (1+ col)) :below (aref ns (1- (length ns)))
+			       :do (setf (aref nio (1+ i)) (aref ni i)
+					 (aref vio (1+ i)) (aref vi i))))
+			  (setf (slot-value tensor 'neighbour-id) ni
+				(slot-value tensor 'store) vi))))
+		    (let ((ni (neighbour-id tensor))
+			  (vi (store tensor)))
+		      (very-quickly
+			(declare (type index-store-vector ni ns)
+				 (type ,(store-type clname) vi))
+			(loop :for i :from (1+ col) :below (length ns)
+			   :do (incf (aref ns i))))
+		      (loop :for (r . v) :in row-data
+			 :for i := (aref ns col) :then (1+ i)
+			 :do (setf (aref ni i) r
+				   (aref vi i) v))))
+		  (t/store-set ,clname value (store tensor) idx))
+	      (when (>= idx 0)		
+		(let ((ns (neighbour-start tensor))
+		      (ni (neighbour-id tensor))
+		      (vi (store tensor)))
+		  (very-quickly
+		    (declare (type index-store-vector ns ni)
+			     (type ,(store-type clname) vi))
+		    (loop :for i :from idx :below (aref ns (1- (length ns)))
+		       :do (setf (aref ni i) (aref ni (1+ i))
+				 (aref vi i) (aref vi (1+ i))))
+		    (loop :for i :from (1+ col) :below (length ns)
+		       :do (decf (aref ns i)))))))
+	    value))))	      
+    (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))

@@ -1,9 +1,6 @@
 (in-package :matlisp)
 
 ;;One may to do better than a Hash-table for this.
-(defparameter *default-sparsity* 1/1000)
-(defparameter *max-sparse-size* 10000)
-
 (defclass coordinate-sparse-tensor (sparse-tensor)
   ((strides :initarg :strides :reader strides :type index-store-vector
 	    :documentation "Strides for accesing elements of the tensor.")))

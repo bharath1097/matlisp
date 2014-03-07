@@ -6,6 +6,21 @@
 ;;that you use lexical scoping to affect local changes to
 ;;code (global variables are only bad if you overwrite them :)
 
+(defparameter *default-sparse-store-increment* 100
+  "
+  Determines the increment by which the store of a compressed sparse matrix is increased,
+  when it runs out of store.")
+
+(defparameter *default-sparsity* 1/1000
+  "
+  Determines the default sparsity for a newly created sparse matrix, when the number of non-zero is
+  not specified.")
+
+(defparameter *max-sparse-size* 10000
+  "
+  Upper bounds the store size for a newly created sparse matrix, when the number of non-zero is
+  not specified.")
+
 ;;Default ordering of strides
 (defparameter *default-stride-ordering* :col-major
   "
