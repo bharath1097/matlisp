@@ -115,12 +115,17 @@
 			     (error "Undefined template : ~a~%" ',name)))
 	      (,meth-sym (getf ,data-sym :methods))
 	      (,afun-sym (lambda (,(if single? disp-vars disp-sym) ,@args)
-			   ,(recursive-append 
+			   (declare (ignorable ,@(remove-if #'(lambda (x) (char= #\& (aref (symbol-name x) 0)))
+							    (mapcar #'(lambda (x) (if (consp x) (car x) x))
+								    (cons (if single? disp-vars disp-sym) args)))))
+			   ,(recursive-append
 			     (unless single?
-			       `(destructuring-bind (,@disp-vars) ,disp-sym))
+			       `(destructuring-bind (,@disp-vars) ,disp-sym
+				  (declare (ignorable ,@disp-vars))))
 			     `(progn
 				,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
+	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
 	 (setf ,meth-sym (topological-sort (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
