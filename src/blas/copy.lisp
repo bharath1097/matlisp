@@ -124,7 +124,7 @@
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 	  'tensor-dimension-mismatch))
 
-(defmethod :before copy! ((a sparse-tensor) (b sparse-tensor))
+(defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (< (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
 (defmethod copy! ((x standard-tensor) (y standard-tensor))

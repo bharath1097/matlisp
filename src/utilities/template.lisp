@@ -6,6 +6,37 @@
 
 (defvar *template-table* (make-hash-table))
 
+(defun topological-sort (lst func &optional (test #'eql))
+  (multiple-value-bind (nlst len) (loop :for ele :in lst
+				     :for i := 0 :then (1+ i)
+				     :collect (cons i ele) :into ret
+				     :finally (return (values ret (1+ i))))
+    (let* ((S nil)
+	   (graph (let ((ret (make-array len)))
+		    (loop :for (i . ele) :in nlst
+		       :do (let ((children (mapcar #'car (remove-if-not #'(lambda (x) (and (not (funcall test (cdr x) ele)) (funcall func (cdr x) ele))) nlst)))
+				 (parents (mapcar #'car (remove-if-not #'(lambda (x) (and (not (funcall test (cdr x) ele)) (funcall func ele (cdr x)))) nlst))))
+			     (when (null parents)
+			       (push i S))
+			     (setf (aref ret i) (list ele children parents))))
+		    ret))
+	   (ordering nil))
+    (let ((last-S (last S)))
+      (do ((slst S (cdr slst)))
+	  ((null slst))
+	(let* ((i (car slst))
+	       (children (second (aref graph i))))
+	  (mapcar #'(lambda (x)
+		      (let ((par (third (aref graph x))))
+			(let ((par (remove i par)))
+			  (setf (third (aref graph x)) par)
+			  (when (null par)
+			    (setf (cdr last-S) (cons x nil)
+				  last-S (cdr last-S))))))
+		  children)
+	  (push i ordering))))
+    (mapcar #'(lambda (x) (car (aref graph x))) ordering))))
+
 (defun match-lambda-lists (lsta lstb)
   (let ((optional? nil))
     (labels ((optp? (a b)
@@ -90,7 +121,7 @@
 			     `(progn
 				,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
-	 (setf ,meth-sym (sort (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
+	 (setf ,meth-sym (topological-sort (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
 
