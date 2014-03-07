@@ -133,7 +133,7 @@
 			 :do (setf (aref ni i) r
 				   (aref vi i) v))))
 		  (t/store-set ,clname value (store tensor) idx))
-	      (when (>= idx 0)		
+	      (when (>= idx 0)
 		(let ((ns (neighbour-start tensor))
 		      (ni (neighbour-id tensor))
 		      (vi (store tensor)))
@@ -145,5 +145,5 @@
 				 (aref vi i) (aref vi (1+ i))))
 		    (loop :for i :from (1+ col) :below (length ns)
 		       :do (decf (aref ns i)))))))
-	    value))))	      
+	    value))))
     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
