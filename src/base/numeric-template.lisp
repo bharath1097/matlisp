@@ -92,7 +92,8 @@
 ;;This one is hard to get one's brain around.
 (deft/generic (t/strict-coerce
 	       #'(lambda (a b) (strict-compare (list #'subtypep #'(lambda (x y) (subtypep y x))) a b))
-	       #'(lambda (a b) (dict-compare (list #'subtypep #'subtypep) b a)))
+	       #'(lambda (a b) (dict-compare (list #'subtypep #'subtypep) b a))
+	       sort)
     (from to) (val))
 
 ;;Anything can be coerced into type "t"
@@ -129,4 +130,3 @@
 ;; (t/strict-coerce (fixnum fixnum) x) -> error: template not defined
 ;; (t/strict-coerce (fixnum real) x) -> (COERCE X 'REAL)
 ;; (t/strict-coerce (double-float t) x) -> X
-;; (t/strict-coerce (fixnum (complex integer)) x) -> (COERCE X '(COMPLEX INTEGER))
