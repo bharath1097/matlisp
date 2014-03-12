@@ -84,7 +84,7 @@
     (funcall (if (single-argp name) #'funcall #'mapcar)
 	     #'macroexpand-1 args)))
 ;;
-(defmacro deft/generic ((name predicate &optional sorter) disp args)
+(defmacro deft/generic ((name predicate &optional sorter (sort-function 'topological-sort)) disp args)
   (when (consp disp)
     (assert (null (remove-if-not #'(lambda (x) (member x cl:lambda-list-keywords)) disp)) nil "dispatch list contains keywords."))
   (with-gensyms (warg-sym disp-sym meth-sym pred-sym)
@@ -93,7 +93,7 @@
 	    (values `(&whole ,disp-sym ,@disp) disp-sym)
 	    (values disp disp))
       `(eval-when (:compile-toplevel :load-toplevel :execute)
-	 (setf (gethash ',name *template-table*) (list :lambda-list (list ',disp ',args) :predicate ,predicate :sorter ,(or sorter predicate) :methods nil))
+	 (setf (gethash ',name *template-table*) (list :lambda-list (list ',disp ',args) :predicate ,predicate :sorter ,(or sorter predicate) :methods nil :sort-function ',sort-function))
 	 (defmacro ,name (&whole ,warg-sym ,disp-arg ,@args)
 	   (declare (ignore ,@(remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args) ,@(when (consp disp) disp)))
 	   (let* ((,pred-sym (preprocess-t/dispatch ',name ,disp-far))
@@ -115,7 +115,7 @@
 			     (error "Undefined template : ~a~%" ',name)))
 	      (,meth-sym (getf ,data-sym :methods))
 	      (,afun-sym (lambda (,(if single? disp-vars disp-sym) ,@args)
-			   (declare (ignorable ,@(remove-if #'(lambda (x) (char= #\& (aref (symbol-name x) 0)))
+			   (declare (ignorable ,@(remove-if #'(lambda (x) (member x cl:lambda-list-keywords))
 							    (mapcar #'(lambda (x) (if (consp x) (car x) x))
 								    (cons (if single? disp-vars disp-sym) args)))))
 			   ,(recursive-append
@@ -126,7 +126,7 @@
 				,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
 	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
-	 (setf ,meth-sym (topological-sort (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
+	 (setf ,meth-sym (,(getf data :sort-function) (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
 
