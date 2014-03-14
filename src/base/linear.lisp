@@ -8,8 +8,8 @@
    (store :initarg :store :reader store :type vector
     :documentation "The actual storage for the tensor.")))
 
-(declaim (ftype (function (linear-store) index-store-vector) strides)
-	 (ftype (function (linear-store) index-type) head))
+(declaim (ftype (function (base-tensor) index-store-vector) strides)
+	 (ftype (function (base-tensor) index-type) head))
 
 ;;
 (defun store-indexing-vec (idx hd strides dims)

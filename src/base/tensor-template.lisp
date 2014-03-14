@@ -33,6 +33,15 @@
 (deft/generic (t/store-ref #'subtypep) sym (store &rest idx))
 (deft/generic (t/store-set #'subtypep) sym (value store &rest idx))
 
+(define-setf-expander t/store-ref (sym store &rest idx &environment env)
+  (multiple-value-bind (dummies vals newval setter getter)
+      (get-setf-expansion store env)
+    (with-gensyms (nval)
+      (values dummies
+	      vals
+	      `(,nval)
+	      `(t/store-set ,sym ,nval ,getter ,@idx)
+	      `(t/store-get ,sym ,getter ,@idx)))))
 ;;standard-tensor specific.
 
 ;;Beware of infinite loops here.
