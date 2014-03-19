@@ -137,7 +137,7 @@
 		:finally (return t))))
 
 ;;
-(defun subtensor~ (tensor subscripts &optional (preserve-rank nil))
+(defun subtensor~ (tensor subscripts &optional (preserve-rank nil) (ref-single-element? t))
   "
   Syntax
   ======
@@ -213,22 +213,42 @@
 				     (when (/= start 0)
 				       (incf nhd (the index-type (* start (aref stds i)))))))
 		    :finally (return
-			       (if (= nrank 0) (store-ref tensor nhd)
-				   (let ((*check-after-initializing?* nil))
-				     (make-instance (class-of tensor)
-						    :head nhd
-						    :dimensions (very-quickly (vectorify (the index-store-vector ndims) nrank 'index-type))
-						    :strides (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type))
-						    :store (store tensor)
-						    :parent-tensor tensor))))))))
+			       (let ((nrank? (= nrank 0)))
+				 (if (and ref-single-element? nrank?) (store-ref tensor nhd)
+				     (let ((*check-after-initializing?* nil))
+				       (make-instance (class-of tensor)
+						      :head nhd
+						      :dimensions (if nrank?
+								      (make-index-store (list 1))
+								      (very-quickly (vectorify (the index-store-vector ndims) nrank 'index-type)))
+						      :strides (if nrank?
+								   (make-index-store (list 1))
+								   (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type)))
+						      :store (store tensor)
+						      :parent-tensor tensor)))))))))
 
-(definline slice~ (x axis &optional (idx 0))
+(definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
   (let ((slst (make-list (order x) :initial-element '(* * *))))
     (rplaca (nthcdr axis slst) (list idx '* (1+ idx)))
-    (subtensor~ x slst nil)))
+    (subtensor~ x slst preserve-rank? nil)))
 
 (definline row-slice~ (x idx)
   (slice~ x 0 idx))
 
 (definline col-slice~ (x idx)
   (slice~ x 1 idx))
+;;
+  
+(defun tensor-append (axis tensor &rest more-tensors)
+  (let ((dims (copy-seq (dimensions tensor))))
+    (loop :for ele :in more-tensors
+       :do (incf (aref dims axis) (aref (dimensions ele) axis)))    
+    (let* ((ret (zeros dims))
+	   (view (slice~ ret axis 0 t)))      
+      (loop :for ele :in (cons tensor more-tensors)
+	 :and head := 0 :then (+ head (* (aref (strides ret) axis) (aref (dimensions ele) axis)))
+	 :do (progn
+	       (setf (slot-value view 'head) head
+		     (aref (dimensions view) axis) (aref (dimensions ele) axis))
+	       (copy! ele view)))
+      ret)))

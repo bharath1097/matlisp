@@ -49,7 +49,7 @@
 
 (definline mapsor (func x &optional output-type)
   (let ((ret (zeros (dimensions x) (or output-type (class-of x)))))
-    (mapsor! #'(lambda (idx x y) (declare (ignore y)) (funcall func idx x)) x ret)))
+    (mapsor! #'(lambda (idx x y) (declare (ignore idx y)) (funcall func x)) x ret)))
 
 ;;
 (defmacro dorefs ((idx dims) (&rest ref-decls) &rest body)

@@ -6,10 +6,10 @@
 (deft/method t/blas-gemm-func (sym complex-tensor) ()
   'zgemm)
 ;;
-(deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa transb))
+(deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa opa opb))
 
-(deft/method t/blas-gemm! (sym blas-numeric-tensor) (alpha A lda B ldb beta C ldc transa transb)
-  (using-gensyms (decl (alpha A lda B ldb beta C ldc transa transb))
+(deft/method t/blas-gemm! (sym blas-numeric-tensor) (alpha A lda B ldb beta C ldc transa opa opb)
+  (using-gensyms (decl (alpha A lda B ldb beta C ldc transa opa opb))
     (with-gensyms (m n k)
       `(let* (,@decl
 	      (,m (aref (the index-store-vector (dimensions ,C)) 0))
@@ -18,9 +18,9 @@
 	 (declare (type ,sym ,A ,B ,C)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
-		  (type character ,transa ,transb))
+		  (type character ,transa ,opa ,opb))
 	 (,(macroexpand-1 `(t/blas-gemm-func ,sym))
-	   ,transa ,transb
+	   ,opa ,opb
 	   ,m ,n ,k
 	   ,alpha
 	   (the ,(store-type sym) (store ,A)) ,lda
@@ -126,10 +126,10 @@
        ,(recursive-append
 	 (when (subtypep (cl c) 'blas-numeric-tensor)
 	   `(if (call-fortran? C (t/l3-lb ,(cl c)))			
-		(with-columnification (,(cl a) ((a joba) (b jobb)) (c))
+		(with-columnification (((a joba) (b jobb)) (c))
 		  (multiple-value-bind (lda opa) (blas-matrix-compatiblep a joba)
 		    (multiple-value-bind (ldb opb) (blas-matrix-compatiblep b jobb)
-		      (t/blas-gemm! ,(cl a) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) opa opb))))))
+		      (t/blas-gemm! ,(cl a) alpha A lda B ldb beta C (or (blas-matrix-compatiblep c #\N) 0) joba opa opb))))))
 	 `(t/gemm! ,(cl a) alpha A B beta C joba jobb))))
   'C)
 ;;---------------------------------------------------------------;;

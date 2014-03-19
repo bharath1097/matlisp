@@ -70,7 +70,7 @@ set term ~a
 	 :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
     (gnuplot-send (string+ "splot \'" fname "\'
 "))))
-	 
+
 ;; (defclass gnuplot-plot-info ()
 ;;   ((title
 ;;     :initform "GNU PLOT"

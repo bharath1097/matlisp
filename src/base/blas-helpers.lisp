@@ -49,36 +49,37 @@
 	       (cs (aref stds 1) :type index-type))
     ;;Note that it is not required that (rs = nc * cs) or (cs = nr * rs)
     (cond
-      ((and (char/= op #\C) (= cs 1)) (values rs (fortran-nop op) :row-major))
-      ((= rs 1) (values cs op :col-major)))))
+      ;;The ordering of these conditions is important to meet certain assumed conditions
+      ;;in GEMM, when MATRIX has strides of the form #(1 1).
+      ((= rs 1) (values cs op :col-major))
+      ((and (char/= op #\C) (= cs 1)) (values rs (fortran-nop op) :row-major)))))
 
 (definline call-fortran? ( x lb)
   (declare (type standard-tensor x))
   (> (size x) lb))
 
-(defmacro with-columnification ((type (&rest input) (&rest output)) &rest body)
-  (with-gensyms (cfunc)
-    (let ((input-syms (mapcar #'(lambda (x)
-				  (assert (or (symbolp (second x)) (characterp (second x))) nil "Given a non-symbolic input.")
-				  (gensym (symbol-name (car x)))) input))
-	  (output-syms (mapcar #'(lambda (mat) (gensym (symbol-name mat))) output)))
-      `(labels ((,cfunc (a &optional b)
-		  (declare (type ,type a))
-		  (let ((ret (or b (let ((*default-stride-ordering* :col-major)) (t/zeros ,type (the index-store-vector (dimensions a)))))))
-		    (declare (type ,type a ret))
-		    (t/copy! (,type ,type) a ret))))
-	 (let (,@(mapcar #'(lambda (x sym) (let ((mat (first x)) (job (second x)))
-					     `(,sym (if (blas-matrix-compatiblep ,mat ,job) ,mat
-							(,cfunc ,mat))))) input input-syms)
-	       ,@(mapcar #'(lambda (mat sym) `(,sym (if (eql (third (multiple-value-list (blas-matrix-compatiblep ,mat #\N))) :col-major) ,mat
-							(,cfunc ,mat)))) output output-syms))
-	   (declare (type ,type ,@(append input-syms output-syms)))
-	   (symbol-macrolet (,@(mapcar #'(lambda (mat sym) `(,mat ,sym)) (append (mapcar #'car input) output) (append input-syms output-syms)))
-	     ,@body)
-	   ,@(mapcar #'(lambda (mat sym) `(unless (eql (third (multiple-value-list (blas-matrix-compatiblep ,mat #\N))) :col-major)
-	   				    (,cfunc ,sym ,mat))) output output-syms)
-	   nil)))))
+(defmacro with-rowm (&rest body)
+  `(let ((*default-stride-ordering* :row-major))
+     ,@body))
 
+(defmacro with-colm (&rest body)
+  `(let ((*default-stride-ordering* :col-major))
+     ,@body))
+
+(defmacro with-columnification (((&rest input) (&rest output)) &rest body)
+  (let ((input-syms (mapcar #'(lambda (x) (gensym (symbol-name (car x)))) input))
+	(output-syms (mapcar #'(lambda (mat) (gensym (symbol-name mat))) output)))
+    (with-gensyms (stack)
+      `(let ((,stack nil))
+	 (let (,@(mapcar #'(lambda (x sym) (destructuring-bind (mat job) x
+					     `(,sym (if (blas-matrix-compatiblep ,mat ,job) ,mat (with-colm (copy ,mat))))))
+			 input input-syms)
+	       ,@(mapcar #'(lambda (mat sym) `(,sym (if (eql (nth-value 2 (blas-matrix-compatiblep ,mat #\N)) :col-major) (progn (push nil ,stack) ,mat)
+							(with-colm (push t ,stack) (copy ,mat))))) output output-syms))
+	 (symbol-macrolet (,@(mapcar #'(lambda (mat sym) `(,mat ,sym)) (append (mapcar #'car input) output) (append input-syms output-syms)))
+	   ,@body)
+	 ,@(mapcar #'(lambda (mat sym) `(when (pop ,stack) (copy! ,sym ,mat))) (reverse output) (reverse output-syms))
+	 nil)))))
 
 (definline pflip.f->l (uidiv)
   (declare (type (simple-array (unsigned-byte 32) (*)) uidiv))

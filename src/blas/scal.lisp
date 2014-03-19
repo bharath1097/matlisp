@@ -132,7 +132,9 @@
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
   (:method ((alpha standard-tensor) (x t))
     ;;We assume commutation of course.
-    (scal! x (copy alpha))))
+    (scal! x (copy alpha)))
+  (:method ((alpha complex) (x real-numeric-tensor))
+    (scal! alpha (copy x 'complex-tensor))))
 
 ;;These should've been auto-generated.
 (defgeneric div! (alpha x)
