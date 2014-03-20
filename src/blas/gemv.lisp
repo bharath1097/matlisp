@@ -30,7 +30,6 @@
 ;;
 (deft/generic (t/gemv! #'subtypep) sym (alpha A x beta y transp))
 
-;;Witness the power of macros, muggles! :)
 (deft/method t/gemv! (sym standard-tensor) (alpha A x beta y transp)
   (using-gensyms (decl (alpha A x beta y transp))
    `(let (,@decl)
@@ -38,7 +37,7 @@
 	       (type ,(field-type sym) ,alpha ,beta)
 	       (type character ,transp))
       (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
-	(t/scdi! ,sym ,beta ,y :scal? t :numx? t))
+	(scal! ,beta ,y))
       ,@(when (field-realp (field-type sym))
 	      `((when (char= ,transp #\C) (setq ,transp #\T))))
       ;;These loops are optimized for column major matrices

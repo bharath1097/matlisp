@@ -6,7 +6,7 @@
 				  (pathname "/opt/local/bin/gnuplot")
 				  #+linux
 				  (pathname "/usr/bin/gnuplot"))
-			      (terminal "wxt"))
+			      (terminal "x11"))
   (setf *current-gnuplot-process* (#+:sbcl
 				   sb-ext:run-program
 				   #+:ccl

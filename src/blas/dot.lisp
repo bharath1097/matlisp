@@ -76,7 +76,7 @@
 					   ,(if num-y? y `(t/store-ref ,sym ,sto-y ,of-y))))
 			  ,of-x (+ ,of-x ,stp-x)
 			  ,@(unless num-y? `(,of-y (+ ,of-y ,stp-y))))))
-	   ,dot)))))dsddd
+	   ,dot)))))
 ;;---------------------------------------------------------------;;
 (defgeneric dot (x y &optional conjugate-p)
   (:documentation

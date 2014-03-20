@@ -12,6 +12,9 @@
 (deft/method t/field-type (sym integer-tensor) ()
   'integer)
 
+(defleaf fixnum-tensor (numeric-tensor) ())
+(deft/method t/field-type (sym fixnum-tensor) ()
+  'fixnum)
 ;;
 (defclass blas-numeric-tensor (numeric-tensor) ())
 (deft/generic (t/l1-lb #'subtypep) sym ())

@@ -375,14 +375,13 @@
   (incx :integer :input)
   )
 
-#|
+#+nil
 (def-fortran-routine zrotg :void
   (ca (* :complex-double-float) :output)
   (cb (* :complex-double-float) :output)
   (c :double-float :output)
   (s (* :complex-double-float) :output)
   )
-|#
 
 (def-fortran-routine zscal :void
  "
@@ -1154,12 +1153,12 @@
   (m :integer )
   (n :integer )
   (alpha :double-float )
-  (x (* :double-float) )
+  (x (* :double-float :inc head-x) )
   (incx :integer )
-  (y (* :double-float) )
+  (y (* :double-float :inc head-y) )
   (incy :integer )
-  (a (* :double-float) :output)
-  (lda :integer )
+  (a (* :double-float :inc head-a) :output)
+  (lda :integer)
 )
 
 (def-fortran-routine dsyr :void
@@ -2562,11 +2561,11 @@
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
-  (x (* :complex-double-float) )
+  (x (* :complex-double-float :inc head-x) )
   (incx :integer )
-  (y (* :complex-double-float) )
+  (y (* :complex-double-float :inc head-y) )
   (incy :integer )
-  (a (* :complex-double-float) :output)
+  (a (* :complex-double-float :inc head-a) :output)
   (lda :integer )
 )
 
@@ -2646,11 +2645,11 @@
   (m :integer )
   (n :integer )
   (alpha :complex-double-float )
-  (x (* :complex-double-float) )
+  (x (* :complex-double-float :inc head-x) )
   (incx :integer )
-  (y (* :complex-double-float) )
+  (y (* :complex-double-float :inc head-y) )
   (incy :integer )
-  (a (* :complex-double-float) :output)
+  (a (* :complex-double-float :inc head-a) :output)
   (lda :integer )
 )
 
