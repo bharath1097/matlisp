@@ -1,7 +1,7 @@
 (in-package #:matlisp)
 
 (defun ones (dims &optional (type *default-tensor-type*))
-  (copy! 1 (zeros dims type)))
+  (zeros dims type 1))
 ;;
 (defun eye (dims &optional (type *default-tensor-type*))
   ;;Not optimized, takes nearly as much time as ones.
