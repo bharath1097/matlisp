@@ -11,7 +11,7 @@
 
 (deft/method t/store-allocator (sym coordinate-sparse-tensor) (size &optional nz)
   (with-gensyms (size-sym)
-    `(let ((,size-sym (or ,nz (min (max sb-impl::+min-hash-table-size+ (ceiling (/ ,size *default-sparsity*))) *max-sparse-size*))))
+    `(let ((,size-sym (or ,nz (min (max 16 (ceiling (/ ,size *default-sparsity*))) *max-sparse-size*))))
        (make-hash-table :size ,size-sym))))
 
 (deft/method t/store-ref (sym coordinate-sparse-tensor) (store &rest idx)

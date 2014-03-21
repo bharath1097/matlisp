@@ -127,3 +127,7 @@
 (defmethod ger (alpha (x standard-tensor) (y standard-tensor)
 		(A standard-tensor) &optional conjugate-p)
   (ger! alpha x y (copy A) conjugate-p))
+
+(defmethod ger (alpha (x standard-tensor) (y standard-tensor)
+		(A (eql nil)) &optional conjugate-p)
+  (ger! alpha x y (zeros (append (dims x) (dims y))) conjugate-p))

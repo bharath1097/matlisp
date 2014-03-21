@@ -160,6 +160,8 @@
 				:depends-on ("dot" "copy"))
 			 (:file "gemv"
 				:depends-on ("copy"))
+			 (:file "ger"
+				:depends-on ("copy"))
 			 (:file "gemm"
 				:depends-on ("copy"))))
    (:module "matlisp-lapack"
