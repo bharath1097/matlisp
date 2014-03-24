@@ -34,7 +34,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem matlisp-packages
-  :depends-on (#:cffi)
+  :depends-on (#:cffi #:iterate)
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
   :components
   ((:file "packages")))
