@@ -74,3 +74,12 @@
 			   :when (if preserve-rank? t (/= i axis)) :collect (if (= i axis) 1 ele))))
 	      (and dims (zeros dims (class-of x))))
 	  axis)))
+
+(defgeneric mean (x &optional axis preserve-rank?)
+  (:method ((x standard-tensor) &optional (axis 0) (preserve-rank? nil))
+    (scal! (/ (aref (dimensions x) axis))
+	   (sum! x (let ((dims (loop :for ele :in (dims x)
+				  :for i := 0 :then (1+ i)
+				  :when (if preserve-rank? t (/= i axis)) :collect (if (= i axis) 1 ele))))
+		     (and dims (zeros dims (class-of x))))
+		 axis))))
