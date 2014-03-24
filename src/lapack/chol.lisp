@@ -81,7 +81,7 @@
 	    nil 'tensor-abstract-class :tensor-class (list cla))
     (compile-and-eval
      `(defmethod potrf! ((A ,cla) &optional (uplo :l))
-	(with-columnification (,cla () (A))
+	(with-columnification (() (A))
 	  (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
 	    (declare (ignore opa))
 	    (multiple-value-bind (sto info) (t/lapack-potrf! ,cla A lda (char-upcase (aref (symbol-name uplo) 0)))

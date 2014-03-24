@@ -94,7 +94,7 @@
      `(defmethod getrf! ((A ,cla))
 	(let ((upiv (make-array (lvec-min (the index-store-vector (dimensions A))) :element-type '(unsigned-byte 32))))
 	  (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
-	  (with-columnification (,cla () (A))
+	  (with-columnification (() (A))
 	    (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
 	      (declare (ignore opa))
 	      (multiple-value-bind (sto piv info) (t/lapack-getrf! ,cla A lda upiv)

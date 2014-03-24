@@ -178,7 +178,7 @@
 				(ecase jobvr
 				  ,@(loop :for jvr :in '(#\N #\V)
 				       :collect `(,jvr
-						  (with-columnification (,cla () (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
+						  (with-columnification (() (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
 						    (multiple-value-bind (osto owr owi ovl ovr owork info)
 							(t/lapack-geev! ,cla
 									A (or (blas-matrix-compatiblep A #\N) 0)

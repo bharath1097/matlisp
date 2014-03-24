@@ -63,7 +63,7 @@
 	  (declare (type index-type lwork m n k)
 		   (type ,(store-type cla) tau work))
 	  ;; Do the Householder portion of the decomposition
-	  (with-columnification (,cla () (A))
+	  (with-columnification (() (A))
 	    (multiple-value-bind (q-r new-tau new-work info)
 		(,(macroexpand-1 `(t/lapack-geqrf-func ,cla))
 		  m n
