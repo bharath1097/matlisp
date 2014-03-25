@@ -108,3 +108,7 @@
 (definline m.* (&rest objs)
   (apply #'t.* objs))
 ;;
+(definline t./ (&rest objs)
+  (reduce #'div (reverse objs) :from-end t))
+(definline m./ (&rest objs)
+  (apply #'t./ objs))

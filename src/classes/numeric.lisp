@@ -54,6 +54,9 @@
 (deft/method t/field-type (sym complex-numeric-tensor) ()
   `(complex real))
 
+(deft/method t/complexified-type (sym complex-numeric-tensor) ()
+  sym)
+
 (deft/method t/l1-lb (sym complex-numeric-tensor) ()
   '*complex-l1-fcall-lb*)
 (deft/method t/l2-lb (sym complex-numeric-tensor) ()
