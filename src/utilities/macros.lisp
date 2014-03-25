@@ -10,6 +10,15 @@
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,@(when doc (list doc))))
 
+(defmacro with-fslots (slots instance &rest body)
+  (with-gensyms (obj args)
+    `(let ((,obj ,instance))
+       (flet (,@(mapcar #'(lambda (decl)
+			    (destructuring-bind (name slot-name) (if (consp decl) decl (list decl decl))
+			      `(,name (&rest ,args) (apply (slot-value ,obj ',slot-name) ,args))))
+			slots))
+	 ,@body))))
+
 (defmacro with-marking (&rest body)
   "
  This macro basically declares local-variables globally,
