@@ -2,41 +2,35 @@
 MatLisp is intended to be a base for scientific computation in Lisp.
 This is the development branch of Matlisp.
 
-MatLisp is made from a mixture of CLOS, lots of macros and the disdain
-for other programming languages :) The old version aimed mostly towards handling
-matrices, and was more of a Lispy-interface for Fortran. This version can handle
-general dense tensors, and is in part inspired by the architecture of femlisp.matlisp.
-It can also generate very fast generic BLAS routines lazily at run-time and reduce
-the overhead of FFI calls.
+MatLisp is made from a mixture of CLOS, lots of macros and a healthy disdain for
+other programming languages :) The old version of Matlisp was aimed mostly towards
+handling matrices: being a Lispy-interface to BLAS/LAPACK amongst other things.
+
+The version in development is intended for more general usage. The current version can handle
+general dense tensors, sparse matrices, and more!
+
+It generates and compiles type-specialized generic methods on the fly, and uses lots of macros
+to simplify writing very tight loops.
 
 * Why MatLisp(and Lisp)?
   Lisp is a very hacker friendly language - the difference between
-  source and binary is almost non-existent. When you use Matlisp we
-  are being selfish in that we hope that when you do use Matlisp, you
-  hack matlisp and contribute changes back.
-
-  With Lisp, you have at your disposable the complete Lisp language and CLOS,
-  and the fabled macros. This allows you to write clean, object-oriented code
-  that can utilize the LAPACK matrix routines.  Thus, you can think about your
-  problem in the natural way instead of trying to force-fit your problem in
-  matrices, like some other packages do.
+  source and binary is almost non-existent. With Lisp, you have at your disposable
+  the complete Lisp language, with CLOS, macros, and tons of libraries.
+  Using compilers such as SBCL, and macros.
 
 ** How does this compare to Matlab, SciPy, Octave, R etc?
-   These packages are much in a much more mature stage than Matlisp; we
-   also lack most of the features in these packages. However, Matlisp was
-   built with the hope that expressibility and performance don't necessarily
-   have to mutually exclusive; in that we're not alone: Lush, and
-   Julia both have similar goals.
+   These packages are in a much more mature stage than Matlisp. This also implies
+   that we lack a lot of the features which come from having a thriving ecosystem.
+   However, Matlisp was built with the hope that expressibility and performance don't
+   necessarily have to mutually exclusive; in that we're not alone: Lush, and Julia
+   both have similar goals.
 
-   In all the popular scientific packages, one sacrifices performance for
-   generally having the language manage your datastructures (ahem, matrices).
-   This has been changing of course with Cython, Numba, and Matlab's very own
-   JIT; nevertheless, there are lots of constraints on what can be expressed
-   efficiently, and succinctly in these language. In nearly all of them you'd
-   have to write lots of boiler plate code in C to get something to run reasonably
-   quickly; of course Matrices are passed straight in BLAS/LAPACK so "vectorised"
-   code becomes second nature. Few if any languages have anything close to macros.
-   So matlisp, in essence is for the kind of people who use (and love) lisp.
+   The usual scientific environment is an amalgamation of a slow, interpreted, dynamically
+   typed language with tons of libraries and sugary interfaces to BLAS/LAPACK.
+
+   On the other hand, Common Lisp, is compiled + interpreted, dynamically typed + optional type
+   declarations + type inferencing, and comes with an awesome development environment: SLIME.
+   It, of course, suffers from the ultimate sin, not being popular.
 
    With all things equal(which they are not), Matlisp(+SBCL) beats or is about as
    fast as any of these packages; if you really want to squeeze every bit of
@@ -44,8 +38,14 @@ the overhead of FFI calls.
    as fast as C. However, there are limitations to what you can do vs C, because
    of the Lisp implementation overheads (things like SSE, blocked computation).
 
-   CCL does not unbox floats for multiplication, so your performance will suffer
-   if you choose CCL.
+   For instance,
+   > (defun mm (A B C)
+       (einstein-sum real-tensor (j k i) (ref C i j) (* (ref A i j) (ref B j k))))
+   basically generates an extremely tight naive 3-loop version of GEMM (can you figure
+   out the reason for the odd loop-index ordering ?), which is only about 10 times as
+   slow the optimized version of GEMM in OpenBLAS (which does blocked computation).
+   The performance with SBCL for the above is within 10-15% of the corresponding C
+   code.
 
 * How to Install
   Matlisp uses CFFI for callng foreign functions. That said, the FFI
