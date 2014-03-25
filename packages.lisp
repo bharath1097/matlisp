@@ -86,7 +86,7 @@
 	   #:compile-and-eval
 	   #:getcons #:mapcons
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec #:using-gensyms #:with-marking
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec #:using-gensyms #:with-marking #:with-fslots
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant #:eval-every
 	   #:macrofy #:looped-mapcar #:defun-compiler-macro
