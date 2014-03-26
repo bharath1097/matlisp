@@ -10,15 +10,6 @@
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,@(when doc (list doc))))
 
-(defmacro with-fslots (slots instance &rest body)
-  (with-gensyms (obj args)
-    `(let ((,obj ,instance))
-       (flet (,@(mapcar #'(lambda (decl)
-			    (destructuring-bind (name slot-name) (if (consp decl) decl (list decl decl))
-			      `(,name (&rest ,args) (apply (slot-value ,obj ',slot-name) ,args))))
-			slots))
-	 ,@body))))
-
 (defmacro with-marking (&rest body)
   "
  This macro basically declares local-variables globally,
@@ -224,35 +215,6 @@ Example:
 	       (cdr body)
 	       body))))))
 
-(defmacro let-rec (name arglist &rest code)
-  "
-  This works implements the named let used in Scheme for recursion
-  using labels.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(let-rec rev ((x '(1 2 3 4)) (ret nil))
-	 (if (null x) ret
-	   (rev (cdr x) (cons (car x) ret)))))
-  => (LABELS ((REV (X RET)
-		(IF (NULL X)
-		   RET
-		  (REV (CDR X) (CONS (CAR X) RET)))))
-       (REV '(1 2 3 4) NIL))
-
-  > (let-rec rev ((x '(1 2 3 4)) (ret nil))
-       (if (null x) ret
-	  (rev (cdr x) (cons (car x) ret))))
-  => (4 3 2 1)
-  @end lisp
-  "
-  (let ((init (mapcar #'second arglist))
-	(args (mapcar #'first arglist)))
-    `(labels ((,name (,@args)
-		,@code))
-       (,name ,@init))))
-
 (defmacro with-gensyms (symlist &body body)
   "
   Binds every variable in @arg{symlist} to a (gensym).
@@ -405,65 +367,6 @@ Example:
     (assert (eq labd 'lambda))
     `(lambda ,args ,@(cdr (unquote-args body args)))))
 
-(defmacro looped-mapcar ((func lst) &rest body)
-  "
-  A macro to use when caught between the efficiency of imperative looping, and
-  the elegance of the mapcar (in a dozen places).
-
-  Works by collecting references to the symbol @arg{func} and replacing them with a varible
-  inside a loop. Note that although we traverse through the list only once, the collected
-  lists aren't freed until the macro is closed.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(looped-mapcar (lmap '(1 2 3 4 5 6 7 8 9 10))
-			(cons (lmap #'even) (lmap #'(lambda (x) (+ x 1))))))
-  => (LET ((#:|lst1118| '(1 2 3 4 5 6 7 8 9 10)))
-	(LOOP FOR #:|ele1117| IN #:|lst1118|
-	    COLLECT (FUNCALL #'(LAMBDA (X) (+ X 1))
-			     #:|ele1117|) INTO #:|collect1116|
-	    COLLECT (FUNCALL #'EVEN #:|ele1117|) INTO #:|collect1115|
-	    FINALLY (RETURN (PROGN (CONS #:|collect1115| #:|collect1116|)))))
-  @end lisp
-  "
-  (let ((ret nil))
-    (labels ((collect-funcs (code tf-code)
-	       (cond
-		 ((null code)
-		  (reverse tf-code))
-		 ((atom code)
-		  (let ((ret (reverse tf-code)))
-		    (rplacd (last ret) code)
-		    ret))
-		 ((consp code)
-		  (let ((carcode (car code)))
-		    (cond
-		      ((and (consp carcode)
-			    (eq (first carcode) func))
-		       (assert (null (cddr carcode)) nil 'invalid-arguments
-			       :message "The mapper only takes one argument.")
-		       (let ((col-sym (gensym "collect")))
-			 (push `(,col-sym ,(second carcode)) ret)
-			 (collect-funcs (cdr code) (cons col-sym tf-code))))
-		      ((consp carcode)
-		       (collect-funcs (cdr code) (cons (collect-funcs carcode nil) tf-code)))
-		      (t
-		       (collect-funcs (cdr code) (cons carcode tf-code)))))))))
-      (let ((tf-code (collect-funcs body nil))
-	    (ele-sym (gensym "ele"))
-	    (lst-sym (gensym "lst")))
-	(if (null ret)
-	    `(progn
-	       ,@tf-code)
-	    `(let ((,lst-sym ,lst))
-	       (loop :for ,ele-sym :in ,lst-sym
-		  ,@(loop :for decl :in ret
-		       :append `(collect (funcall ,(second decl) ,ele-sym) into ,(first decl)))
-		  :finally (return
-			     (progn
-			       ,@tf-code)))))))))
-
 (defmacro inlining (&rest definitions)
   "
   Function created in the body of code @arg{definitions} with @macro{defun} isand declaims
@@ -559,4 +462,13 @@ Example:
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@forms))
 
+;;Slots
+(defmacro with-fslots (slots instance &rest body)
+  (with-gensyms (obj args)
+    `(let ((,obj ,instance))
+       (flet (,@(mapcar #'(lambda (decl)
+			    (destructuring-bind (name slot-name) (if (consp decl) decl (list decl decl))
+			      `(,name (&rest ,args) (apply (slot-value ,obj ',slot-name) ,args))))
+			slots))
+	 ,@body))))
 )

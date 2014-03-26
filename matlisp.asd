@@ -68,6 +68,8 @@
 	       (:file "string")
 	       (:file "macros"
 		      :depends-on ("functions"))
+	       (:file "dlist"
+		      :depends-on ("macros" "functions"))
 	       (:file "lvec"
 		      :depends-on ("macros" "functions"))
 	       (:file "template"

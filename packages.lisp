@@ -68,7 +68,7 @@
 ))
 
 (defpackage "MATLISP-UTILITIES"
-  (:use #:common-lisp #:matlisp-conditions)
+  (:use #:common-lisp #:iterate #:matlisp-conditions)
   (:export #:ensure-list #:id #:ieql
 	   #:vectorify #:copy-n
 	   #:ensure-args #:repsym #:findsym #:find-tag
@@ -85,11 +85,13 @@
 	   #:lvec->list #:lvec->list!
 	   #:compile-and-eval
 	   #:getcons #:mapcons
+	   ;;dlist
+	   #:dcons #:dpush #:dpop #:dlist #:dappend!
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:let-rec #:using-gensyms #:with-marking #:with-fslots
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:with-marking #:with-fslots
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant #:eval-every
-	   #:macrofy #:looped-mapcar #:defun-compiler-macro
+	   #:macrofy #:defun-compiler-macro
 	   ;;
 	   #:inlining #:definline
 	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
