@@ -43,21 +43,22 @@
     (when z
       (decf (number-of-elements fib))
       (decf (number-of-trees fib))
-      (let ((rt (root fib)))
-	(iter (for node in-dlist (hnode-children z))
-	      (counting t into i)
-	      (progn
-		(setf (hnode-parent node) nil)
-		(dpush node rt))
-	      (finally (progn
-			 (setf (root fib) rt)
-			 (incf (number-of-trees fib) i))))))
-    (when (> (number-of-elements fib) 1)
+      (iter (for node in-dlist (hnode-children z))
+	    (counting t into i)
+	    (setf (hnode-parent node) nil)
+	    (finally (incf (number-of-trees fib) i)))
+      (setf (root fib) (dappend! (hnode-children z) (root fib)))
+      (setf (hnode-children z) nil
+	    (hnode-degree z) 0))
+    ;;
+    (when (> (number-of-trees fib) 1)
       ;;consolidate
-      (let ((an (make-array (+ 2 (integer-length (number-of-elements fib))) :initial-element nil))
-	    (stack nil))
-	  (with-fslots ((ord heap-order)) fib
+      (let ((an (make-array (+ 2 (integer-length (number-of-elements fib))) :initial-element nil)))
+	(with-fslots ((ord heap-order)) fib
 	    (iter (for w on-dlist (root fib))
+		  (with fw = (list t t))
+		  ;;This hack allows for destructive updates. See the iter clause/
+		  (setf (second fw) (second w))
 		  (iter (with x = w)
 			(with d = (hnode-degree (cddr x)))
 			(while (aref an d))
@@ -66,30 +67,25 @@
 			  (when (ord (hnode-key (cddr y)) (hnode-key (cddr x)))
 			    (rotatef y x))
 			  ;;fib-heap-link
-			  (let ((y.node (cddr y)))
-			    (setf (hnode-parent y.node) (cddr x)
+			  (let ((y.node (dpop y)))
+			    (setf (root fib) y
+				  (hnode-parent y.node) (cddr x)
 				  (hnode-mark? y.node) nil)
-			    (dpush y.node (hnode-children (cddr x)))
-			    (decf (number-of-trees fib)))
-			  (push y stack)
-			  ;;
-			  (setf (aref an d) nil)
-			  (incf d)
-			  (setf (hnode-degree (cddr x)) d))
+			    (decf (number-of-trees fib))
+			    (setf (hnode-children (cddr x)) (dappend! (hnode-dcons y.node) (hnode-children (cddr x))))))
+			(setf (aref an d) nil)
 			;;
-			(finally (setf (aref an d) x)))))
-	  ;;destructive update
-	  (let ((rt (root fib)))
-	    (iter (for ele in stack)
-		  (dpop ele) (setf rt ele))
-	    (setf (root fib) rt)))
-	;;update min
-	(with-fslots ((ord heap-order)) fib
-	  (iter (for rot on-dlist (root fib))
-		(with fmin = nil)
-		(when (or (null fmin) (ord (hnode-key (cddr rot)) (hnode-key (cddr fmin))))
-		  (setf fmin rot))
-		(finally (setf (root fib) fmin)))))
+			(incf d)
+			(setf (hnode-degree (cddr x)) d)
+			;;
+			(finally (setf (aref an d) x)))
+		  (setq w fw))
+	    ;;update min
+	    (iter (for rot on-dlist (root fib))
+		  (with fmin = nil)
+		  (when (or (null fmin) (ord (hnode-key (cddr rot)) (hnode-key (cddr fmin))))
+		    (setf fmin rot))
+		  (finally (setf (root fib) fmin))))))
     ;;
     (and z (hnode-key z))))
 ;;
