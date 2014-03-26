@@ -468,7 +468,7 @@ Example:
     `(let ((,obj ,instance))
        (flet (,@(mapcar #'(lambda (decl)
 			    (destructuring-bind (name slot-name) (if (consp decl) decl (list decl decl))
-			      `(,name (&rest ,args) (apply (slot-value ,obj ',slot-name) ,args))))
+			      `(,name (&rest ,args) (apply (the function (slot-value ,obj ',slot-name)) ,args))))
 			slots))
 	 ,@body))))
 )

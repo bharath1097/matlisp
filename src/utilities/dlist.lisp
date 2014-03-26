@@ -67,13 +67,13 @@
 ;;
 (defmacro-clause (FOR clist ON-DLIST v)
   "All unique elements on the dlist."
-  (with-gensyms (dlist end)
+  (with-gensyms (dlist end nxt)
     `(progn
        (with ,dlist = ,v)
        (while ,dlist)
        (with ,end = (first ,dlist))
        (for ,clist initially ,dlist then (if (or (null ,end) (eql ,clist ,end)) (terminate)
-					     (let ((nxt (second ,clist)))
+					     (let ((,nxt (second ,clist)))
 					       (when (null ,nxt) (terminate))
 					       (when (eql ,nxt ,end) (setf ,end nil))
 					       ,nxt))))))

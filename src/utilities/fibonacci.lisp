@@ -3,8 +3,19 @@
 (defstruct hnode
   (degree 0 :type fixnum)
   (mark? nil :type boolean)
-  key parent children
-  dcons)
+  (children nil :type list)
+  (dcons nil :type list)
+  (parent nil :type (or null hnode))
+  key)
+
+(definline dappend2 (a b)
+  (declare (type list a b))
+  (cond
+    ((null a) b)
+    ((null b) a)
+    (t (rotatef (first a) (first b))
+       (rotatef (second (first a)) (second (first b)))
+       a)))
 
 (defmethod print-object ((nd hnode) stream)
   (print-unreadable-object (nd stream :type t)
@@ -19,6 +30,9 @@
 (defmethod print-object ((fib fib-heap) stream)
   (print-unreadable-object (fib stream :type t)
     (format stream "size: ~A, trees: ~A" (number-of-elements fib) (number-of-trees fib))))
+
+(defun make-fib (&optional (func #'<))
+  (make-instance 'fib-heap :heap-order func))
 
 (defun fib-min (fib)
   (when (root fib)
@@ -47,7 +61,7 @@
 	    (counting t into i)
 	    (setf (hnode-parent node) nil)
 	    (finally (incf (number-of-trees fib) i)))
-      (setf (root fib) (dappend! (hnode-children z) (root fib)))
+      (setf (root fib) (dappend2 (hnode-children z) (root fib)))
       (setf (hnode-children z) nil
 	    (hnode-degree z) 0))
     ;;
@@ -72,7 +86,7 @@
 				  (hnode-parent y.node) (cddr x)
 				  (hnode-mark? y.node) nil)
 			    (decf (number-of-trees fib))
-			    (setf (hnode-children (cddr x)) (dappend! (hnode-dcons y.node) (hnode-children (cddr x))))))
+			    (setf (hnode-children (cddr x)) (dappend2 (hnode-dcons y.node) (hnode-children (cddr x))))))
 			(setf (aref an d) nil)
 			;;
 			(incf d)
@@ -100,7 +114,7 @@
 		 (setf (hnode-children y) tmp))
 	       (setf (hnode-parent x) nil
 		     (hnode-mark? x) nil)
-	       (dappend! (hnode-dcons x) (root fib)))
+	       (dappend2 (hnode-dcons x) (root fib)))
 	     (ccut (y)
 	       ;;cascading cut
 	       (when-let (z (hnode-parent y))
