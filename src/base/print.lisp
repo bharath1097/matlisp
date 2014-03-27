@@ -109,6 +109,7 @@ of a matrix (default 0)
 	(format stream "~A~,4T:DISPLACED" (dimensions tensor))
 	(format stream "~A" (dimensions tensor)))
     (when (> (size tensor) 0)
+      (format stream "~%")
       (print-tensor tensor stream))))
 
 (defmethod print-object ((tensor sparse-tensor) stream)

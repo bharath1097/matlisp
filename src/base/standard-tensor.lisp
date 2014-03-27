@@ -150,13 +150,12 @@
 	  (incf hd (* start s))
 	  (let ((nd (ceiling (- end start) inc)))
 	    (when (< inc 0) (setq nd (- nd)))
-	    (when (< nd 0) (setq empty? t))
-	    (when (or preserve-rank (> nd 1))
+	    (when (< nd 0) (setq empty? t) (setq nd 0))
+	    (when (or preserve-rank (> nd 1) empty?)
 	      (collect nd into dims)
 	      (collect (* inc s) into stds))))
 	(finally (return
 		   (let ((*check-after-initializing?*))
-		     (print empty?)
 		     (if (and ref-single-element? (null dims)) (store-ref tensor hd)
 			 (make-instance (class-of tensor)
 					:head hd

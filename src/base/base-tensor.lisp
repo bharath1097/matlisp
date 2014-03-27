@@ -139,7 +139,7 @@
   methods.")
 
 (defmacro defleaf (name direct-superclasses direct-slots &rest options)
-  `(progn
+  `(eval-every
      (defclass ,name ,direct-superclasses ,direct-slots ,@options)
      (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
 ;;
