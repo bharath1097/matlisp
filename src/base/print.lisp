@@ -53,7 +53,7 @@ of a matrix (default 0)
 	(two-print-calls 0))
     (labels ((two-print (tensor subs)
 	       (dotimes (i (aref dims (- rank 2)))
-		 (format stream (format-to-string "~~~AT" *print-indent*))
+		 (format stream (format nil "~~~AT" *print-indent*))
 		 (if (or (eq *print-max-len* t) (< i *print-max-len*))
 		     (progn
 		       (dotimes (j (aref dims (- rank 1)))
@@ -66,7 +66,7 @@ of a matrix (default 0)
 			       (return nil))))
 			 (format stream "~%"))
 		     (progn
-		       (format stream (format-to-string ".~~%~~~AT:~~%" *print-indent*))
+		       (format stream (format nil ".~~%~~~AT:~~%" *print-indent*))
 		       (return nil)))))
 	     (rec-print (tensor idx subs)
 	       (if (< idx (- rank 2))
@@ -83,12 +83,12 @@ of a matrix (default 0)
 			   t)
 			 (progn
 			   (format stream "~A~%" (make-list rank :initial-element '\:))
-			   (format stream (format-to-string "~~~AT..~~%~~~AT::~~%" *print-indent* *print-indent*))
+			   (format stream (format nil "~~~AT..~~%~~~AT::~~%" *print-indent* *print-indent*))
 			   nil))))))
 			   
 	(case rank
 	  (1
-	   (format stream (format-to-string "~~~AT" *print-indent*))
+	   (format stream (format nil "~~~AT" *print-indent*))
 	   (dotimes (i (aref dims 0))
 	     (if (or (eq *print-max-len* t) (< i *print-max-len*))
 		 (progn

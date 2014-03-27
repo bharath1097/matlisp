@@ -77,7 +77,7 @@
 	   #:cut-cons-chain!
 	   #:slot-values #:remmeth
 	   #:recursive-append #:unquote-args #:flatten
-	   #:format-to-string #:string+ #:file->string #:split-seq #:splitlines
+	   #:string+ #:file->string #:split-seq #:splitlines
 	   #:linear-array-type
 	   #:list-dimensions
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
@@ -102,7 +102,7 @@
 
 ;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
-  (:use #:common-lisp #:matlisp-conditions #:matlisp-utilities)
+  (:use #:common-lisp #:named-readtables #:matlisp-conditions #:matlisp-utilities)
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"

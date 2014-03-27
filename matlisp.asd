@@ -34,7 +34,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem matlisp-packages
-  :depends-on (#:cffi #:iterate)
+  :depends-on (#:cffi #:iterate #:named-readtables)
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
   :components
   ((:file "packages")))
@@ -185,7 +185,7 @@
 	    :components ((:file "arithmetic")
 			 (:file "oneseye")))
    (:module "matlisp-reader"
-	    :pathname "reader"	    
+	    :pathname "reader"
 	    :components ((:file "infix")
 			 (:file "loadsave")))))
 
