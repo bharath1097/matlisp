@@ -208,9 +208,7 @@
   seq)
 
 (defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
-  (multiple-value-bind (t1 t2) (let ((slst (make-list (order A) :initial-element '(* * *))))
-				 (rplaca (nthcdr arg slst) (list 0 '* 1))
-				 (values (subtensor~ A slst nil) (subtensor~ A slst nil)))
+  (let ((t1 (slice~ A arg)) (t2 (slice~ A arg)))
     (let-typed ((argstd (aref (strides A) arg) :type index-type)
 		(hd-sl (head t2) :type index-type)
 		(idiv (store perm) :type pindex-store-vector))
@@ -220,7 +218,7 @@
 			  (unless (= i (aref idiv i))
 			    (setf (slot-value t2 'head) (the index-type (+ hd-sl (the index-type (* (aref idiv i) argstd)))))
 			    (swap! t1 t2))
-			  (setf (slot-value t1 'head) (the index-type (+ argstd (the index-type (head t1))))))))))
+			  (setf (slot-value t1 'head) (the index-type (+ argstd (the index-type (head t1)))))))))) ;;type optimization
   A)
 
 ;;Conversions----------------------------------------------------;;

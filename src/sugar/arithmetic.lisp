@@ -62,11 +62,10 @@
 
 (define-tensor-method tb^ ((a standard-tensor :input) (b standard-tensor :input))
   `(let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
-	  (ret-a (let ((sli (make-list (order ret) :initial-element '(* * *))))
-		   (do ((lst (nthcdr (order a) sli) (cdr lst)))
-		       ((null lst))
-		     (setf (car lst) '(0 * 1)))
-		   (subtensor~ ret sli)))
+	  (ret-a (subtensor~ ret
+			     (print (loop :for i :from 0 :below (order ret)
+				:collect (if (< i (order a)) '(nil nil) '(0 1))))
+			     nil))
 	  (rbstr (subseq (strides ret) (order a)))
 	  (sto-b (store b)))
      (mod-dotimes (idx (dimensions b))

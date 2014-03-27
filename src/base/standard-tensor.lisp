@@ -112,7 +112,7 @@
 	 (if subscripts
 	     (let-typed ((rank (order tensor) :type index-type)
 			 (dims (dimensions tensor) :type index-store-vector))
-			(very-quickly 
+			(very-quickly
 			  (loop :for val :in subscripts
 			     :for i :of-type index-type := 0 :then (1+ i)
 			     :do (unless (or (eq val '*) (eq val (aref dims i)))
@@ -137,114 +137,40 @@
 		:finally (return t))))
 
 ;;
-(defun subtensor~ (tensor subscripts &optional (preserve-rank nil) (ref-single-element? t))
-  "
-  Syntax
-  ======
-  (SUBTENSOR~ TENSOR SUBSCRIPTS)
+(defmethod subtensor~ ((tensor standard-tensor) (subscripts list) &optional (preserve-rank nil) (ref-single-element? t))
+  (iter (for (start end . inc) in subscripts)
+	(for d in-vector (dimensions tensor))
+	(for s in-vector (strides tensor))
+	(with hd = (head tensor))
+	(with empty? = nil)
+	(let ((start (or (and start (if (>= start 0) start (mod start d))) 0))
+	      (end (or (and end (if (>= end 0) end (mod end d))) d))
+	      (inc (or inc 1)))
+	  (declare (type index-type start end inc))
+	  (incf hd (* start s))
+	  (let ((nd (ceiling (- end start) inc)))
+	    (when (< inc 0) (setq nd (- nd)))
+	    (when (< nd 0) (setq empty? t))
+	    (when (or preserve-rank (> nd 1))
+	      (collect nd into dims)
+	      (collect (* inc s) into stds))))
+	(finally (return
+		   (let ((*check-after-initializing?*))
+		     (print empty?)
+		     (if (and ref-single-element? (null dims)) (store-ref tensor hd)
+			 (make-instance (class-of tensor)
+					:head hd
+					:dimensions (or (and dims (make-index-store dims)) (make-index-store (list 1)))
+					:strides (or (and stds (make-index-store stds)) (make-index-store (list 1)))
+					:store (store tensor)
+					:parent-tensor tensor)))))))
 
-  Purpose
-  =======
-  Creates a new tensor data structure, sharing store with
-  TENSOR but with different strides and dimensions, as defined
-  in the subscript-list SUBSCRIPTS.
-
-  Examples
-  ========
-  > (defvar X (make-real-tensor 10 10 10))
-  X
-
-  ;; Get (:, 0, 0)
-  > (subtensor~ X '((* * *) (0 * 1) (0 * 1)))
-
-  ;; Get (:, 2:5, :)
-  > (subtensor~ X '((* * *) (2 * 5)))
-
-  ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
-  > (subtensor~ X '((* * *) (* * *) (0 2 10)))
-
-  Commentary
-  ==========
-  Sadly in our parentheses filled world, this function has to be necessarily
-  verbose (unlike MATLAB, Python). However, this function has been designed with the
-  express purpose of using it with a Lisp reader macro. The slicing semantics is
-  essentially the same as MATLAB except for the zero-based indexing.
-"
-  (declare (type base-tensor tensor)
-	   (type list subscripts)
-	   (type boolean preserve-rank))
-  (if (null subscripts)
-      (let ((*check-after-initializing?* nil))
-	(make-instance (class-of tensor)
-		       :head (head tensor)
-		       :dimensions (copy-seq (dimensions tensor))
-		       :strides (copy-seq (strides tensor))
-		       :store (store tensor)
-		       :parent-tensor tensor))		       
-      (let-typed ((dims (dimensions tensor) :type index-store-vector)
-		  (stds (strides tensor) :type index-store-vector)
-		  (rank (order tensor) :type index-type))
-		 (loop :for (start step end) :in subscripts
-		    :for i :of-type index-type := 0 :then (1+ i)
-		    :with ndims :of-type index-store-vector := (allocate-index-store rank)
-		    :with nstds :of-type index-store-vector := (allocate-index-store rank)
-		    :with nrank :of-type index-type := 0
-		    :with nhd :of-type index-type := (head tensor)
-		    :do (assert (< i rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
-		    :do (let* ((start (if (eq start '*) 0
-					  (progn
-					    (assert (and (typep start 'index-type) (< -1 start (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
-					    start)))
-			       (step (if (eq step '*) 1
-					 (progn
-					   (assert (and (typep step 'index-type) (< 0 step)) nil 'invalid-value :given step :expected '(< 0 step) :message "STEP cannot be <= 0.")
-					   step)))
-			       (end (if (eq end '*) (aref dims i)
-					(progn
-					  (assert (and (typep end 'index-type) (<= 0 end (aref dims i))) nil 'tensor-index-out-of-bounds :argument i :index start :dimension (aref dims i))
-					  end))))
-			  (declare (type index-type start step end))
-			  ;;
-			  (let-typed ((dim (ceiling (the index-type (- end start)) step) :type index-type))
-				     (unless (and (= dim 1) (not preserve-rank))
-				       (setf (aref ndims nrank) dim
-					     (aref nstds nrank) (* step (aref stds i)))
-				       (incf nrank))
-				     (when (/= start 0)
-				       (incf nhd (the index-type (* start (aref stds i)))))))
-		    :finally (return
-			       (let ((nrank? (= nrank 0)))
-				 (if (and ref-single-element? nrank?) (store-ref tensor nhd)
-				     (let ((*check-after-initializing?* nil))
-				       (make-instance (class-of tensor)
-						      :head nhd
-						      :dimensions (if nrank?
-								      (make-index-store (list 1))
-								      (very-quickly (vectorify (the index-store-vector ndims) nrank 'index-type)))
-						      :strides (if nrank?
-								   (make-index-store (list 1))
-								   (very-quickly (vectorify (the index-store-vector nstds) nrank 'index-type)))
-						      :store (store tensor)
-						      :parent-tensor tensor)))))))))
-
-(definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
-  (let ((slst (make-list (order x) :initial-element '(* * *))))
-    (rplaca (nthcdr axis slst) (list idx '* (1+ idx)))
-    (subtensor~ x slst preserve-rank? nil)))
-
-(definline row-slice~ (x idx)
-  (slice~ x 0 idx))
-
-(definline col-slice~ (x idx)
-  (slice~ x 1 idx))
-;;
-  
 (defun tensor-append (axis tensor &rest more-tensors)
   (let ((dims (copy-seq (dimensions tensor))))
     (loop :for ele :in more-tensors
-       :do (incf (aref dims axis) (aref (dimensions ele) axis)))    
+       :do (incf (aref dims axis) (aref (dimensions ele) axis)))
     (let* ((ret (zeros dims))
-	   (view (slice~ ret axis 0 t)))      
+	   (view (slice~ ret axis 0 t)))
       (loop :for ele :in (cons tensor more-tensors)
 	 :and head := 0 :then (+ head (* (aref (strides ret) axis) (aref (dimensions ele) axis)))
 	 :do (progn

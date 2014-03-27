@@ -26,8 +26,8 @@
   Purpose
   =======
   Allocates index storage with initial elements from the list CONTENTS."
-  (make-array (length contents) :element-type 'index-type
-	      :initial-contents contents))
+  (the index-store-vector (make-array (length contents) :element-type 'index-type
+				      :initial-contents contents)))
 
 (definline idxv (&rest contents)
   (make-index-store contents))
@@ -93,9 +93,13 @@
 ;; (definline tensor-rank (tensor) (order tensor))
 
 ;;
-(definline size (tensor)
-  (declare (type base-tensor tensor))
-  (lvec-foldr #'* (the index-store-vector (dimensions tensor))))
+(defgeneric size (obj)
+  (:method ((tensor base-tensor))
+    (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (* x y))) (the index-store-vector (dimensions tensor))))
+  (:method ((obj sequence))
+    (length obj))
+  (:method ((arr array))
+    (reduce #'* (array-dimensions arr))))
 
 (definline dims (tensor &optional idx)
   (declare (type base-tensor tensor))
@@ -138,3 +142,61 @@
   `(progn
      (defclass ,name ,direct-superclasses ,direct-slots ,@options)
      (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
+;;
+
+(defgeneric subtensor~ (tensor subscripts &optional preserve-rank ref-single-element?)
+  (:documentation "
+  Syntax
+  ======
+  (SUBTENSOR~ TENSOR SUBSCRIPTS &optional PRESERVE-RANK REF-SINGLE-ELEMENT?)
+
+  Purpose
+  =======
+  Creates a new tensor data structure, sharing store with
+  TENSOR but with different strides and dimensions, as defined
+  in the subscript-list SUBSCRIPTS.
+
+  Examples
+  ========
+  > (defvar X (make-real-tensor 10 10 10))
+  X
+
+  ;; Get (:, 0, 0)
+  > (subtensor~ X '((nil nil . nil) (0 1 . nil) (0 1 . nil)))
+
+  ;; Get (:, 2:5, :)
+  > (subtensor~ X '((nil nil . nil) (2 5 . nil)))
+
+  ;; Get (:, :, 0:2:10) (0:10:2 = [i : 0 <= i < 10, i % 2 = 0])
+  > (subtensor~ X '((nil nil . nil) (nil nil . nil) (0 10 . 2)))
+
+  Commentary
+  ==========
+  Sadly in our parentheses filled world, this function has to be necessarily
+  verbose (unlike MATLAB, Python). However, this function has been designed with the
+  express purpose of using it with a Lisp reader macro. The slicing semantics is
+  essentially the same as MATLAB except for the zero-based indexing.
+")
+  (:method :before ((tensor base-tensor) (subs list) &optional preserve-rank ref-single-element?)
+	   (declare (ignore preserve-rank ref-single-element?))
+	   (loop :for csub :on subs
+	      :for d :of-type index-type :across (dimensions tensor)
+	      :counting t :into count
+	      :do (destructuring-bind (st en . inc) (car csub)
+		    (declare (ignore inc))
+		    (unless (and (or (not st) (< st 0) (<= st d))
+				 (or (not en) (< en 0) (<= en d)))
+		      (error 'tensor-index-out-of-bounds :argument count :index (list st en) :dimension d)))
+	      :finally (unless (and (= count (order tensor)) (not csub))
+			 (error 'tensor-index-rank-mismatch :index-rank (length subs) :rank (order tensor))))))
+
+(definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
+  (let ((slst (make-list (order x) :initial-element '(nil nil))))
+    (rplaca (nthcdr axis slst) (list idx (1+ idx)))
+    (subtensor~ x slst preserve-rank? nil)))
+
+(definline row-slice~ (x idx)
+  (slice~ x 0 idx))
+
+(definline col-slice~ (x idx)
+  (slice~ x 1 idx))
