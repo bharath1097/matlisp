@@ -43,8 +43,11 @@
 (defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
 
 (defmacro generic-ref (x &rest args)
-  (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) 'list*))) args)
-      `(matlisp::subtensor~ ,x (list ,@(mapcar #'(lambda (x) (if (consp x) x
+  (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+      `(matlisp::subtensor~ ,x (list ,@(mapcar #'(lambda (x) (if (consp x)
+								 (if (eql (car x) ':slice)
+								     `(list* ,@(cdr x))
+								     x)
 								 (with-gensyms (idx)
 								   `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
 					       args))
@@ -60,8 +63,11 @@
 	      (append vals (list getter))
 	      `(,store)
 	      (let ((arr (car newval)))
-		`(prog1 ,(if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) 'list*))) args)
-			     `(setf (matlisp::subtensor~ ,arr (list ,@(mapcar #'(lambda (x) (if (consp x) x
+		`(prog1 ,(if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+			     `(setf (matlisp::subtensor~ ,arr (list ,@(mapcar #'(lambda (x) (if (consp x)
+												(if (eql (car x) ':slice)
+												    `(list* ,@(cdr x))
+												    x)
 												(with-gensyms (idx)
 												  `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
 									      args))
@@ -540,10 +546,10 @@
 (define-token-operator |:|
     :infix (destructuring-bind (inc &optional (end nil endp)) (or (read-slice '\, '\] '|:| stream) (list nil nil))
 	     (unless endp (rotatef inc end))
-	     `(list* ,left ,end ,inc))
+	     `(:slice ,left ,end ,inc))
     :prefix (destructuring-bind (inc &optional (end nil endp)) (or (read-slice '\, '\] '|:| stream) (list nil nil))
 	      (unless endp (rotatef inc end))
-	      `(list* nil ,end ,inc)))
+	      `(:slice nil ,end ,inc)))
 
 (define-token-operator |:=|
     :infix `(,(if (symbolp left)
@@ -620,7 +626,15 @@
 		 (infix-error "No indices found in array reference.")
 		 `(generic-ref ,left ,@indices)))
     :prefix (let ((ele (infix-read-delimited-list '\] '\, stream)))
-	      `(vector ,@ele)))
+	      (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+		  `(list ,@(mapcar #'(lambda (x) (if (consp x)
+						     (if (eql (car x) ':slice)
+							 `(list* ,@(cdr x))
+							 x)
+						     (with-gensyms (idx)
+						       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
+				   ele))
+		  `(vector ,@ele))))
 
 (define-character-tokenization #\(
     #'(lambda (stream char)

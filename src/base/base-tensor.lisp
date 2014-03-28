@@ -190,6 +190,10 @@
 	      :finally (unless (and (= count (order tensor)) (not csub))
 			 (error 'tensor-index-rank-mismatch :index-rank (length subs) :rank (order tensor))))))
 
+(defun (setf subtensor~) (value tensor subscripts &optional (preserve-rank nil) (ref-single-element? nil))
+  (declare (ignore ref-single-element?))
+  (copy! value (subtensor~ tensor subscripts preserve-rank nil)))
+
 (definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
   (let ((slst (make-list (order x) :initial-element '(nil nil))))
     (rplaca (nthcdr axis slst) (list idx (1+ idx)))

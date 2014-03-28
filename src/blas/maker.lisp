@@ -75,9 +75,11 @@
   (let ((*check-after-initializing?* nil))
     (let ((type (etypecase type (standard-class (class-name type)) (symbol type))))
       (etypecase dims
-	(vector
-	 (zeros-generic (lvec->list dims) type initial-element))
 	(cons
 	 (zeros-generic dims type initial-element))
+	(vector
+	 (zeros-generic (lvec->list dims) type initial-element))
 	(fixnum
 	 (zeros-generic (list dims) type initial-element))))))
+
+(declaim (ftype (function ((or cons vector fixnum) &optional symbol t) base-tensor) zeros))
