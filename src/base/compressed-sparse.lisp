@@ -35,16 +35,14 @@
 	    (very-quickly
 	      (loop :with j := (ash (+ lb ub) -1)
 		 :repeat 64
-		 :do (progn
-		       #+nil(format t "~a, ~a, ~a~%" lb j ub)
-		       (cond
-			 ((= (aref nid j) row) (return j))
-			 ((>= lb (1- ub)) (return -1))
-			 (t
-			  (if (< row (aref nid j))
-			      (setf ub j)
-			      (setf lb (1+ j)))
-			  (setf j (ash (+ lb ub) -1)))))))
+		 :do (cond
+		       ((= (aref nid j) row) (return j))
+		       ((>= lb (1- ub)) (return -1))
+		       (t
+			(if (< row (aref nid j))
+			    (setf ub j)
+			    (setf lb (1+ j)))
+			(setf j (ash (+ lb ub) -1))))))
 	    row col)))))
 
 ;;Templates
