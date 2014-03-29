@@ -114,9 +114,10 @@
        `(t/axpy! ,(cl x) alpha x y))
      y))
 
-(define-tensor-method axpy! (alpha (x (eql nil)) (y standard-tensor :output))
+(define-tensor-method axpy! (alpha x (y standard-tensor :output))
   `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
      (declare (type ,(field-type (cl y)) alpha))
+     (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
      ,(recursive-append
        (when (subtypep (cl y) 'blas-numeric-tensor)
 	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))

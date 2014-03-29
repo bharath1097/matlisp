@@ -52,7 +52,9 @@
     (axpy (- b) nil a)))
 
 (definline t- (&rest objs)
-  (reduce #'tb- objs))
+  (if (cdr objs)
+      (reduce #'tb- objs)
+      (scal -1 (car objs))))
 (definline m- (&rest objs)
   (apply #'t- objs))
 (definline m.- (&rest objs)

@@ -127,6 +127,8 @@
   where alpha is a scalar and X is a tensor.
 
 ")
+  (:method ((alpha number) (x number))
+    (* alpha x))
   (:method (alpha x)
      (scal! alpha (copy x)))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
@@ -184,6 +186,8 @@
 
   Yes the calling order is twisted.
 ")
+  (:method ((alpha number) (x number))
+    (/ x alpha))
   (:method (alpha x)
      (div! alpha (copy x)))
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha

@@ -3,10 +3,10 @@
 
 ;;Precedence
 (defparameter *operator-ordering* 
-  '(( \[ \( \! \\ )			; \[ is array reference
+  '(( \[ \( \! )			; \[ is array reference
     ( ** )				; exponentiation
     ( ~ )				; lognot 
-    ( * /  % )			; % is mod
+    ( .* * ./ / \\ % )			; % is mod
     ( + - )
     ( << >> )
     ( < == > <= != >= )
@@ -17,7 +17,7 @@
     ( and )
     ( or )
     ;; Where should setf and friends go in the precedence?
-    ( = |:=| += -= *= /=)
+    ( = += -= *= /=)
     (|:|) ;;slicing
     ( \, newline )			; progn (statement delimiter)
     ( \] \) )
@@ -42,16 +42,21 @@
 ;; Matlisp helpers
 (defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
 
+(defun process-slice (args)
+  (mapcar #'(lambda (x)
+	      (cond
+		((consp x)
+		 (if (eql (car x) ':slice)
+		     `(list* ,@(cdr x))
+		     (with-gensyms (idx)
+		       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
+		((or (numberp x) (symbolp x)) `(list ,x (1+ ,x)))
+		(t (error 'parser-error :arguments x :message "unknown argument type"))))
+	  args))
+
 (defmacro generic-ref (x &rest args)
   (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-      `(matlisp::subtensor~ ,x (list ,@(mapcar #'(lambda (x) (if (consp x)
-								 (if (eql (car x) ':slice)
-								     `(list* ,@(cdr x))
-								     x)
-								 (with-gensyms (idx)
-								   `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
-					       args))
-			    nil nil)
+      `(matlisp::subtensor~ ,x (list ,@(process-slice args)) nil nil)
       `(etypecase ,x
 	 ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*)))))
 
@@ -64,18 +69,25 @@
 	      `(,store)
 	      (let ((arr (car newval)))
 		`(prog1 ,(if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-			     `(setf (matlisp::subtensor~ ,arr (list ,@(mapcar #'(lambda (x) (if (consp x)
-												(if (eql (car x) ':slice)
-												    `(list* ,@(cdr x))
-												    x)
-												(with-gensyms (idx)
-												  `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
-									      args))
-							 nil t) ,store)
+			     `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args)) nil t) ,store)
 			     `(etypecase ,arr
 				,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))
 		   ,setter))
 	      `(generic-ref ,getter ,@args)))))
+
+(defmacro generic-incf (x expr &optional (alpha 1) &environment env)
+  (multiple-value-bind (dummies vals new setter getter) (get-setf-expansion x env)
+    (when (cdr new)
+      (error "Can't expand this."))
+    (with-gensyms (val)
+      (let ((new (car new)))
+	`(let* (,@(zip dummies vals)
+		(,new ,getter)
+		(,val ,expr))
+	   (etypecase ,new
+	     (matlisp::base-tensor (matlisp::axpy! ,alpha ,val ,new))
+	     (t (setq ,new (+ ,new ,val))))
+	   ,setter)))))
 
 ;;
 (define-constant +blank-characters+ '(#\^m #\space #\tab #\return #\newline))
@@ -107,7 +119,6 @@
     (read-infix stream)))
 
 ;; (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*)
-;; (defconstant +dispatch-character+ 
 (defreadtable :infix-dispatch-table
   (:merge :standard)
   (:dispatch-macro-char #\# #\I #'infix-reader))
@@ -354,10 +365,10 @@
 	       '+))))
 
 (define-token-operator +
-    :infix `(+ ,left ,(gather-superiors '+ stream))
+    :infix `(matlisp::t+ ,left ,(gather-superiors '+ stream))
     :prefix (gather-superiors '+ stream))
 (define-token-operator +=
-    :infix `(incf ,left ,(gather-superiors '+= stream)))
+    :infix `(generic-incf ,left ,(gather-superiors '+= stream)))
 
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\-
@@ -369,12 +380,20 @@
 	      (t
 	       '-))))
 (define-token-operator -
-    :infix `(- ,left ,(gather-superiors '- stream))
-    :prefix `(- ,(gather-superiors '- stream)))
+    :infix `(matlisp::t- ,left ,(gather-superiors '- stream))
+    :prefix `(matlisp::t- ,(gather-superiors '- stream)))
 (define-token-operator -=
-    :infix `(decf ,left ,(gather-superiors '-= stream)))
+    :infix `(generic-incf ,left ,(gather-superiors '-= stream) -1))
 
 ;;*--------------------------------------------------------------;;
+(define-character-tokenization #\.
+    #'(lambda (stream char)
+	(declare (ignore char))
+	(case (peek-char nil stream t nil t)
+	  (#\* (read-char stream t nil t) '.*)
+	  (#\/ (read-char stream t nil t) './)
+	  (t (error 'parser-error)))))
+
 (define-character-tokenization #\*
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -389,11 +408,14 @@
 	    (t
 	     '*)))))
 
+(define-token-operator .*
+    :infix `(matlisp::t.* ,left ,(gather-superiors '.* stream)))
+
 (define-token-operator *
-    :infix `(* ,left ,(gather-superiors '* stream)))
+    :infix `(matlisp::t* ,left ,(gather-superiors '* stream)))
 
 (define-token-operator *=
-    :infix `(,(if (symbolp left) 
+    :infix `(,(if (symbolp left)
 		  'setq
 		  'setf)
 	      ,left 
@@ -412,9 +434,21 @@
 	      (t
 	       '/))))
 
+(define-character-tokenization #\\
+    #'(lambda (stream char)
+	(declare (ignore char stream))
+	'\\))
+
+(define-token-operator \\
+    :infix `(matlisp::tsolve ,left ,(gather-superiors '\\ stream)))
+
+(define-token-operator ./
+    :infix `(matlisp::t./ ,(gather-superiors '/ stream) ,left)
+    :prefix `(matlisp::t./ ,(gather-superiors '/ stream)))
+
 (define-token-operator /
-    :infix `(/ ,left ,(gather-superiors '/ stream))
-    :prefix `(/ ,(gather-superiors '/ stream)))
+    :infix `(matlisp::tsolve ,(gather-superiors '/ stream) ,left)
+    :prefix `(matlisp::tsolve ,(gather-superiors '/ stream)))
 
 (define-token-operator /=
     :infix `(,(if (symbolp left) 
@@ -477,7 +511,7 @@
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\,
     #'(lambda (stream char)
-	(declare (ignore stream char))
+	(declare (ignore char stream))
 	'\,))
 
 ;;Get rid of this
@@ -490,31 +524,13 @@
 	'newline))
 
 (define-token-operator newline
-    :infix (let* ((ign (ignore-characters +blank-characters+ stream))
-		  (pchar (peek-char nil stream t nil t)))
-	     (case pchar
+    :infix (progn
+	     (ignore-characters +blank-characters+ stream)
+	     (case (peek-char nil stream t nil t)
 	       (#\)
 		left)
-	       (#\I
-		(read-char stream t nil t)
-		(if (char= (peek-char nil stream t nil t) #\#)
-		    (progn
-		      (unread-char #\I stream)
-		      left)
-		    (progn
-		      (unread-characters (cons #\I ign) stream)
-		      `(progn ,left ,(gather-superiors 'newline stream)))))
 	       (t
 		`(progn ,left ,(gather-superiors 'newline stream))))))
-
-(define-character-tokenization #\I
-    #'(lambda (stream char)
-	(let ((pchar (peek-char nil stream t nil t)))
-	  (if (char= pchar #\#)
-	      (progn
-		(read-char stream t nil t)
-		(funcall (get-macro-character #\)) stream char))
-	      'I))))
 ;;---------------------------------------------------------------;;
 
 (define-character-tokenization #\=
@@ -626,15 +642,9 @@
 		 (infix-error "No indices found in array reference.")
 		 `(generic-ref ,left ,@indices)))
     :prefix (let ((ele (infix-read-delimited-list '\] '\, stream)))
-	      (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-		  `(list ,@(mapcar #'(lambda (x) (if (consp x)
-						     (if (eql (car x) ':slice)
-							 `(list* ,@(cdr x))
-							 x)
-						     (with-gensyms (idx)
-						       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
-				   ele))
-		  `(vector ,@ele))))
+	      (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) ele)
+		  `(list ,@(process-slice ele))
+		  `(list ,@ele))))
 
 (define-character-tokenization #\(
     #'(lambda (stream char)
@@ -644,7 +654,7 @@
 (define-token-operator \(
     :infix `(,left ,@(infix-read-delimited-list '\) '\, stream))
     :prefix (let ((list (infix-read-delimited-list '\) '\, stream)))
-	      `(list ,@list)))
+	      `(progn ,@list)))
 
 (define-character-tokenization #\]
     #'(lambda (stream char)

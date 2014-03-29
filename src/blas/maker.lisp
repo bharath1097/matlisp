@@ -82,4 +82,4 @@
 	(fixnum
 	 (zeros-generic (list dims) type initial-element))))))
 
-(declaim (ftype (function ((or cons vector fixnum) &optional symbol t) base-tensor) zeros))
+(declaim (ftype (function ((or cons vector fixnum) &optional t t) base-tensor) zeros))
