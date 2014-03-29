@@ -109,11 +109,10 @@
 	    :pathname "base"
 	    :components ((:file "tweakable")
 			 (:file "base-tensor")
-			 (:file "linear")
 			 (:file "numeric-template")
 			 (:file "tensor-template")
 			 (:file "standard-tensor"
-				:depends-on ("tweakable" "base-tensor" "linear" "numeric-template" "tensor-template"))
+				:depends-on ("tweakable" "base-tensor" "numeric-template" "tensor-template"))
 			 ;;
 			 (:file "loopy"
 				:depends-on ("standard-tensor"))
