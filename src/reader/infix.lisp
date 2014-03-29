@@ -300,9 +300,9 @@
 ;;; Define Operators ***************
 ;;; ********************************
 
-(defvar *token-operators* nil)
-(defvar *token-prefix-operator-table* (make-hash-table))
-(defvar *token-infix-operator-table* (make-hash-table))
+(defparameter *token-operators* nil)
+(defparameter *token-prefix-operator-table* (make-hash-table))
+(defparameter *token-infix-operator-table* (make-hash-table))
 (defun token-operator-p (token)
   (find token *token-operators*))
 (defun get-token-prefix-operator (token)
@@ -434,13 +434,14 @@
 	      (t
 	       '/))))
 
-(define-character-tokenization #\\
-    #'(lambda (stream char)
-	(declare (ignore char stream))
-	'\\))
+;; Sure we can do what MATLAB does, but this means one can't use *'s in symbol names!
+;; (define-character-tokenization #\\
+;;     #'(lambda (stream char)
+;; 	(declare (ignore char stream))
+;; 	'\\))
 
-(define-token-operator \\
-    :infix `(matlisp::tsolve ,left ,(gather-superiors '\\ stream)))
+;; (define-token-operator \\
+;;     :infix `(matlisp::tsolve ,left ,(gather-superiors '\\ stream)))
 
 (define-token-operator ./
     :infix `(matlisp::t./ ,(gather-superiors '/ stream) ,left)

@@ -2,7 +2,9 @@
 
 ;;One may to do better than a Hash-table for this.
 (defclass coordinate-sparse-tensor (sparse-tensor)
-  ((strides :initarg :strides :reader strides :type index-store-vector
+  ((head :initarg :head :initform 0 :reader head :type index-type
+	 :documentation "Head for the store's accessor.")
+   (strides :initarg :strides :reader strides :type index-store-vector
 	    :documentation "Strides for accesing elements of the tensor.")))
 
 (deft/generic (t/sparse-fill #'subtypep) sym ())
@@ -33,9 +35,6 @@
 
 (deft/method t/store-type (sym coordinate-sparse-tensor) (&optional (size '*))
   'hash-table)
-
-(defmethod head ((tensor coordinate-sparse-tensor))
-  0)
 ;;
 (defmethod ref ((tensor coordinate-sparse-tensor) &rest subscripts)
   (let ((clname (class-name (class-of tensor))))
@@ -58,3 +57,16 @@
 	  (t/store-ref ,clname sto idx))))
     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
 ;;
+
+(defmethod subtensor~ ((tensor coordinate-sparse-tensor) (subscripts list) &optional (preserve-rank nil) (ref-single-element? t))
+  (multiple-value-bind (hd dims stds) (parse-slicing-args (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
+    (incf hd (head tensor))
+    (if dims
+	(let ((*check-after-initializing?* nil))
+	  (make-instance (class-of tensor)
+			 :head hd
+			 :dimensions (make-index-store dims)
+			 :strides (make-index-store stds)
+			 :store (store tensor)
+			 :parent-tensor tensor))
+	(store-ref tensor hd))))

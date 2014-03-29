@@ -131,6 +131,46 @@
 
 (defgeneric (setf ref) (value tensor &rest subscripts))
 
+;;
+(defgeneric store-ref (tensor idx)
+  (:documentation  "Generic serial read access to the store.")
+  (:method ((tensor base-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-ref ((tensor ,clname) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (store-ref tensor idx)))
+
+(defgeneric (setf store-ref) (value tensor idx)
+  (:method (value (tensor base-tensor) idx)
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod (setf store-ref) (value (tensor ,clname) idx)
+	  (t/store-set ,clname value (store tensor) idx)
+	  (t/store-ref ,clname (store tensor) idx))))
+    (setf (store-ref tensor idx) value)))
+
+;;
+(defgeneric store-size (tensor)
+  (:documentation "
+  Syntax
+  ======
+  (store-size tensor)
+
+  Purpose
+  =======
+  Returns the number of elements the store of the tensor can hold
+  (which is not necessarily equal to its vector length).")
+  (:method ((tensor base-tensor))
+    (let ((clname (class-name (class-of tensor))))
+      (assert (member clname *tensor-type-leaves*) nil 'tensor-abstract-class :tensor-class clname)
+      (compile-and-eval
+       `(defmethod store-size ((tensor ,clname))
+	  (t/store-size ,clname (store tensor))))
+      (store-size tensor))))
+
 ;;This is a silly hack. The plan is to get rid of this part using MOP.
 (defvar *tensor-type-leaves* nil "
   This is used to keep track of classes that are not meant to be
@@ -190,6 +230,29 @@
 	      :finally (unless (and (= count (order tensor)) (not csub))
 			 (error 'tensor-index-rank-mismatch :index-rank (length subs) :rank (order tensor))))))
 
+(definline parse-slicing-args (dimensions strides subscripts &optional (preserve-rank nil) (ref-single-element? t))
+  (declare (type index-store-vector dimensions)
+	   (type list subscripts))
+  (iter (for (start end . inc) in subscripts)
+	(for d in-vector dimensions)
+	(for s in-vector (the index-store-vector (or strides (allocate-index-store (length dimensions) 1)))) 
+	(with hd = 0)
+	(with empty? = nil)
+	(let ((start (or (and start (if (>= start 0) start (mod start d))) 0))
+	      (end (or (and end (if (>= end 0) end (mod end d))) d))
+	      (inc (or inc 1)))
+	  (declare (type index-type start end inc))
+	  (incf hd (* start s))
+	  (let ((nd (ceiling (- end start) inc)))
+	    (when (< inc 0) (setq nd (- nd)))
+	    (when (< nd 0) (setq empty? t) (setq nd 0))
+	    (when (or preserve-rank (> nd 1) empty?)
+	      (collect nd into dims)
+	      (collect (* inc s) into stds))))
+	(finally (return (if (and ref-single-element? (null dims))
+			     (values hd nil nil)
+			     (values hd (or dims (list 1)) (or stds (list 1))))))))
+
 (defun (setf subtensor~) (value tensor subscripts &optional (preserve-rank nil) (ref-single-element? nil))
   (declare (ignore ref-single-element?))
   (copy! value (subtensor~ tensor subscripts preserve-rank nil)))
@@ -204,3 +267,68 @@
 
 (definline col-slice~ (x idx)
   (slice~ x 1 idx))
+;;
+(defun tensor-typep (tensor subs)
+  "
+  Syntax
+  ======
+  (tensor-typep tensor subscripts)
+
+  Purpose
+  =======
+  Check if the given tensor is of a particular size in particular
+  arguments.
+
+  Examples
+  ========
+  Checking for a vector:
+  > (tensor-typep ten '(class-name *))
+
+  Checking for a matrix with 2 columns:
+  > (tensor-typep ten '(real-tensor (* 2)))
+
+  "
+  (declare (type base-tensor tensor))
+  (destructuring-bind (cls &optional subscripts) (ensure-list subs)
+    (and (typep tensor cls)
+	 (if subscripts
+	     (let-typed ((rank (order tensor) :type index-type)
+			 (dims (dimensions tensor) :type index-store-vector))
+			(very-quickly
+			  (loop :for val :in subscripts
+			     :for i :of-type index-type := 0 :then (1+ i)
+			     :do (unless (or (eq val '*) (eq val (aref dims i)))
+				   (return nil))
+			     :finally (return (when (= (1+ i) rank) t)))))
+	     t))))
+
+(definline tensor-matrixp (ten)
+  (declare (type base-tensor ten))
+  (= (order ten) 2))
+
+(definline tensor-vectorp (ten)
+  (declare (type base-tensor ten))
+  (= (order ten) 1))
+
+(definline tensor-squarep (tensor)
+  (declare (type base-tensor tensor))
+  (let-typed ((dims (dimensions tensor) :type index-store-vector))
+	     (loop :for i :from 1 :below (length dims)
+		:do (unless (= (aref dims i) (aref dims 0))
+		      (return nil))
+		:finally (return t))))
+;;
+
+(defun tensor-append (axis tensor &rest more-tensors)
+  (let ((dims (copy-seq (dimensions tensor))))
+    (loop :for ele :in more-tensors
+       :do (incf (aref dims axis) (aref (dimensions ele) axis)))
+    (let* ((ret (zeros dims))
+	   (view (slice~ ret axis 0 t)))
+      (loop :for ele :in (cons tensor more-tensors)
+	 :and head := 0 :then (+ head (* (aref (strides ret) axis) (aref (dimensions ele) axis)))
+	 :do (progn
+	       (setf (slot-value view 'head) head
+		     (aref (dimensions view) axis) (aref (dimensions ele) axis))
+	       (copy! ele view)))
+      ret)))
