@@ -34,7 +34,7 @@
 ;;
 (defclass base-tensor ()
   ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
-   :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")   
+   :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type (or null base-tensor)
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
    (store :initarg :store :reader store
@@ -72,7 +72,7 @@
   (with-gensyms (tens)
     `(let-typed ((,tens ,tensor :type base-tensor))
        (multiple-value-bind (value present?) (gethash ',name (attributes ,tens))
-	 (values-list 
+	 (values-list
 	  (if present?
 	      value
 	      (setf (gethash ',name (attributes ,tens))
@@ -115,7 +115,7 @@
 		       :do (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))))))
 
 ;;
-(defclass sparse-tensor (base-tensor) ())				       
+(defclass sparse-tensor (base-tensor) ())
 (defclass dense-tensor (base-tensor) ())
 
 (defgeneric ref (tensor &rest subscripts)
@@ -183,7 +183,6 @@
      (defclass ,name ,direct-superclasses ,direct-slots ,@options)
      (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
 ;;
-
 (defgeneric subtensor~ (tensor subscripts &optional preserve-rank ref-single-element?)
   (:documentation "
   Syntax
@@ -223,39 +222,57 @@
 	      :for d :of-type index-type :across (dimensions tensor)
 	      :counting t :into count
 	      :do (destructuring-bind (st en . inc) (car csub)
-		    (declare (ignore inc))
-		    (unless (and (or (not st) (< st 0) (<= st d))
-				 (or (not en) (< en 0) (<= en d)))
-		      (error 'tensor-index-out-of-bounds :argument count :index (list st en) :dimension d)))
+		    (declare (type (or index-type null) st en inc))
+		    (unless (and (or (not st) (< (1- (- d)) st d))
+				 (or (not en) (< (1- (- d)) en d))
+				 (or (not inc) (/= inc 0)))
+			(error 'tensor-index-out-of-bounds :argument count :index (list st en) :dimension d)))
 	      :finally (unless (and (= count (order tensor)) (not csub))
 			 (error 'tensor-index-rank-mismatch :index-rank (length subs) :rank (order tensor))))))
-
-(definline parse-slicing-args (dimensions strides subscripts &optional (preserve-rank nil) (ref-single-element? t))
-  (declare (type index-store-vector dimensions)
-	   (type list subscripts))
-  (iter (for (start end . inc) in subscripts)
-	(for d in-vector dimensions)
-	(for s in-vector (the index-store-vector (or strides (allocate-index-store (length dimensions) 1)))) 
-	(with hd = 0)
-	(with empty? = nil)
-	(let ((start (or (and start (if (>= start 0) start (mod start d))) 0))
-	      (end (or (and end (if (>= end 0) end (mod end d))) d))
-	      (inc (or inc 1)))
-	  (declare (type index-type start end inc))
-	  (incf hd (* start s))
-	  (let ((nd (ceiling (- end start) inc)))
-	    (when (< inc 0) (setq nd (- nd)))
-	    (when (< nd 0) (setq empty? t) (setq nd 0))
-	    (when (or preserve-rank (> nd 1) empty?)
-	      (collect nd into dims)
-	      (collect (* inc s) into stds))))
-	(finally (return (if (and ref-single-element? (null dims))
-			     (values hd nil nil)
-			     (values hd (or dims (list 1)) (or stds (list 1))))))))
 
 (defun (setf subtensor~) (value tensor subscripts &optional (preserve-rank nil) (ref-single-element? nil))
   (declare (ignore ref-single-element?))
   (copy! value (subtensor~ tensor subscripts preserve-rank nil)))
+
+(macrolet ((proj (idx def &optional dim)
+	     (if dim
+		 `(or (and ,idx (if (>= ,idx 0) ,idx (+ ,dim ,idx))) ,def)
+		 `(or ,idx ,def))))
+  ;;These two function contain very similar code!
+  (definline parse-slice (subs dims)
+    (declare (type index-store-vector dims))
+    (iter (for (start end . inc) in subs)
+	  (declare ((or index-type null) start end inc))
+	  (for d in-vector dims)
+	  (let* ((inc (proj inc 1))
+		 (start (proj start (if (> inc 0) 0 (1- d)) d))
+		 (end (proj end (if (> inc 0) d -1) d)))
+	    (declare (type index-type start end inc))
+	    (let ((nd (ceiling (- end start) inc)))
+	      (when (< nd 0) (return nil))
+	      (collect (list* nd start end inc))))))
+
+  (definline parse-slice-for-strides (dimensions strides subscripts &optional (preserve-rank nil) (ref-single-element? t))
+    (declare (type index-store-vector dimensions strides)
+	     (type list subscripts))
+    (iter (for (start end . inc) in subscripts)
+	  (declare ((or index-type null) start end inc))
+	  (for d in-vector dimensions)
+	  (for s in-vector strides)
+	  (with (the index-type hd) = 0)
+	  (let* ((inc (proj inc 1))
+		 (start (proj start (if (> inc 0) 0 (1- d)) d))
+		 (end (proj end (if (> inc 0) d -1) d)))
+	    (declare (type index-type start end inc))
+	    (let ((nd (ceiling (- end start) inc)))
+	      (when (< nd 0) (return (values -1 nil nil)))
+	      (incf hd (* s start))
+	      (when (or preserve-rank (> nd 1))
+		(collect nd into dims)
+		(collect (* inc s) into stds))))
+	  (finally (return (if (and ref-single-element? (null dims))
+			       (values hd nil nil)
+			       (values hd (or dims (list 1)) (or stds (list 1)))))))))
 
 (definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
   (let ((slst (make-list (order x) :initial-element '(nil nil))))

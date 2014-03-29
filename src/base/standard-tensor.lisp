@@ -105,7 +105,7 @@
     (very-quickly
       (loop
 	 :for i  :of-type index-type :downfrom (1- (length dims)) :to 0
-	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))	 
+	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))
 	 :do (progn
 	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
 	       (setf (aref stds i) st))
@@ -173,14 +173,15 @@
 
 ;;
 (defmethod subtensor~ ((tensor standard-tensor) (subscripts list) &optional (preserve-rank nil) (ref-single-element? t))
-  (multiple-value-bind (hd dims stds) (parse-slicing-args (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
-    (incf hd (head tensor))
-    (if dims
-	(let ((*check-after-initializing?* nil))
-	  (make-instance (class-of tensor)
-			 :head hd
-			 :dimensions (make-index-store dims)
-			 :strides (make-index-store stds)
-			 :store (store tensor)
-			 :parent-tensor tensor))
-	(store-ref tensor hd))))
+  (multiple-value-bind (hd dims stds) (parse-slice-for-strides (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
+    (when (> hd -1)
+      (incf hd (head tensor))
+      (if dims
+	  (let ((*check-after-initializing?* nil))
+	    (make-instance (class-of tensor)
+			   :head hd
+			   :dimensions (make-index-store dims)
+			   :strides (make-index-store stds)
+			   :store (store tensor)
+			   :parent-tensor tensor))
+	  (store-ref tensor hd)))))

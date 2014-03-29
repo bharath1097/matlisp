@@ -57,9 +57,8 @@
 	  (t/store-ref ,clname sto idx))))
     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
 ;;
-
 (defmethod subtensor~ ((tensor coordinate-sparse-tensor) (subscripts list) &optional (preserve-rank nil) (ref-single-element? t))
-  (multiple-value-bind (hd dims stds) (parse-slicing-args (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
+  (multiple-value-bind (hd dims stds) (parse-slice-for-strides (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
     (incf hd (head tensor))
     (if dims
 	(let ((*check-after-initializing?* nil))
