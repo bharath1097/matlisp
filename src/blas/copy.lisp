@@ -125,7 +125,7 @@
 	  'tensor-dimension-mismatch))
 
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
-  (assert (< (store-size a) (store-size b)) nil 'tensor-insufficient-store))
+  (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
 (defmethod copy! ((x standard-tensor) (y standard-tensor))
   (let ((clx (class-name (class-of x)))
@@ -215,11 +215,12 @@
        (mtree tensor nil)))
     ((or (not type) (subtypep type 'standard-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)))))
-       (copy! tensor ret)))))
+       (copy! tensor ret)))
+    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
 
 (defmethod copy-generic ((tensor sparse-tensor) type)
   (cond
     ((or (not type) (subtypep type 'sparse-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)) (store-size tensor))))
-       (copy! tensor ret)))))
-
+       (copy! tensor ret)))
+    (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))

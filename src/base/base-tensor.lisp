@@ -131,6 +131,7 @@
 
 (defgeneric (setf ref) (value tensor &rest subscripts))
 
+(declaim (ftype (function (base-tensor &rest t) t) ref))
 ;;
 (defgeneric store-ref (tensor idx)
   (:documentation  "Generic serial read access to the store.")

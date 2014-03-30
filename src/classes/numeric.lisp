@@ -37,6 +37,14 @@
   (format stream "~12,4,0,,,,'Eg" element))
 
 ;;Real tensor
+(define-constant +real-infinity+
+    (matlisp-ffi::with-fortran-float-modes
+      (/ 1d0 0d0)))
+
+(define-constant +real-nan+
+    (matlisp-ffi::with-fortran-float-modes
+      (/ 0d0 0d0)))
+
 (defleaf real-tensor (real-numeric-tensor) ())
 (deft/method t/field-type (sym real-tensor) ()
   'double-float)

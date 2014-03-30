@@ -1,0 +1,278 @@
+;;; Wed Jan 18 13:13:59 1995 by Mark Kantrowitz <mkant@FLATHEAD.OZ.CS.CMU.EDU>
+;;; infix.cl -- 40545 bytes
+
+;;; **************************************************************************
+;;; Infix ********************************************************************
+;;; **************************************************************************
+;;;
+;;; This is an implementation of an infix reader macro. It should run in any
+;;; valid Common Lisp and has been tested in Allegro CL 4.1, Lucid CL 4.0.1,
+;;; MCL 2.0 and CMU CL. It allows the user to type arithmetic expressions in
+;;; the traditional way (e.g., 1+2) when writing Lisp programs instead of
+;;; using the normal Lisp syntax (e.g., (+ 1 2)).  It is not intended to be a
+;;; full replacement for the normal Lisp syntax. If you want a more complete
+;;; alternate syntax for Lisp, get a copy Apple's MLisp or Pratt's CGOL.
+;;;
+;;; Although similar in concept to the Symbolics infix reader (#<DIAMOND>), 
+;;; no real effort has been made to ensure compatibility beyond coverage 
+;;; of at least the same set of basic arithmetic operators. There are several 
+;;; differences in the syntax beyond just the choice of #I as the macro 
+;;; character. (Our syntax is a little bit more C-like than the Symbolics 
+;;; macro in addition to some more subtle differences.) 
+;;;
+;;; We initially chose $ as a macro character because of its association
+;;; with mathematics in LaTeX, but unfortunately that character is already
+;;; used in MCL. We switched to #I() because it was one of the few options
+;;; remaining.
+;;;
+;;; Written by Mark Kantrowitz, School of Computer Science,
+;;; Carnegie Mellon University, March 1993.
+;;;
+;;; Copyright (c) 1993 by Mark Kantrowitz. All rights reserved.
+;;;
+;;; Use and copying of this software and preparation of derivative works
+;;; based upon this software are permitted, so long as the following
+;;; conditions are met:
+;;;      o no fees or compensation are charged for use, copies, 
+;;;        distribution or access to this software
+;;;      o this copyright notice is included intact.
+;;; This software is made available AS IS, and no warranty is made about
+;;; the software or its performance.
+;;;
+;;; In no event will the author(s) or their institutions be liable to you for
+;;; damages, including lost profits, lost monies, or other special, incidental
+;;; or consequential damages, arising out of or in connection with the use or
+;;; inability to use (including but not limited to loss of data or data being
+;;; rendered inaccurate or losses sustained by third parties or a failure of
+;;; the program to operate as documented) the program, or for any claim by
+;;; any other party, whether in an action of contract, negligence, or 
+;;; other tortious action.
+;;;
+;;; Please send bug reports, comments and suggestions to mkant@cs.cmu.edu.
+;;;
+;;; The current version of this software and a variety of related utilities
+;;; may be obtained from the Lisp Repository by anonymous ftp
+;;; from ftp.cs.cmu.edu [128.2.206.173] in the directory
+;;;     user/ai/lang/lisp/code/syntax/infix/
+;;; If your site runs the Andrew File System, you can cd to the AFS directory
+;;;     /afs/cs.cmu.edu/project/ai-repository/ai/lang/lisp/code/syntax/infix/
+;;;
+;;; If you wish to be added to the Lisp-Utilities@cs.cmu.edu mailing list,
+;;; send email to Lisp-Utilities-Request@cs.cmu.edu with your name, email
+;;; address, and affiliation. This mailing list is primarily for
+;;; notification about major updates, bug fixes, and additions to the Lisp
+;;; Utilities Repository. The mailing list is intended to have low traffic.
+;;;
+
+;;; ********************************
+;;; Documentation ******************
+;;; ********************************
+;;;
+;;; Syntax:
+;;;
+;;;   Begin the reader macro with #I( and end it with ). For example,
+;;;      #I( x^^2 + y^^2 )
+;;;   is equivalent to the Lisp form
+;;;      (+ (expt x 2) (expt y 2))
+;;;   but much easier to read according to some folks.
+;;;
+;;;   If you want to see the expansion, type a quote before the #I form
+;;;   at the Lisp prompt:
+;;;     > '#I(if x<y<=z then f(x)=x^^2+y^^2 else f(x)=x^^2-y^^2)
+;;;     (IF (AND (< X Y) (<= Y Z))
+;;;         (SETF (F X) (+ (EXPT X 2) (EXPT Y 2)))
+;;;         (SETF (F X) (- (EXPT X 2) (EXPT Y 2))))
+;;;
+;;;
+;;; Operators:
+;;;
+;;;    NOTE: == is equality, = is assignment (C-style).
+;;;
+;;;     \                   quoting character:  x\-y  -->  x-y
+;;;     !                   lisp escape    !(foo bar) -->  (foo bar)
+;;;     ;                   comment
+;;;     x = y               assignment                     (setf x y)
+;;;     x += y              increment                      (incf x y)
+;;;     x -= y              decrement                      (decf x y)
+;;;     x *= y              multiply and store             (setf x (* x y))
+;;;     x /= y              divide and store               (setf x (/ x y))
+;;;     x|y                 bitwise logical inclusive or   (logior x y)
+;;;     x^y                 bitwise logical exclusive or   (logxor x y)
+;;;     x&y                 bitwise logical and            (logand x y)
+;;;     x<<y                left shift                     (ash x y)
+;;;     x>>y                right shift                    (ash x (- y))
+;;;     ~x                  ones complement (unary)        (lognot x)
+;;;     x and y             conjunction                    (and x y)
+;;;     x && y              conjunction                    (and x y)
+;;;     x or y              disjunction                    (or x y)
+;;;     x || y              disjunction                    (or x y)
+;;;     not x               negation                       (not x)
+;;;     x^^y                exponentiation                 (expt x y)
+;;;     x,y                 sequence                       (progn x y)
+;;;     (x,y)               sequence                       (progn x y)
+;;;                         also parenthesis (x+y)/z -->   (/ (+ x y) z)
+;;;     f(x,y)              functions                      (f x y)
+;;;     a[i,j]              array reference                (aref a i j)
+;;;     x+y x*y             arithmetic                     (+ x y) (* x y) 
+;;;     x-y x/y             arithmetic                     (- x y) (/ x y) 
+;;;     -y                  value negation                 (- y)
+;;;     x % y               remainder                      (mod x y)
+;;;     x<y x>y             inequalities                   (< x y) (> x y)
+;;;     x <= y  x >= y      inequalities                   (<= x y) (>= x y)
+;;;     x == y              equality                       (= x y) 
+;;;     x != y              equality                       (not (= x y))
+;;;     if p then q         conditional                    (when p q)
+;;;     if p then q else r  conditional                    (if p q r) 
+;;;
+
+;;; Precedence:
+;;;
+;;;    The following precedence conventions are obeyed by the infix operators:
+;;;      [ ( !
+;;;      ^^
+;;;      ~
+;;;      * / %
+;;;      + -
+;;;      << >>
+;;;      < == > <= != >=
+;;;      &
+;;;      ^
+;;;      |
+;;;      not
+;;;      and
+;;;      or
+;;;      = += -= *= /=
+;;;      , 
+;;;      if
+;;;      then else
+;;;      ] )
+;;;
+;;;    Note that logical negation has lower precedence than numeric comparison
+;;;    so that "not a<b" becomes (not (< a b)), which is different from the
+;;;    C precedence conventions. You can change the precedence conventions by
+;;;    modifying the value of the variable *operator-ordering*.
+;;;
+
+;;; ********************************
+;;; To Do **************************
+;;; ********************************
+;;;
+;;;    Write some more test cases.
+;;;    Write some more syntactic optimizations.
+;;;    Would really like ~x to be (not x), but need it for (lognot x). 
+;;;    Support for multiple languages, such as a Prolog parser, a 
+;;;    strictly C compatible parser, etc.
+
+;;; Create a more declarative format, where there is one big table of 
+;;; operators with all the info on them, and also NOT have the list of
+;;; operators in the comment, where they are likely to become wrong when
+;;; changes are made to the code. For example, something like:
+
+;; (define-infix-operators
+;;   ([  30                           :matchfix aref :end ])
+;;   (*  20 :infix *                                       )
+;;   (+  10 :infix +        :prefix +                      )
+;;   (&  10 :infix and                                     )
+;;   (+= 10 :infix #'+=-operator                           )
+;;   ...)
+
+
+;;; ********************************
+;;; Change Log *********************
+;;; ********************************
+;;;
+;;;  9-MAR-93 mk     Created
+;;; 12-MAR-93 mk     Fixed defpackage form for Lucid.
+;;; 1.1:
+;;; 14-OCT-93 mk     Changed macro character from #$ to #I(). Suggested by
+;;;                  Scott McKay.
+;;; 1.2:
+;;; 18-JAN-95 norvig Added *print-infix-copyright*, string->prefix, support
+;;;                  for #I"..." in addition to #i(...) which lets one
+;;;                  type #i"a|b" which doesn't confuse editors that aren't
+;;;                  |-aware. Also added := as a synonym for =, so that
+;;;                  '#i"car(a) := b" yields (SETF (CAR A) B).
+;;;
+;;; 1.3:
+;;; 28-JUN-96 mk    Modified infix reader to allow whitespace between the #I
+;;;                 and the start of the expression.
+
+
+
+;;; ********************************
+;;; Implementation Notes ***********
+;;; ********************************
+;;;
+;;; Initially we tried implementing everything within the Lisp reader,
+;;; but found this to not be workable. Parameters had to be passed in
+;;; global variables, and some of the processing turned out to be 
+;;; indelible, so it wasn't possible to use any kind of lookahead.
+;;; Center-embedded constructions were also a problem, due to the lack
+;;; of an explicit stack.
+;;;
+;;; So we took another tack, that used below. The #I macro binds the
+;;; *readtable* to a special readtable, which is used solely for tokenization
+;;; of the input. Then the problem is how to correctly parenthesize the input.
+;;; We do that with what is essentially a recursive-descent parser. An 
+;;; expression is either a prefix operator followed by an expression, or an 
+;;; expression followed by an infix operator followed by an expression. When 
+;;; the latter expression is complex, the problem becomes a little tricky. 
+;;; For example, suppose we have
+;;;      exp1 op1 exp2 op2
+;;; We need to know whether to parenthesize it as
+;;;      (exp1 op1 exp2) op2
+;;; or as
+;;;      exp1 op1 (exp2 op2 ...)
+;;; The second case occurs either when op2 has precedence over op1 (e.g.,
+;;; * has precedence over +) or op2 and op1 are the same right-associative
+;;; operator (e.g., exponentiation). Thus the algorithm is as follows:
+;;; When we see op1, we want to gobble up exp2 op2 exp3 op3 ... opn expn+1
+;;; into an expression where op2 through opn all have higher precedence
+;;; than op1 (or are the same right-associative operator), and opn+1 doesn't.
+;;; This algorithm is implemented by the GATHER-SUPERIORS function. 
+;;; 
+;;; Because + and - are implemented in the infix readtable as terminating
+;;; macro cahracters, the exponentiation version of Lisp number syntax
+;;;    1e-3 == 0.001
+;;; doesn't work correctly -- it parses it as (- 1e 3). So we add a little
+;;; cleverness to GATHER-SUPERIORS to detect when the tokenizer goofed. 
+;;; Since this requires the ability to lookahead two tokens, we use a
+;;; stack to implement the lookahead in PEEK-TOKEN and READ-TOKEN.
+;;;
+;;; Finally, the expression returned by GATHER-SUPERIORS sometimes needs to
+;;; be cleaned up a bit. For example, parsing a<b<c would normally return
+;;; (< (< a b) c), which obviously isn't correct. So POST-PROCESS-EXPRESSION
+;;; detects this and similar cases, replacing the expression with (< a b c).
+;;; For cases like a<b<=c, it replaces it with (and (< a b) (<= b c)).
+;;; 
+
+;;; ********************************
+;;; Package Cruft ******************
+;;; ********************************
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *version* "1.3  28-JUN-96")
+  (defparameter *print-infix-copyright* t
+    "If non-NIL, prints a copyright notice upon loading this file.")
+
+  (defun infix-copyright (&optional (stream *standard-output*))
+    "Prints an INFIX copyright notice and header upon startup."
+    (format stream "~%;;; ~V,,,'*A" 73 "*")
+    (format stream "~%;;;   Infix notation for Common Lisp.")
+    (format stream "~%;;;   Version ~A." *version*)
+    (format stream "~%;;;   Written by Mark Kantrowitz, ~
+                            CMU School of Computer Science.")
+    (format stream "~%;;;   Copyright (c) 1993-95. All rights reserved.")
+    (format stream "~%;;;   May be freely redistributed, provided this ~
+                            notice is left intact.")
+    (format stream "~%;;;   This software is made available AS IS, without ~
+                            any warranty.")
+    (format stream "~%;;; ~V,,,'*A~%" 73 "*")
+    (force-output stream))
+
+  ;; What this means is you can either turn off the copyright notice
+  ;; by setting the parameter, or you can turn it off by including
+  ;; (setf (get :infix :dont-print-copyright) t) in your lisp init file.
+  (when (and *print-infix-copyright* 
+	     (not (get :infix :dont-print-copyright)))
+    (infix-copyright)))

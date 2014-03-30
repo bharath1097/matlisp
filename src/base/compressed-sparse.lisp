@@ -9,6 +9,8 @@
    (neighbour-id :initarg :neighbour-id :reader neighbour-id :type index-store-vector
 		 :documentation "Row id.")))
 
+(declaim (ftype (function (compressed-sparse-matrix) index-store-vector) neighbour-start neighbour-id))
+
 (defun compressed-sparse-indexing (subs tensor)
   (declare (type compressed-sparse-matrix tensor)
 	   (type (or index-store-vector cons) subs))
@@ -81,8 +83,8 @@
      `(defmethod ref ((tensor ,clname) &rest subscripts)
 	(let ((idx (compressed-sparse-indexing (if (numberp (car subscripts)) subscripts (car subscripts)) tensor)))
 	  (if (< idx 0)
-	      (t/sparse-fill ,clname)
-	      (t/store-ref ,clname (store tensor) idx)))))
+	      (values (t/sparse-fill ,clname) nil)
+	      (values (t/store-ref ,clname (store tensor) idx) t)))))
     (apply #'ref (cons tensor subscripts))))
 
 (defmethod (setf ref) (value (tensor compressed-sparse-matrix) &rest subscripts)

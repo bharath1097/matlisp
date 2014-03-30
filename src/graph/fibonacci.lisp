@@ -42,8 +42,17 @@
 
 (defun fib-insert (obj fib)
   (let ((pmin (fib-min fib))
-	(node (make-hnode :key obj :parent nil)))
-    (setf (hnode-dcons node) (dpush node (root fib)))
+	(node (if (hnode-p obj)
+		  (progn
+		    (setf (hnode-parent obj) nil
+			  (hnode-children obj) nil
+			  (hnode-mark? obj) nil
+			  (hnode-degree obj) 0)
+		    obj)
+		  (make-hnode :key obj :parent nil))))
+    (if-let (dcons (hnode-dcons node))
+      (setf (root fib) (dappend2 dcons (root fib)))
+      (setf (hnode-dcons node) (dpush node (root fib))))
     (with-fslots ((ord heap-order)) fib
       (unless (and pmin (ord obj pmin))
 	(setf (root fib) (second (root fib)))))
@@ -114,6 +123,7 @@
 		 (setf (hnode-children y) tmp))
 	       (setf (hnode-parent x) nil
 		     (hnode-mark? x) nil)
+	       (incf (number-of-trees fib))
 	       (dappend2 (hnode-dcons x) (root fib)))
 	     (ccut (y)
 	       ;;cascading cut
