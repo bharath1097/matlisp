@@ -1,11 +1,26 @@
 (in-package #:matlisp)
 
-(defmacro mod-dotimes ((idx dims &key (loop-order *default-stride-ordering*)) &body body)
+(defmacro mod-dotimes ((idx dims &key (loop-order *default-stride-ordering* loop-ordering-p) (uplo? :ul)) &body body)
 "
-  (mod-dotimes (idx {seq}) compound-form*)
+  (mod-dotimes (idx {seq} &key loop-order uplo?) compound-form*)
+
+  The argument LOOP-ORDER can either take the keywords {:ROW-MAJOR, :COL-MAJOR},
+  or the pindex-store-vector corresponding to a permutation action. In the latter
+  case an array of the form [0,...,n] is permuted using APPLY-ACTION!, and parsed
+  left-to-right order.
+
+  The argument UPLO? can take one of the keywords {:UL, :U, :L}. If :UL is used,
+  the loop run around every point in the cube; if :U is specified only the indices
+  defined by upper simplex, including the diagonal, is generated; similarly for :L,
+  the lower simplex is generated. Using either {:U, :L} with UPLO?, automatically
+  sets the loop-ordering, for expected results. If an argument to LOOP-ORDER is also
+  specified along with UPLO?, then you'll in general see things which may have weird
+  effects on the control flow.
+
+  Make sure that \"do\" is specified at the end: the parser stops at the first 'do
+  it finds.
 
   (mod-dotimes (var {seq})
-    {with (loop-order {:row-major :col-major})}
     {with (linear-sums
 	      {(offsets {stride-seq})}*)}
     {do ({code}*)})
@@ -19,19 +34,17 @@
   #(1 0) 2
   #(1 1) 3
 
-  > (mod-dotimes (idx (idxv 2 2))
-      with (loop-order :col-major)
+  > (mod-dotimes (idx (idxv 2 2) :loop-order :col-major)
       with (linear-sums (of (idxv 2 1)))
       do (format t \"~a ~a~%\" idx of))
   #(0 0) 0
   #(1 0) 2
   #(0 1) 1
   #(1 1) 3
-
-  Make sure that \"do\" is specified at the end. Parser stops
-  at the first 'do it finds.
 "
-  (check-type idx symbol)  
+  (check-type idx symbol)
+  (unless loop-ordering-p
+    (ecase uplo? (:ul nil) (:u (setq loop-order :col-major)) (:l (setq loop-order :row-major))))
   (labels ((parse-code (body ret)
 	     (cond
 	       ((null body)
@@ -96,16 +109,20 @@
 				     (:row-major `(loop :for ,count-sym :of-type index-type :from (1- ,rank-sym) :downto 0))
 				     (:col-major `(loop :for ,count-sym :of-type index-type :from 0 :below ,rank-sym))))
 			       `(:do
-				 (if (= (aref ,idx ,count-sym) (1- (aref ,dims-sym ,count-sym)))
+				 (if ,(recursive-append (ecase uplo?
+							  (:ul nil)
+							  (:l `(or (and (> ,count-sym 0) (= (aref ,idx ,count-sym) (aref ,idx (1- ,count-sym))))))
+							  (:u `(or (and (< ,count-sym (1- ,rank-sym)) (= (aref ,idx ,count-sym) (aref ,idx (1+ ,count-sym)))))))
+							`(= (aref ,idx ,count-sym) (1- (aref ,dims-sym ,count-sym))))
 				     (progn
-				       (setf (aref ,idx ,count-sym) 0)
 				       ,@(loop
 					    :for decl :in (getf sdecl :linear-sums)
 					    :collect (let ((cstrd (gensym (string+ "cur-" (symbol-name (getf decl :stride-sym))))))
 						       `(let ((,cstrd (aref ,(getf decl :stride-sym) ,count-sym)))
 							  (declare (type index-type ,cstrd))
 							  (unless (= ,cstrd 0)
-							    (decf ,(getf decl :offset-sym) (the index-type (* ,cstrd (1- (aref ,dims-sym ,count-sym))))))))))
+							    (decf ,(getf decl :offset-sym) (the index-type (* ,cstrd (aref ,idx ,count-sym))))))))
+				       (setf (aref ,idx ,count-sym) 0))
 				     (progn
 				       (incf (aref ,idx ,count-sym))
 				       ,@(loop
@@ -117,7 +134,28 @@
 							    (incf ,(getf decl :offset-sym) ,cstrd)))))
 				       (return t)))
 				 :finally (return nil)))))))))))))
-    
+
+(defmacro dorefs ((idx dims &key (loop-order *default-stride-ordering* loop-ordering-p) (uplo? :ul)) (&rest ref-decls) &rest body)
+  (let* ((tsyms (zipsym (mapcar #'second ref-decls)))
+	 (rsyms (mapcar #'car ref-decls))
+	 (types (mapcar #'(lambda (x) (destructuring-bind (ref ten &key type) x
+				       (declare (ignore ref ten))
+				       type))
+			ref-decls))
+	 (ssyms (mapcar #'(lambda (x y) (when y `(,(gensym) (store ,(car x))))) tsyms types))
+	 (osyms (mapcar #'(lambda (y) (when y (gensym))) types)))
+    `(let-typed (,@(mapcar #'(lambda (x y) (if y (append x `(:type ,y)) x)) tsyms types))
+       (let-typed (,@(remove-if #'null (mapcar #'(lambda (x y) (when y (append x `(:type ,(store-type y))))) ssyms types)))
+	 (mod-dotimes (,idx ,dims ,@(when loop-ordering-p `(:loop-order ,loop-order)) :uplo? ,uplo?)
+	   :with (linear-sums
+		  ,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
+					      osyms tsyms types)))
+	   :do (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
+									      (list ref `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of)))
+									      (list ref `(ref ,(car ten) ,idx))))
+						     rsyms ssyms tsyms osyms types))
+		 ,@body))))))
+
 (defmacro list-loop ((idx ele lst) &rest body)
   "
   (list-loop (idx ele {list}) compound-form*)

@@ -75,21 +75,15 @@
 	   (assert (member uplo '(:l :u)) nil 'invalid-arguments
 		   :given uplo :expected `(member uplo '(:l :u)))))
 
-(defmethod potrf! ((a blas-numeric-tensor) &optional (uplo :l))
-  (let ((cla (class-name (class-of A))))
-    (assert (member cla *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class (list cla))
-    (compile-and-eval
-     `(defmethod potrf! ((A ,cla) &optional (uplo :l))
-	(with-columnification (() (A))
-	  (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
-	    (declare (ignore opa))
-	    (multiple-value-bind (sto info) (t/lapack-potrf! ,cla A lda (char-upcase (aref (symbol-name uplo) 0)))
-	      (declare (ignore sto))
-	      (unless (= info 0)
-		(error "getrf returned ~a." info)))))
-	A))
-    (potrf! A uplo)))
+(define-tensor-method potrf! ((a blas-numeric-tensor :output) &optional (uplo :l))
+  `(with-columnification (() (A))
+     (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
+       (declare (ignore opa))
+       (multiple-value-bind (sto info) (t/lapack-potrf! ,(cl a) A lda (char-upcase (aref (symbol-name uplo) 0)))
+	 (declare (ignore sto))
+	 (unless (= info 0)
+	   (error "getrf returned ~a." info)))))
+  'A)
 ;;
 
 (deft/generic (t/lapack-potrs-func #'subfieldp) sym ())
@@ -153,25 +147,14 @@
 	   (assert (member uplo '(:l :u)) nil 'invalid-value
 		   :given uplo :expected `(member uplo '(:u :l)))))
 
-(defmethod potrs! ((A blas-numeric-tensor) (B blas-numeric-tensor) &optional (uplo :l))
-  (let ((cla (class-name (class-of A)))
-	(clb (class-name (class-of B))))
-    (assert (and (member cla *tensor-type-leaves*) (member clb *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list cla clb))
-    (cond
-      ((eql cla clb)
-       (compile-and-eval	
-	`(defmethod potrs! ((A ,cla) (B ,clb) &optional (uplo :l))
-	   (with-columnification (,cla ((A #\N)) (B))
-	     (mlet* (((lda opa) (blas-matrix-compatiblep A #\N))
-		     (ldb (blas-matrix-compatiblep B #\N)))
-	       (multiple-value-bind (sto info) (t/lapack-potrs! ,cla A lda B ldb
-								(let ((cuplo (aref (symbol-name uplo) 0)))
-								  (ecase opa (#\N cuplo) (#\T (fortran-nuplo cuplo)))))
-		 (declare (ignore sto))
-		 (unless (= info 0)
-		   (error "potrs returned ~a." info)))))
-	   B))
-       (potrs! A B uplo))
-      (t
-       (error "Don't know how to apply getrs! to classes ~a." (list cla clb))))))
+(define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo :l))
+  `(with-columnification (,cla ((A #\N)) (B))
+     (mlet* (((lda opa) (blas-matrix-compatiblep A #\N))
+	     (ldb (blas-matrix-compatiblep B #\N)))
+	    (multiple-value-bind (sto info) (t/lapack-potrs! ,cla A lda B ldb
+							     (let ((cuplo (aref (symbol-name uplo) 0)))
+							       (ecase opa (#\N cuplo) (#\T (fortran-nuplo cuplo)))))
+	      (declare (ignore sto))
+	      (unless (= info 0)
+		(error "potrs returned ~a." info)))))
+  'B)

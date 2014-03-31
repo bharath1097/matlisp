@@ -52,27 +52,6 @@
     (mapsor! #'(lambda (idx x y) (declare (ignore idx y)) (funcall func x)) x ret)))
 
 ;;
-(defmacro dorefs ((idx dims) (&rest ref-decls) &rest body)
-  (let* ((tsyms (zipsym (mapcar #'second ref-decls)))
-	 (rsyms (mapcar #'car ref-decls))
-	 (types (mapcar #'(lambda (x) (destructuring-bind (ref ten &key type) x
-				       (declare (ignore ref ten))
-				       type))
-			ref-decls))
-	 (ssyms (mapcar #'(lambda (x y) (when y `(,(gensym) (store ,(car x))))) tsyms types))
-	 (osyms (mapcar #'(lambda (y) (when y (gensym))) types)))
-    `(let-typed (,@(mapcar #'(lambda (x y) (if y (append x `(:type ,y)) x)) tsyms types))
-       (let-typed (,@(remove-if #'null (mapcar #'(lambda (x y) (when y (append x `(:type ,(store-type y))))) ssyms types)))
-	 (mod-dotimes (,idx ,dims)
-	   :with (linear-sums
-		  ,@(remove-if #'null (mapcar #'(lambda (of ten typ) (when typ `(,of (strides ,(car ten)) (head ,(car ten)))))
-					      osyms tsyms types)))
-	   :do (symbol-macrolet (,@(mapcar #'(lambda (ref sto ten of typ) (if typ
-									      (list ref `(the ,(field-type typ) (t/store-ref ,typ ,(car sto) ,of)))
-									      (list ref `(ref ,(car ten) ,idx))))
-						     rsyms ssyms tsyms osyms types))
-		 ,@body))))))
-
 ;; (defmacro fapply ((ref tensa &key ttype) &optional (loop-optimizations '(progn)) &rest body)
 ;;   (with-gensyms (tens sto idx of)
 ;;     `(let ((,tens ,tensa))

@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -199,6 +199,49 @@
 	       (t/blas-copy! ,cly (t/coerce ,(field-type cly) x) nil y strd)))
 	  `(t/copy! (t ,cly) x y))))
     (copy! x y)))
+;;
+(defgeneric tricopy! (a b uplo?))
+(define-tensor-method tricopy! ((a standard-tensor :input) (b standard-tensor :output) uplo?)
+  `(ecase uplo?
+     (:u
+      (dorefs (idx (dimensions b) :uplo? :u)
+	      ((refa a :type ,(cl b))
+	       (refb b :type ,(cl b)))
+	      (setf refb refa)))
+     (:l
+      (dorefs (idx (dimensions b) :uplo? :l)
+	      ((refa a :type ,(cl b))
+	       (refb b :type ,(cl b)))
+	      (setf refb refa)))
+     (:d
+      (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
+		  (ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
+		  (sto.a (store a) :type ,(store-type (cl b)))
+		  (sto.b (store b) :type ,(store-type (cl b))))
+	(loop :repeat (the index-type (lvec-min (dimensions b)))
+	   :for of.a :of-type index-type := (head a) :then (the index-type (+ of.a ss.a))
+	   :for of.b :of-type index-type := (head b) :then (the index-type (+ of.b ss.b))
+	   :do (setf (aref sto.b of.b) (aref sto.a of.a))))))
+  'b)
+
+(define-tensor-method tricopy! ((a t) (b standard-tensor :output) uplo?)
+  `(let ((a (t/coerce ,(field-type (cl b)) a)))
+     (ecase uplo?
+       (:u
+	(dorefs (idx (dimensions b) :uplo? :u)
+		((refb b :type ,(cl b)))
+		(setf refb a)))
+       (:l
+	(dorefs (idx (dimensions b) :uplo? :l)
+		((refb b :type ,(cl b)))
+		(setf refb a)))
+       (:d
+	(let-typed ((ss.b (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides b)) :type index-type)
+		    (sto.b (store b) :type ,(store-type (cl b))))
+	  (loop :repeat (the index-type (lvec-min (dimensions b)))
+	     :for of.b :of-type index-type := (head b) :then (the index-type (+ of.b ss.b))
+	     :do (setf (aref sto.b of.b) a)))))
+     b))
 
 ;;Generic function defined in src;base;generic-copy.lisp
 (defmethod copy-generic ((tensor standard-tensor) type)
