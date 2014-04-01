@@ -83,6 +83,14 @@
   (reduce #'tb^ objs))
 ;;
 (defgeneric tb* (a b)
+  (:method ((a number) (b number))
+    (cl:* a b))
+  ;;Scaling
+  (:method ((a number) (b standard-tensor))
+    (scal a b))
+  (:method ((a standard-tensor) (b number))
+    (scal b a))
+  ;;Matrix, vector/matrix product
   (:method ((a standard-tensor) (b standard-tensor))
     (cond
       ((and (tensor-matrixp a) (tensor-vectorp b))
@@ -92,18 +100,14 @@
       ((and (tensor-matrixp a) (tensor-matrixp b))
        (gemm 1 a b nil nil))
       (t (error "Don't know how to multiply tensors."))))
-  (:method ((a number) (b standard-tensor))
-    (scal a b))
-  (:method ((a standard-tensor) (b number))
-    (scal b a))
+  ;;Permutation action. Left action permutes axis-0, right action permutes axis-1.
   (:method ((a permutation) (b standard-tensor))
     (permute b a 0))
   (:method ((a standard-tensor) (b permutation))
     (permute a b 1))
+  ;;The correctness of this depends on the left-right order in reduce (foldl).
   (:method ((a permutation) (b permutation))
-    (compose a b))
-  (:method ((a number) (b number))
-    (cl:* a b)))
+    (compose a b)))
 
 (definline t* (&rest objs)
   (reduce #'tb* objs))
