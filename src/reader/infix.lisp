@@ -459,8 +459,8 @@
     :prefix `(matlisp::t./ ,(gather-superiors '/ stream)))
 
 (define-token-operator /
-    :infix `(matlisp::tsolve ,(gather-superiors '/ stream) ,left)
-    :prefix `(matlisp::tsolve ,(gather-superiors '/ stream)))
+    :infix `(matlisp::tbsolve ,(gather-superiors '/ stream) ,left)
+    :prefix `(matlisp::tbsolve ,(gather-superiors '/ stream) nil))
 
 (define-token-operator /=
     :infix `(,(if (symbolp left) 
