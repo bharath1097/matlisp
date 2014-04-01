@@ -19,7 +19,6 @@
   =======
   Allocates integer4 (32-bits) storage.")
 ;;
-
 (definline pindex-id (n)
   (declare (type fixnum n))
   (let-typed ((ret (allocate-pindex-store n) :type pindex-store-vector))
@@ -41,18 +40,17 @@
 	     (setf (aref perm i) sd)
 	     (setf ret (merge 'list (list sd) ret #'<))))
     (values ret perm)))
+#+nil(sort seq #'> :key #'(lambda (x) (declare (ignore x)) (random 1.0)))
 
 (defun shuffle (seq)
   "Randomize the elements of a sequence. Destructive on SEQ."
   (let* ((len (length seq))
 	 (perm (nth-value 1 (pick-random len len))))
     (apply-action! seq perm)))
-#+nil(sort seq #'> :key #'(lambda (x) (declare (ignore x)) (random 1.0)))
-
 ;;Class definitions----------------------------------------------;;
 (defclass permutation ()
   ((store :reader store :initarg :store)
-   (permutation-size :reader permutation-size :type index-type)))
+   (permutation-size :reader permutation-size :initarg :size :type index-type)))
 
 (defmethod print-object ((per permutation) stream)
   (print-unreadable-object (per stream :type t)
@@ -153,7 +151,7 @@
   (apply-action! seq (the pindex-store-vector (store perm))))
 
 (defmethod permute! ((ten standard-tensor) (perm permutation-action) &optional (arg 0))
-  (permute! ten (action->pivot-flip perm) arg))
+  (permute! ten (copy perm 'permutation-pivot-flip) arg))
 
 ;;Cycle
 (definline apply-cycle! (seq pcyc)
@@ -184,7 +182,7 @@
   seq)
 
 (defmethod permute! ((A standard-tensor) (perm permutation-cycle) &optional (arg 0))
-  (permute! A (action->pivot-flip (cycle->action perm)) arg))
+  (permute! A (copy perm 'permutation-pivot-flip) arg))
 
 ;Pivot idx
 (definline apply-flips! (seq pflip)
@@ -222,20 +220,9 @@
   A)
 
 ;;Conversions----------------------------------------------------;;
-(defun action->cycle (act)
-  "
-  (action->cycle act)
-
-  This function obtains the canonical cycle representation
-  of a permutation. The first argument \"act\" is the action of the
-  permutation on the array #(0 1 2 3 ..): an object of the class
-  permutation-action.
-
-  \"Canonical\" may be a bit of an overstatement; this is the way
-  S_n was presented in Van der Waerden's book.
-"
-  (declare (type permutation-action act))
-  (let-typed ((arr (store act) :type pindex-store-vector))
+(defmethod copy-generic ((act permutation-action) (type (eql 'permutation-cycle)))
+  (let-typed ((arr (store act) :type pindex-store-vector)
+	      (midx 0 :type pindex-type))
 	     (labels ((find-cycle (x0)
 			;; This function obtains the cycle starting from x_0.
 			(declare (type pindex-type x0))
@@ -244,9 +231,12 @@
 			      (loop
 				 :for x :of-type pindex-type := (aref arr x0) :then (aref arr x)
 				 :and ret :of-type cons := (list x0) :then (cons x ret)
+				 :maximizing x :into m.x
 				 :counting t :into i :of-type index-type
 				 :when (= x x0)
-				 :do (return (values i ret))))))
+				 :do (progn
+				       (setf midx (max midx m.x))
+				       (return (values i ret)))))))
 		      (cycle-walk (cyc ignore)
 			;; Finds all cycles
 			(let ((x0 (find-if-not #'(lambda (x) (member x ignore)) arr)))
@@ -259,94 +249,130 @@
 				 (if (= clen 0) cyc
 				     (cons (make-array clen :element-type 'pindex-type :initial-contents clst) cyc))
 				 (nconc ignore (if (= clen 0) (list x0) clst))))))))
-	       (make-instance 'permutation-cycle :store (cycle-walk nil nil)))))
+	       (with-no-init-checks (make-instance 'permutation-cycle :store (cycle-walk nil nil) :size (1+ midx))))))
 
-(defun action->pivot-flip (act)
-  (declare (type permutation-action act))
+(defmethod copy-generic ((act permutation-action) (type (eql 'permutation-pivot-flip)))
   (let*-typed ((size (permutation-size act) :type index-type)
 	       (actr (store act) :type pindex-store-vector)
 	       (ret (pindex-id size) :type pindex-store-vector)
 	       (inv (pindex-id size) :type pindex-store-vector)
 	       (for (pindex-id size) :type pindex-store-vector))
-	      (very-quickly
-		(loop :for i :of-type index-type :from 0 :below size
-		   :do (let ((flip (aref inv (aref actr i))))
-			 (setf (aref ret i) flip
-			       (aref inv (aref for i)) flip
-			       (aref for flip) (aref for i)))))
-	      (make-instance 'permutation-pivot-flip :store ret)))
+     (very-quickly
+       (loop :for i :of-type index-type :from 0 :below size
+	  :do (let ((flip (aref inv (aref actr i))))
+		(setf (aref ret i) flip
+		      (aref inv (aref for i)) flip
+		      (aref for flip) (aref for i)))))
+     (with-no-init-checks (make-instance 'permutation-pivot-flip :store ret :size size))))
 
-(defun cycle->action (cyc)
-  "
-   (cycle->action cyc)
-
-   This function obtains the action representation of a permutation
-   from the cyclic one. The first argument \"cyc\" is the cyclic
-   representation of the permutation: an object of the class
-   permutation-cycle.
-"
-  (declare (type permutation-cycle cyc))
+(defmethod copy-generic ((act permutation-action) (type (eql 'permutation-action)))
+  (with-no-init-checks
+      (make-instance 'permutation-action :store (copy-seq (store act)) :size (permutation-size act))))
+;;
+(defmethod copy-generic ((cyc permutation-cycle) (type (eql 'permutation-action)))
   (let-typed ((act-repr (pindex-id (permutation-size cyc)) :type pindex-store-vector)
 	      (cycs (store cyc)))
 	     (very-quickly
 	       (loop :for cyc :of-type pindex-store-vector :in cycs
 		  :do (apply-cycle! act-repr cyc)))
-	     (make-instance 'permutation-action :store act-repr)))
+    (with-no-init-checks (make-instance 'permutation-action :store act-repr :size (length act-repr)))))
 
-(defun pivot-flip->action (pflip)
-  (declare (type permutation-pivot-flip pflip))
+(defmethod copy-generic ((cyc permutation-cycle) (type (eql 'permutation-pivot-flip)))
+  (copy (copy cyc 'permutation-action) 'permutation-pivot-flip))
+
+(defmethod copy-generic ((cyc permutation-cycle) (type (eql 'permutation-cycle)))
+  (with-no-init-checks (make-instance 'permutation-cycle :store (mapcar #'copy-seq (store cyc)) :size (permutation-size cyc))))
+;;
+(defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-action)))
   (let*-typed ((idiv (store pflip) :type pindex-store-vector)
 	       (len (permutation-size pflip) :type index-type)
 	       (ret (pindex-id len) :type pindex-store-vector))
-	      (make-instance 'permutation-action :store (very-quickly (apply-flips! ret idiv)))))
+    (with-no-init-checks (make-instance 'permutation-action :store (very-quickly (apply-flips! ret idiv)) :size len))))
+
+(defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-cycle)))
+  (copy (copy pflip 'permutation-action) 'permutation-cycle))
+
+(defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
+  (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
+;;
+(defgeneric invert (obj))  
+
+(defmethod invert ((obj permutation-action))
+  (let*-typed ((sto (store obj) :type pindex-store-vector)
+	       (rsto (allocate-pindex-store (length sto)) :type pindex-store-vector))
+    (loop :for i :from 0 :below (length rsto)
+       :for ele of-type pindex-type :across sto
+       :do (setf (aref rsto ele) i))
+    (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
+
+(defmethod invert ((obj permutation-cycle))
+  (let ((sto (store obj)))
+    (with-no-init-checks
+	(make-instance 'permutation-cycle
+		       :store (loop :for cyc :of-type pindex-store-vector :in sto
+				 :collect (reverse cyc))
+		       :size (permutation-size obj)))))
+
+(defmethod invert ((flip permutation-pivot-flip))
+  (copy (invert (copy flip 'permutation-action)) 'permutation-pivot-flip))
+;;
+(defgeneric compose (a b)
+  (:method ((a permutation) (b permutation))
+    (let ((ret (pindex-id (max (permutation-size a) (permutation-size b)))))
+      (permute! ret b)
+      (permute! ret a)
+      (loop :for i :from (1- (length ret)) :downto 0
+	 :do (when (/= i (aref ret i))
+	       (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i)))))
+	 :finally (return (with-no-init-checks (make-instance 'permutation-cycle :store nil :size 1)))))))
 
 ;;Uber-functional stuff
 ;;None of these are ever useful (I've found); neat things for showing off though :]
-(defun permute-arguments-and-compile (func perm)
-  (declare (type function func)
-	   (type permutation perm))
-  (let ((args (loop :for i :from 0 :below (permutation-size perm)
-		 :collect (gensym))))
-    (compile-and-eval `(lambda (,@args &rest rest)
-			 (apply ,func (append (list ,@(permute! args perm)) rest))))))
+;; (defun permute-arguments-and-compile (func perm)
+;;   (declare (type function func)
+;; 	   (type permutation perm))
+;;   (let ((args (loop :for i :from 0 :below (permutation-size perm)
+;; 		 :collect (gensym))))
+;;     (compile-and-eval `(lambda (,@args &rest rest)
+;; 			 (apply ,func (append (list ,@(permute! args perm)) rest))))))
 
-(defun permute-arguments (func perm)
-  (declare (type function func)
-	   (type permutation perm))
-  (lambda (&rest args)
-    (apply func (permute! args perm))))
+;; (defun permute-arguments (func perm)
+;;   (declare (type function func)
+;; 	   (type permutation perm))
+;;   (lambda (&rest args)
+;;     (apply func (permute! args perm))))
 
-(defun curry (func perm &rest curried-args)
-  (declare (type function func)
-	   (type permutation perm))
-  (lambda (&rest args)
-    (apply func (permute! (append curried-args args) perm))))
+;; (defun curry (func perm &rest curried-args)
+;;   (declare (type function func)
+;; 	   (type permutation perm))
+;;   (lambda (&rest args)
+;;     (apply func (permute! (append curried-args args) perm))))
 
-(defun curry-and-compile (func perm &rest curried-args)
-  (declare (type function func)
-	   (type permutation perm))
-  (let ((args (loop :for i :from 0 :below (permutation-size perm)
-		 :collect (gensym))))
-    (compile-and-eval
-     `(let (,@(mapcar #'(lambda (a b) `(,a ,b)) args curried-args))
-	(lambda (,@(nthcdr (length curried-args) args) &rest rest)
-	  (apply ,func (append (list ,@(permute! args perm)) rest)))))))
+;; (defun curry-and-compile (func perm &rest curried-args)
+;;   (declare (type function func)
+;; 	   (type permutation perm))
+;;   (let ((args (loop :for i :from 0 :below (permutation-size perm)
+;; 		 :collect (gensym))))
+;;     (compile-and-eval
+;;      `(let (,@(mapcar #'(lambda (a b) `(,a ,b)) args curried-args))
+;; 	(lambda (,@(nthcdr (length curried-args) args) &rest rest)
+;; 	  (apply ,func (append (list ,@(permute! args perm)) rest)))))))
 
-(defun compose (func-a func-b perm)
-  (declare (type function func-a func-b)
-	   (type permutation perm))
-  (lambda (&rest args)
-    (apply func-a (permute! (multiple-value-list (funcall func-b args)) perm))))
+;; (defun compose (func-a func-b perm)
+;;   (declare (type function func-a func-b)
+;; 	   (type permutation perm))
+;;   (lambda (&rest args)
+;;     (apply func-a (permute! (multiple-value-list (funcall func-b args)) perm))))
 
-(defun compose-and-compile (func-a func-b perm)
-  (declare (type function func-a func-b)
-	   (type permutation perm))
-  (let ((syms (loop :for i :from 0 :below (permutation-size perm)
-		 :collect (gensym))))
-    (compile-and-eval     
-     `(lambda (&rest args)
-	(destructuring-bind (,@syms &rest rest) (multiple-value-list (apply ,func-b args))
-	  (apply ,func-a (append (list ,@(permute! syms perm)) rest)))))))
+;; (defun compose-and-compile (func-a func-b perm)
+;;   (declare (type function func-a func-b)
+;; 	   (type permutation perm))
+;;   (let ((syms (loop :for i :from 0 :below (permutation-size perm)
+;; 		 :collect (gensym))))
+;;     (compile-and-eval     
+;;      `(lambda (&rest args)
+;; 	(destructuring-bind (,@syms &rest rest) (multiple-value-list (apply ,func-b args))
+;; 	  (apply ,func-a (append (list ,@(permute! syms perm)) rest)))))))
 
 ;;Back to practical matters.
 ;;This function is ugly of-course, but is also very very quick!
@@ -413,4 +439,4 @@
 
 (definline sort-permute (seq predicate &key (key #'matlisp-utilities:id))
   (multiple-value-bind (seq perm) (sort-permute-base seq predicate :key key)
-    (values seq (make-instance 'permutation-action :store perm))))
+    (values seq (with-no-init-checks (make-instance 'permutation-action :store perm :size (length perm))))))

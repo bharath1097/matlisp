@@ -96,6 +96,12 @@
     (scal a b))
   (:method ((a standard-tensor) (b number))
     (scal b a))
+  (:method ((a permutation) (b standard-tensor))
+    (permute b a 0))
+  (:method ((a standard-tensor) (b permutation))
+    (permute a b 1))
+  (:method ((a permutation) (b permutation))
+    (compose a b))
   (:method ((a number) (b number))
     (cl:* a b)))
 

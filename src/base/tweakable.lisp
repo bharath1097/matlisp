@@ -43,6 +43,10 @@
   which case, may lead to memory error. Use at your own risk.
 ")
 
+(defmacro with-no-init-checks (&rest body)
+  `(let ((*check-after-initializing?* nil))
+     ,@body))
+
 (defparameter *default-rcond* 1d-15
   "
   The default value of condition number to be used for
