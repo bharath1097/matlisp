@@ -101,37 +101,6 @@
      (setf (gethash 'getrf (attributes A)) upiv)
      (values A (with-no-init-checks (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv) :size (length upiv))))))
 
-#+nil
-(let ((a (copy! #2a((1 2) (3 4)) (zeros '(2 2)))))
-  (multiple-value-bind (mat perm) (time (getrf! a))
-    (time (permute! mat perm))))
-
-;;
-(defgeneric lu (a &optional split-lu?)
-  (:documentation
-  "
-  Syntax
-  ======
-  (LU a split-lu?)
-
-  Purpose
-  =======
-  Computes the LU decomposition of A.
-
-  This functions is an interface to GETRF!
-
-  If SPLIT-LU? is T, then return (L, U, P), otherwise
-  returns (LU, P).
-"))
-
-(defmethod lu ((a blas-numeric-tensor) &optional (split-lu? t))
-  (multiple-value-bind (lu perm) (getrf! (copy a))
-    (if (not split-lu?) (values lu perm)
-	(let* ((min.d (lvec-min (dimensions lu)))
-	       (l (tricopy! 1 (tricopy! lu (zeros (list (aref (dimensions lu) 0) min.d) (class-of a)) :l) :d))
-	       (u (tricopy! lu (zeros (list min.d (aref (dimensions lu) 1)) (class-of a)) :u)))
-	  (values l u perm)))))
-;;
 (deft/generic (t/lapack-getrs-func #'subfieldp) sym ())
 (deft/method t/lapack-getrs-func (sym real-tensor) ()
   'matlisp-lapack:dgetrs)
@@ -154,11 +123,6 @@
 	(the ,(store-type sym) (store ,B)) ,ldb
 	0
 	(the index-type (head ,A)) (the index-type (head ,B))))))
-
-#+nil(let ((a (copy! #2a((1 2) (3 1)) (zeros '(2 2))))
-      (b (copy! #2a((3 3) (2 1)) (zeros '(2 2)))))
-  (getrf! a)
-  (getrs! a b))
 
 (defgeneric getrs! (A B &optional job ipiv)
   (:documentation
@@ -188,19 +152,17 @@
                  Solution could not be computed.
 ")
   (:method :before ((A standard-tensor) (B standard-tensor) &optional (job :n) ipiv)
+	   (declare (type (or null permutation) ipiv))
 	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
 			(= (nrows A) (ncols A) (nrows B))
-			(or (not ipiv) (>= (permutation-size ipiv) (nrows A))))
+			(or (not ipiv) (<= (permutation-size ipiv) (nrows A))))
 		   nil 'tensor-dimension-mismatch)
 	   (assert (member job '(:n :t :c)) nil 'invalid-value
 		   :given job :expected `(member job '(:n :t :c)))))
 
 (define-tensor-method getrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (job :n) ipiv)
   `(let ((upiv (if ipiv
-		   (pflip.l->f (store (etypecase ipiv
-					(permutation-action (action->pivot-flip ipiv))
-					(permutation-cycle (action->pivot-flip (cycle->action ipiv)))
-					(permutation-pivot-flip ipiv))))
+		   (pflip.l->f (store (copy ipiv 'permutation-action)))
 		   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A."))))
 	 (cjob (aref (symbol-name job) 0)))
      (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
@@ -245,3 +207,54 @@
 	  (t/store-allocator ,sym ,lwork) ,lwork
 	  0
 	  (the index-type (head ,A)))))))
+
+(defgeneric getri! (A &optional perm)
+  (:documentation
+   "
+  Syntax
+  ======
+  (GETRI! a &optional perm)
+
+  Purpose
+  =======
+  Computes the inverse of A using the LU factorization returned by GETRF!
+")
+  (:method :before ((A standard-tensor) &optional ipiv)
+	   (declare (type (or null permutation) ipiv))
+	   (assert (and (tensor-matrixp A) (tensor-squarep A)
+			(or (not ipiv) (<= (permutation-size ipiv) (nrows A))))
+		   nil 'tensor-dimension-mismatch)))
+
+(define-tensor-method getri! ((a blas-numeric-tensor :output) &optional ipiv)
+  `(let ((upiv (if ipiv
+		   (pflip.l->f (store (copy ipiv 'permutation-action)))
+		   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
+     (with-columnification (() (A))
+       (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv))
+     A))
+;;
+
+(defgeneric lu (a &optional split-lu?)
+  (:documentation
+  "
+  Syntax
+  ======
+  (LU a split-lu?)
+
+  Purpose
+  =======
+  Computes the LU decomposition of A.
+
+  This functions is an interface to GETRF!
+
+  If SPLIT-LU? is T, then return (L, U, P), otherwise
+  returns (LU, P).
+"))
+
+(defmethod lu ((a blas-numeric-tensor) &optional (split-lu? t))
+  (multiple-value-bind (lu perm) (getrf! (copy a))
+    (if (not split-lu?) (values lu perm)
+	(let* ((min.d (lvec-min (dimensions lu)))
+	       (l (tricopy! 1 (tricopy! lu (zeros (list (aref (dimensions lu) 0) min.d) (class-of a)) :l) :d))
+	       (u (tricopy! lu (zeros (list min.d (aref (dimensions lu) 1)) (class-of a)) :u)))
+	  (values l u perm)))))

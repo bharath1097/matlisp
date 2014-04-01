@@ -406,15 +406,17 @@
 
 ;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/dgetri.f")
 (MATLISP-UTILITIES:EVAL-EVERY
-  (DEF-FORTRAN-ROUTINE DGETRI :VOID (N :INTEGER) (A :DOUBLE-FLOAT)
-                       (LDA :INTEGER) (IPIV (* :INTEGER))
+  (DEF-FORTRAN-ROUTINE DGETRI :VOID (N :INTEGER)
+                       (A (* :DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (IPIV (* :INTEGER))
                        (WORK (* :DOUBLE-FLOAT :INC HEAD-WORK)) (LWORK :INTEGER)
                        (INFO :INTEGER :OUTPUT)))
 
 ;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/zgetri.f")
 (MATLISP-UTILITIES:EVAL-EVERY
-  (DEF-FORTRAN-ROUTINE ZGETRI :VOID (N :INTEGER) (A :COMPLEX-DOUBLE-FLOAT)
-                       (LDA :INTEGER) (IPIV (* :INTEGER))
+  (DEF-FORTRAN-ROUTINE ZGETRI :VOID (N :INTEGER)
+                       (A (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (IPIV (* :INTEGER))
                        (WORK (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-WORK))
                        (LWORK :INTEGER) (INFO :INTEGER :OUTPUT)))
 
