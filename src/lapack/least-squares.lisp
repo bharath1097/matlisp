@@ -2,10 +2,10 @@
 
 (deft/generic (t/lapack-gelsy-func #'subfieldp) sym ())
 (deft/method t/lapack-gelsy-func (sym real-tensor) ()
-  'dgelsy)
+  'matlisp-lapack:dgelsy)
 
 (definline mzgelsy (m n nrhs a lda b ldb jpvt rcond rank work lwork info &optional (head-a 0) (head-b 0))
-  (zgelsy m n nrhs a lda b ldb jpvt rcond rank work lwork (t/store-allocator complex-tensor n) info head-a head-b))
+  (matlisp-lapack:zgelsy m n nrhs a lda b ldb jpvt rcond rank work lwork (t/store-allocator complex-tensor n) info head-a head-b))
 (deft/method t/lapack-gelsy-func (sym complex-tensor) ()
   'mzgelsy)
 ;;
@@ -47,12 +47,12 @@
 	 0)
        (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))))
 ;;
-(defgeneric gelsy (A B &optional rcond)
+(defgeneric gelsy! (A B &optional rcond)
   (:documentation "
    Syntax
    =======
 
-   (GELSY A B &key TOL)
+   (GELSY! A B &optional TOL)
 
    INPUT
    -----
@@ -119,21 +119,18 @@
 	   (assert (and (tensor-matrixp A) (tensor-matrixp B) (= (nrows A) (nrows B))) nil 'tensor-dimension-mismatch)
 	   (assert (or (null rcond) (> rcond 0)) nil 'invalid-value :expected '(> rcond 0) :given rcond :message "Invalid rcond.")))
 
-(define-tensor-method gelsy ((A standard-tensor :output) (B standard-tensor :output) &optional (rcond *default-rcond*))
-  `(let* ((A (let ((*default-stride-ordering* :col-major)) (copy oA)))
-	  (lwork (max (t/lapack-gelsy-workspace-inquiry ,cla (nrows A) (ncols A) (ncols B)) 1))
-	  (work (t/store-allocator ,cla lwork)))
+(define-tensor-method gelsy ((A standard-tensor :input) (B standard-tensor :input) &optional (rcond *default-rcond*))
+  `(let* ((A (with-colm (copy A ',(cl b))))
+	  (lwork (max (t/lapack-gelsy-workspace-inquiry ,(cl b) (nrows A) (ncols A) (ncols B)) 1))
+	  (work (t/store-allocator ,(cl b) lwork)))
      (declare (type index-type lwork)
-	      (type ,(store-type cla) work)
-	      (type ,cla A))
-     (let* ((rank-A 0)
-	    (mn (max (nrows A) (ncols A)))
-	    (X (let ((*default-stride-ordering* :col-major)) (zeros (list mn (ncols B)) ',cla))))
-       (copy! B (subtensor~ X `((0 ,(nrows A)) (nil nil)) t))
-       (multiple-value-bind (sto-a sto-b jpvt rank work-out info) (t/lapack-gelsy! ,cla A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond work)
-	 ;;TODO: Implement inverse permutation-action, and return jpvt.
+	      (type ,(store-type (cl b)) work)
+	      (type ,(cl b) A))
+     (let* ((mn (max (nrows A) (ncols A)))
+	    (X (with-colm (zeros (list mn (ncols B)) ',(cl b)))))
+       (copy! B (subtensor~ X `((0 ,(nrows B)) (nil nil)) t))
+       (multiple-value-bind (sto-a sto-b jpvt rank work-out info) (t/lapack-gelsy! ,(cl b) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond work)
 	 (declare (ignore sto-a sto-b work-out jpvt))
-	 (setf rank-a rank)
 	 (unless (= info 0)
-	   (error "gelsy returned ~a." info)))
-       (values (copy (subtensor~ X `((0 ,(ncols A)) (nil nil)) t)) rank-a))))
+	   (error "gelsy returned ~a." info))
+	 (values (copy (subtensor~ X `((0 ,(ncols A)) (nil nil)) t)) rank)))))

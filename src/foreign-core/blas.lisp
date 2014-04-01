@@ -28,24 +28,6 @@
 
 (in-package #:matlisp-blas)
 
-;; (defparameter *f77-floats* '(:single-float :double-float :complex-single-float :complex-double-float))
-
-;; (defmacro generate-bindings (fname)
-;;   (let ((defs (parse-fortran-file fname)))
-;;     `(eval-every
-;;        ,@(mapcar #'(lambda (x)
-;; 		     `(def-fortran-routine ,(first x) ,(second x)
-;; 			,@(mapcar #'(lambda (y)
-;; 				      (let ((type (cadr y))
-;; 					    (var (car y)))
-;; 					(if (and (consp type) (eql (first type) '*) (member (second type) *f77-floats*))
-;; 					    (list var (append type (list :inc (intern (string+ "HEAD-" (symbol-name var))))))
-;; 					    y)))
-;; 				  (third x))))
-;; 		 defs))))
-
-;; (generate-bindings "/home/neptune/devel/matlisp/blas/blas.f")
-
 (def-fortran-routine daxpy :void
   "
   Syntax

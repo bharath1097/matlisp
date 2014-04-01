@@ -225,7 +225,7 @@
 	      :do (destructuring-bind (st en . inc) (car csub)
 		    (declare (type (or index-type null) st en inc))
 		    (unless (and (or (not st) (< (1- (- d)) st d))
-				 (or (not en) (< (1- (- d)) en d))
+				 (or (not en) (<= (1- (- d)) en d))
 				 (or (not inc) (/= inc 0)))
 			(error 'tensor-index-out-of-bounds :argument count :index (list st en) :dimension d)))
 	      :finally (unless (and (= count (order tensor)) (not csub))

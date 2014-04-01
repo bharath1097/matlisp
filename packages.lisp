@@ -157,6 +157,7 @@
 (defpackage "MATLISP-LAPACK"
   (:use #:common-lisp #:matlisp-ffi)
   (:export
+   #:dgetri #:zgetri
    #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
    #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
    #:dgeqrf #:zgeqrf #:dgeqp3 #:zgeqp3

@@ -235,10 +235,13 @@ Example:
 		 symlist)
      ,@body))
 
-(defmacro using-gensyms ((decl (&rest syms)) &rest body)
-  `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))
+(defmacro using-gensyms ((decl (&rest syms) &optional gensyms) &rest body)
+  `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))     
      (destructuring-bind (,@syms) (mapcar #'car ,decl)
-       ,@body)))
+       ,(append
+	 (if gensyms
+	   `(with-gensyms (,@gensyms)) `(progn))
+	 body))))
 
 (defmacro nconsc (var &rest args)
   "

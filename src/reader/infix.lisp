@@ -3,7 +3,7 @@
 
 ;;Precedence
 (defparameter *operator-ordering* 
-  '(( \[ \( \! )			; \[ is array reference
+  '(( quote transpose \[ \( \! )	; \[ is array reference
     ( ** )				; exponentiation
     ( ~ )				; lognot 
     ( .* * ./ / \\ % )			; % is mod
@@ -392,8 +392,19 @@
 	(case (peek-char nil stream t nil t)
 	  (#\* (read-char stream t nil t) '.*)
 	  (#\/ (read-char stream t nil t) './)
+	  ((#\') (read-char stream t nil t) 'transpose)
 	  (t (error 'parser-error)))))
 
+(define-character-tokenization #\'
+    #'(lambda (stream char) (declare (ignore stream char)) 'quote))
+
+(define-token-operator transpose
+    :infix `(matlisp::transpose ,left))
+
+(define-token-operator quote
+    :infix `(matlisp::htranspose ,left)
+    :prefix `(cl:quote  ,(read-regular stream)))
+;;
 (define-character-tokenization #\*
     #'(lambda (stream char)
 	(declare (ignore char))

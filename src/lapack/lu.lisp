@@ -29,9 +29,9 @@
 
 (deft/generic (t/lapack-getrf-func #'subfieldp) sym ())
 (deft/method t/lapack-getrf-func (sym real-tensor) ()
-  'dgetrf)
+  'matlisp-lapack:dgetrf)
 (deft/method t/lapack-getrf-func (sym complex-tensor) ()
-  'zgetrf)
+  'matlisp-lapack:zgetrf)
 ;;
 (deft/generic (t/lapack-getrf! #'subtypep) sym (A lda ipiv))
 
@@ -98,11 +98,8 @@
 	     (if (< info 0)
 		 (error "GETRF: the ~a'th argument had an illegal value." (- info))
 		 (warn 'singular-matrix :message "GETRF: U(~a, ~:*~a) is exactly zero. The factorization has been completed, but the factor U is exactly singular, and division by zero will occur if it is used to solve a system of equations." :position info))))))
-     (let ((perm (let ((ret (let ((*check-after-initializing?* nil)) (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv)))))
-		   (setf (slot-value ret 'permutation-size) (length upiv))
-		   ret)))
-       (setf (gethash 'getrf (attributes A)) upiv)
-       (values A perm))))
+     (setf (gethash 'getrf (attributes A)) upiv)
+     (values A (with-no-init-checks (make-instance 'permutation-pivot-flip :store (pflip.f->l upiv) :size (length upiv))))))
 
 #+nil
 (let ((a (copy! #2a((1 2) (3 4)) (zeros '(2 2)))))
@@ -127,19 +124,19 @@
   returns (LU, P).
 "))
 
-(define-tensor-method lu ((a blas-numeric-tensor :input) &optional (split-lu? t))
-  `(multiple-value-bind (lu perm) (getrf! (copy a))
-     (if (not split-lu?) (values lu perm)
-	 (let* ((min.d (lvec-min (dimensions lu)))
-		(l (tricopy! 1 (tricopy! lu (zeros (list (aref (dimensions lu) 0) min.d) ',(cl a)) :l) :d))
-		(u (tricopy! lu (zeros (list min.d (aref (dimensions lu) 1)) ',(cl a)) :u)))
-	   (values l u perm)))))
+(defmethod lu ((a blas-numeric-tensor) &optional (split-lu? t))
+  (multiple-value-bind (lu perm) (getrf! (copy a))
+    (if (not split-lu?) (values lu perm)
+	(let* ((min.d (lvec-min (dimensions lu)))
+	       (l (tricopy! 1 (tricopy! lu (zeros (list (aref (dimensions lu) 0) min.d) (class-of a)) :l) :d))
+	       (u (tricopy! lu (zeros (list min.d (aref (dimensions lu) 1)) (class-of a)) :u)))
+	  (values l u perm)))))
 ;;
 (deft/generic (t/lapack-getrs-func #'subfieldp) sym ())
 (deft/method t/lapack-getrs-func (sym real-tensor) ()
-  'dgetrs)
+  'matlisp-lapack:dgetrs)
 (deft/method t/lapack-getrs-func (sym complex-tensor) ()
-  'zgetrs)
+  'matlisp-lapack:zgetrs)
 ;;
 (deft/generic (t/lapack-getrs! #'subtypep) sym (A lda B ldb ipiv transp))
 
@@ -215,3 +212,36 @@
 		(unless (= info 0)
 		  (error "getrs returned ~a. the ~a'th argument had an illegal value." (- info))))))
      B))
+;;
+
+(deft/generic (t/lapack-getri-func #'subfieldp) sym ())
+(deft/method t/lapack-getri-func (sym real-tensor) ()
+  'matlisp-lapack:dgetri)
+(deft/method t/lapack-getri-func (sym complex-tensor) ()
+  'matlisp-lapack:zgetri)
+;;
+(deft/generic (t/lapack-getri! #'subtypep) sym (A lda ipiv))
+
+(deft/method t/lapack-getri! (sym blas-numeric-tensor) (A lda ipiv)
+  (using-gensyms (decl (A lda ipiv) (lwork xxx))
+   `(let* (,@decl)
+      (declare (type ,sym ,A)
+	       (type (simple-array (unsigned-byte 32) (*)) ,ipiv)
+	       (type index-type ,lda))
+      (let ((,lwork -1))
+	(let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
+	  (,(macroexpand-1 `(t/lapack-getri-func ,sym))
+	    (nrows ,A)
+	    (the ,(store-type sym) (store ,A)) ,lda
+	    ,ipiv
+	    ,xxx -1
+	    0
+	    (the index-type (head ,A)))
+	  (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
+	(,(macroexpand-1 `(t/lapack-getri-func ,sym))
+	  (nrows ,A)
+	  (the ,(store-type sym) (store ,A)) ,lda
+	  ,ipiv
+	  (t/store-allocator ,sym ,lwork) ,lwork
+	  0
+	  (the index-type (head ,A)))))))

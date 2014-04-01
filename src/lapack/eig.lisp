@@ -3,10 +3,10 @@
 (deft/generic (t/lapack-geev-func #'subfieldp) sym ())
 
 (deft/method t/lapack-geev-func (sym real-tensor) ()
-  'dgeev)
+  'matlisp-lapack:dgeev)
 ;;Make API for real and complex versions similar.
 (definline mzgeev (jobvl jobvr n a lda w rwork vl ldvl vr ldvr work lwork info &optional (head-a 0) (head-vl 0) (head-vr 0))
-  (zgeev jobvl jobvr n a lda w vl ldvl vr ldvr work lwork rwork info head-a head-vl head-vr))
+  (matlisp-lapack:zgeev jobvl jobvr n a lda w vl ldvl vr ldvr work lwork rwork info head-a head-vl head-vr))
 (deft/method t/lapack-geev-func (sym complex-tensor) ()
   'mzgeev)
 ;;
