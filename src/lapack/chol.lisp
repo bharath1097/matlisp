@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -65,11 +65,11 @@
   Return Values
   =============
   [1] The factor U or L from the Cholesky
-          factorization A = U**T*U or A = L*L**T.
+	  factorization A = U**T*U or A = L*L**T.
   [2] INFO = T: successful
-             i:  U(i,i) is exactly zero. 
+	     i:  U(i,i) is exactly zero.
 ")
-  (:method :before ((a standard-tensor) &optional (uplo :l))	   
+  (:method :before ((a standard-tensor) &optional (uplo :l))
 	   (assert (tensor-square-matrixp a) nil 'tensor-dimension-mismatch
 		   :message "Expected square matrix.")
 	   (assert (member uplo '(:l :u)) nil 'invalid-arguments
@@ -82,10 +82,39 @@
        (multiple-value-bind (sto info) (t/lapack-potrf! ,(cl a) A lda (char-upcase (aref (symbol-name uplo) 0)))
 	 (declare (ignore sto))
 	 (unless (= info 0)
-	   (error "getrf returned ~a." info)))))
+	   (if (< info 0)
+	       (error "POTRF: the ~a'th argument had an illegal value." (- info))
+	       (restart-case (error 'matrix-not-pd :message "POTRF: the leading minor of order ~a is not p.d; the factorization could not be completed." :position info)
+		 (increment-diagonal-and-retry (value)
+		   (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
+			       (sto.a (store a) :type ,(store-type (cl a)))
+			       (value (t/coerce ,(field-type (cl a)) value) :type ,(field-type (cl a))))
+			      (loop :repeat (the index-type (lvec-min (dimensions a)))
+				 :for of.a :of-type index-type := (head a) :then (the index-type (+ of.a ss.a))
+				 :do (incf (aref sto.a of.a) value))
+			      (potrf! a uplo)))))))))
   'A)
-;;
 
+(defgeneric chol (a)
+  (:documentation
+   "
+  Syntax
+  ======
+  (CHOL a split?)
+
+  Purpose
+  =======
+  Computes the Cholesky decomposition of A.
+
+  This functions is an interface to POTRF!
+"))
+
+;; (tricopy!
+;; (defmethod chol ((a blas-numeric-tensor))
+;;   (let ((l.T (potrf! (copy a) :u)))
+
+
+;;
 (deft/generic (t/lapack-potrs-func #'subfieldp) sym ())
 (deft/method t/lapack-potrs-func (sym real-tensor) ()
   'dpotrs)
@@ -109,12 +138,6 @@
 	 (the index-type (head ,A)) (the index-type (head ,B))))))
 
 ;;
-#+nil
-(let ((a (copy! #2a((10 2) (2 10)) (zeros '(2 2))))
-      (b (copy! #2a((2 10) (1 2)) (zeros '(2 2)))))
-  (potrf! a)  
-  (potrs! a b))
-
 (defgeneric potrs! (A B &optional uplo)
   (:documentation "
   Syntax
@@ -127,18 +150,18 @@
       A * X = B  or  A' * X = B
   with a general N-by-N matrix A using the Cholesky LU factorization computed
   by POTRF.  A and are the results from POTRF, UPLO specifies
-  the form of the system of equations: 
-           = 'U':   A = U**T*U 
-           = 'L':   A = L*L**T
+  the form of the system of equations:
+	   = 'U':   A = U**T*U
+	   = 'L':   A = L*L**T
 
   Return Values
   =============
   [1] The NxM matrix X. (overwriting B)
   [4] INFO = T: successful
-             i:  U(i,i) is exactly zero.  The LU factorization
-                 used in the computation has been completed, 
-                 but the factor U is exactly singular.
-                 Solution could not be computed.
+	     i:  U(i,i) is exactly zero.  The LU factorization
+		 used in the computation has been completed,
+		 but the factor U is exactly singular.
+		 Solution could not be computed.
 ")
   (:method :before ((A standard-tensor) (B standard-tensor) &optional (uplo :l))
 	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
@@ -148,13 +171,13 @@
 		   :given uplo :expected `(member uplo '(:u :l)))))
 
 (define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo :l))
-  `(with-columnification (,cla ((A #\N)) (B))
+  `(with-columnification (((A #\N)) (B))
      (mlet* (((lda opa) (blas-matrix-compatiblep A #\N))
 	     (ldb (blas-matrix-compatiblep B #\N)))
-	    (multiple-value-bind (sto info) (t/lapack-potrs! ,cla A lda B ldb
+	    (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a) A lda B ldb
 							     (let ((cuplo (aref (symbol-name uplo) 0)))
 							       (ecase opa (#\N cuplo) (#\T (fortran-nuplo cuplo)))))
 	      (declare (ignore sto))
 	      (unless (= info 0)
-		(error "potrs returned ~a." info)))))
+		(error "POTRS returned ~a. the ~a'th argument had an illegal value." (- info))))))
   'B)

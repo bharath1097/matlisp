@@ -62,22 +62,24 @@
 ;;
 (defgeneric tb^ (a b))
 
-(define-tensor-method tb^ ((a standard-tensor :input) (b standard-tensor :input))
-  `(let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
-	  (ret-a (subtensor~ ret
-			     (print (loop :for i :from 0 :below (order ret)
-				:collect (if (< i (order a)) '(nil nil) '(0 1))))
-			     nil))
-	  (rbstr (subseq (strides ret) (order a)))
-	  (sto-b (store b)))
-     (mod-dotimes (idx (dimensions b))
-       :with (linear-sums
-	      (of-b (strides b) (head b))
-	      (of-r rbstr (head ret)))
-       :do (progn
-	     (setf (slot-value ret-a 'head) of-r)
-	     (axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a)))
-     ret))
+(define-tensor-method tb^ ((a standard-tensor :input) (b standard-tensor :input)) 
+  `(if (and (tensor-vectorp a) (tensor-vectorp b))
+       (ger 1 a b nil nil)
+       (let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
+	      (ret-a (subtensor~ ret
+				 (print (loop :for i :from 0 :below (order ret)
+					   :collect (if (< i (order a)) '(nil nil) '(0 1))))
+				 nil))
+	      (rbstr (subseq (strides ret) (order a)))
+	      (sto-b (store b)))
+	 (mod-dotimes (idx (dimensions b))
+	   :with (linear-sums
+		  (of-b (strides b) (head b))
+		  (of-r rbstr (head ret)))
+	   :do (progn
+		 (setf (slot-value ret-a 'head) of-r)
+		 (axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a)))
+	 ret)))
 
 (definline t^ (&rest objs)
   (reduce #'tb^ objs))

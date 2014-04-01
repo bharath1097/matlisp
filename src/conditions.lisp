@@ -246,3 +246,21 @@
   (:report (lambda (c stream)
 	     (when (slots-boundp c 'tensor-class)
 	       (format stream "Will not (yes you read that right, buster!) generate method for abstract tensor class \"~a\"." (tensor-class c))))))
+;;Matrix
+(define-condition matrix-error (tensor-error)
+  ;;Optional argument for error-handling.
+  ((message :reader message :initarg :message)))
+
+(define-condition singular-matrix (matrix-error)
+  ((pos :reader pos :initarg :position))
+  (:documentation "Given matrix is singular.")
+  (:report (lambda (c stream)
+		   (when (slots-boundp c 'pos 'message)
+		     (format stream (message c) (pos c))))))
+
+(define-condition matrix-not-pd (matrix-error)
+  ((pos :reader pos :initarg :position))
+  (:documentation "Given matrix is not positive definite.")
+  (:report (lambda (c stream)
+		   (when (slots-boundp c 'pos 'message)
+		     (format stream (message c) (pos c))))))

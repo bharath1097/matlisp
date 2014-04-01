@@ -65,6 +65,8 @@
    #:tensor-store-not-consecutive
    #:tensor-method-does-not-exist
    #:tensor-abstract-class
+   ;;Matrix conditions
+   #:singular-matrix #:matrix-not-pd
 ))
 
 (defpackage "MATLISP-UTILITIES"
