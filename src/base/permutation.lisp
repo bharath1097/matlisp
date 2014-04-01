@@ -295,9 +295,9 @@
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
   (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
 ;;
-(defgeneric invert (obj))  
+(defgeneric inv (obj))  
 
-(defmethod invert ((obj permutation-action))
+(defmethod inv ((obj permutation-action))
   (let*-typed ((sto (store obj) :type pindex-store-vector)
 	       (rsto (allocate-pindex-store (length sto)) :type pindex-store-vector))
     (loop :for i :from 0 :below (length rsto)
@@ -305,7 +305,7 @@
        :do (setf (aref rsto ele) i))
     (with-no-init-checks (make-instance 'permutation-action :store rsto :size (length rsto)))))
 
-(defmethod invert ((obj permutation-cycle))
+(defmethod inv ((obj permutation-cycle))
   (let ((sto (store obj)))
     (with-no-init-checks
 	(make-instance 'permutation-cycle
@@ -313,8 +313,8 @@
 				 :collect (reverse cyc))
 		       :size (permutation-size obj)))))
 
-(defmethod invert ((flip permutation-pivot-flip))
-  (copy (invert (copy flip 'permutation-action)) 'permutation-pivot-flip))
+(defmethod inv ((flip permutation-pivot-flip))
+  (copy (inv (copy flip 'permutation-action)) 'permutation-pivot-flip))
 ;;
 (defgeneric compose (a b)
   (:method ((a permutation) (b permutation))

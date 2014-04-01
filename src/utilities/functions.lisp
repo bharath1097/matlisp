@@ -6,6 +6,11 @@
 (declaim (inline id))
 (defun id (x) x)
 
+(defun pophash (key hash-table &optional default)
+  (multiple-value-bind (value existsp) (gethash key hash-table default)
+    (when existsp (remhash key hash-table))
+    (values value existsp)))
+
 (defun ieql (&rest args)
   (loop :for ele :in (cdr args)
      :do (unless (eql (car args) ele)

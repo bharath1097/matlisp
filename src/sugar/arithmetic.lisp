@@ -125,3 +125,36 @@
   (reduce #'div (reverse objs) :from-end t))
 (definline m./ (&rest objs)
   (apply #'t./ objs))
+
+;;
+(defgeneric tbsolve (a b)
+  (:documentation "Solve a x = b")
+  (:method ((a number) (b number))
+    (cl:/ b a))  
+  ;;Scaling
+  (:method ((a number) (b standard-tensor))
+    (scal (cl:/ a) b))
+  ;;Matrix, vector/matrix product
+  (:method ((a standard-tensor) (b (eql nil)))
+    (cond
+      ((and (tensor-matrixp a) (tensor-squarep a))
+       (inv a))
+      (t (error "Don't know how to solve the given equation."))))
+  (:method ((a standard-tensor) (b standard-tensor))
+    (cond
+      ((and (tensor-matrixp a) (tensor-squarep a) (tensor-matrixp b))
+       (getrs! (getrf! (copy a)) (copy b)))
+      ((and (tensor-matrixp a) (tensor-squarep a) (tensor-vectorp b))
+       (let ((tmp (zeros (list (aref (dimensions b) 0) 1) (class-of b))))
+	 (copy! b (slice~ tmp 1))
+	 (getrs! (getrf! (copy a)) b)
+	 (let ((ret (slice~ tmp 1)))
+	   (setf (slot-value tmp 'parent-tensor) nil)
+	   ret)))
+      (t (error "Don't know how to solve the given equation."))))
+  ;;Permutation action. Left action permutes axis-0, right action permutes axis-1.
+  (:method ((a permutation) (b standard-tensor))
+    (permute b (inv a) 0))
+  ;;The correctness of this depends on the left-right order in reduce (foldl).
+  (:method ((a permutation) (b permutation))
+    (compose (inv a) b)))

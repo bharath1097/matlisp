@@ -5,20 +5,39 @@
   'matlisp-lapack:dgeqrf)
 (deft/method t/lapack-geqrf-func (sym complex-tensor) ()
   'matlisp-lapack:zgeqrf)
+
+(deft/generic (t/lapack-geqrf-func #'subfieldp) sym ())
+(deft/method t/lapack-geqrf-func (sym real-tensor) ()
+  'matlisp-lapack:dgeqrf)
+(deft/method t/lapack-geqrf-func (sym complex-tensor) ()
+  'matlisp-lapack:zgeqrf)
 ;;
-(deft/generic (t/lapack-geqrf-workspace-inquiry #'subtypep) sym (m n))
-(deft/method t/lapack-geqrf-workspace-inquiry (sym blas-numeric-tensor) (m n)
-  (using-gensyms (decl (m n))
-    (with-gensyms (xxx)
-      `(let (,@decl
-	     (,xxx (t/store-allocator ,sym 1)))
-	 (declare (type index-type ,m ,n)
-		  (type ,(store-type sym) ,xxx))
+(deft/generic (t/lapack-geqrf! #'subtypep) sym (A lda tau))
+
+(deft/method t/lapack-geqrf! (sym blas-numeric-tensor) (A lda tau)
+  (using-gensyms (decl (A lda tau) (xxx lwork))
+    `(let (,@decl
+	   (,lwork -1))
+       (declare (type ,sym ,A)
+		(type index-type ,lda ,lwork)
+		(type ,(store-type sym) ,tau))
+       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
 	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
-	   ,m ,n
-	   ,xxx ,m
-	   ,xxx ,xxx -1 0)
-	 (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))))
+	   (nrows ,A) (ncols ,A)
+	   (the ,(store-type sym) (store A)) ,lda
+	   ,tau
+	   ,xxx -1
+	   0
+	   (head ,A))
+	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
+       (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
+	 (nrows ,A) (ncols ,A)
+	 (the ,(store-type sym) (store A)) ,lda
+	 ,tau
+	 (t/store-allocator ,sym ,lwork) ,lwork
+	 0
+	 (head ,A)))))
+
 
 ;;
 (defgeneric geqr! (a)
@@ -48,31 +67,26 @@
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
 
-(defmethod geqr! ((a standard-tensor))
-  (let ((cla (class-name (class-of A))))
-    (assert (member cla *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class (list cla))
-    (compile-and-eval
-     `(defmethod geqr! ((a ,cla))
-	(let* ((m (nrows a))
-	       (n (ncols a))
-	       (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
-	       (tau (t/store-allocator ,cla k))	; reflection factors
-	       (lwork (t/lapack-geqrf-workspace-inquiry m n))	; optimum work array size
-	       (work (t/store-allocator ,cla lwork))) ; and the work area
-	  (declare (type index-type lwork m n k)
-		   (type ,(store-type cla) tau work))
-	  ;; Do the Householder portion of the decomposition
-	  (with-columnification (() (A))
-	    (multiple-value-bind (q-r new-tau new-work info)
-		(,(macroexpand-1 `(t/lapack-geqrf-func ,cla))
-		  m n
-		  (the ,(store-type cla) (store A)) (or (blas-matrix-compatiblep A #\N) 0)
-		  tau work lwork 0 (the index-type (head A)))
-	      (declare (ignore q-r new-tau new-work))
-	      (unless (= info 0)
-		(error "geqrf returned ~a~%" info))
-	      
+(define-tensor-method geqr! ((a standard-tensor :output))  
+  (let* ((m (nrows a))
+	 (n (ncols a))
+	 (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
+	 (tau (t/store-allocator ,cla k))	; reflection factors
+	 (lwork (t/lapack-geqrf-workspace-inquiry m n))	; optimum work array size
+	 (work (t/store-allocator ,cla lwork))) ; and the work area
+    (declare (type index-type lwork m n k)
+	     (type ,(store-type cla) tau work))
+    ;; Do the Householder portion of the decomposition
+    (with-columnification (() (A))
+      (multiple-value-bind (q-r new-tau new-work info)
+	  (,(macroexpand-1 `(t/lapack-geqrf-func ,cla))
+	    m n
+	    (the ,(store-type cla) (store A)) (or (blas-matrix-compatiblep A #\N) 0)
+	    tau work lwork 0 (the index-type (head A)))
+	(declare (ignore q-r new-tau new-work))
+	(unless (= info 0)
+	  (error "geqrf returned ~a~%" info))
+	
 		
 
 	  ;; If we are here, then INFO == 0 and all is well...

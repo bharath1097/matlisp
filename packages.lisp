@@ -71,7 +71,7 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:iterate #:matlisp-conditions)
-  (:export #:ensure-list #:id #:ieql
+  (:export #:ensure-list #:id #:ieql #:pophash
 	   #:vectorify #:copy-n
 	   #:ensure-args #:repsym #:findsym #:find-tag
 	   #:zip #:zip-eq #:zipsym

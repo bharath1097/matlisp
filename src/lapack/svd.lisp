@@ -25,47 +25,8 @@
 ;;; ENHANCEMENTS, OR MODIFICATIONS.
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Originally written by Tunc Simsek, Univ. of California, Berkeley,
-;;; 2000, simsek@eecs.berkeley.edu
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; $Id: svd.lisp,v 1.5 2001/06/22 12:52:41 rtoy Exp $
-;;;
-;;; $Log: svd.lisp,v $
-;;; Revision 1.5  2001/06/22 12:52:41  rtoy
-;;; Use ALLOCATE-REAL-STORE and ALLOCATE-COMPLEX-STORE to allocate space
-;;; instead of using the error-prone make-array.
-;;;
-;;; Revision 1.4  2000/07/11 18:02:03  simsek
-;;; o Added credits
-;;;
-;;; Revision 1.3  2000/07/11 02:11:56  simsek
-;;; o Added support for Allegro CL
-;;;
-;;; Revision 1.2  2000/05/08 17:19:18  rtoy
-;;; Changes to the STANDARD-MATRIX class:
-;;; o The slots N, M, and NXM have changed names.
-;;; o The accessors of these slots have changed:
-;;;      NROWS, NCOLS, NUMBER-OF-ELEMENTS
-;;;   The old names aren't available anymore.
-;;; o The initargs of these slots have changed:
-;;;      :nrows, :ncols, :nels
-;;;
-;;; Revision 1.1  2000/04/14 00:12:48  simsek
-;;; Initial revision.
-;;;
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(in-package #:matlisp)
 
-(in-package "MATLISP")
-
-#+nil (use-package "BLAS")
-#+nil (use-package "LAPACK")
-#+nil (use-package "FORTRAN-FFI-ACCESSORS")
-
-#+nil (export '(svd))
 
 
 (defgeneric svd (a &optional job)

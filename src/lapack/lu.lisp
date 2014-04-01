@@ -36,8 +36,7 @@
 (deft/generic (t/lapack-getrf! #'subtypep) sym (A lda ipiv))
 
 (deft/method t/lapack-getrf! (sym blas-numeric-tensor) (A lda ipiv)
-  (using-gensyms (decl (A lda ipiv))
-    (with-gensyms (m n)
+  (using-gensyms (decl (A lda ipiv) (m n))
       `(let* (,@decl
 	      (,m (nrows A))
 	      (,n (ncols A)))
@@ -48,7 +47,7 @@
 	   ,m ,n
 	   (the ,(store-type sym) (store ,A)) ,lda
 	   ,ipiv 0
-	   (the index-type (head ,A)))))))
+	   (the index-type (head ,A))))))
 
 ;;
 (defgeneric getrf! (A)
@@ -137,19 +136,19 @@
       A * X = B  or  A' * X = B
   with a general N-by-N matrix A using the LU factorization computed
   by GETRF.  A and IPIV are the results from GETRF, TRANS specifies
-  the form of the system of equations: 
-           = 'N':  A * X = B  (No transpose)
-           = 'T':  A'* X = B  (Transpose)
-           = 'C':  A'* X = B  (Conjugate transpose)
+  the form of the system of equations:
+	   = 'N':  A * X = B  (No transpose)
+	   = 'T':  A'* X = B  (Transpose)
+	   = 'C':  A'* X = B  (Conjugate transpose)
 
   Return Values
   =============
   [1] The NxM matrix X. (overwriting B)
   [4] INFO = T: successful
-             i:  U(i,i) is exactly zero.  The LU factorization
-                 used in the computation has been completed, 
-                 but the factor U is exactly singular.
-                 Solution could not be computed.
+	     i:  U(i,i) is exactly zero.  The LU factorization
+		 used in the computation has been completed,
+		 but the factor U is exactly singular.
+		 Solution could not be computed.
 ")
   (:method :before ((A standard-tensor) (B standard-tensor) &optional (job :n) ipiv)
 	   (declare (type (or null permutation) ipiv))
@@ -228,7 +227,8 @@
 (define-tensor-method getri! ((a blas-numeric-tensor :output) &optional ipiv)
   `(let ((upiv (if ipiv
 		   (pflip.l->f (store (copy ipiv 'permutation-action)))
-		   (or (gethash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
+		   (or (pophash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
+     (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
      (with-columnification (() (A))
        (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv))
      A))
@@ -258,3 +258,6 @@
 	       (l (tricopy! 1 (tricopy! lu (zeros (list (aref (dimensions lu) 0) min.d) (class-of a)) :l) :d))
 	       (u (tricopy! lu (zeros (list min.d (aref (dimensions lu) 1)) (class-of a)) :u)))
 	  (values l u perm)))))
+
+(defmethod inv ((a blas-numeric-tensor))
+  (getri! (getrf! (copy a))))
