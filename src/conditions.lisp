@@ -251,8 +251,10 @@
   ;;Optional argument for error-handling.
   ((message :reader message :initarg :message)))
 
-(define-condition singular-matrix (matrix-error)
-  ((pos :reader pos :initarg :position))
+(define-condition singular-matrix (warning)
+  ((tensor :reader tensor :initarg :tensor)
+   (message :reader message :initarg :message)
+   (pos :reader pos :initarg :position))
   (:documentation "Given matrix is singular.")
   (:report (lambda (c stream)
 		   (when (slots-boundp c 'pos 'message)
