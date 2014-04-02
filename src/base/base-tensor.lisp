@@ -31,6 +31,18 @@
 
 (definline idxv (&rest contents)
   (make-index-store contents))
+
+;;This is a silly hack. The plan is to get rid of this part using MOP.
+(defvar *tensor-type-leaves* nil "
+  This is used to keep track of classes that are not meant to be
+  abstract classes. This prevents less specialized methods from
+  clobbering the generation of more sophisticated (read faster)
+  methods.")
+
+(defmacro defleaf (name direct-superclasses direct-slots &rest options)
+  `(eval-every
+     (defclass ,name ,direct-superclasses ,direct-slots ,@options)
+     (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
 ;;
 (defclass base-tensor ()
   ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
@@ -171,18 +183,6 @@
        `(defmethod store-size ((tensor ,clname))
 	  (t/store-size ,clname (store tensor))))
       (store-size tensor))))
-
-;;This is a silly hack. The plan is to get rid of this part using MOP.
-(defvar *tensor-type-leaves* nil "
-  This is used to keep track of classes that are not meant to be
-  abstract classes. This prevents less specialized methods from
-  clobbering the generation of more sophisticated (read faster)
-  methods.")
-
-(defmacro defleaf (name direct-superclasses direct-slots &rest options)
-  `(eval-every
-     (defclass ,name ,direct-superclasses ,direct-slots ,@options)
-     (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
 ;;
 (defgeneric subtensor~ (tensor subscripts &optional preserve-rank ref-single-element?)
   (:documentation "

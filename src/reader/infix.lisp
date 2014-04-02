@@ -90,6 +90,18 @@
 	   ,setter)))))
 
 ;;
+;; Peeking Token Reade
+(defvar *peeked-token* nil)
+(defun read-token (stream)
+  (if *peeked-token*
+      (pop *peeked-token*)
+      (read stream t nil t)))
+(defun peek-token (stream)
+  (unless *peeked-token*
+    (push (read stream t nil t) *peeked-token*))
+  (car *peeked-token*))
+
+;;
 (define-constant +blank-characters+ '(#\^m #\space #\tab #\return #\newline))
 (define-constant +newline-characters+ '(#\newline #\^m #\linefeed #\return))
 
@@ -147,17 +159,6 @@
 (defun read-regular (stream)
   (with-readtable (:common-lisp)
     (read stream t nil t)))
-
-;;; Peeking Token Reade
-(defvar *peeked-token* nil)
-(defun read-token (stream)
-  (if *peeked-token*
-      (pop *peeked-token*)
-      (read stream t nil t)))
-(defun peek-token (stream)
-  (unless *peeked-token*
-    (push (read stream t nil t) *peeked-token*))
-  (car *peeked-token*))
 
 ;;; Hack to work around + and - being terminating macro characters,
 ;;; so 1e-3 doesn't normally work correctly.

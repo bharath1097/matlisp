@@ -180,51 +180,52 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 					     :store (t/geev-output-fix ,(cl a) wr wi)))
 			  ret)))))
 
-(defgeneric heev! (a &optional )
-  (:documentation "
- Syntax
- ======
- (HEEV! a &optional evec? )
+;; (defgeneric heev! (a &optional )
+;;   (:documentation "
+;;  Syntax
+;;  ======
+;;  (HEEV! a &optional evec? )
 
- Purpose:
- ========
- Computes the eigenvalues and left/right eigenvectors of A.
+;;  Purpose:
+;;  ========
+;;  Computes the eigenvalues and left/right eigenvectors of A.
 
- For an NxN matrix A, its eigenvalues are denoted by:
+;;  For an NxN matrix A, its eigenvalues are denoted by:
 
-              lambda(i),   j = 1 ,..., N
+;;               lambda(i),   j = 1 ,..., N
  
- The right eigenvectors of A are denoted by v(i) where:
+;;  The right eigenvectors of A are denoted by v(i) where:
 
-                    A * v(i) = lambda(i) * v(i)
+;;                     A * v(i) = lambda(i) * v(i)
 
- The left eigenvectors of A are denoted by u(i) where:
+;;  The left eigenvectors of A are denoted by u(i) where:
 
-                     H                      H
-                 u(i) * A = lambda(i) * u(i)
+;;                      H                      H
+;;                  u(i) * A = lambda(i) * u(i)
 
- In matrix notation:
-                             -1
-                    A = V E V
+;;  In matrix notation:
+;;                              -1
+;;                     A = V E V
 
-           and
-                          -1
-                         H       H
-                    A = U    E  U
+;;            and
+;;                           -1
+;;                          H       H
+;;                     A = U    E  U
 
- where lambda(i) is the ith diagonal of the diagonal matrix E,
- v(i) is the ith column of V and u(i) is the ith column of U.
+;;  where lambda(i) is the ith diagonal of the diagonal matrix E,
+;;  v(i) is the ith column of V and u(i) is the ith column of U.
  
- The computed eigenvectors are normalized to have Euclidean norm
- equal to 1 and largest component real.
- ")
-  (:method :before ((a standard-tensor) &optional vl vr)
-	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
-	   (when vl
-	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
-	   (when vr
-	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
+;;  The computed eigenvectors are normalized to have Euclidean norm
+;;  equal to 1 and largest component real.
+;;  ")
+;;   (:method :before ((a standard-tensor) &optional vl vr)
+;; 	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
+;; 	   (when vl
+;; 	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
+;; 	   (when vr
+;; 	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
 
+;;
 ;;
 (defgeneric eig (matrix &optional job)
   (:method :before ((matrix standard-tensor) &optional (job :nn))

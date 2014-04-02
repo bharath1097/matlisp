@@ -39,7 +39,7 @@
 	 0
 	 (the index-type (head ,A)) (the index-type (head ,B)))))))
 ;;
-(defgeneric gelsy! (A B &optional rcond)
+(defgeneric gelsy (A B &optional rcond)
   (:documentation "
    Syntax
    =======
