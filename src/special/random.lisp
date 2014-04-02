@@ -79,3 +79,4 @@
       ;;Macro is used without hygiene: "arg".
       (fill-tensor real-tensor ((coerce (random arg) 'double-float)  (zeros dims 'real-tensor)))
       (random arg)))
+

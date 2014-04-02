@@ -101,16 +101,13 @@
      ,(recursive-append
        (when (subtypep (cl x) 'blas-numeric-tensor)
 	 `(if (call-fortran? A (t/l2-lb ,(cl a)))
-	      (let ((A-copy (if (blas-matrix-compatiblep A cjob) A
-				(let ((*default-stride-ordering* :col-major))
-				  (t/copy! (,(cl a) ,(cl a)) A (t/zeros ,(cl x) (dimensions A)))))))
-		(multiple-value-bind (lda op maj) (blas-matrix-compatiblep A-copy cjob)
-		  (declare (ignore maj))
-		  (t/blas-gemv! ,(cl a) alpha A-copy lda
+	      (with-columnification (((A cjob)) ())
+		(multiple-value-bind (lda opa) (blas-matrix-compatiblep A cjob)
+		  (t/blas-gemv! ,(cl a) alpha A lda
 				x (aref (the index-store-vector (strides x)) 0)
 				beta
 				y (aref (the index-store-vector (strides y)) 0)
-				op)))))
+				opa)))))
        `(t/gemv! ,(cl a) alpha A x beta y cjob)))
   'y)
 ;;---------------------------------------------------------------;;

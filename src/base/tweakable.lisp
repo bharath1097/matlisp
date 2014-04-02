@@ -52,6 +52,11 @@
   The default value of condition number to be used for
   determining the rank of a matrix (used in gelsy).
 ")
+
+(defparameter *default-uplo* :u
+  "
+  For routines which take symmetric (hermitian) matrices as
+  arguments, this sets the default argument for UPLO.")
 ;;Level 1--------------------------------------------------------;;
 (defparameter *real-l1-fcall-lb* 5000
   "If the size of the array is less than this parameter, the

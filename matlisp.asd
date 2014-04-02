@@ -96,6 +96,7 @@
 				:depends-on ("ffi-cffi"
 					     "ffi-cffi-implementation-specific"
 					     "foreign-vector"))
+			 (:file "f77-parser")
 			 ))
    (:module "foreign-core"
 	    :pathname "foreign-core"

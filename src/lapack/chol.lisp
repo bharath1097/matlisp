@@ -75,45 +75,23 @@
 	   (assert (member uplo '(:l :u)) nil 'invalid-arguments
 		   :given uplo :expected `(member uplo '(:l :u)))))
 
-(define-tensor-method potrf! ((a blas-numeric-tensor :output) &optional (uplo :l))
+(define-tensor-method potrf! ((a blas-numeric-tensor :output) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
-     (multiple-value-bind (lda opa) (blas-matrix-compatiblep A #\N)
-       (declare (ignore opa))
-       (multiple-value-bind (sto info) (t/lapack-potrf! ,(cl a) A lda (char-upcase (aref (symbol-name uplo) 0)))
-	 (declare (ignore sto))
-	 (unless (= info 0)
-	   (if (< info 0)
-	       (error "POTRF: the ~a'th argument had an illegal value." (- info))
-	       (restart-case (error 'matrix-not-pd :message "POTRF: the leading minor of order ~a is not p.d; the factorization could not be completed." :position info)
-		 (increment-diagonal-and-retry (value)
-		   (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
-			       (sto.a (store a) :type ,(store-type (cl a)))
-			       (value (t/coerce ,(field-type (cl a)) value) :type ,(field-type (cl a))))
-			      (loop :repeat (the index-type (lvec-min (dimensions a)))
-				 :for of.a :of-type index-type := (head a) :then (the index-type (+ of.a ss.a))
-				 :do (incf (aref sto.a of.a) value))
-			      (potrf! a uplo)))))))))
+     (multiple-value-bind (sto info) (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))
+       (declare (ignore sto))
+       (unless (= info 0)
+	 (if (< info 0)
+	     (error "POTRF: the ~a'th argument had an illegal value." (- info))
+	     (restart-case (error 'matrix-not-pd :message "POTRF: the leading minor of order ~a is not p.d; the factorization could not be completed." :position info)
+	       (increment-diagonal-and-retry (value)
+		 (let-typed ((ss.a (lvec-foldr #'(lambda (x y) (declare (type index-type x y)) (the index-type (+ x y))) (strides a)) :type index-type)
+			     (sto.a (store a) :type ,(store-type (cl a)))
+			     (value (t/coerce ,(field-type (cl a)) value) :type ,(field-type (cl a))))
+			    (loop :repeat (the index-type (lvec-min (dimensions a)))
+			       :for of.a :of-type index-type := (head a) :then (the index-type (+ of.a ss.a))
+			       :do (incf (aref sto.a of.a) value))
+			    (potrf! a uplo))))))))
   'A)
-
-(defgeneric chol (a)
-  (:documentation
-   "
-  Syntax
-  ======
-  (CHOL a split?)
-
-  Purpose
-  =======
-  Computes the Cholesky decomposition of A.
-
-  This functions is an interface to POTRF!
-"))
-
-;; (tricopy!
-;; (defmethod chol ((a blas-numeric-tensor))
-;;   (let ((l.T (potrf! (copy a) :u)))
-
-
 ;;
 (deft/generic (t/lapack-potrs-func #'subfieldp) sym ())
 (deft/method t/lapack-potrs-func (sym real-tensor) ()
@@ -170,14 +148,34 @@
 	   (assert (member uplo '(:l :u)) nil 'invalid-value
 		   :given uplo :expected `(member uplo '(:u :l)))))
 
-(define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo :l))
-  `(with-columnification (((A #\N)) (B))
-     (mlet* (((lda opa) (blas-matrix-compatiblep A #\N))
-	     (ldb (blas-matrix-compatiblep B #\N)))
-	    (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a) A lda B ldb
-							     (let ((cuplo (aref (symbol-name uplo) 0)))
-							       (ecase opa (#\N cuplo) (#\T (fortran-nuplo cuplo)))))
-	      (declare (ignore sto))
-	      (unless (= info 0)
-		(error "POTRS returned ~a. the ~a'th argument had an illegal value." (- info))))))
+(define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo *default-uplo*))
+  `(with-columnification (() (A B))
+     (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a)
+						      A (or (blas-matrix-compatiblep A #\N) 0)
+						      B (or (blas-matrix-compatiblep B #\N) 0)
+						      (aref (symbol-name uplo) 0))
+       (declare (ignore sto))
+       (unless (= info 0)
+	 (error "POTRS returned ~a. the ~a'th argument had an illegal value." (- info)))))
   'B)
+;;
+(defgeneric chol (a &optional uplo)
+  (:documentation
+   "
+  Syntax
+  ======
+  (CHOL a &optional uplo)
+
+  Purpose
+  =======
+  Computes the Cholesky decomposition of A.
+
+  This functions is an interface to POTRF!
+"))
+
+(defmethod chol ((a blas-numeric-tensor) &optional (uplo *default-uplo*))
+  (let* ((l (potrf! (copy a) uplo))
+	 (diag (tricopy! l (zeros (aref (dimensions a) 0) (class-of a)) :d)))
+    (tricopy! 0d0 l (ecase uplo (:u :l) (:l :u)))
+    (tricopy! diag l :d)
+    l))

@@ -463,10 +463,10 @@
     :prefix `(matlisp::tbsolve ,(gather-superiors '/ stream) nil))
 
 (define-token-operator /=
-    :infix `(,(if (symbolp left) 
+    :infix `(,(if (symbolp left)
 		  'setq
 		  'setf)
-	      ,left 
+	      ,left
 	      (/ ,left ,(gather-superiors '/= stream))))
 
 ;;---------------------------------------------------------------;;
@@ -556,10 +556,12 @@
 (define-token-operator ==
     :infix `(= ,left ,(gather-superiors '== stream)))
 (define-token-operator =
-    :infix `(,(if (symbolp left) 
+    :infix `(,(if (symbolp left)
 		  'setq
 		  'setf)
-	      ,left
+	      ,(if (and (consp left) (eql (car left) 'progn))
+		   `(values ,@(cdr left))
+		   left)
 	      ,(gather-superiors '= stream)))
 
 (define-character-tokenization #\:	

@@ -40,6 +40,45 @@
 	 0
 	 (the index-type (head ,A)) (if ,vl (the index-type (head ,vl)) 0) (if ,vr (the index-type (head ,vr)) 0)))))
 ;;
+(deft/generic (t/lapack-heev-func #'subfieldp) sym ())
+(deft/method t/lapack-heev-func (sym real-tensor) ()
+  'matlisp-lapack:dsyev)
+(deft/method t/lapack-heev-func (sym complex-tensor) ()
+  'matlisp-lapack:zheev)
+
+(deft/generic (t/lapack-heev! #'subtypep) sym (jobz uplo A lda w))
+;;This will not work if you choose (simple-array (complex double-float) (*)) for complex-tensor.
+(deft/method t/lapack-heev! (sym blas-numeric-tensor) (jobz uplo A lda w)
+  (using-gensyms (decl (jobz A lda w uplo) (n lwork xxx))
+    (let ((complex? (subtypep (field-type sym) 'complex)))
+      `(let (,@decl
+	     (,lwork -1))
+       (declare (type ,sym ,A)
+		(type character ,jobz ,uplo)
+		(type index-type ,lda ,lwork)
+		(type ,(store-type sym) ,w))
+       (let-typed ((,n (nrows ,A) :type index-type))
+	 (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
+	   (,(macroexpand-1 `(t/lapack-heev-func ,sym))
+	     ,jobz ,uplo
+	     ,n
+	     ,xxx ,lda
+	     ,xxx
+	     ,xxx -1
+	     ,@(when complex? `(,xxx))
+	     0)
+	   (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
+	 (,(macroexpand-1 `(t/lapack-heev-func ,sym))
+	   ,jobz ,uplo 
+	   ,n
+	   (the ,(store-type sym) (store ,A)) ,lda
+	   ,w
+	   (t/store-allocator ,sym ,lwork) ,lwork
+	   ,@(when complex? `((t/store-allocator ,sym (* 2 ,n))))
+	   0
+	   (the index-type (head ,A))))))))
+
+;;
 (deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
 (deft/method t/geev-output-fix (sym real-numeric-tensor) (wr wi)
   (let ((csym (complexified-type sym)))
@@ -140,6 +179,52 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 					     :head 0
 					     :store (t/geev-output-fix ,(cl a) wr wi)))
 			  ret)))))
+
+(defgeneric heev! (a &optional )
+  (:documentation "
+ Syntax
+ ======
+ (HEEV! a &optional evec? )
+
+ Purpose:
+ ========
+ Computes the eigenvalues and left/right eigenvectors of A.
+
+ For an NxN matrix A, its eigenvalues are denoted by:
+
+              lambda(i),   j = 1 ,..., N
+ 
+ The right eigenvectors of A are denoted by v(i) where:
+
+                    A * v(i) = lambda(i) * v(i)
+
+ The left eigenvectors of A are denoted by u(i) where:
+
+                     H                      H
+                 u(i) * A = lambda(i) * u(i)
+
+ In matrix notation:
+                             -1
+                    A = V E V
+
+           and
+                          -1
+                         H       H
+                    A = U    E  U
+
+ where lambda(i) is the ith diagonal of the diagonal matrix E,
+ v(i) is the ith column of V and u(i) is the ith column of U.
+ 
+ The computed eigenvectors are normalized to have Euclidean norm
+ equal to 1 and largest component real.
+ ")
+  (:method :before ((a standard-tensor) &optional vl vr)
+	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
+	   (when vl
+	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
+	   (when vr
+	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
+
 ;;
 (defgeneric eig (matrix &optional job)
   (:method :before ((matrix standard-tensor) &optional (job :nn))

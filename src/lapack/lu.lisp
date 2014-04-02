@@ -230,7 +230,11 @@
 		   (or (pophash 'getrf (attributes A)) (error "Cannot find permutation for the PLU factorisation of A.")))))
      (declare (type (simple-array (unsigned-byte 32) (*)) upiv))
      (with-columnification (() (A))
-       (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv))
+       (let ((info (t/lapack-getri! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) upiv)))
+	 (unless (= info 0)
+	   (if (< info 0)
+	       (error "GETRI: the ~a'th argument had an illegal value." (- info))
+	       (error 'singular-matrix :message "GETRI: U(~a, ~:*~a) is exactly zero." :position info)))))
      A))
 ;;
 

@@ -49,10 +49,10 @@
 		  `(ref ,(cadr mat) ,@(reverse (cddr mat))))
 		(conjugate-ref (mat)
 		  `(t/fc ,(field-type sym) ,mat))
-		(generate-mm-code (transa transb)		  
+		(generate-mm-code (transa transb)
 		  (destructuring-bind (A-ref B-ref) (mapcar #'(lambda (mat trans) (ecase trans
 										    ((#\N #\T) mat)
-										    ((#\C) (conjugate-ref mat))))					
+										    ((#\C) (conjugate-ref mat))))
 							    (mapcar #'(lambda (mat trans) (ecase trans
 											    ((#\N) mat)
 											    ((#\T #\C) (transpose-ref mat))))
@@ -125,7 +125,7 @@
        (declare (type character joba jobb))
        ,(recursive-append
 	 (when (subtypep (cl c) 'blas-numeric-tensor)
-	   `(if (call-fortran? C (t/l3-lb ,(cl c)))			
+	   `(if (call-fortran? C (t/l3-lb ,(cl c)))
 		(with-columnification (((a joba) (b jobb)) (c))
 		  (multiple-value-bind (lda opa) (blas-matrix-compatiblep a joba)
 		    (multiple-value-bind (ldb opb) (blas-matrix-compatiblep b jobb)

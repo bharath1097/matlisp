@@ -43,7 +43,7 @@
 "
   (etypecase tensor
     ((or real-tensor sreal-tensor) tensor)
-    ((or complex-tensor scomplex-tensor) (let ((*check-after-initializing?* nil))
+    ((or complex-tensor scomplex-tensor) (with-no-init-checks
 					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
 							  :parent-tensor tensor :store (store tensor)
 							  :dimensions (dimensions tensor)
@@ -65,8 +65,8 @@
   If TENSOR is a scalar, returns its real part.
 "
   (etypecase tensor
-    ((or real-tensor sreal-tensor) tensor)
-    ((or complex-tensor scomplex-tensor) (let ((*check-after-initializing?* nil))
+    ((or real-tensor sreal-tensor) nil)
+    ((or complex-tensor scomplex-tensor) (with-no-init-checks
 					   (make-instance (if (typep tensor 'complex-tensor) 'real-tensor 'sreal-tensor)
 							  :parent-tensor tensor :store (store tensor)
 							  :dimensions (dimensions tensor)
@@ -104,4 +104,6 @@
 
   See IMAG, REALPART, IMAGPART
 "
-  (copy (tensor-imagpart~ tensor)))
+  (etypecase tensor
+    ((or real-tensor sreal-tensor) (zeros (dims tensor) (class-of tensor)))
+    (t (copy (tensor-imagpart~ tensor)))))

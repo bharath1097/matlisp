@@ -411,7 +411,6 @@
                        (IPIV (* :INTEGER))
                        (WORK (* :DOUBLE-FLOAT :INC HEAD-WORK)) (LWORK :INTEGER)
                        (INFO :INTEGER :OUTPUT)))
-
 ;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/zgetri.f")
 (MATLISP-UTILITIES:EVAL-EVERY
   (DEF-FORTRAN-ROUTINE ZGETRI :VOID (N :INTEGER)
@@ -419,6 +418,23 @@
                        (IPIV (* :INTEGER))
                        (WORK (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-WORK))
                        (LWORK :INTEGER) (INFO :INTEGER :OUTPUT)))
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/dsyev.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE DSYEV :VOID (JOBZ :CHARACTER) (UPLO :CHARACTER)
+                       (N :INTEGER) (A (* :DOUBLE-FLOAT :INC HEAD-A))
+                       (LDA :INTEGER) (W (* :DOUBLE-FLOAT :INC HEAD-W))
+                       (WORK (* :DOUBLE-FLOAT :INC HEAD-WORK)) (LWORK :INTEGER)
+                       (INFO :INTEGER :OUTPUT)))
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/zheev.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE ZHEEV :VOID (JOBZ :CHARACTER) (UPLO :CHARACTER)
+                       (N :INTEGER) (A (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-A))
+                       (LDA :INTEGER) (W (* :DOUBLE-FLOAT :INC HEAD-W))
+                       (WORK (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-WORK))
+                       (LWORK :INTEGER)
+                       (RWORK (* :DOUBLE-FLOAT :INC HEAD-RWORK))
+                       (INFO :INTEGER :OUTPUT)))
+;;
 
 (def-fortran-routine dgesvd :void
 "
