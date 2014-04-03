@@ -60,30 +60,6 @@
 (definline m.- (&rest objs)
   (apply #'t- objs))
 ;;
-(defgeneric tb^ (a b))
-
-(define-tensor-method tb^ ((a standard-tensor :input) (b standard-tensor :input)) 
-  `(if (and (tensor-vectorp a) (tensor-vectorp b))
-       (ger 1 a b nil nil)
-       (let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
-	      (ret-a (subtensor~ ret
-				 (print (loop :for i :from 0 :below (order ret)
-					   :collect (if (< i (order a)) '(nil nil) '(0 1))))
-				 nil))
-	      (rbstr (subseq (strides ret) (order a)))
-	      (sto-b (store b)))
-	 (mod-dotimes (idx (dimensions b))
-	   :with (linear-sums
-		  (of-b (strides b) (head b))
-		  (of-r rbstr (head ret)))
-	   :do (progn
-		 (setf (slot-value ret-a 'head) of-r)
-		 (axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a)))
-	 ret)))
-
-(definline t^ (&rest objs)
-  (reduce #'tb^ objs))
-;;
 (defgeneric tb* (a b)
   (:method ((a number) (b number))
     (cl:* a b))
@@ -187,12 +163,12 @@
 (definline t@ (&rest objs)
   (reduce #'tb@ objs))
 ;;
-(defgeneric tbsolve (a b)
-  (:documentation "Solve a x = b")
-  (:method ((a number) (b number))
-    (cl:/ b a))  
+(defgeneric t/ (b a) ;;rdiv
+  (:documentation "Solve x a = b")
+  (:method ((b number) (a number))
+    (cl:/ b a))
   ;;Scaling
-  (:method ((a number) (b standard-tensor))
+  (:method ((b standard-tensor) (a number))
     (scal (cl:/ a) b))
   ;;Matrix, vector/matrix product
   (:method ((a standard-tensor) (b (eql nil)))
@@ -200,21 +176,68 @@
       ((and (tensor-matrixp a) (tensor-squarep a))
        (inv a))
       (t (error "Don't know how to solve the given equation."))))
-  (:method ((a standard-tensor) (b standard-tensor))
+  (:method ((b standard-tensor) (a standard-tensor))
+    (cond
+      ((and (tensor-matrixp a) (tensor-squarep a) (tensor-matrixp b))
+       (transpose (getrs! (getrf! (copy a)) (transpose b) :t)))
+      ((and (tensor-matrixp a) (tensor-squarep a) (tensor-vectorp b))
+       (let ((tmp (zeros (list (aref (dimensions b) 0) 1) (class-of b))))
+	 (copy! b (slice~ tmp 1))
+	 (getrs! (getrf! (copy a)) tmp :t)
+	 (let ((ret (slice~ tmp 1)))
+	   (setf (slot-value ret 'parent-tensor) nil)
+	   ret)))
+      (t (error "Don't know how to solve the given equation."))))
+  ;;Permutation action. Left action permutes axis-0, right action permutes axis-1.
+  (:method ((b standard-tensor) (a permutation))
+    (permute b (inv a) 1))
+  ;;The correctness of this depends on the left-right order in reduce (foldl).
+  (:method ((a permutation) (b permutation))
+    (compose b (inv a))))
+
+(defgeneric t\\ (b a) ;ldiv
+  (:documentation "Solve a x = b")
+  (:method ((b t) (a t))
+    (t/ b a))
+  (:method ((b standard-tensor) (a standard-tensor))
     (cond
       ((and (tensor-matrixp a) (tensor-squarep a) (tensor-matrixp b))
        (getrs! (getrf! (copy a)) (copy b)))
       ((and (tensor-matrixp a) (tensor-squarep a) (tensor-vectorp b))
        (let ((tmp (zeros (list (aref (dimensions b) 0) 1) (class-of b))))
 	 (copy! b (slice~ tmp 1))
-	 (getrs! (getrf! (copy a)) b)
+	 (getrs! (getrf! (copy a)) tmp)
 	 (let ((ret (slice~ tmp 1)))
-	   (setf (slot-value tmp 'parent-tensor) nil)
+	   (setf (slot-value ret 'parent-tensor) nil)
 	   ret)))
       (t (error "Don't know how to solve the given equation."))))
   ;;Permutation action. Left action permutes axis-0, right action permutes axis-1.
-  (:method ((a permutation) (b standard-tensor))
+  (:method ((b standard-tensor) (a permutation))
     (permute b (inv a) 0))
   ;;The correctness of this depends on the left-right order in reduce (foldl).
   (:method ((a permutation) (b permutation))
     (compose (inv a) b)))
+;;
+(defgeneric tb^ (a b))
+
+(define-tensor-method tb^ ((a standard-tensor :input) (b standard-tensor :input)) 
+  `(if (and (tensor-vectorp a) (tensor-vectorp b))
+       (ger 1 a b nil nil)
+       (let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
+	      (ret-a (subtensor~ ret
+				 (print (loop :for i :from 0 :below (order ret)
+					   :collect (if (< i (order a)) '(nil nil) '(0 1))))
+				 nil))
+	      (rbstr (subseq (strides ret) (order a)))
+	      (sto-b (store b)))
+	 (mod-dotimes (idx (dimensions b))
+	   :with (linear-sums
+		  (of-b (strides b) (head b))
+		  (of-r rbstr (head ret)))
+	   :do (progn
+		 (setf (slot-value ret-a 'head) of-r)
+		 (axpy! (t/store-ref ,(cl b) sto-b of-b) a ret-a)))
+	 ret)))
+
+(definline t^ (&rest objs)
+  (reduce #'tb^ objs))

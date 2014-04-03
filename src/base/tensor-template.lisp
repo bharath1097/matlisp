@@ -155,9 +155,8 @@
 								 ,@(mapcar #'(lambda (x) `(,(cadr x) class)) oclsym))))
 						    (or (cadr (assoc ,x slook)) (error "Can't find class of ~a" ,x)))))
 				       (list ,@body))))
-			  (print
 			  `(defmethod ,',name (,@args)
-			     ,@ebody)))))
+			     ,@ebody))))
 	       (cond
 		 ((every #'(lambda (,x) (eql ,x (car ,classes))) ,classes)
 		  (assert (member (car ,classes) *tensor-type-leaves*)

@@ -3,10 +3,10 @@
 
 ;;Precedence
 (defparameter *operator-ordering* 
-  '((\( \! \[)                          ; \[ is array reference
-    ( quote transpose ** )      	; exponentiation
+  '((\( \! \[ \.)                       ; \[ is array reference
+    (quote transpose ** )      	        ; exponentiation
     ( ~ )				; lognot 
-    (.* ./ * / \\ % )			; % is mod
+    (@ .* ./ * / \\ % )			; % is mod
     ( + - )
     ( << >> )
     ( < == > <= != >= )
@@ -130,8 +130,45 @@
   (let ((*readtable* *infix-readtable*))
     (op-overload (read-infix stream))))
 
+(defparameter *operator-assoc-table* '((* matlisp::t*)
+				       (.* matlisp::t.*)
+				       (@ matlisp::t@)
+				       (+ matlisp::t+)
+				       (- matlisp::t-)
+				       (\\ matlisp::t\\)
+				       (/ matlisp::t/)
+				       (./ matlisp::t./)))
 (defun op-overload (expr)
-  expr)
+  (labels ((walker (expr)
+	     (dwalker
+	      (cond
+		((atom expr) expr)
+		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (second expr))
+		((eq (car expr) '*)
+		 (if (and (consp (second expr)) (eq (car (second expr)) '/) (not (cddr (second expr)))) ;;ldiv
+		     `(\\ ,(cadr (second expr)) (* ,@(cddr expr)))
+		     (iter (for op in (cdr expr))
+			   (for lst on (cdr expr))
+			   (if (and (consp op) (eq (car op) '/) (not (cddr op)))
+			       (return
+				 (walker
+				  (let ((left `(/ (* ,@oplist) ,(second op)) ))
+				    (if (cdr lst)
+					`(* ,left ,@(cdr lst))
+					left))))
+			       (collect op into oplist))
+			   (finally (return expr)))))
+		(t expr))))
+	   (dwalker (expr)
+	     (if (atom expr) expr
+		 (cond
+		   ((and (eq (car expr) '/) (not (cddr expr)))
+		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr)) ,(walker (second expr)) nil))
+		   (t
+		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr))
+		       ,@(mapcar #'walker (cdr expr))))))))
+    (walker expr)))
+
 ;; (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*)
 (defreadtable :infix-dispatch-table
   (:merge :standard)
@@ -165,38 +202,44 @@
 ;;; Hack to work around + and - being terminating macro characters,
 ;;; so 1e-3 doesn't normally work correctly.
 (defun fancy-number-format-p (left operator stream)
-  (when (symbolp left) ;;(find operator '(+ -) :test #'same-operator-p))
+  (when (symbolp left)
     (let* ((name (symbol-name left))
 	   (length (length name)))
       (when (valid-numberp (subseq name 0 (1- length)))
 	;; Exponent, Single, Double, Float, or Long, Imaginary
 	(cond
 	  ((member (aref name (1- length)) '(#\I #\J))
-	   (read-token stream)
-	   (push operator *peeked-token*)
 	   (with-readtable (:common-lisp)
 	     (complex 0 (read-from-string (subseq name 0 (1- length))))))
-	  ((member (aref name (1- length)) '(#\E #\S #\D #\F #\L))
+	  ((and (find operator '(+ -) :test #'same-operator-p)
+		(member (aref name (1- length)) '(#\E #\S #\D #\F #\L)))
 	   (read-token stream)
-	   (let ((right (peek-token stream)))
+	   (let* ((right (peek-token stream))
+		  (rname (and (symbolp right) (not (token-operator-p right)) (symbol-name right))))
 	     (cond ((integerp right) ;; it is one of the fancy numbers, so return it
 		    (read-token stream)
 		    (with-readtable (:common-lisp)
 		      (read-from-string (format nil "~A~A~A" left operator right))))
+		   ((and rname (> (length rname) 1) (every #'(lambda (x) (find x "0123456789" :test #'char=)) (subseq rname 0 (1- (length rname)))) (member (aref rname (1- (length rname))) '(#\I #\J)))
+		    (read-token stream)
+		    (complex 0 (with-readtable (:common-lisp)
+				 (read-from-string (format nil "~A~A~A" left operator (subseq rname 0 (1- (length rname))))))))
 		   (t ;; it isn't one of the fancy numbers, so unread the token
 		    (push operator *peeked-token*)
-		    nil))))))))) ;; and return nil
+		    nil)))))))));; and return nil
 
 (defun valid-numberp (string)
-  (let ((saw-dot nil))
-    (when (> (length string) 0)
-      (dolist (char (coerce string 'list) t)
-	(cond ((char= char #\.)
-	       (if saw-dot
-		   (return nil)
-		   (setq saw-dot t)))
-	      ((not (find char "01234567890" :test #'char=))
-	       (return nil)))))))
+  (with-readtable (:common-lisp)
+    (realp (read-from-string string))))
+  ;; (let ((saw-dot nil))
+  ;;   (when (> (length string) 0)
+  ;;     (dolist (char (coerce string 'list) t)
+  ;; 	(cond ((char= char #\.)
+  ;; 	       (if saw-dot
+  ;; 		   (return nil)
+  ;; 		   (setq saw-dot t)))
+  ;; 	      ((not (find char "01234567890" :test #'char=))
+  ;; 	       (return nil)))))))
 
 ;;; Gobbles an expression from the stream.
 (defun gather-superiors (previous-operator stream)
@@ -205,14 +248,13 @@
   (let ((left (get-first-token stream)))
     (loop
        (setq left (post-process-expression left))
-       (let ((peeked-token (peek-token stream)))
-	 (if (eql peeked-token 'blank)
-	     (progn (read-token stream) (setq peeked-token (peek-token stream)))
-	     (let ((fancy-p (fancy-number-format-p left peeked-token stream)))
-	       (when fancy-p
-		 ;; i.e., we've got a number like 1e-3 or 1e+3 or 1f-1
-		 (setq left fancy-p
-		       peeked-token (peek-token stream)))))
+       (let* ((peeked-token (peek-token stream))
+	      (fancyp (fancy-number-format-p left peeked-token stream)))
+	 (when fancyp
+	   (setq left fancyp
+		 peeked-token (peek-token stream)))
+	 (when (eql peeked-token 'blank)
+	   (setq peeked-token (progn (read-token stream) (peek-token stream))))
 	 (unless (or (operator-lessp previous-operator peeked-token)
 		     (and (same-operator-p peeked-token previous-operator)
 			  (operator-right-associative-p previous-operator)))
@@ -224,7 +266,7 @@
 
 (defun get-first-token (stream)
   (let ((token (iter (for tok next (read-token stream))
-		     (unless (eql tok 'blank) (return tok)))))		     
+		     (unless (eql tok 'blank) (return tok)))))
     (if (token-operator-p token)
 	;; It's an operator in a prefix context.
 	(apply-token-prefix-operator token stream)
@@ -275,7 +317,6 @@
 ;; a / b => a b^{-1}
 ;; a \ b => a^{-1} b
 (defun post-process-expression (expression)
-  (print expression)
   (or (cond
 	((and (consp expression)
 	      (eq (first expression) 'progn)
@@ -286,7 +327,7 @@
 	 (destructuring-bind (operator left right) expression
 	   (cond ((and (consp left)
 		       (same-operator-p (first left) operator)
-		       (find operator '(+ .* * ./ / - and or < > <= >= progn)
+		       (find operator '(+ @ .* * ./ / - and or < > <= >= progn)
 			     :test #'same-operator-p))
 		  ;; Flatten the expression if possible
 		  (cond ((and (eq operator '-)
@@ -489,6 +530,12 @@
 	     '**)
 	    (t
 	     '*)))))
+
+(define-character-tokenization #\@
+    #'(lambda (stream char) (declare (ignore stream char)) '@))
+
+(define-token-operator @
+    :infix `(@ ,left ,(gather-superiors '@  stream)))
 
 (define-token-operator .*
     :infix `(.* ,left ,(gather-superiors '.* stream)))

@@ -149,7 +149,7 @@
 		   :given uplo :expected `(member uplo '(:u :l)))))
 
 (define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo *default-uplo*))
-  `(with-columnification (() (A B))
+  `(with-columnification ((A #\C) (B))
      (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a)
 						      A (or (blas-matrix-compatiblep A #\N) 0)
 						      B (or (blas-matrix-compatiblep B #\N) 0)
