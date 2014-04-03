@@ -19,10 +19,17 @@
 
 ;;This is useful for Eigenvalue decompositions
 (deft/generic (t/complexified-type #'subtypep) sym ())
-(eval-every 
+(eval-every
   (defun complexified-type (type)
     (macroexpand-1 `(t/complexified-type ,type))))
 
+;;Now we're just making up names
+(deft/generic (t/realified-type #'subtypep) sym ())
+(eval-every
+  (defun realified-type (type)
+    (macroexpand-1 `(t/realified-type ,type))))
+
+;;
 (deft/generic (t/store-allocator #'subtypep) sym (size &optional initial-element))
 
 (deft/generic (t/store-type #'subtypep) sym (&optional size))
@@ -63,7 +70,7 @@
 (deft/generic (t/store-size #'subtypep) sym (ele))
 (deft/method t/store-size (sym standard-tensor) (ele)
   `(length ,ele))
-;; 
+;;
 (deft/method t/store-allocator (sym standard-tensor) (size &optional initial-element)
   (with-gensyms (sitm size-sym arr idx init)
     (let ((type (macroexpand-1 `(t/store-element-type ,sym))))
@@ -109,7 +116,7 @@
 				     (or (not (coerceable? ele max))
 					 (and (subtypep ele 'blas-numeric-tensor) (subtypep max 'blas-numeric-tensor)
 					      (> (float-digits (coerce 0 (store-element-type ele)))
-						 (float-digits (coerce 0 (store-element-type max))))))))	     
+						 (float-digits (coerce 0 (store-element-type max))))))))
 	     (setf max ele)))
     max))
 
@@ -117,31 +124,21 @@
   (let* ((inputs (mapcar #'car (remove-if-not #'(lambda (x) (and (consp x) (eql (third x) :input))) args)))
 	 (outputs (mapcar #'car (remove-if-not #'(lambda (x) (and (consp x) (eql (third x) :output))) args)))
 	 (iclsym (zipsym inputs))
-	 (oclsym (zipsym outputs)))
-    ;;
-    ;; (multiple-value-bind (val exists?) (gethash name *generated-methods*)
-    ;;   (if exists?
-    ;; 	  (let ((type-meths (assoc (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr val) :test #'list-eq)))
-    ;; 	    (if type-meths
-    ;; 		(progn
-    ;; 		  (loop :for ele in (cdr type-meths)
-    ;; 		     :do (remove-method (symbol-function name) ele))
-    ;; 		  (setf (cdr type-meths) nil))
-    ;; 		(setf (cdr val) (list* (list (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args)) (cdr val)))))
-    ;; 	  (setf (gethash name *generated-methods*) (list name (list (mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args))))))
-    ;;
+	 (oclsym (zipsym outputs))
+	 (dargs (let ((pos (position-if #'(lambda (x) (member x cl:lambda-list-keywords)) args)))
+		  (if pos (subseq args 0 pos) args))))
     (with-gensyms (x classes iclasses oclasses)
       `(progn
 	 (multiple-value-bind (val exists?) (gethash ',name *generated-methods*)
 	   (if exists?
-	       (let ((type-meths (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr val) :test #'list-eq)))
+	       (let ((type-meths (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr val) :test #'list-eq)))
 		 (if type-meths
 		     (progn
 		       (loop :for ele in (cdr type-meths)
 			  :do (remove-method (symbol-function ',name) ele))
 		       (setf (cdr type-meths) nil))
-		     (setf (cdr val) (list* (list ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args)) (cdr val)))))
-	       (setf (gethash ',name *generated-methods*) (list ',name (list ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args))))))
+		     (setf (cdr val) (list* (list ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs)) (cdr val)))))
+	       (setf (gethash ',name *generated-methods*) (list ',name (list ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs))))))
 	 ;;
 	 (defmethod ,name (,@(mapcar #'(lambda (x) (if (consp x) (subseq x 0 2) x)) args))
 	   (let* (,@(mapcar #'(lambda (lst) `(,(car lst) (class-name (class-of ,(cadr lst))))) (append iclsym oclsym))
@@ -158,26 +155,25 @@
 								 ,@(mapcar #'(lambda (x) `(,(cadr x) class)) oclsym))))
 						    (or (cadr (assoc ,x slook)) (error "Can't find class of ~a" ,x)))))
 				       (list ,@body))))
+			  (print
 			  `(defmethod ,',name (,@args)
-			     ,@ebody))))
+			     ,@ebody)))))
 	       (cond
 		 ((every #'(lambda (,x) (eql ,x (car ,classes))) ,classes)
 		  (assert (member (car ,classes) *tensor-type-leaves*)
 			  nil 'tensor-abstract-class :tensor-class ,classes)
 		  (let* ((method (compile-and-eval (generate-code (car ,classes))))
-			 (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) args) (cdr (gethash ',name *generated-methods*)) :test #'list-eq)))
+			 (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr (gethash ',name *generated-methods*)) :test #'list-eq)))
 		    (assert lst nil "Method table missing from *generated-methods* !")
 		    (setf (cdr lst) (list* method (cdr lst))))
-		  (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (and (not (consp x)) (char= (aref (symbol-name x) 0) #\&))) args))))
+		  (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args))))
 		 ((and (every #'(lambda (,x) (eql ,x (car ,oclasses))) ,oclasses)
 		       (or (null ,oclasses) (coerceable? (cclass-max ,iclasses) (car ,oclasses))))
 		  (let* ((clm (or (car ,oclasses) (cclass-max ,iclasses)))
 			 ,@(mapcar #'(lambda (x) `(,x (lazy-coerce ,x clm))) inputs))
-		    (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (and (not (consp x)) (char= (aref (symbol-name x) 0) #\&))) args)))))
+		    (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args)))))
 		 (t
 		  (error "Don't know how to apply ~a to classes ~a, ~a." ',name ,iclasses ,oclasses))))))))))
-
-
 ;;
 
 ;; (defgeneric testg (a))
@@ -192,6 +188,6 @@
 ;;      (declare (type ,(field-type (cl x)) alpha))
 ;;      ,(recursive-append
 ;;        (when (subtypep (cl x) 'blas-numeric-tensor)
-;;   	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
-;;   	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
+;;	 `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
+;;	    (t/blas-axpy! ,(cl x) alpha x (first strd) y (second strd))))
 ;;        `(t/axpy! ,(cl x) alpha x y))))

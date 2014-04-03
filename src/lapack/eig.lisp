@@ -56,7 +56,7 @@
        (declare (type ,sym ,A)
 		(type character ,jobz ,uplo)
 		(type index-type ,lda ,lwork)
-		(type ,(store-type sym) ,w))
+		(type ,(store-type (realified-type sym)) ,w))
        (let-typed ((,n (nrows ,A) :type index-type))
 	 (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
 	   (,(macroexpand-1 `(t/lapack-heev-func ,sym))
@@ -69,12 +69,12 @@
 	     0)
 	   (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
 	 (,(macroexpand-1 `(t/lapack-heev-func ,sym))
-	   ,jobz ,uplo 
+	   ,jobz ,uplo
 	   ,n
 	   (the ,(store-type sym) (store ,A)) ,lda
 	   ,w
 	   (t/store-allocator ,sym ,lwork) ,lwork
-	   ,@(when complex? `((t/store-allocator ,sym (* 2 ,n))))
+	   ,@(when complex? `((t/store-allocator (t/realified-type ,sym) (* 3 ,n))))
 	   0
 	   (the index-type (head ,A))))))))
 
@@ -138,11 +138,11 @@
  equal to 1 and largest component real.
  ")
   (:method :before ((a standard-tensor) &optional vl vr)
-	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
+	   (assert (tensor-square-matrixp a) nil 'tensor-dimension-mismatch)
 	   (when vl
-	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
+	     (assert (and (tensor-square-matrixp vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
 	   (when vr
-	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
+	     (assert (and (tensor-square-matrixp vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
 
 (define-tensor-method geev! ((a blas-numeric-tensor :output) &optional vl vr)
   `(let* ((jobvl (if vl #\V #\N))
@@ -179,63 +179,50 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 					     :head 0
 					     :store (t/geev-output-fix ,(cl a) wr wi)))
 			  ret)))))
-
-;; (defgeneric heev! (a &optional )
-;;   (:documentation "
-;;  Syntax
-;;  ======
-;;  (HEEV! a &optional evec? )
-
-;;  Purpose:
-;;  ========
-;;  Computes the eigenvalues and left/right eigenvectors of A.
-
-;;  For an NxN matrix A, its eigenvalues are denoted by:
-
-;;               lambda(i),   j = 1 ,..., N
- 
-;;  The right eigenvectors of A are denoted by v(i) where:
-
-;;                     A * v(i) = lambda(i) * v(i)
-
-;;  The left eigenvectors of A are denoted by u(i) where:
-
-;;                      H                      H
-;;                  u(i) * A = lambda(i) * u(i)
-
-;;  In matrix notation:
-;;                              -1
-;;                     A = V E V
-
-;;            and
-;;                           -1
-;;                          H       H
-;;                     A = U    E  U
-
-;;  where lambda(i) is the ith diagonal of the diagonal matrix E,
-;;  v(i) is the ith column of V and u(i) is the ith column of U.
- 
-;;  The computed eigenvectors are normalized to have Euclidean norm
-;;  equal to 1 and largest component real.
-;;  ")
-;;   (:method :before ((a standard-tensor) &optional vl vr)
-;; 	   (assert (tensor-squarep a) nil 'tensor-dimension-mismatch)
-;; 	   (when vl
-;; 	     (assert (and (tensor-squarep vl) (= (nrows vl) (nrows a)) (typep vl (type-of a)))  nil 'tensor-dimension-mismatch))
-;; 	   (when vr
-;; 	     (assert (and (tensor-squarep vr) (= (nrows vr) (nrows a)) (typep vr (type-of a)))  nil 'tensor-dimension-mismatch))))
-
 ;;
-;;
-(defgeneric eig (matrix &optional job)
-  (:method :before ((matrix standard-tensor) &optional (job :nn))
-	   (assert (tensor-matrixp matrix) nil 'tensor-dimension-mismatch)
-	   (assert (member job '(:nn :nv :vn :vv)) nil 'invalid-arguments)))
+(defgeneric heev! (a &optional job uplo?)
+  (:documentation "
+ Syntax
+ ======
+ (HEEV! a &optional evec? )
 
-(defmethod eig ((matrix complex-numeric-tensor) &optional (job :nn))
-  (mlet* ((n (nrows matrix))
-	  ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job)))))
-    (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix))))))
+ Purpose:
+ ========
+ Computes the eigenvalues / eigenvectors of a Hermitian (symmetric) A.
+ ")
+  (:method :before ((a standard-tensor) &optional (job :n) (uplo? *default-uplo*))
+     (assert (tensor-square-matrixp a) nil 'tensor-dimension-mismatch)
+     (assert (and (member job '(:v :n)) (member uplo? '(:u :l))) nil 'invalid-arguments)))
+
+(define-tensor-method heev! ((a blas-numeric-tensor :output) &optional (job :n) (uplo? *default-uplo*))
+  `(let ((evals (zeros (nrows a) ',(realified-type (cl a)))))
+     (with-columnification (() (A))
+       (let ((info (t/lapack-heev! ,(cl a)
+				   (aref (symbol-name job) 0)
+				   (aref (symbol-name uplo?) 0)
+				   A (or (blas-matrix-compatiblep A #\N) 0)
+				   (store evals))))
+	 (unless (= info 0)
+	   (if (< info 0)
+	       (error "(SY/HE)EV: Illegal value in the ~:r argument." (- info))
+	       (error "(SY/HE)EV: the algorithm failed to converge; ~a off-diagonal elements of an intermediate tridiagonal form did not converge to zero." info)))))
+     (if (eql job :v)
+	 (values evals A)
+	 (values evals))))
+;;
+(defgeneric eig (matrix &optional job uplo)
+  (:method :before ((matrix standard-tensor) &optional (job :nn) (uplo *default-uplo*))
+     (declare (ignore job uplo))
+     (assert (tensor-square-matrixp matrix) nil 'tensor-dimension-mismatch)))
+
+(defmethod eig ((matrix complex-numeric-tensor) &optional (job :nn) (uplo *default-uplo*))
+  (ecase job
+    ((:nn :nv :vn :vv)
+     (mlet* ((n (nrows matrix))
+	     ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job)))))
+	    (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix))))))
+    ((:n :v)
+     (heev! (copy matrix) job uplo))))
 
 (defun geev-fix-up-eigvec (n eigval eigvec)
   (let* ((evec (copy! eigvec (zeros (list n n) (complexified-type (class-of eigvec)))))
@@ -258,12 +245,16 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 	       (return nil)))
     evec))
 
-(defmethod eig ((matrix real-numeric-tensor) &optional (job :nn))
-  (mlet* ((n (nrows matrix))
-	  ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
-	  (ret (multiple-value-list (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix)))))))
-	 (let ((eval (car ret)))
-	   (unless (dotimes (i n t) (unless (zerop (imagpart (ref eval i))) (return nil)))
-	     (when levec? (setf (second ret) (geev-fix-up-eigvec n eval (second ret))))
-	     (when revec? (setf (third ret) (geev-fix-up-eigvec n eval (third ret))))))
-	 (values-list ret)))
+(defmethod eig ((matrix real-numeric-tensor) &optional (job :nn) (uplo *default-uplo*))
+  (ecase job
+    ((:nn :nv :vn :vv)    
+     (mlet* ((n (nrows matrix))
+	     ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
+	     (ret (multiple-value-list (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix)))))))
+	    (let ((eval (car ret)))
+	      (unless (dotimes (i n t) (unless (zerop (imagpart (ref eval i))) (return nil)))
+		(when levec? (setf (second ret) (geev-fix-up-eigvec n eval (second ret))))
+		(when revec? (setf (third ret) (geev-fix-up-eigvec n eval (third ret))))))
+	    (values-list ret)))
+    ((:n :v)
+     (heev! (copy matrix) job uplo))))

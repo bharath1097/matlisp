@@ -32,6 +32,9 @@
 (deft/method t/l3-lb (sym real-numeric-tensor) ()
   '*real-l3-fcall-lb*)
 
+(deft/method t/realified-type (sym real-numeric-tensor) ()
+  sym)
+
 (defmethod print-element ((tensor real-numeric-tensor)
 			  element stream)
   (format stream "~12,4,0,,,,'Eg" element))
@@ -118,6 +121,12 @@
 (deft/method t/field-type (sym complex-tensor) ()
   '(complex double-float))
 
+(deft/method t/realified-type (sym complex-tensor) ()
+  'real-tensor)
+
 (defleaf scomplex-tensor (complex-numeric-tensor) ())
 (deft/method t/field-type (sym scomplex-tensor) ()
   '(complex single-float))
+
+(deft/method t/realified-type (sym scomplex-tensor) ()
+  'sreal-tensor)

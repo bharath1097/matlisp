@@ -3,10 +3,10 @@
 
 ;;Precedence
 (defparameter *operator-ordering* 
-  '(( quote transpose \[ \( \! )	; \[ is array reference
-    ( ** )				; exponentiation
+  '((\( \! \[)                          ; \[ is array reference
+    ( quote transpose ** )      	; exponentiation
     ( ~ )				; lognot 
-    ( .* * ./ / \\ % )			; % is mod
+    (.* ./ * / \\ % )			; % is mod
     ( + - )
     ( << >> )
     ( < == > <= != >= )
@@ -128,8 +128,10 @@
   (when (char= (peek-char nil stream t nil t) #\()
     (read-char stream))
   (let ((*readtable* *infix-readtable*))
-    (read-infix stream)))
+    (op-overload (read-infix stream))))
 
+(defun op-overload (expr)
+  expr)
 ;; (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*)
 (defreadtable :infix-dispatch-table
   (:merge :standard)
@@ -163,33 +165,38 @@
 ;;; Hack to work around + and - being terminating macro characters,
 ;;; so 1e-3 doesn't normally work correctly.
 (defun fancy-number-format-p (left operator stream)
-  (when (and (symbolp left) (find operator '(+ -) :test #'same-operator-p))
+  (when (symbolp left) ;;(find operator '(+ -) :test #'same-operator-p))
     (let* ((name (symbol-name left))
 	   (length (length name)))
-      (when (and (valid-numberp (subseq name 0 (1- length)))
-		 ;; Exponent, Single, Double, Float, or Long
-		 (find (subseq name (1- length))
-		       '("e" "s" "d" "f" "l")
-		       :test #'string-equal))
-	(read-token stream)
-	(let ((right (peek-token stream)))
-	  (cond ((integerp right) ;; it is one of the fancy numbers, so return it
-		 (read-token stream)
-		 (with-readtable (:common-lisp)
-		   (read-from-string (format nil "~A~A~A" left operator right))))
-		(t ;; it isn't one of the fancy numbers, so unread the token
-		 (push operator *peeked-token*)
-		 nil))))))) ;; and return nil
+      (when (valid-numberp (subseq name 0 (1- length)))
+	;; Exponent, Single, Double, Float, or Long, Imaginary
+	(cond
+	  ((member (aref name (1- length)) '(#\I #\J))
+	   (read-token stream)
+	   (push operator *peeked-token*)
+	   (with-readtable (:common-lisp)
+	     (complex 0 (read-from-string (subseq name 0 (1- length))))))
+	  ((member (aref name (1- length)) '(#\E #\S #\D #\F #\L))
+	   (read-token stream)
+	   (let ((right (peek-token stream)))
+	     (cond ((integerp right) ;; it is one of the fancy numbers, so return it
+		    (read-token stream)
+		    (with-readtable (:common-lisp)
+		      (read-from-string (format nil "~A~A~A" left operator right))))
+		   (t ;; it isn't one of the fancy numbers, so unread the token
+		    (push operator *peeked-token*)
+		    nil))))))))) ;; and return nil
 
 (defun valid-numberp (string)
   (let ((saw-dot nil))
-    (dolist (char (coerce string 'list) t)
-      (cond ((char= char #\.)
-	     (if saw-dot
-		 (return nil)
-		 (setq saw-dot t)))
-	    ((not (find char "01234567890" :test #'char=))
-	     (return nil))))))
+    (when (> (length string) 0)
+      (dolist (char (coerce string 'list) t)
+	(cond ((char= char #\.)
+	       (if saw-dot
+		   (return nil)
+		   (setq saw-dot t)))
+	      ((not (find char "01234567890" :test #'char=))
+	       (return nil)))))))
 
 ;;; Gobbles an expression from the stream.
 (defun gather-superiors (previous-operator stream)
@@ -199,11 +206,13 @@
     (loop
        (setq left (post-process-expression left))
        (let ((peeked-token (peek-token stream)))
-	 (let ((fancy-p (fancy-number-format-p left peeked-token stream)))
-	   (when fancy-p
-	     ;; i.e., we've got a number like 1e-3 or 1e+3 or 1f-1
-	     (setq left fancy-p
-		   peeked-token (peek-token stream))))
+	 (if (eql peeked-token 'blank)
+	     (progn (read-token stream) (setq peeked-token (peek-token stream)))
+	     (let ((fancy-p (fancy-number-format-p left peeked-token stream)))
+	       (when fancy-p
+		 ;; i.e., we've got a number like 1e-3 or 1e+3 or 1f-1
+		 (setq left fancy-p
+		       peeked-token (peek-token stream)))))
 	 (unless (or (operator-lessp previous-operator peeked-token)
 		     (and (same-operator-p peeked-token previous-operator)
 			  (operator-right-associative-p previous-operator)))
@@ -214,7 +223,8 @@
        (setq left (get-next-token stream left)))))
 
 (defun get-first-token (stream)
-  (let ((token (read-token stream)))
+  (let ((token (iter (for tok next (read-token stream))
+		     (unless (eql tok 'blank) (return tok)))))		     
     (if (token-operator-p token)
 	;; It's an operator in a prefix context.
 	(apply-token-prefix-operator token stream)
@@ -257,45 +267,71 @@
 		       (infix-error "Missing delimiter: ~A" delimiter-token))
 		     (collect (if (member (if (= count 1) next-token (peek-token stream)) stop-tokens :test #'same-token-p) nil
 				  (gather-superiors delimiter-token stream))))))))
-	
 ;;; Syntactic Modifications
 ;;; Post processes the expression to remove some unsightliness caused
 ;;; by the way infix processes the input. Note that it is also required
-;;; for correctness in the a<b<=c case. 
+;;; for correctness in the a<b<=c case.
+
+;; a / b => a b^{-1}
+;; a \ b => a^{-1} b
 (defun post-process-expression (expression)
-  (if (and (consp expression)
-	   (= (length expression) 3))
-      (destructuring-bind (operator left right) expression
-	(cond ((and (consp left)
-		    (same-operator-p (first left) operator)
-		    (find operator '(+ * / - and or < > <= >= progn)
-			  :test #'same-operator-p))
-	       ;; Flatten the expression if possible
-	       (cond ((and (eq operator '-)
-			   (= (length left) 2))
-		      ;; -a-b --> (+ (- a) (- b)). 
-		      `(+ ,left (- ,right)))
-		     ((and (eq operator '/)
-			   (= (length left) 2))
-		      ;; ditto with /
-		      `(/ (* ,(second left) ,right)))
-		     (t 
-		      ;; merges a+b+c as (+ a b c).	     
-		      (append left (list right)))))
-	      ((and (consp left)
-		    (eq operator '-)
-		    (eq (first left) '+))
-	       ;; merges a+b-c as (+ a b (- c)).
-	       (append left (list `(- ,right))))
-	      ((and (consp left)
-		    (find operator '(< > <= >=))
-		    (find (first left) '(< > <= >=)))
-	       ;; a<b<c --> a<b and b<c
-	       `(and ,left
-		     (,operator ,(first (last left))
-				,right)))
-	      (t
-	       expression)))
+  (print expression)
+  (or (cond
+	((and (consp expression)
+	      (eq (first expression) 'progn)
+	      (= (length expression) 2))
+	 (second expression))
+	((and (consp expression)
+	      (= (length expression) 3))
+	 (destructuring-bind (operator left right) expression
+	   (cond ((and (consp left)
+		       (same-operator-p (first left) operator)
+		       (find operator '(+ .* * ./ / - and or < > <= >= progn)
+			     :test #'same-operator-p))
+		  ;; Flatten the expression if possible
+		  (cond ((and (eq operator '-)
+			      (= (length left) 2))
+			 ;; -a-b --> (+ (- a) (- b)). 
+			 `(+ ,left (- ,right)))
+			((and (eq operator './)
+			      (= (length left) 2))
+			 ;; prefer multiplications over inversions.
+			 ;; works only with commutative rings!
+			 `(./ ,(post-process-expression `(.* ,(second left) ,right))))
+			(t
+			 ;; merges a+b+c as (+ a b c).
+			 (append left (list right)))))
+		 ((and (eq operator '*)
+		       (consp right) (eq (car right) '/)
+		       (consp left) (eq (car left) '/))
+		  `(* ,@(if (cddr left)
+			    `(,(cadr left) ,@(mapcar #'(lambda (x) `(/ ,x)) (cddr left)))
+			    `((/ ,(cadr left))))
+		      ,@(if (cddr right)
+			    `(,(cadr right) ,@(mapcar #'(lambda (x) `(/ ,x)) (cddr right)))
+			    `((/ ,(cadr right))))))
+		 ((and (eq operator '/))
+		  (post-process-expression `(* ,left (/ ,right))))
+		 ;; ((and (eq operator '*)
+		 ;;       (consp right)
+		 ;;       (= (length right) 2)
+		 ;;       (eq (car right) '/))
+		 ;;  `(/ ,left ,(second right)))
+		 ;; ((and (eq operator '*)
+		 ;;       (consp left)
+		 ;;       (
+		 ((and (consp left)
+		       (eq operator '-)
+		       (eq (first left) '+))
+		  ;; merges a+b-c as (+ a b (- c)).
+		  (append left (list `(- ,right))))
+		 ((and (consp left)
+		       (find operator '(< > <= >=))
+		       (find (first left) '(< > <= >=)))
+		  ;; a<b<c --> a<b and b<c
+		  `(and ,left
+			(,operator ,(first (last left))
+				   ,right)))))))
       expression))
 ;;; ********************************
 ;;; Define Operators ***************
@@ -366,7 +402,7 @@
 	       '+))))
 
 (define-token-operator +
-    :infix `(matlisp::t+ ,left ,(gather-superiors '+ stream))
+    :infix `(+ ,left ,(gather-superiors '+ stream))
     :prefix (gather-superiors '+ stream))
 (define-token-operator +=
     :infix `(generic-incf ,left ,(gather-superiors '+= stream)))
@@ -381,12 +417,30 @@
 	      (t
 	       '-))))
 (define-token-operator -
-    :infix `(matlisp::t- ,left ,(gather-superiors '- stream))
-    :prefix `(matlisp::t- ,(gather-superiors '- stream)))
+    :infix `(- ,left ,(gather-superiors '- stream))
+    :prefix `(- ,(gather-superiors '- stream)))
 (define-token-operator -=
     :infix `(generic-incf ,left ,(gather-superiors '-= stream) -1))
 
 ;;*--------------------------------------------------------------;;
+
+;; (defun read-num (stream char)
+;;   (unread-char char stream)
+;;   (with-readtable (:common-lisp)
+;;     (read stream)))
+
+;; (macrolet ((num-toks ()
+;; 	     `(eval-every
+;; 		,@(loop :for c :from 0 :below 10
+;; 		     :collect `(define-character-tokenization ,(aref (princ-to-string c) 0)
+;; 			      #'read-num))))
+;; 	   (unum-toks ()
+;; 	     `(eval-every
+;; 		,@(loop :for c :from 0 :below 10
+;; 		     :collect `(set-macro-character ,(aref (princ-to-string c) 0) nil)))))
+;;   (unum-toks))
+
+;;
 (define-character-tokenization #\.
     #'(lambda (stream char)
 	(declare (ignore char))
@@ -394,13 +448,29 @@
 	  (#\* (read-char stream t nil t) '.*)
 	  (#\/ (read-char stream t nil t) './)
 	  ((#\') (read-char stream t nil t) 'transpose)
-	  (t (error 'parser-error)))))
+	  ((#\^m #\space #\tab #\return #\newline) 'blank)
+	  (t '\.))))
 
-(define-character-tokenization #\'
-    #'(lambda (stream char) (declare (ignore stream char)) 'quote))
+(define-token-operator \.
+    :infix (let ((right (iter (for char next (peek-char nil stream t nil t))
+			      (if (or (member char +blank-characters+)
+				      (get-macro-character char *infix-readtable*))
+				  (return clist)
+				  (collect (read-char stream t nil t) into clist)))))
+	     (with-readtable (:common-lisp)
+	       (read-from-string (format nil "~a.~a" left (coerce right 'string))))))
+
+(define-character-tokenization #\Space
+    #'(lambda (stream char) (iter (for c next (peek-char nil stream t nil t))
+				  (if (member c +blank-characters+)
+				      (read-char stream t nil t)
+				      (return 'blank)))))
 
 (define-token-operator transpose
     :infix `(matlisp::transpose ,left))
+
+(define-character-tokenization #\'
+    #'(lambda (stream char) (declare (ignore stream char)) 'quote))
 
 (define-token-operator quote
     :infix `(matlisp::htranspose ,left)
@@ -421,10 +491,10 @@
 	     '*)))))
 
 (define-token-operator .*
-    :infix `(matlisp::t.* ,left ,(gather-superiors '.* stream)))
+    :infix `(.* ,left ,(gather-superiors '.* stream)))
 
 (define-token-operator *
-    :infix `(matlisp::t* ,left ,(gather-superiors '* stream)))
+    :infix `(* ,left ,(gather-superiors '* stream)))
 
 (define-token-operator *=
     :infix `(,(if (symbolp left)
@@ -453,15 +523,15 @@
 ;; 	'\\))
 
 ;; (define-token-operator \\
-;;     :infix `(matlisp::tsolve ,left ,(gather-superiors '\\ stream)))
+;;     :infix `(\\ ,left ,(gather-superiors '\\ stream)))
 
 (define-token-operator ./
-    :infix `(matlisp::t./ ,(gather-superiors '/ stream) ,left)
-    :prefix `(matlisp::t./ ,(gather-superiors '/ stream)))
+    :infix `(./ ,left ,(gather-superiors './ stream))
+    :prefix `(./ ,(gather-superiors './ stream)))
 
 (define-token-operator /
-    :infix `(matlisp::tbsolve ,(gather-superiors '/ stream) ,left)
-    :prefix `(matlisp::tbsolve ,(gather-superiors '/ stream) nil))
+    :infix `(/ ,left ,(gather-superiors '/ stream))
+    :prefix `(/ ,(gather-superiors '/ stream)))
 
 (define-token-operator /=
     :infix `(,(if (symbolp left)

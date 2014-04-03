@@ -111,6 +111,20 @@
   (:method ((a permutation) (b permutation))
     (compose a b)))
 
+;; Is this really necessary ?
+;; (defun t*ord (&rest mats)
+;;   (let* ((n (length mats))
+;; 	 (cost (make-array (list n n) :element-type 'fixnum :initial-element 0)))
+;;     (iter (for mat in mats)
+;; 	  (setf (aref cost i i) (cond ((tensor-matrixp mat) (aref (dimensions mat) 1)) ((tensor-vectorp mat) 1))
+;;     (iter (for l from 2 to n)
+;; 	  (iter (for i from 0 to (- n l))
+;; 		(setf (aref cost i (+ i l -1))
+;; 		      (iter (for k from i to (+ i l -2)
+;; 				 (minimizing (+ (cost i k) (cost (1+ k) (+ i l -1)) (the fixnum (* (aref seq i) (the fixnum (* (aref seq (1+ k)) (aref seq (+ i l)))))))))))
+		
+;;        :finally (return (cost 0 (1- n)))))))
+
 (definline t* (&rest objs)
   (reduce #'tb* objs))
 (definline m* (&rest objs)
@@ -126,6 +140,52 @@
 (definline m./ (&rest objs)
   (apply #'t./ objs))
 
+;;
+(defgeneric tensor-contraction (a b))
+(defparameter *tensor-contraction-functable* (make-hash-table :test 'equal))
+(define-tensor-method tensor-contraction ((a standard-tensor :input) (b standard-tensor :input))
+  `(let ((func (or (gethash (list (order a) (order b) ',(cl a)) *tensor-contraction-functable*)
+		   (let ((asyms (iter (for i from 0 below (1- (order a))) (collect (gensym (format nil "a_~a" i)))))
+			 (bsyms (iter (for i from 1 below (order b)) (collect (gensym (format nil "b_~a" i)))))
+			 (sumsym (gensym "idx")))
+		     (format t "Generating contraction for orders : (~a, ~a)." (order a) (order b))
+		     (setf (gethash (list (order a) (order b) ',(cl a)) *tensor-contraction-functable*)
+			   (compile-and-eval
+			    `(lambda (a b c)
+			       (einstein-sum ,',(cl a) (,@(reverse bsyms) ,sumsym ,@(reverse asyms)) (ref c ,@asyms ,@bsyms) (* (ref a ,@asyms ,sumsym) (ref b ,sumsym ,@bsyms))))))))))
+     (funcall func a b (zeros (append (butlast (dims a)) (cdr (dims b))) ',(cl a)))))
+
+(defgeneric tb@ (a b)
+  (:method ((a number) (b number))
+    (cl:* a b))
+  ;;Scaling
+  (:method ((a number) (b standard-tensor))
+    (scal a b))
+  (:method ((a standard-tensor) (b number))
+    (scal b a))
+  ;;Matrix, vector/matrix product
+  (:method ((a standard-tensor) (b standard-tensor))
+    (cond
+      ((and (tensor-vectorp a) (tensor-vectorp b))
+       (dot a b nil))
+      ((and (tensor-matrixp a) (tensor-vectorp b))
+       (gemv 1 a b nil nil :n))
+      ((and (tensor-vectorp a) (tensor-matrixp b))
+       (gemv 1 b a nil nil :t))
+      ((and (tensor-matrixp a) (tensor-matrixp b))
+       (gemm 1 a b nil nil))
+      (t (tensor-contraction a b))))
+  ;;Permutation action. Left action permutes axis-0, right action permutes axis-1.
+  (:method ((a permutation) (b standard-tensor))
+    (transpose b (inv a)))
+  (:method ((a standard-tensor) (b permutation))
+    (transpose b a))
+  ;;The correctness of this depends on the left-right order in reduce (foldl).
+  (:method ((a permutation) (b permutation))
+    (compose a b)))
+
+(definline t@ (&rest objs)
+  (reduce #'tb@ objs))
 ;;
 (defgeneric tbsolve (a b)
   (:documentation "Solve a x = b")
