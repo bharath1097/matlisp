@@ -147,10 +147,6 @@
  X,Y must have the same dimensions.
 ")
   (:method (alpha x (y standard-tensor))
-    (axpy! alpha x (copy y))))
-
-(defmethod axpy (alpha (x standard-tensor) (y (eql nil)))
-  (axpy! alpha x (zeros (dimensions x) (class-of x))))
-
-(defmethod axpy ((alpha complex) (x real-numeric-tensor) (y (eql nil)))
-  (axpy! alpha x (zeros (dimensions x) 'complex-tensor)))
+    (axpy! alpha x (copy y)))
+  (:method ((alpha complex) x (y real-numeric-tensor))
+    (axpy! alpha x (copy y 'complex-tensor))))

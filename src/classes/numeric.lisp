@@ -37,7 +37,7 @@
 
 (defmethod print-element ((tensor real-numeric-tensor)
 			  element stream)
-  (format stream "~12,4,0,,,,'Eg" element))
+  (format stream "~,4,-2,,,,'Eg" element))
 
 ;;Real tensor
 (define-constant +real-infinity+
@@ -115,7 +115,9 @@
 			  element stream)
   (let ((realpart (realpart element))
 	(imagpart (imagpart element)))
-    (format stream "~6,4,-4,,,,'Eg + ~6,4,-4,,,,'Egi"  realpart imagpart)))
+    (if (not (zerop imagpart))
+	(format stream "~,4,-2,,,,'Eg + ~,4,-2,,,,'Egi"  realpart imagpart)
+	(format stream "~,4,-2,,,,'Eg" realpart))))
 ;;
 (defleaf complex-tensor (complex-numeric-tensor) ())
 (deft/method t/field-type (sym complex-tensor) ()

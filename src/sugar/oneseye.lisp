@@ -2,11 +2,10 @@
 
 (defun ones (dims &optional (type *default-tensor-type*))
   (zeros dims type 1))
-;;
+
 (defun eye (dims &optional (type *default-tensor-type*))
-  ;;Not optimized, takes nearly as much time as ones.
-  (let* ((ret (zeros dims type))
-	 (ref (make-list (order ret) :initial-element 0)))
-    (loop :for i :from 0 :below (lvec-min (dimensions ret))
-       :do (setf (ref ret (copy! i ref)) 1))
-    ret))
+  (tricopy! 1 (zeros dims type) :d))
+
+(defun diag (tens &optional (order 2))
+  (let ((ret (zeros (make-list order :initial-element (aref (dimensions tens) 0)) (type-of tens))))
+    (tricopy! tens ret :d)))

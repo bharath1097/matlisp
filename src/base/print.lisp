@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -52,22 +52,33 @@ of a matrix (default 0)
 	(dims (dimensions tensor))
 	(two-print-calls 0))
     (labels ((two-print (tensor subs)
-	       (dotimes (i (aref dims (- rank 2)))
-		 (format stream (format nil "~~~AT" *print-indent*))
-		 (if (or (eq *print-max-len* t) (< i *print-max-len*))
-		     (progn
-		       (dotimes (j (aref dims (- rank 1)))
-			 (if (or (eq *print-max-len* t) (< j *print-max-len*))
-			     (progn
-			       (print-element tensor (ref tensor (append subs `(,i ,j))) stream)
-			       (format stream "~,4T"))
-			     (progn
-			       (format stream "...")
-			       (return nil))))
-			 (format stream "~%"))
-		     (progn
-		       (format stream (format nil ".~~%~~~AT:~~%" *print-indent*))
-		       (return nil)))))
+	       (let ((strs nil)
+		     (maxw (make-array (if (not *print-max-len*) (1+ *print-max-len*) (aref dims (- rank 1))) :initial-element 0)))
+		 (setq strs
+		       (iter (for i from 0 below (aref dims (- rank 2)))
+			     (if (or (eq *print-max-len* t) (< i *print-max-len*))
+				 (collect (iter (for j from 0 below (aref dims (- rank 1)))
+						(if (or (eq *print-max-len* t) (< j *print-max-len*))
+						    (let ((str (with-output-to-string (str)
+								 (print-element tensor (ref tensor (append subs `(,i ,j))) str))))
+						      (collect str into cprints)
+						      (setf (aref maxw j) (max (aref maxw j) (length str))))
+						    (let ((str (with-output-to-string (str) (format str "..."))))
+						      (collect str into cprints)
+						      (setf (aref maxw j) (max (aref maxw j) (length str)))
+						      (return cprints)))
+						(finally (return cprints)))
+				   into rprints)
+				 (return rprints))
+			     (finally (return rprints))))
+		 (iter (for row in strs)
+		       (format stream (format nil "~~~AT" *print-indent*))
+		       (iter (for cref in row)
+			     (for j initially 0 then (1+ j))
+			     (format stream (replace (make-string (+ (aref maxw j) 4) :initial-element #\Space) cref)))
+		       (format stream "~%"))
+		 (unless (or (< (aref dims (- rank 2)) *print-max-len*) *print-max-len*)
+		   (format stream (format nil ".~~%~~~AT:~~%" *print-indent*)))))
 	     (rec-print (tensor idx subs)
 	       (if (< idx (- rank 2))
 		   (dotimes (i (aref dims idx) t)
@@ -85,7 +96,6 @@ of a matrix (default 0)
 			   (format stream "~A~%" (make-list rank :initial-element '\:))
 			   (format stream (format nil "~~~AT..~~%~~~AT::~~%" *print-indent* *print-indent*))
 			   nil))))))
-			   
 	(case rank
 	  (1
 	   (format stream (format nil "~~~AT" *print-indent*))
