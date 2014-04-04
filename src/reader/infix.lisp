@@ -307,11 +307,11 @@
 (defun read-slice (separator-token end-token delimiter-token stream)
   (let ((stop-tokens (list separator-token end-token)))
     (iter (for next-token next (peek-token stream))
-	  (counting t into count)	
+	  (counting t into count)
 	  (if (member next-token stop-tokens :test #'same-token-p) (terminate)
-	      (progn (when (and (> count 1) (not (same-token-p (read-token stream) delimiter-token)))
+	      (progn (when (and (> count 1) (not (same-token-p (prog1 (read-token stream) (setq next-token (peek-token stream))) delimiter-token)))
 		       (infix-error "Missing delimiter: ~A" delimiter-token))
-		     (collect (if (member (if (= count 1) next-token (peek-token stream)) stop-tokens :test #'same-token-p) nil
+		     (collect (if (or (member next-token stop-tokens :test #'same-token-p) (eq next-token delimiter-token)) nil
 				  (gather-superiors delimiter-token stream))))))))
 ;;; Syntactic Modifications
 ;;; Post processes the expression to remove some unsightliness caused
