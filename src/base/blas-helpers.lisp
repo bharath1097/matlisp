@@ -51,8 +51,8 @@
     (cond
       ;;The ordering of these conditions is important to meet certain assumed conditions
       ;;in GEMM, when MATRIX has strides of the form #(1 1).
-      ((= rs 1) (values cs op :col-major))
-      ((and (char/= op #\C) (= cs 1)) (values rs (fortran-nop op) :row-major)))))
+      ((and (= rs 1) (> cs 0)) (values cs op :col-major))
+      ((and (char/= op #\C) (= cs 1) (> rs 0)) (values rs (fortran-nop op) :row-major)))))
 
 (definline call-fortran? ( x lb)
   (declare (type standard-tensor x))

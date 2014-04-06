@@ -7,6 +7,23 @@
    (strides :initarg :strides :reader strides :type index-store-vector
 	    :documentation "Strides for accesing elements of the tensor.")))
 
+(defmethod initialize-instance :after ((tensor coordinate-sparse-tensor) &rest initargs)
+  (declare (ignore initargs))
+  (when *check-after-initializing?*
+    (let-typed ((dims (dimensions tensor) :type index-store-vector))
+      (assert (>= (head tensor) 0) nil 'tensor-invalid-head-value :head (head tensor) :tensor tensor)
+      (if (not (slot-boundp tensor 'strides))
+	  (setf (slot-value tensor 'strides) (make-stride-cmj dims))
+	  (very-quickly
+	    (let-typed ((stds (strides tensor) :type index-store-vector))
+	      (loop :for i :of-type index-type :from 0 :below (order tensor)
+		 :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
+		 :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
+		 :do (progn
+		       (assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
+		       (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
+		 :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor))))))))
+
 (deft/generic (t/sparse-fill #'subtypep) sym ())
 (deft/method t/sparse-fill (sym sparse-tensor) ()
  `(t/fid+ (t/field-type ,sym)))

@@ -37,10 +37,12 @@
       (loop
 	 :for i :of-type index-type :from 0 :below rank
 	 :for cidx :across idx
+	 :for d :across dims
+	 :for s :across strides
 	 :with sto-idx :of-type index-type := hd
 	 :do (progn
-	       (assert (< -1 cidx (aref dims i)) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i))
-	       (incf sto-idx (the index-type (* (aref strides i) cidx))))
+	       (assert (< (1- (- d)) cidx d) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension d)
+	       (incf sto-idx (the index-type (* s (if (< cidx 0) (mod cidx d) cidx)))))
 	 :finally (return sto-idx)))))
 
 (defun store-indexing-lst (idx hd strides dims)
@@ -64,14 +66,15 @@
 	   (type index-store-vector strides dims)
 	   (type cons idx))
   (let-typed ((rank (length strides) :type index-type))
-    (assert (= rank (length dims)) nil 'tensor-dimension-mismatch)
     (very-quickly
       (loop :for cidx :of-type index-type :in idx
 	 :for i :of-type index-type := 0 :then (1+ i)
+	 :for d :across dims
+	 :for s :across strides
 	 :with sto-idx :of-type index-type := hd
 	 :do (progn
-	       (assert (< -1 cidx (aref dims i)) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension (aref dims i))
-	       (incf sto-idx (the index-type (* (aref strides i) cidx))))
+	       (assert (< (1- (- d)) cidx d) nil 'tensor-index-out-of-bounds :argument i :index cidx :dimension d)
+	       (incf sto-idx (the index-type (* s (if (< cidx 0) (mod cidx d) cidx)))))
 	 :finally (progn
 		    (assert (= (1+ i) rank) nil 'tensor-index-rank-mismatch :index-rank (1+ i) :rank rank)
 		    (return sto-idx))))))
@@ -144,11 +147,9 @@
 	    (let-typed ((stds (strides tensor) :type index-store-vector))
 	      (loop :for i :of-type index-type :from 0 :below (order tensor)
 		 :for sz :of-type index-type := (aref dims 0) :then (the index-type (* sz (aref dims i)))
-		 :for lidx :of-type index-type := (the index-type (* (aref stds 0) (1- (aref dims 0)))) :then (the index-type (+ lidx (the index-type (* (aref stds i) (1- (aref dims i))))))
-		 :do (progn
-		       (assert (> (aref stds i) 0) nil 'tensor-invalid-stride-value :argument i :stride (aref stds i) :tensor tensor)
-		       (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor))
-		 :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx))) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx lidx :tensor tensor))))))))
+		 :summing (the index-type (the index-type (* (aref stds i) (1- (aref dims i))))) :into lidx :of-type index-type 
+		 :do (assert (> (aref dims i) 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i) :tensor tensor)
+		 :finally (assert (>= (the index-type (store-size tensor)) (the index-type (+ (the index-type (head tensor)) lidx)) 0) nil 'tensor-insufficient-store :store-size (store-size tensor) :max-idx (the index-type (+ (head tensor) lidx)) :tensor tensor))))))))
 
 (defmethod ref ((tensor standard-tensor) &rest subscripts)
   (let ((clname (class-name (class-of tensor))))

@@ -40,7 +40,7 @@
   (find operator *right-associative-operators*))
 
 ;; Matlisp helpers
-(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
+(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref) ))
 
 (defun process-slice (args)
   (mapcar #'(lambda (x)
@@ -49,7 +49,7 @@
 		 (if (eql (car x) ':slice)
 		     `(list* ,@(cdr x))
 		     (with-gensyms (idx)
-		       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (1+ ,idx))))))
+		       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (unless (= ,idx -1) (1+ ,idx)))))))
 		((or (numberp x) (symbolp x)) `(list ,x (1+ ,x)))
 		(t (error 'parser-error :arguments x :message "unknown argument type"))))
 	  args))
@@ -233,17 +233,18 @@
 		    nil)))))))));; and return nil
 
 (defun valid-numberp (string)
-  (with-readtable (:common-lisp)
-    (realp (read-from-string string))))
-  ;; (let ((saw-dot nil))
-  ;;   (when (> (length string) 0)
-  ;;     (dolist (char (coerce string 'list) t)
-  ;; 	(cond ((char= char #\.)
-  ;; 	       (if saw-dot
-  ;; 		   (return nil)
-  ;; 		   (setq saw-dot t)))
-  ;; 	      ((not (find char "01234567890" :test #'char=))
-  ;; 	       (return nil)))))))
+  (when (stringp string)
+    (with-readtable (:common-lisp)
+      (realp (read-from-string string nil nil)))))
+;; (let ((saw-dot nil))
+;;   (when (> (length string) 0)
+;;     (dolist (char (coerce string 'list) t)
+;; 	(cond ((char= char #\.)
+;; 	       (if saw-dot
+;; 		   (return nil)
+;; 		   (setq saw-dot t)))
+;; 	      ((not (find char "01234567890" :test #'char=))
+;; 	       (return nil)))))))
 
 ;;; Gobbles an expression from the stream.
 (defun gather-superiors (previous-operator stream)

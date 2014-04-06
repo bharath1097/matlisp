@@ -102,6 +102,77 @@
 	 ,y))))
 
 ;;
+;;(t/copy! (real-coordinate-sparse-tensor real-compressed-sparse-matrix) x y)
+(deft/method t/copy! ((clx coordinate-sparse-tensor) (cly compressed-sparse-matrix)) (x y)
+  (using-gensyms (decl (x y) (rstd cstd rdat key value r c s? v vi vr vd i col-stop row))
+    `(let (,@decl)
+       (declare (type ,clx ,x) (type ,cly ,y))
+       (let ((,cstd (aref (strides ,x) 1))
+	     (,rstd (aref (strides ,x) 0))
+	     (,rdat (make-array (if (transpose? ,y) (nrows ,x) (ncols ,x)) :initial-element nil)))
+	 (if (transpose? ,y)
+	     (loop :for ,key :being :the :hash-keys :of (store ,x)
+		:using (hash-value ,value)
+		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
+		      (multiple-value-bind (,r ,s?) (floor (the index-type ,r) ,rstd)
+			(when (zerop ,s?)
+			  (push (cons ,c (t/coerce ,(field-type cly) ,value)) (aref ,rdat ,r))))))
+	     (loop :for ,key :being :the :hash-keys :of (store ,x)
+		:using (hash-value ,value)
+		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
+		      (multiple-value-bind (,r ,s?) (floor (the index-type ,r) ,rstd)
+			(when (zerop ,s?)
+			  (push (cons ,r (t/coerce ,(field-type cly) ,value)) (aref ,rdat ,c)))))))
+	 (let-typed ((,vi (neighbour-start ,y) :type index-store-vector)
+		     (,vr (neighbour-id ,y) :type index-store-vector)
+		     (,vd (store ,y) :type ,(store-type cly)))
+	   (setf (aref ,vi 0) 0)
+	   (very-quickly
+	     (loop :for ,i :from 0 :below (ncols ,x)
+		:with ,col-stop := 0
+		:do (let ((,row (sort (aref ,rdat ,i) #'(lambda (x y) (< (the index-type x) (the index-type y))) :key #'car)))
+		      (loop :for (,r . ,v) :in ,row
+			 :do (locally
+				 (declare (type ,(field-type cly) ,v)
+					  (type index-type ,r))
+			       (setf (aref ,vr ,col-stop) ,r)
+			       (t/store-set real-compressed-sparse-matrix ,v ,vd ,col-stop)
+			       (incf ,col-stop)))
+		      (setf (aref ,vi (1+ ,i)) ,col-stop)))))
+	 ,y))))
+
+;; (deft/method t/copy! ((clx compressed-sparse-matrix) (cly coordinate-sparse-tensor)) (x y)
+;;   (using-gensyms (decl (x y) (cstd rdat key value r c v vi vr vd i col-stop row))
+;;     `(let (,@decl)
+;;        (declare (type ,clx ,x) (type ,cly ,y))
+;;        (let-typed ((,vi (neighbour-start ,x) :type index-store-vector)
+;; 		   (,vr (neighbour-id ,x) :type index-store-vector)
+;; 		   (,vd (store ,x) :type ,(store-type cly)))
+;; 	 (loop :for i :from 0 :below (1- (length ,vi))
+;; 	    :do (loop :for j :from (aref ,vi i) :below (aref ,vi (1+ i))
+;; 		   :do (setf 
+		
+;;        (let ((,cstd (aref (strides ,x) 1))
+;; 	     (,rdat (make-array (ncols ,x) :initial-element nil)))
+;; 	 (loop :for ,key :being :the :hash-keys :of (store ,x)
+;; 	    :using (hash-value ,value)
+;; 	    :do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
+;; 		  (push (cons ,r (t/coerce ,(field-type cly) ,value)) (aref ,rdat ,c))))
+;; 		    (setf (aref ,vi 0) 0)
+;; 	   (very-quickly
+;; 	     (loop :for ,i :from 0 :below (ncols ,x)
+;; 		:with ,col-stop := 0
+;; 		:do (let ((,row (sort (aref ,rdat ,i) #'(lambda (x y) (< (the index-type x) (the index-type y))) :key #'car)))
+;; 		      (loop :for (,r . ,v) :in ,row
+;; 			 :do (locally
+;; 				 (declare (type ,(field-type cly) ,v)
+;; 					  (type index-type ,r))
+;; 			       (setf (aref ,vr ,col-stop) ,r)
+;; 			       (t/store-set real-compressed-sparse-matrix ,v ,vd ,col-stop)
+;; 			       (incf ,col-stop)))
+;; 		      (setf (aref ,vi (1+ ,i)) ,col-stop)))))
+;; 	 ,y))))
+;;
 (deft/method t/copy! ((clx t) (cly standard-tensor)) (x y)
   (using-gensyms (decl (x y))
     (with-gensyms (sto-y of-y idx cx)
