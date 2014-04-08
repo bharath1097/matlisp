@@ -178,6 +178,7 @@
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
 	    :components ((:file "random")
 			 (:file "map")
+			 (:file "norm")
 			 (:file "seq")))
    (:module "matlisp-sugar"
 	    :pathname "sugar"
