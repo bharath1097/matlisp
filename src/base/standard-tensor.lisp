@@ -186,3 +186,23 @@
 			   :store (store tensor)
 			   :parent-tensor tensor))
 	  (store-ref tensor hd)))))
+
+(defmethod suptensor~ ((ten standard-tensor) ord &optional start)
+  (if (= (order ten) ord)
+      ten
+      (let ((tord (order ten)))
+	(unless (integerp start)
+	  (setq start (if start (- ord tord) 0)))
+	(let ((stds (make-index-store (append (make-list start :initial-element 1)
+					      (lvec->list (strides ten))
+					      (make-list (- ord tord start) :initial-element 1))))
+	      (dims (make-index-store (append (make-list start :initial-element 1)
+					      (dims ten)
+					      (make-list (- ord tord start) :initial-element 1)))))
+	  (with-no-init-checks
+	      (make-instance (class-of ten)
+			     :dimensions dims
+			     :strides stds
+			     :head (head ten)
+			     :store (store ten)
+			     :parent-tensor ten))))))

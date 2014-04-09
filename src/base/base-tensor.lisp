@@ -288,6 +288,12 @@
 (definline col-slice~ (x idx)
   (slice~ x 1 idx))
 ;;
+(defgeneric suptensor~ (tensor ord &optional start)
+  (:method :before ((tensor base-tensor) ord &optional start)
+	   (let ((tord (order tensor)))
+	     (assert (and (<= tord ord) (or (not (integerp start)) (>= (- ord tord start) 0))) nil 'invalid-arguments))))
+
+;;
 (defun tensor-typep (tensor subs)
   "
   Syntax
