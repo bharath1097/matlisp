@@ -12,9 +12,10 @@
   (let* ((f-string (file->string fname))
 	 (*read-default-float-format* 'double-float))
     (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
-      (incf nrows)
+      (setf nrows (+ nrows 1 (- skip-rows))
+	    lns (nthcdr skip-rows lns))
       (unless (null lns)
-	(let* ((ncols (1+ (nth-value 1(split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
+	(let* ((ncols (1+ (nth-value 1 (split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
 	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) 'real-tensor)))
 	  (if (> ncols 1)
 	      (loop :for line :in lns
@@ -68,7 +69,7 @@
 	  ((null line) mtx)
 	(let ((dat (mapcar #'read-from-string (split-seq #'(lambda (x) (member x delimiters)) line))))
 	  (setf (ref mtx (mapcar #'1- (subseq dat 0 2))) (third dat)))))))
-	
+
   ;; (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
   ;;     (loop :for 
   ;;     (unless (null lns)

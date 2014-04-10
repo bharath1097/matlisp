@@ -90,25 +90,28 @@
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
     (loop :for i :from 0 :below d.axis
        :collect (prog1 (apply func (mapcar #'copy slices))
-		  (loop :for slc :in slices
-		     :for std :in strides
-		     :do (incf (slot-value slc 'head) std))))))
+		  (unless (< i (1- d.axis))
+		    (loop :for slc :in slices
+		       :for std :in strides
+		       :do (incf (slot-value slc 'head) std)))))))
 
 (defun mapslice~ (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
    (loop :for i :from 0 :below d.axis
        :collect (prog1 (apply func slices)
-		  (loop :for slc :in slices
-		     :for std :in strides
-		     :do (incf (slot-value slc 'head) std))))))
+		  (unless (< i (1- d.axis))
+		    (loop :for slc :in slices
+		       :for std :in strides
+		       :do (incf (slot-value slc 'head) std)))))))
 
 (defun mapslicec~ (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
     (loop :for i :from 0 :below d.axis
        :do (prog1 (apply func slices)
-	     (loop :for slc :in slices
-		:for std :in strides
-		:do (incf (slot-value slc 'head) std)))))
+	     (unless (< i (1- d.axis))
+	       (loop :for slc :in slices
+		  :for std :in strides
+		  :do (incf (slot-value slc 'head) std))))))
   (values-list (cons tensor more-tensors)))
 ;;
 
