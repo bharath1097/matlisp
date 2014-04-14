@@ -9,21 +9,25 @@
   'foreign-vector)
 (deft/method t/store-size (sym foreign-numeric-tensor) (vec)
   `(fv-size ,vec))
-(deft/method t/store-ref (sym foreign-numeric-tensor) (store idx)
-  `(the ,(field-type sym) (fv-ref ,store ,idx)))
-(deft/method t/store-set (sym foreign-numeric-tensor) (value store idx)
-  `(setf (fv-ref ,store ,idx) (the ,(field-type sym) ,value)))
 
+(deft/method t/store-ref (sym foreign-numeric-tensor) (store &rest idx)
+   (assert (null (cdr idx)) nil "given more than one index for linear-store")
+   `(the ,(field-type sym) (fv-ref ,store ,(car idx))))
+
+(deft/method t/store-set (sym foreign-numeric-tensor) (value store &rest idx)
+   (assert (null (cdr idx)) nil "given more than one index for linear-store")
+  `(setf (fv-ref ,store ,(car idx)) (the ,(field-type sym) ,value)))
+
+;;
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defgeneric cl->cffi-type (type)
-    (:method (type)
-      (ecase type
-	(character :char)
-	(single-float :float)
-	(double-float :double)
-	(string :string)
-	(t (error 'unknown-token :token type
-		  :message "Don't know how to convert type to CFFI."))))))
+  (definline cl->cffi-type (type)
+    (ecase type
+      (character :char)
+      (single-float :float)
+      (double-float :double)
+      (string :string)
+      (t (error 'unknown-token :token type
+		:message "Don't know how to convert type to CFFI.")))))
 
 (deft/method with-field-element (sym foreign-numeric-tensor) (decl &rest body)
   (destructuring-bind (var val &optional (count 1)) decl

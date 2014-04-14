@@ -75,16 +75,13 @@
   (loop :for x :of-type standard-tensor :in tensors
      :with dims := nil
      :do (let-typed ((xdims (dimensions x) :type index-store-vector))
-	   (assert (or (not dims) (= (order x) (length dims))) nil 'tensor-dimension-mismatch)
+	   (assert (< axis (order x)) nil 'tensor-dimension-mismatch)
 	   (if (null dims)
-	       (setf dims (copy-seq xdims))
-	       (loop :for i :from 0 :below (length dims)
-		  :do (if (/= i axis)
-			  (assert (= (aref xdims i) (aref dims i)) nil 'tensor-dimension-mismatch)
-			  (setf (aref dims i) (min (aref xdims i) (aref dims i)))))))
+	       (setf dims (aref xdims axis))
+	       (setf dims (min (aref xdims axis) dims))))
      :collect (aref (strides x) axis) :into strides
      :collect (slice~ x axis) :into slices
-     :finally (return (values (aref dims axis) strides slices))))
+     :finally (return (values dims strides slices))))
 
 (defun mapslice (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
