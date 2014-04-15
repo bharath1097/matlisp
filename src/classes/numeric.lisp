@@ -15,6 +15,10 @@
 (defleaf fixnum-tensor (numeric-tensor) ())
 (deft/method t/field-type (sym fixnum-tensor) ()
   'fixnum)
+
+(defleaf u8-tensor (numeric-tensor) ())
+(deft/method t/field-type (sym u8-tensor) ()
+  '(unsigned-byte 8))
 ;;
 (defclass blas-numeric-tensor (numeric-tensor) ())
 (deft/generic (t/l1-lb #'subtypep) sym ())
