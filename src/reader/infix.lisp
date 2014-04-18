@@ -200,7 +200,7 @@
     result))
 
 (defun read-regular (stream)
-  (with-readtable (:common-lisp)
+  (with-readtable (:infix-dispatch-table)
     (read stream t nil t)))
 
 ;;; Hack to work around + and - being terminating macro characters,
