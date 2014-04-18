@@ -142,21 +142,21 @@
 		 Solution could not be computed.
 ")
   (:method :before ((A standard-tensor) (B standard-tensor) &optional (uplo :l))
-	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
-			(= (nrows A) (ncols A) (nrows B)))
+	   (assert (and (tensor-square-matrixp A) (<= (order B) 2)
+			(= (nrows A) (nrows B)))
 		   nil 'tensor-dimension-mismatch)
 	   (assert (member uplo '(:l :u)) nil 'invalid-value
 		   :given uplo :expected `(member uplo '(:u :l)))))
 
 (define-tensor-method potrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (uplo *default-uplo*))
-  `(with-columnification ((A #\C) (B))
+  `(with-columnification (((A #\C)) (B))
      (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a)
 						      A (or (blas-matrix-compatiblep A #\N) 0)
 						      B (or (blas-matrix-compatiblep B #\N) 0)
 						      (aref (symbol-name uplo) 0))
        (declare (ignore sto))
        (unless (= info 0)
-	 (error "POTRS returned ~a. the ~a'th argument had an illegal value." (- info)))))
+	 (error "POTRS returned ~a. the ~:*~a'th argument had an illegal value." (- info)))))
   'B)
 ;;
 (defgeneric chol (a &optional uplo)
