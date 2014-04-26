@@ -19,7 +19,7 @@
     ;; Where should setf and friends go in the precedence?
     ( = += -= *= /=)
     (|:|) ;;slicing
-    ( \, newline )			; progn (statement delimiter)
+    ( \, )			; progn (statement delimiter)
     ( \] \) )
     ( %infix-end-token% ))		; end of infix expression
   "Ordered list of operators of equal precedence.")
@@ -653,19 +653,19 @@
 (define-token-operator \,
     :infix `(progn ,left ,(gather-superiors '\, stream)))
 
-(define-character-tokenization #\Newline
-    #'(lambda (stream char)
-	(declare (ignore char stream))
-	'newline))
+;; (define-character-tokenization #\Newline
+;;     #'(lambda (stream char)
+;; 	(declare (ignore char stream))
+;; 	'newline))
 
-(define-token-operator newline
-    :infix (progn
-	     (ignore-characters +blank-characters+ stream)
-	     (case (peek-char nil stream t nil t)
-	       (#\)
-		left)
-	       (t
-		`(progn ,left ,(gather-superiors 'newline stream))))))
+;; (define-token-operator newline
+;;     :infix (progn
+;; 	     (ignore-characters +blank-characters+ stream)
+;; 	     (case (peek-char nil stream t nil t)
+;; 	       (#\)
+;; 		left)
+;; 	       (t
+;; 		`(progn ,left ,(gather-superiors 'newline stream))))))
 ;;---------------------------------------------------------------;;
 
 (define-character-tokenization #\=

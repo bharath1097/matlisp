@@ -72,16 +72,22 @@
 
 ;;
 (defun check-dims (axis tensors)
-  (loop :for x :of-type standard-tensor :in tensors
-     :with dims := nil
-     :do (let-typed ((xdims (dimensions x) :type index-store-vector))
-	   (assert (< axis (order x)) nil 'tensor-dimension-mismatch)
-	   (if (null dims)
-	       (setf dims (aref xdims axis))
-	       (setf dims (min (aref xdims axis) dims))))
-     :collect (aref (strides x) axis) :into strides
-     :collect (slice~ x axis) :into slices
-     :finally (return (values dims strides slices))))
+  (iter (for x in tensors)
+	(with dims = nil)
+	(cond
+	  ((typep x 'standard-tensor)
+	   (let-typed ((xdims (dimensions x) :type index-store-vector))
+		      (assert (< axis (order x)) nil 'tensor-dimension-mismatch)
+		      (if (null dims)
+			  (setf dims (aref xdims (mod axis (order x))))
+			  (setf dims (min (aref xdims (mod axis (order x))) dims))))
+	   (collect (aref (strides x) (mod axis (order x))) into strides)
+	   (collect (slice~ x axis) into slices))
+	  ((eq x nil)
+	   (collect nil into strides)
+	   (collect nil into slices))
+	  (t (error 'invalid-arguments)))
+	(finally (return (values dims strides slices)))))
 
 (defun mapslice (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
@@ -90,7 +96,7 @@
 		  (when (< i (1- d.axis))
 		    (loop :for slc :in slices
 		       :for std :in strides
-		       :do (incf (slot-value slc 'head) std)))))))
+		       :do (when slc (incf (slot-value slc 'head) std))))))))
 
 (defun mapslice~ (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
@@ -99,7 +105,7 @@
 		  (when (< i (1- d.axis))
 		    (loop :for slc :in slices
 		       :for std :in strides
-		       :do (incf (slot-value slc 'head) std)))))))
+		       :do (when slc (incf (slot-value slc 'head) std))))))))
 
 (defun mapslicec~ (axis func tensor &rest more-tensors)
   (multiple-value-bind (d.axis strides slices) (check-dims axis (cons tensor more-tensors))
@@ -108,7 +114,7 @@
 	     (when (< i (1- d.axis))
 	       (loop :for slc :in slices
 		  :for std :in strides
-		  :do (incf (slot-value slc 'head) std))))))
+		  :do (when slc (incf (slot-value slc 'head) std)))))))
   (values-list (cons tensor more-tensors)))
 ;;
 

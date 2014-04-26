@@ -43,12 +43,13 @@
 (define-setf-expander t/store-ref (sym store &rest idx &environment env)
   (multiple-value-bind (dummies vals newval setter getter)
       (get-setf-expansion store env)
+    (declare (ignore newval setter))
     (with-gensyms (nval)
       (values dummies
 	      vals
 	      `(,nval)
 	      `(t/store-set ,sym ,nval ,getter ,@idx)
-	      `(t/store-get ,sym ,getter ,@idx)))))
+	      `(t/store-ref ,sym ,getter ,@idx)))))
 ;;standard-tensor specific.
 
 ;;Beware of infinite loops here.
