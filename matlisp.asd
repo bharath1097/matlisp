@@ -188,7 +188,11 @@
    (:module "matlisp-reader"
 	    :pathname "reader"
 	    :components ((:file "infix")
-			 (:file "loadsave")))))
+			 (:file "loadsave")))
+   (:module "matlisp-graph"
+	    :pathname "graph"
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" "matlisp-lapack")
+	    :components ((:file "fibonacci")))))
 
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
