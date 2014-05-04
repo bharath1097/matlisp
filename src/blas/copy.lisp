@@ -102,7 +102,24 @@
 	 ,y))))
 
 ;;
-;;(t/copy! (real-coordinate-sparse-tensor real-compressed-sparse-matrix) x y)
+(deft/method t/copy! ((clx t) (cly standard-tensor)) (x y)
+  (using-gensyms (decl (x y))
+    (with-gensyms (sto-y of-y idx cx)
+      `(let* (,@decl
+	      (,sto-y (store ,y))
+	      (,cx (t/coerce ,(field-type cly) ,x)))
+	 (declare (type ,cly ,y)
+		  (type ,(field-type cly) ,cx)
+		  (type ,(store-type cly) ,sto-y))
+	 ;;This should be safe
+	 (very-quickly
+	   (mod-dotimes (,idx (dimensions ,y))
+	     :with (linear-sums
+		    (,of-y (strides ,y) (head ,y)))
+	     :do (t/store-set ,cly ,cx ,sto-y ,of-y)))
+	 ,y))))
+
+;;
 (deft/method t/copy! ((clx coordinate-sparse-tensor) (cly compressed-sparse-matrix)) (x y)
   (using-gensyms (decl (x y) (rstd cstd rdat key value r c s? v vi vr vd i col-stop row))
     `(let (,@decl)
@@ -116,7 +133,7 @@
 		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
 		      (multiple-value-bind (,r ,s?) (floor (the index-type ,r) ,rstd)
 			(when (zerop ,s?)
-			  (push (cons ,c (t/coerce ,(field-type cly) ,value)) (aref ,rdat ,r))))))
+			  (push (cons ,c `(t/strict-coerce (,(field-type clx) ,(field-type cly)) ,value)) (aref ,rdat ,r))))))
 	     (loop :for ,key :being :the :hash-keys :of (store ,x)
 		:using (hash-value ,value)
 		:do (multiple-value-bind (,c ,r) (floor (the index-type ,key) ,cstd)
@@ -141,6 +158,25 @@
 		      (setf (aref ,vi (1+ ,i)) ,col-stop)))))
 	 ,y))))
 
+(deft/method t/copy! ((clx compressed-sparse-matrix) (cly standard-tensor)) (x y)
+  (using-gensyms (decl (x y) (vi vr vd i j))
+   `(let (,@decl)
+       (declare (type ,clx ,x) (type ,cly ,y))
+       (copy! (t/fid+ ,(field-type cly)) ,y)
+       (let-typed ((,vi (neighbour-start ,x) :type index-store-vector)
+		   (,vr (neighbour-id ,x) :type index-store-vector)
+		   (,vd (store ,x) :type ,(store-type clx)))
+	 (if (transpose? ,x)
+	     (very-quickly
+	       (loop :for ,j :from 0 :below (length ,vi)
+		  :do (loop :for ,i :from (aref ,vi ,j) :below (aref ,vi (1+ ,j))
+			 :do (setf (ref ,y ,j (aref ,vr ,i)) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (aref ,vd ,i))))))
+	     (very-quickly
+	       (loop :for ,j :from 0 :below (length ,vi)
+		  :do (loop :for ,i :from (aref ,vi ,j) :below (aref ,vi (1+ ,j))
+			 :do (setf (ref ,y (aref ,vr ,i) ,j) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (aref ,vd ,i))))))))
+       ,y)))
+
 ;; (deft/method t/copy! ((clx compressed-sparse-matrix) (cly coordinate-sparse-tensor)) (x y)
 ;;   (using-gensyms (decl (x y) (cstd rdat key value r c v vi vr vd i col-stop row))
 ;;     `(let (,@decl)
@@ -150,8 +186,7 @@
 ;; 		   (,vd (store ,x) :type ,(store-type cly)))
 ;; 	 (loop :for i :from 0 :below (1- (length ,vi))
 ;; 	    :do (loop :for j :from (aref ,vi i) :below (aref ,vi (1+ i))
-;; 		   :do (setf 
-		
+;; 		   :do (setf 		
 ;;        (let ((,cstd (aref (strides ,x) 1))
 ;; 	     (,rdat (make-array (ncols ,x) :initial-element nil)))
 ;; 	 (loop :for ,key :being :the :hash-keys :of (store ,x)
@@ -173,22 +208,6 @@
 ;; 		      (setf (aref ,vi (1+ ,i)) ,col-stop)))))
 ;; 	 ,y))))
 ;;
-(deft/method t/copy! ((clx t) (cly standard-tensor)) (x y)
-  (using-gensyms (decl (x y))
-    (with-gensyms (sto-y of-y idx cx)
-      `(let* (,@decl
-	      (,sto-y (store ,y))
-	      (,cx (t/coerce ,(field-type cly) ,x)))
-	 (declare (type ,cly ,y)
-		  (type ,(field-type cly) ,cx)
-		  (type ,(store-type cly) ,sto-y))
-	 ;;This should be safe
-	 (very-quickly
-	   (mod-dotimes (,idx (dimensions ,y))
-	     :with (linear-sums
-		    (,of-y (strides ,y) (head ,y)))
-	     :do (t/store-set ,cly ,cx ,sto-y ,of-y)))
-	 ,y))))
 
 ;;
 (defmethod copy! :before ((x base-tensor) (y base-tensor))
@@ -198,7 +217,7 @@
 (defmethod copy! :before ((a base-tensor) (b compressed-sparse-matrix))
   (assert (<= (store-size a) (store-size b)) nil 'tensor-insufficient-store))
 
-(defmethod copy! ((x standard-tensor) (y standard-tensor))
+(defmethod copy! ((x base-tensor) (y base-tensor))
   (let ((clx (class-name (class-of x)))
 	(cly (class-name (class-of y))))
     (assert (and (member clx *tensor-type-leaves*)
@@ -222,41 +241,6 @@
       (t
        (error "Don't know how to copy from ~a to ~a" clx cly))))
   (copy! x y))
-
-(defmethod copy! ((x coordinate-sparse-tensor) (y compressed-sparse-matrix))
-  (let ((clx (class-name (class-of x)))
-	(cly (class-name (class-of y))))
-    (assert (and (member clx *tensor-type-leaves*)
-		 (member cly *tensor-type-leaves*))
-	    nil 'tensor-abstract-class :tensor-class (list clx cly))
-    (compile-and-eval
-     `(defmethod copy! ((x ,clx) (y ,cly))
-	(let-typed ((stds (strides x) :type index-store-vector))
-	  (assert (and (tensor-matrixp x) (= (aref stds 0) 1)) nil 'tensor-invalid-stride-value)
-	  (let ((col-stride (aref stds 1))
-		(row-data (make-array (ncols x) :initial-element nil)))
-	    (very-quickly
-	      (loop :for key :being :the :hash-keys :of (store x)
-		 :using (hash-value value)
-		 :do (multiple-value-bind (c r) (floor (the index-type key) col-stride)
-		       (push (cons r value) (aref row-data c)))))
-	    (let-typed ((vi (neighbour-start y) :type index-store-vector)
-			(vr (neighbour-id y) :type index-store-vector)
-			(vd (store y) :type ,(store-type cly)))
-	      (setf (aref vi 0) 0)
-	      (very-quickly
-		(loop :for i :from 0 :below (ncols x)
-		   :with col-stop := 0
-		   :do (let ((rowd (sort (aref row-data i) #'(lambda (x y) (< (the index-type x) (the index-type y))) :key #'car)))
-			 (loop :for (r . v) :in rowd
-			    :do (locally
-				    (declare (type ,(field-type clx) v))
-				  (setf (aref vr col-stop) r)
-				  (t/store-set real-compressed-sparse-matrix (t/coerce ,(field-type cly) v) vd col-stop)
-				  (incf col-stop)))
-			 (setf (aref vi (1+ i)) col-stop)))))
-	    y))))
-    (copy! x y)))
 
 (defmethod copy! ((x t) (y standard-tensor))
   (let ((cly (class-name (class-of y))))
@@ -336,5 +320,8 @@
   (cond
     ((or (not type) (subtypep type 'sparse-tensor))
      (let ((ret (zeros (dimensions tensor) (or type (class-of tensor)) (store-size tensor))))
+       (copy! tensor ret)))
+    ((subtypep type 'standard-tensor)
+     (let ((ret (zeros (dimensions tensor) type (store-size tensor))))
        (copy! tensor ret)))
     (t (error "don't know how to copy ~a into ~a." (class-name (class-of tensor)) type))))
