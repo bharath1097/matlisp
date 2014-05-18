@@ -1,7 +1,7 @@
 (in-package #:matlisp-infix)
 
 (defparameter *linfix-reader* (copy-readtable))
-
+(defparameter *break-tokens* '(#\Space #\Tab))
 (defparameter *operator-tokens*
   `((".*" .*)
     ("*" *)
@@ -31,15 +31,27 @@
 	  (push m.i stack)
 	  (when (char/= r.i m.i)
 	      (map nil #'(lambda (x) (unread-char x stream)) stack)
+	      (return nil))
+	  (finally (return t)))))
+
 (defun token-reader (stream)
   (let* ((stack nil)
 	 (expr nil))
+    (labels ((read-stack ()
+	       (when stack
+		 (push (read-from-string (print (coerce (reverse stack) 'string))) expr)
+		 (setf stack nil))))
     (iter (for c next (peek-char nil stream t nil t))
-	  (when (char=  c #\}) (return (reverse expr)))
-	  
-	  ((find c *operator-tokens* :key #'(lambda (x) (aref (car x) 0))))
-	    
-	  )
+	  (when (char=  c #\})
+	    (
+	    (return (reverse expr)))	  ;;
+	  (if-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'< :key #'(lambda (x) (length (first x))))))
+	    (progn
+	      (when stack
+		(push (read-from-string (coerce (reverse stack) 'string)) expr)
+		(setf stack nil))
+	      (push (second tok) expr))
+	    (push (read-char stream t nil t) stack)))))
 
 ;;Precedence
 (defparameter *operator-ordering* 
