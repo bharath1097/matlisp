@@ -1,5 +1,45 @@
 (in-package #:matlisp-infix)
-(pushnew :matlisp-infix *features*)
+
+(defparameter *linfix-reader* (copy-readtable))
+
+(defparameter *operator-tokens*
+  `((".*" .*)
+    ("*" *)
+    ("^" ^)
+    (".^" .^)
+    ("./" ./)
+    ("/" /)
+    (".+" +)
+    ("+" +)
+    (".-" -)
+    ("-" -)
+    ("@" @)      ;;Tensor contraction.
+    ("(" \()
+    (")" \))
+    ("[" \[)
+    ("]" \])
+    (":" |:|)
+    ("," \,)
+    ("'" htranspose)
+    ("\\" \\)
+    (".'" transpose)))
+
+(defun find-token (str stream)
+  (let ((stack nil))
+    (iter (for r.i in-vector str)
+	  (for m.i next (read-char stream t nil t))
+	  (push m.i stack)
+	  (when (char/= r.i m.i)
+	      (map nil #'(lambda (x) (unread-char x stream)) stack)
+(defun token-reader (stream)
+  (let* ((stack nil)
+	 (expr nil))
+    (iter (for c next (peek-char nil stream t nil t))
+	  (when (char=  c #\}) (return (reverse expr)))
+	  
+	  ((find c *operator-tokens* :key #'(lambda (x) (aref (car x) 0))))
+	    
+	  )
 
 ;;Precedence
 (defparameter *operator-ordering* 
