@@ -150,7 +150,7 @@
 		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (second expr))
 		((eq (car expr) '*)
 		 (if (and (consp (second expr)) (eq (car (second expr)) '/) (not (cddr (second expr)))) ;;ldiv
-		     `(\\ ,(cadr (second expr)) (* ,@(cddr expr)))
+		     `(\\ (* ,@(cddr expr)) ,(cadr (second expr)))
 		     (iter (for op in (cdr expr))
 			   (for lst on (cdr expr))
 			   (if (and (consp op) (eq (car op) '/) (not (cddr op)))
