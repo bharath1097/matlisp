@@ -72,7 +72,7 @@
     > (zeros '(10000 10000) 'real-compressed-sparse-matrix 10000)
     #<REAL-COMPRESSED-SPARSE-MATRIX #(10000 10000), store-size: 10000>
 "
-  (let ((*check-after-initializing?* nil))
+  (with-no-init-checks
     (let ((type (etypecase type (standard-class (class-name type)) (symbol type))))
       (etypecase dims
 	(cons

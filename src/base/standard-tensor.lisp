@@ -102,32 +102,25 @@
     (vector (store-indexing-vec idx (head tensor) (strides tensor) (dimensions tensor)))))
 
 ;;Stride makers.
-(definline make-stride-rmj (dims)
-  (declare (type index-store-vector dims))
-  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
-    (very-quickly
-      (loop
-	 :for i  :of-type index-type :downfrom (1- (length dims)) :to 0
-	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))
-	 :do (progn
-	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
-	       (setf (aref stds i) st))
-	 :finally (return (values stds st))))))
-
-(definline make-stride-cmj (dims)
-  (declare (type index-store-vector dims))
-  (let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
-    (very-quickly
-      (loop
-	 :for i :of-type index-type :from 0 :below (length dims)
-	 :and st :of-type index-type := 1 :then (the index-type (* st (aref dims i)))
-	 :do (progn
-	       (assert (> st 0) nil 'tensor-invalid-dimension-value :argument i :dimension (aref dims i))
-	       (setf (aref stds i) st))
-	 :finally (return (values stds st))))))
-
-(definline make-stride (dims)
-  (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims))))
+(macrolet ((defstride (fname col?)
+	     `(definline ,fname (dims)
+		(declare (type index-store-vector dims))
+		(let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
+		  (very-quickly
+		    (loop
+		       ,@(if col?
+			     `(:for i :of-type index-type :from 0 :below (length dims))
+			     `(:for i :of-type index-type :downfrom (1- (length dims)) :to 0))
+		       :and d := (aref dims i)
+		       :and st :of-type index-type := 1 :then (the index-type (* st d))
+		       :do (progn
+			     (assert (> d 0) nil 'tensor-invalid-dimension-value :argument i :dimension d)
+			     (setf (aref stds i) st))
+		       :finally (return (values stds st))))))))
+  (defstride make-stride-cmj t)
+  (defstride make-stride-rmj nil)
+  (definline make-stride (dims)
+    (ecase *default-stride-ordering* (:row-major (make-stride-rmj dims)) (:col-major (make-stride-cmj dims)))))
 
 ;;Is it a tensor, is a store ? It is both!
 (defclass standard-tensor (dense-tensor linear-store) ())
@@ -173,36 +166,33 @@
     (setf (ref tensor (if (numberp (car subscripts)) subscripts (car subscripts))) value)))
 
 ;;
-(defmethod subtensor~ ((tensor standard-tensor) (subscripts list) &optional (preserve-rank nil) (ref-single-element? t))
-  (multiple-value-bind (hd dims stds) (parse-slice-for-strides (dimensions tensor) (strides tensor) subscripts preserve-rank ref-single-element?)
-    (when (> hd -1)
-      (incf hd (head tensor))
-      (if dims
-	  (let ((*check-after-initializing?* nil))
-	    (make-instance (class-of tensor)
-			   :head hd
-			   :dimensions (make-index-store dims)
-			   :strides (make-index-store stds)
-			   :store (store tensor)
-			   :parent-tensor tensor))
-	  (store-ref tensor hd)))))
+(defmethod subtensor~ ((tensor standard-tensor) (subscripts list))
+  (multiple-value-bind (hd dims stds) (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))
+    (cond
+      ((not hd) nil)
+      ((not dims) (store-ref tensor hd))
+      (t (with-no-init-checks
+	     (make-instance (class-of tensor)
+			    :head (+ hd (head tensor))
+			    :dimensions (make-index-store dims)
+			    :strides (make-index-store stds)
+			    :store (store tensor)
+			    :parent-tensor tensor))))))
 
-(defmethod suptensor~ ((ten standard-tensor) ord &optional start)
-  (if (= (order ten) ord)
-      ten
-      (let ((tord (order ten)))
-	(unless (integerp start)
-	  (setq start (if start (- ord tord) 0)))
-	(let ((stds (make-index-store (append (make-list start :initial-element (size ten))
-					      (lvec->list (strides ten))
-					      (make-list (- ord tord start) :initial-element (size ten)))))
-	      (dims (make-index-store (append (make-list start :initial-element 1)
-					      (dims ten)
-					      (make-list (- ord tord start) :initial-element 1)))))
-	  (with-no-init-checks
-	      (make-instance (class-of ten)
-			     :dimensions dims
-			     :strides stds
-			     :head (head ten)
-			     :store (store ten)
-			     :parent-tensor ten))))))
+(defmethod suptensor~ ((ten standard-tensor) ord &optional (start 0))
+  (declare (type index-type ord start))
+  (if (= (order ten) ord) ten
+      (let* ((tord (order ten)))
+	(with-no-init-checks
+	    (make-instance (class-of ten)
+			   :dimensions (make-index-store
+					(nconc (make-list start :initial-element 1)
+					       (lvec->list (dimensions ten))
+					       (make-list (- ord tord start) :initial-element 1)))
+			   :strides (make-index-store
+				     (nconc (make-list start :initial-element (size ten))
+					    (lvec->list (strides ten))
+					    (make-list (- ord tord start) :initial-element (size ten))))
+			   :head (head ten)
+			   :store (store ten)
+			   :parent-tensor ten)))))
