@@ -107,16 +107,17 @@
 		(declare (type index-store-vector dims))
 		(let-typed ((stds (allocate-index-store (length dims)) :type index-store-vector))
 		  (very-quickly
-		    (loop
-		       ,@(if col?
-			     `(:for i :of-type index-type :from 0 :below (length dims))
-			     `(:for i :of-type index-type :downfrom (1- (length dims)) :to 0))
-		       :and d := (aref dims i)
-		       :and st :of-type index-type := 1 :then (the index-type (* st d))
-		       :do (progn
-			     (assert (> d 0) nil 'tensor-invalid-dimension-value :argument i :dimension d)
-			     (setf (aref stds i) st))
-		       :finally (return (values stds st))))))))
+		    (iter
+		      ,(if col?
+			   `(for i from 0 below (length dims))
+			   `(for i from (1- (length dims)) downto 0))
+		      (declare (type index-type i))
+		      (with st = 1) (declare (type index-type st))
+		      (let-typed ((d (aref dims i) :type index-type))
+			(assert (> d 0) nil 'tensor-invalid-dimension-value :argument i :dimension d)
+			(setf (aref stds i) st
+			      st (* st d)))
+		      (finally (return (values stds st)))))))))
   (defstride make-stride-cmj t)
   (defstride make-stride-rmj nil)
   (definline make-stride (dims)

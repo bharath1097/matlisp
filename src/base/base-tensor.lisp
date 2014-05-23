@@ -227,7 +227,7 @@
     ((not i) def)
     ((not d) i)
     (t (assert (if open? (<= (- (1+ d)) i d) (< (- (1+ d)) i d)) nil 'invalid-value)
-       (if (< i 0) (mod i d) i))))
+       (if (< i 0) (if (and open? (= i (- (1+ d)))) -1 (mod i d)) i))))
 
 (definline parse-slice (subs dimensions)
   (declare (type index-store-vector dimensions))
