@@ -45,27 +45,18 @@
 		       (return (* x mult))))))))))
 
 ;;
-(defmacro fill-tensor (type (func tensor))
-  (using-gensyms (decl (tensor))
-    (with-gensyms (sto ofst)
-      `(let* (,@decl
-	      (,sto (store ,tensor)))
-       (declare (type ,type ,tensor)
-		(type ,(store-type type) ,sto))
-       (very-quickly
-	 (mod-dotimes (idx (dimensions ,tensor))
-	   :with (linear-sums
-		  (,ofst (strides ,tensor)))
-	   :do (t/store-set ,type ,(etypecase func (symbol `(,func)) (cons func))  ,sto ,ofst)))
-       ,tensor))))
-
 (macrolet ((generate-rand (func clause)
 	     (let ((clause (etypecase clause
 			     (symbol `(,clause))
 			     (cons clause))))
 	       `(defun ,func (&optional dims)
 		  (if dims
-		      (fill-tensor real-tensor (,clause (zeros dims 'real-tensor)))
+		      (let ((ret (zeros dims 'real-tensor)))
+			(very-quickly
+			  (dorefs (idx (dimensions ret))
+				  ((ref ret :type real-tensor))
+				  (setf ref ,clause)))
+			ret)
 		      ,clause))))
 	   (generate-rands ((&rest args))
 	     `(progn
@@ -76,7 +67,9 @@
 
 (defun randi (&optional dims (arg 2))
   (if dims
-      ;;Macro is used without hygiene: "arg".
-      (fill-tensor real-tensor ((coerce (random arg) 'double-float)  (zeros dims 'real-tensor)))
+      (let ((ret (zeros dims 'real-tensor)))
+	(dorefs (idx (dimensions ret))
+		((ref ret :type real-tensor))
+	  (setf ref (coerce (random arg) 'double-float)))
+	ret)
       (random arg)))
-
