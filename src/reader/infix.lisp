@@ -43,20 +43,11 @@
 (defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref) ))
 
 (defun process-slice (args)
-  (mapcar #'(lambda (x)
-	      (cond
-		((consp x)
-		 (if (eql (car x) ':slice)
-		     `(list* ,@(cdr x))
-		     (with-gensyms (idx)
-		       `(let ((,idx ,x)) (declare (type matlisp::index-type ,idx)) (list ,idx (unless (= ,idx -1) (1+ ,idx)))))))
-		((or (numberp x) (symbolp x)) `(list ,x (1+ ,x)))
-		(t (error 'parser-error :arguments x :message "unknown argument type"))))
-	  args))
+  (mapcar #'(lambda (x) (if (and (consp x) (eql (car x) :slice)) `(list* ,@(cdr x)) x)) args))
 
 (defmacro generic-ref (x &rest args)
   (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-      `(matlisp::subtensor~ ,x (list ,@(process-slice args)) nil nil)
+      `(matlisp::subtensor~ ,x (list ,@(process-slice args)))
       `(etypecase ,x
 	 ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*)))))
 
@@ -69,7 +60,7 @@
 	      `(,store)
 	      (let ((arr (car newval)))
 		`(prog1 ,(if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-			     `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args)) nil t) ,store)
+			     `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store)
 			     `(etypecase ,arr
 				,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))
 		   ,setter))
