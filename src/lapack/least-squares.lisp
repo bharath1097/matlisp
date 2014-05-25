@@ -116,14 +116,15 @@
      (declare (type ,(cl b) A))
      (let* ((mn (max (nrows A) (ncols A)))
 	    (X (with-colm (zeros (list mn (ncols B)) ',(cl b)))))
-       (copy! B (subtensor~ X `((0 ,(nrows B)) (nil nil)) t))
+       (copy! B (subtensor~ X `((0 ,(nrows B)) (nil nil))))
        (multiple-value-bind (sto-a sto-b jpvt rank work-out info) (t/lapack-gelsy! ,(cl b) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)
 	 (declare (ignore sto-a sto-b work-out jpvt))
 	 (unless (= info 0)
 	   (error "gelsy returned ~a." info))
-	 (values (copy (subtensor~ X `((0 ,(ncols A)) (nil nil)) t)) rank)))))
+	 (values (copy (subtensor~ X `((0 ,(ncols A)) (nil nil)))) rank)))))
 
 (definline lstsq (A B &optional (rcond nil rcond-p))
-  (if rcond-p
-      (gelsy A B rcond)
-      (gelsy A B)))
+  (let ((B (matrixify~ B)))
+    (if rcond-p
+	(gelsy A B rcond)
+	(gelsy A B))))

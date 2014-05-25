@@ -111,29 +111,29 @@
 
  For an NxN matrix A, its eigenvalues are denoted by:
 
-              lambda(i),   j = 1 ,..., N
- 
+	      lambda(i),   j = 1 ,..., N
+
  The right eigenvectors of A are denoted by v(i) where:
 
-                    A * v(i) = lambda(i) * v(i)
+		    A * v(i) = lambda(i) * v(i)
 
  The left eigenvectors of A are denoted by u(i) where:
 
-                     H                      H
-                 u(i) * A = lambda(i) * u(i)
+		     H                      H
+		 u(i) * A = lambda(i) * u(i)
 
  In matrix notation:
-                             -1
-                    A = V E V
+			     -1
+		    A = V E V
 
-           and
-                          -1
-                         H       H
-                    A = U    E  U
+	   and
+			  -1
+			 H       H
+		    A = U    E  U
 
  where lambda(i) is the ith diagonal of the diagonal matrix E,
  v(i) is the ith column of V and u(i) is the ith column of U.
- 
+
  The computed eigenvectors are normalized to have Euclidean norm
  equal to 1 and largest component real.
  ")
@@ -150,7 +150,7 @@
 	  (n (nrows A))
 	  (wr (t/store-allocator ,(cl a) n))
 	  (wi (t/store-allocator ,(cl a) n)))
-     (ecase jobvl       
+     (ecase jobvl
        ,@(loop :for jvl :in '(#\N #\V)
 	    :collect `(,jvl
 		       (ecase jobvr
@@ -228,26 +228,21 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
   (let* ((evec (copy! eigvec (zeros (list n n) (complexified-type (class-of eigvec)))))
 	 (tmp (zeros n (complexified-type (class-of eigvec))))
 	 (cviewa (col-slice~ evec 0)) (cviewb (col-slice~ evec 0))
-	 (hd (head cviewa))
 	 (cst (aref (strides evec) 1)))
-    (loop :with i := 0
-       :do (if (< i n)
-	       (if (zerop (imagpart (ref eigval i)))
-		   (incf i)
-		   (progn
-		     (setf (slot-value cviewa 'head) (+ hd (* i cst))
-			   (slot-value cviewb 'head) (+ cst (slot-value cviewa 'head)))
-		     (copy! cviewb tmp)
-		     (copy! cviewa cviewb)
-		     (axpy! #c(0 1) tmp cviewa)
-		     (axpy! #c(0 -1) tmp cviewb)
-		     (incf i 2)))
-	       (return nil)))
+    (iter (with i = 0) (with hd = (head cviewa))
+	  (cond
+	    ((>= i n) (return nil))
+	    ((zerop (imagpart (ref eigval i))) (incf i))
+	    (t (setf (slot-value cviewa 'head) (+ hd (* i cst))
+		     (slot-value cviewb 'head) (+ hd (* (1+ i) cst)))
+	       (copy! cviewb tmp) (copy! cviewa cviewb)
+	       (axpy! #c(0 1) tmp cviewa) (axpy! #c(0 -1) tmp cviewb)
+	       (incf i 2))))
     evec))
 
 (defmethod eig ((matrix real-numeric-tensor) &optional (job :nn) (uplo *default-uplo*))
   (ecase job
-    ((:nn :nv :vn :vv)    
+    ((:nn :nv :vn :vv)
      (mlet* ((n (nrows matrix))
 	     ((levec? revec?) (values-list (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
 	     (ret (multiple-value-list (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix)))))))

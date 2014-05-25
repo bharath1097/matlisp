@@ -291,6 +291,8 @@
 	   (let ((tord (order tensor)))
 	     (assert (and (< -1 start) (<= tord (order tensor)) (<= 0 start (- ord tord))) nil 'invalid-arguments))))
 
+(definline matrixify~ (vec &optional (col-vector? t))
+  (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
 ;;
 (defun tensor-typep (tensor subs)
   "
