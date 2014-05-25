@@ -342,17 +342,17 @@
 		      (return nil))
 		:finally (return t))))
 ;;
-
 (defun tensor-append (axis tensor &rest more-tensors)
-  (let ((dims (copy-seq (dimensions tensor))))
-    (loop :for ele :in more-tensors
-       :do (incf (aref dims axis) (aref (dimensions ele) axis)))
-    (let* ((ret (zeros dims))
-	   (view (slice~ ret axis 0 t)))
-      (loop :for ele :in (cons tensor more-tensors)
-	 :and head := 0 :then (+ head (* (aref (strides ret) axis) (aref (dimensions ele) axis)))
-	 :do (progn
-	       (setf (slot-value view 'head) head
-		     (aref (dimensions view) axis) (aref (dimensions ele) axis))
-	       (copy! ele view)))
-      ret)))
+  (if (>= axis (order tensor))
+      (apply #'tensor-append axis (mapcar #'(lambda (x) (suptensor~ x (1+ axis))) (cons tensor more-tensors)))
+      (let ((dims (copy-seq (dimensions tensor))))
+	(iter (for ele in more-tensors) (incf (aref dims axis) (aref (dimensions ele) axis)))
+	(let* ((ret (zeros dims (class-of tensor)))
+	       (view (slice~ ret axis 0 t)))
+	  (iter (for ele in (cons tensor more-tensors))
+		(with head = 0)
+		(setf (slot-value view 'head) head
+		      (aref (dimensions view) axis) (aref (dimensions ele) axis))
+		(copy! ele view)
+		(incf head (* (aref (strides ret) axis) (aref (dimensions ele) axis))))
+	  ret))))
