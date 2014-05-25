@@ -2060,3 +2060,21 @@
                        (LWORK :INTEGER)
                        (RWORK (* :DOUBLE-FLOAT))
                        (BWORK (* :INTEGER)) (INFO :INTEGER :OUTPUT)))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/dtrsyl.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE DTRSYL :VOID (TRANA :CHARACTER) (TRANB :CHARACTER)
+                       (ISGN :INTEGER) (M :INTEGER) (N :INTEGER)
+                       (A (* :DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (B (* :DOUBLE-FLOAT :INC HEAD-B)) (LDB :INTEGER)
+                       (C (* :DOUBLE-FLOAT :INC HEAD-C)) (LDC :INTEGER)
+                       (SCALE :DOUBLE-FLOAT :OUTPUT) (INFO :INTEGER :OUTPUT)))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/ztrsyl.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE ZTRSYL :VOID (TRANA :CHARACTER) (TRANB :CHARACTER)
+                       (ISGN :INTEGER) (M :INTEGER) (N :INTEGER)
+                       (A (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (B (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-B)) (LDB :INTEGER)
+                       (C (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-C)) (LDC :INTEGER)
+                       (SCALE :DOUBLE-FLOAT :OUTPUT) (INFO :INTEGER :OUTPUT)))

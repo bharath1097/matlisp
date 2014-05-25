@@ -172,7 +172,11 @@
 	    :components ((:file "lu")
 			 (:file "chol")
 			 (:file "eig")
-			 (:file "least-squares")))
+			 (:file "least-squares")
+			 (:file "qr")
+			 (:file "schur")
+			 (:file "svd")
+			 (:file "syl")))
    (:module "matlisp-special"
 	    :pathname "special"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
