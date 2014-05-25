@@ -158,8 +158,8 @@
   (:use #:common-lisp #:matlisp-ffi)
   (:export
    #:dgetri #:zgetri #:dsyev #:zheev
-   #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd
-   #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd
+   #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd #:dgees
+   #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd #:zgees
    #:dgeqrf #:zgeqrf #:dgeqp3 #:zgeqp3
    #:dorgqr #:zungqr
    #:dpotrs #:zpotrs #:dpotrf #:zpotrf
