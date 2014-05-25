@@ -173,7 +173,7 @@
 			 (:file "chol")
 			 (:file "eig")
 			 (:file "least-squares")
-			 (:file "qr")
+			 #+nil(:file "qr")
 			 (:file "schur")
 			 (:file "svd")
 			 (:file "syl")))
