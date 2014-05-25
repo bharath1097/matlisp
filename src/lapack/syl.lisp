@@ -1,5 +1,4 @@
 (in-package #:matlisp)
-(in-readtable :infix-dispatch-table)
 
 (deft/generic (t/lapack-trsyl-func #'subfieldp) sym ())
 (deft/method t/lapack-trsyl-func (sym real-tensor) ()
@@ -83,6 +82,7 @@
     using Schur decomposition."
   (mlet* (((l.a t.a u.a) (schur A) :type (nil real-tensor real-tensor))
 	  ((l.b t.b u.b) (schur B) :type (nil real-tensor real-tensor))
-	  (ucu #i(u.a' * c * u.b)))
+	  ;;We can't use infix-dispatch-table just yet :(
+	  (ucu (gemm 1 u.a (gemm 1 c u.b nil nil :nn) nil nil :cn)))
     (trsyl! t.a t.b ucu)
-    #i(u.a * ucu * u.b')))
+    (gemm 1 u.a (gemm 1 ucu u.b nil nil :nc) nil nil)))

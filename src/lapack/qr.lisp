@@ -37,8 +37,6 @@
 	 (t/store-allocator ,sym ,lwork) ,lwork
 	 0
 	 (head ,A)))))
-
-
 ;;
 (defgeneric geqr! (a)
   (:documentation
