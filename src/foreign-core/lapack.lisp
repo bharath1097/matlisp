@@ -2034,3 +2034,47 @@
   (lwork :integer :input)
   (rwork (* :double-float) :workspace) ;;Not workspace-output (!)
   (info :integer :output))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/dgees.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE DGEES :VOID (JOBVS :CHARACTER) (SORT :CHARACTER)
+                       (SELECT (* :VOID)) (N :INTEGER)
+                       (A (* :DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (SDIM :INTEGER)
+                       (WR (* :DOUBLE-FLOAT))
+                       (WI (* :DOUBLE-FLOAT))
+                       (VS (* :DOUBLE-FLOAT :INC HEAD-VS)) (LDVS :INTEGER)
+                       (WORK (* :DOUBLE-FLOAT)) (LWORK :INTEGER)
+                       (BWORK (* :INTEGER)) (INFO :INTEGER :OUTPUT)))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/zgees.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE ZGEES :VOID (JOBVS :CHARACTER) (SORT :CHARACTER)
+                       (SELECT (* :VOID)) (N :INTEGER)
+                       (A (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (SDIM :INTEGER)
+                       (W (* :COMPLEX-DOUBLE-FLOAT))
+                       (VS (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-VS))
+                       (LDVS :INTEGER)
+                       (WORK (* :COMPLEX-DOUBLE-FLOAT))
+                       (LWORK :INTEGER)
+                       (RWORK (* :DOUBLE-FLOAT))
+                       (BWORK (* :INTEGER)) (INFO :INTEGER :OUTPUT)))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/dtrsyl.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE DTRSYL :VOID (TRANA :CHARACTER) (TRANB :CHARACTER)
+                       (ISGN :INTEGER) (M :INTEGER) (N :INTEGER)
+                       (A (* :DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (B (* :DOUBLE-FLOAT :INC HEAD-B)) (LDB :INTEGER)
+                       (C (* :DOUBLE-FLOAT :INC HEAD-C)) (LDC :INTEGER)
+                       (SCALE :DOUBLE-FLOAT :OUTPUT) (INFO :INTEGER :OUTPUT)))
+
+;;(matlisp-ffi::generate-bindings "/home/neptune/devel/matlisp/lib-src/lapack/ztrsyl.f")
+(MATLISP-UTILITIES:EVAL-EVERY
+  (DEF-FORTRAN-ROUTINE ZTRSYL :VOID (TRANA :CHARACTER) (TRANB :CHARACTER)
+                       (ISGN :INTEGER) (M :INTEGER) (N :INTEGER)
+                       (A (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-A)) (LDA :INTEGER)
+                       (B (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-B)) (LDB :INTEGER)
+                       (C (* :COMPLEX-DOUBLE-FLOAT :INC HEAD-C)) (LDC :INTEGER)
+                       (SCALE :DOUBLE-FLOAT :OUTPUT) (INFO :INTEGER :OUTPUT)))
