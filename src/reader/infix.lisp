@@ -6,16 +6,12 @@
   '((\( \! \[ \.)                       ; \[ is array reference
     (quote transpose ** )      	        ; exponentiation
     ( ~ )				; lognot 
-    (@ .* ./ * / \\ % )			; % is mod
+    (^ @ .* ./ * / \\ % )		; % is mod, ^ is outer product (because it's similar to wedge :)
     ( + - )
     ( << >> )
     ( < == > <= != >= )
     ( & )				; logand
-    ( ^ )				; logxor
     ( \| )				; logior
-    ( not )
-    ( and )
-    ( or )
     ;; Where should setf and friends go in the precedence?
     ( = += -= *= /=)
     (|:|) ;;slicing
@@ -421,13 +417,6 @@
 ;;; Operator Definitions ***********
 ;;; ********************************
 
-(define-token-operator and
-    :infix  `(and ,left ,(gather-superiors 'and stream)))
-(define-token-operator or
-    :infix  `(or ,left ,(gather-superiors 'or stream)))
-(define-token-operator not
-    :prefix `(not ,(gather-superiors 'not stream)))
-
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\+
     #'(lambda (stream char)
@@ -590,7 +579,7 @@
 	'^))
 
 (define-token-operator ^
-    :infix `(logxor ,left ,(gather-superiors '^ stream)))
+    :infix `(matlisp::t^ ,left ,(gather-superiors '^ stream)))
 
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\|

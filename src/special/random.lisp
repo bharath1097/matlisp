@@ -48,16 +48,21 @@
 (macrolet ((generate-rand (func clause)
 	     (let ((clause (etypecase clause
 			     (symbol `(,clause))
-			     (cons clause))))
-	       `(defun ,func (&optional dims)
-		  (if dims
-		      (let ((ret (zeros dims 'real-tensor)))
-			(very-quickly
-			  (dorefs (idx (dimensions ret))
-				  ((ref ret :type real-tensor))
-				  (setf ref ,clause)))
-			ret)
-		      ,clause))))
+			     (cons clause)))
+		   (func! (intern (string+ (symbol-name func) "!"))))
+	       `(eval-every
+		  (defun ,func! (tensor)
+		    (declare (type real-tensor tensor))
+		    (very-quickly
+		      (dorefs (idx (dimensions tensor))
+			      ((ref tensor :type real-tensor))
+			      (setf ref ,clause)))
+		    tensor)
+		  (defun ,func (&optional dims)
+		     (if dims
+			 (,func! (zeros dims 'real-tensor))
+			 ,clause)))
+	       ))
 	   (generate-rands ((&rest args))
 	     `(progn
 		,@(mapcar #'(lambda (x) `(generate-rand ,(car x) ,(cadr x))) args))))

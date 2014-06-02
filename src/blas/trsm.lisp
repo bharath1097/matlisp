@@ -38,3 +38,5 @@
 	 (the ,(store-type sym) (store ,B)) ,st-b
 	 (the index-type (head ,A)) (the index-type (head ,B))))))
 ;;
+
+(defgeneric trsm! (A b &optional uplo diag side trans))

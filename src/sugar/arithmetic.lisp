@@ -249,10 +249,8 @@
   `(if (and (tensor-vectorp a) (tensor-vectorp b))
        (ger 1 a b nil nil)
        (let* ((ret (zeros (append (dims a) (dims b)) ',(cl a)))
-	      (ret-a (subtensor~ ret
-				 (print (loop :for i :from 0 :below (order ret)
-					   :collect (if (< i (order a)) '(nil nil) '(0 1))))
-				 nil))
+	      (ret-a (subtensor~ ret (loop :for i :from 0 :below (order ret)
+					:collect (if (< i (order a)) '(nil nil) 0))))
 	      (rbstr (subseq (strides ret) (order a)))
 	      (sto-b (store b)))
 	 (mod-dotimes (idx (dimensions b))

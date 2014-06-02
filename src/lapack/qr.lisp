@@ -1,20 +1,19 @@
 (in-package #:matlisp)
 
 (deft/generic (t/lapack-geqrf-func #'subfieldp) sym ())
-(deft/method t/lapack-geqrf-func (sym real-tensor) ()
-  'matlisp-lapack:dgeqrf)
-(deft/method t/lapack-geqrf-func (sym complex-tensor) ()
-  'matlisp-lapack:zgeqrf)
+(deft/generic (t/lapack-orgqr-func #'subfieldp) sym ())
+(deft/generic (t/lapack-geqp3-func #'subfieldp) sym ())
 
-(deft/generic (t/lapack-geqrf-func #'subfieldp) sym ())
-(deft/method t/lapack-geqrf-func (sym real-tensor) ()
-  'matlisp-lapack:dgeqrf)
-(deft/method t/lapack-geqrf-func (sym complex-tensor) ()
-  'matlisp-lapack:zgeqrf)
+(deft/method t/lapack-geqrf-func (sym real-tensor) () 'matlisp-lapack:dgeqrf)
+(deft/method t/lapack-orgqr-func (sym real-tensor) () 'matlisp-lapack:dorgqr)
+(deft/method t/lapack-geqp3-func (sym real-tensor) () 'matlisp-lapack:dgeqp3)
+
+(deft/method t/lapack-geqrf-func (sym complex-tensor) () 'matlisp-lapack:zgeqrf)
+(deft/method t/lapack-orgqr-func (sym complex-tensor) ()'matlisp-lapack:zungqr)
+(deft/method t/lapack-geqp3-func (sym complex-tensor) () 'matlisp-lapack:zgeqp3)
 ;;
-(deft/generic (t/lapack-geqrf! #'subtypep) sym (A lda tau))
-
-(deft/method t/lapack-geqrf! (sym blas-numeric-tensor) (A lda tau)
+(deft/generic (t/lapack-qr! #'subtypep) sym (A lda tau))
+(deft/method t/lapack-geqr! (sym blas-numeric-tensor) (A lda tau)
   (using-gensyms (decl (A lda tau) (xxx lwork))
     `(let (,@decl
 	   (,lwork -1))
@@ -24,11 +23,38 @@
        (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
 	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
 	   (nrows ,A) (ncols ,A)
-	   (the ,(store-type sym) (store A)) ,lda
-	   ,tau
+	   ,xxx ,lda
+	   ,xxx
 	   ,xxx -1
-	   0
-	   (head ,A))
+	   0)
+	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
+       (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
+	 (nrows ,A) (ncols ,A)
+	 (the ,(store-type sym) (store A)) ,lda
+	 ,tau
+	 (t/store-allocator ,sym ,lwork) ,lwork
+	 0
+	 (head ,A))
+       (,(macroexpand-1 `(t/lapack-orgqr-func ,sym))
+
+	 )
+       )))
+
+(deft/generic (t/lapack-orqr! #'subtypep) sym (A lda tau))
+(deft/method t/lapack-geqr! (sym blas-numeric-tensor) (A lda tau)
+  (using-gensyms (decl (A lda tau) (xxx lwork))
+    `(let (,@decl
+	   (,lwork -1))
+       (declare (type ,sym ,A)
+		(type index-type ,lda ,lwork)
+		(type ,(store-type sym) ,tau))
+       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
+	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
+	   (nrows ,A) (ncols ,A)
+	   ,xxx ,lda
+	   ,xxx
+	   ,xxx -1
+	   0)
 	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
        (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
 	 (nrows ,A) (ncols ,A)
@@ -37,6 +63,10 @@
 	 (t/store-allocator ,sym ,lwork) ,lwork
 	 0
 	 (head ,A)))))
+;;
+
+
+
 ;;
 (defgeneric geqr! (a)
   (:documentation
@@ -59,13 +89,13 @@
 
    [1] Q
    [2] R
-      
+
  If the factorization can not be done, Q and R are set to NIL.
 ")
   (:method :before ((a standard-tensor))
 	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
 
-(define-tensor-method geqr! ((a standard-tensor :output))  
+(define-tensor-method geqr! ((a standard-tensor :output))
   (let* ((m (nrows a))
 	 (n (ncols a))
 	 (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
@@ -84,8 +114,8 @@
 	(declare (ignore q-r new-tau new-work))
 	(unless (= info 0)
 	  (error "geqrf returned ~a~%" info))
-	
-		
+
+
 
 	  ;; If we are here, then INFO == 0 and all is well...
 	  (let ((r (make-real-matrix k n)))
@@ -134,7 +164,7 @@
 
       (declare (ignore new-work))
       ;; Q-R and NEW-TAU aren't needed either since the (STORE A) and WORK
-      ;; get modified 
+      ;; get modified
 
       (if (not (zerop info))
 	  ;; If INFO is not zero, then an error occured.  Return Nil
@@ -152,7 +182,7 @@
 		  (setf idx-fortran (fortran-complex-matrix-indexing row col m)
 			(matrix-ref r row col) (complex (aref q-r idx-fortran)
 							(aref q-r (1+ idx-fortran))))))
-	  
+
 	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	  ;; Now compute Q via ZUNGQR and return.  This is always
 	  ;; the economy representation of Q.  I.e., Q1 in Q = [Q1 Q2]
@@ -184,17 +214,17 @@
   SYNTAX
   ======
   (DEQP A)
-  
+
   INPUT
   -----
   A    A Matlisp M x N matrix
-  
+
   OUTPUT (VALUES Q R PVT-VEC)
   ------
   Q, R     Matlisp matricies representing the QR composition of A*P
   JPVT     A lisp sequence of integers representing the column pivoting.
-	   This is the variable JPVT in LAPACK's [DZ]GEGP3.F: 
-  
+	   This is the variable JPVT in LAPACK's [DZ]GEGP3.F:
+
 	   JPVT    (input/output) INTEGER array, dimension (N)
 		   On entry, if JPVT(J).ne.0, the J-th column of A is permuted
 		   to the front of A*P (a leading column); if JPVT(J)=0,
@@ -202,14 +232,14 @@
 		   On exit, if JPVT(J)=K, then the J-th column of A*P was the
 		   the K-th column of A.
 
-          *** THE EXCEPTION TAKEN HERE IS THAT \"JPVT - 1\" IS RETURNED TO COMPLY ***
-          *** WITH THE ZERO BASED INDEXING OF LISP. ***
-   
+	  *** THE EXCEPTION TAKEN HERE IS THAT \"JPVT - 1\" IS RETURNED TO COMPLY ***
+	  *** WITH THE ZERO BASED INDEXING OF LISP. ***
+
   PURPOSE
   =======
-  
+
   Use QR or QR! for access to this routine.
-  
+
   Computes the QR factorization of an M-by-N matrix A using column pivoting.
   I.e., A*P = Q*R is computed where P is a column pivoting matrix.
 "))
@@ -218,15 +248,15 @@
 (let ((xx (allocate-real-store 1))
       (xxint (allocate-integer4-store 1))
       (work (allocate-real-store 1)))
-	  
+
   (defun dgeqp3-workspace-inquiry (m n)
     (multiple-value-bind (a jpvt tau work info)
 	(lapack:dgeqp3 m n xx m xxint xx work -1 0)
-      
+
 	(declare (ignore a jpvt tau))
 	(unless (zerop info)
 	  (error "Error in computing required work space dimensions"))
-	
+
 	(values (ceiling (aref work 0))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -282,21 +312,21 @@
 
 	    ;; and return Q, R, and JPVT...
 	    (values q r (map (type-of jpvt) #'1- jpvt))))))))
-	
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (let ((xx (allocate-real-store 1))
       (xxint (allocate-integer4-store 1))
       (work (allocate-real-store 1)))
-	  
+
   (defun zgeqp3-workspace-inquiry (m n)
     (multiple-value-bind (a jpvt tau work rwork info)
 	(lapack:zgeqp3 m n xx m xxint xx work -1 xx 0)
-      
+
 	(declare (ignore a jpvt tau rwork))
-	
+
 	(unless (zerop info)
 	  (error "Error in computing required work space dimensions"))
-	
+
 	(values (ceiling (aref work 0))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -328,7 +358,7 @@
       ;; If we get here there is no error, construct the R matrix
       (let ((r (make-complex-matrix min-nm n))
 	    (idx-fortran 0))
-	
+
 	(dotimes (row min-nm)
 	  (loop for col from row below n do
 		(setf idx-fortran (fortran-complex-matrix-indexing row col lda)
@@ -362,30 +392,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun qr (a &optional (econ t) (pivot nil))
   "
-  SYNTAX 
+  SYNTAX
   ======
   (QR A [ECON PIVOT])
-  
+
   INPUT
   -----
   A       A Matlisp matrix of size M x N
   ECON    Produce the economy size QR decomposition which means return Q1 and R1 only.
-          T or NIL. Default is T.
+	  T or NIL. Default is T.
   PIVOT   T or NIL.  Default is NIL.  When PIVOT is true column pivoting is used.
-  
+
   OUTPUT: (VALUES Q R PVT)
   ------
   Q  A Matlisp matrix of size M x M
   R  A Matlisp matrix of size M x N
   PVT A Lisp sequence of (SIGNED-BYTE 32)
-  
+
   PURPOSE
   =======
   Compute the QR decompostion of A.  A = Q*R.  When M > N, the QR decomposition
   can be written as
   A*P = [Q1 Q2] * [ R1 ]
-                  [ -- ]
-                  [ 0  ]
+		  [ -- ]
+		  [ 0  ]
 
   When ECON == T only Q1 and R1 is return. Otherwise Q and R are returned.
   Note that when ECON == NULL the value of Q2 is taken from the SVD of A;
@@ -431,10 +461,10 @@
 
 		 ;; The PVT part does not need extending
 		 pvt1)))
-       
+
        (t     (multiple-value-bind (q1 r1)
 		  (geqr! (copy a))
-		(values 
+		(values
 
 		 (join q1
 		       (matrix-ref (svd a :a)	; the Q2 part
@@ -451,17 +481,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun qr! (a &optional (econ t) (pivot nil))
   "
-  SYNTAX 
+  SYNTAX
   ======
   (QR! A [ECON])
 
   PURPOSE
   =======
-  Compute the QR decomposition of A.  See QR.  
+  Compute the QR decomposition of A.  See QR.
 
   NOTE:  THIS IS A DESTRUCTIVE VERSION.  THE MATRIX A IS OVERWRITTEN WITH Q.
-         USE THIS ROUTINE ONLY IF A IS VERY LARGE AND YOU DON'T CARE ABOUT
-         IT AFTER THE CALL."
+	 USE THIS ROUTINE ONLY IF A IS VERY LARGE AND YOU DON'T CARE ABOUT
+	 IT AFTER THE CALL."
 
   (cond
    (econ
@@ -495,10 +525,10 @@
 
 		 ;; The PVT part does not need extending
 		 pvt1)))
-       
+
        (t     (multiple-value-bind (q1 r1)
 		  (geqr!  a)
-		(values 
+		(values
 
 		 (join q1
 		       (matrix-ref (svd a :a)	; the Q2 part

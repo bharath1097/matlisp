@@ -136,5 +136,3 @@
 	  (prog1 (aref store (mod (+ idx count -1) len))
 	    (decf count))))))
 ;;
-
-

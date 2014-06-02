@@ -71,7 +71,10 @@
 	 (scal! scale C)))))
 
 ;;Should we use some fancy pattern matcher to do this ?
-;;(solve #i(A * ?x - ?x * B = C))
+;;(solve #i(A' * ?x + ?x * B = C))
+;;#i(a * b -> b * a, forall a in F, forall b in L(V, V))
+;;#i(a * b \neq b * a, a, b are matrices)
+;;#i(a + b -> b + a)
 (defun syl (A B C)
   "
     Syntax

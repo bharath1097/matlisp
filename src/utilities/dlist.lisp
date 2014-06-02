@@ -65,22 +65,22 @@
        :finally (return ft))))
 
 ;;
-(defmacro-clause (FOR clist ON-DLIST v)
+(defmacro-clause (FOR clist ON-DLIST v &optional IN-REVERSE r?)
   "All unique elements on the dlist."
   (with-gensyms (dlist end nxt)
     `(progn
        (with ,dlist = ,v)
        (while ,dlist)
-       (with ,end = (first ,dlist))
+       (with ,end = ,(if r? `(second ,dlist) `(first ,dlist)))
        (for ,clist initially ,dlist then (if (or (null ,end) (eql ,clist ,end)) (terminate)
-					     (let ((,nxt (second ,clist)))
+					     (let ((,nxt ,(if r? `(first ,clist) `(second ,clist))))
 					       (when (null ,nxt) (terminate))
 					       (when (eql ,nxt ,end) (setf ,end nil))
 					       ,nxt))))))
 
-(defmacro-clause (FOR var IN-DLIST v)
+(defmacro-clause (FOR var IN-DLIST v &optional IN-REVERSE r?)
   "All unique elements in the dlist."
   (with-gensyms (clist)
     `(progn
-       (for ,clist on-dlist ,v)
+       (for ,clist on-dlist ,v in-reverse ,r?)
        (for ,var = (cddr ,clist)))))
