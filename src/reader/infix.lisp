@@ -10,8 +10,8 @@
     ( + - )
     ( << >> )
     ( < == > <= != >= )
-    ( & )				; logand
-    ( \| )				; logior
+    ( & &&)				; and
+    ( \| \|\| )				; or
     ;; Where should setf and friends go in the precedence?
     ( = += -= *= /=)
     (|:|) ;;slicing
@@ -587,11 +587,14 @@
 	(declare (ignore char))
 	(cond ((char= (peek-char nil stream t nil t) #\|)
 	       (read-char stream t nil t)
-	       'or)
+	       '\|\|)
 	      (t
 	       '\|))))
 (define-token-operator \|
     :infix `(logior ,left ,(gather-superiors '\| stream)))
+
+(define-token-operator \|\|
+    :infix `(or ,left ,(gather-superiors '\|\| stream)))
 
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\&
@@ -599,11 +602,14 @@
 	(declare (ignore char))
 	(cond ((char= (peek-char nil stream t nil t) #\&)
 	       (read-char stream t nil t)
-	       'and)
+	       '&&)
 	      (t
-	       '\&))))
-(define-token-operator \&
+	       '&))))
+(define-token-operator &
     :infix `(logand ,left ,(gather-superiors '\& stream)))
+
+(define-token-operator &&
+    :infix `(and ,left ,(gather-superiors '\& stream)))
 
 ;;---------------------------------------------------------------;;
 (define-character-tokenization #\%
