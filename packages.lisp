@@ -88,7 +88,7 @@
 	   #:compile-and-eval
 	   #:getcons #:mapcons
 	   ;;dlist
-	   #:dcons #:dpush #:dpop #:dlist #:dappend!
+	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:with-marking #:with-fslots
 	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed

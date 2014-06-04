@@ -84,7 +84,7 @@
 			    (setf dims (aref xdims (mod axis (order x))))
 			    (setf dims (min (aref xdims (mod axis (order x))) dims))))
 	     (collect (aref (strides x) (mod axis (order x))) into strides)
-	     (collect (slice~ x axis 0 t) into slices))
+	     (collect (slice~ x axis 0 (if (> (order x) 1) nil t)) into slices))
 	    ((eq x nil)
 	     (collect nil into strides)
 	     (collect nil into slices))

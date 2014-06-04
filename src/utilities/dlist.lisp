@@ -55,6 +55,10 @@
        :do (dpush ele ret))
     ret))
 
+(definline drdc (buf) (first buf))
+(definline dcdr (buf) (second buf))
+(definline dcar (buf) (cddr buf))
+
 (defun dappend! (&rest dlsts)
   (let ((dlsts (remove-if #'null dlsts)))
     (loop :for se :in (cdr dlsts)
@@ -65,22 +69,22 @@
        :finally (return ft))))
 
 ;;
-(defmacro-clause (FOR clist ON-DLIST v &optional IN-REVERSE r?)
+(defmacro-clause (FOR clist ON-DLIST v &optional IN-REVERSE r? UNTIL end-lst)
   "All unique elements on the dlist."
   (with-gensyms (dlist end nxt)
     `(progn
        (with ,dlist = ,v)
        (while ,dlist)
-       (with ,end = ,(if r? `(second ,dlist) `(first ,dlist)))
+       (with ,end = ,(or end-lst (if r? `(second ,dlist) `(first ,dlist))))
        (for ,clist initially ,dlist then (if (or (null ,end) (eql ,clist ,end)) (terminate)
 					     (let ((,nxt ,(if r? `(first ,clist) `(second ,clist))))
 					       (when (null ,nxt) (terminate))
 					       (when (eql ,nxt ,end) (setf ,end nil))
 					       ,nxt))))))
 
-(defmacro-clause (FOR var IN-DLIST v &optional IN-REVERSE r?)
+(defmacro-clause (FOR var IN-DLIST v &optional IN-REVERSE r? UNTIL end-lst)
   "All unique elements in the dlist."
   (with-gensyms (clist)
     `(progn
-       (for ,clist on-dlist ,v in-reverse ,r?)
+       (for ,clist on-dlist ,v in-reverse ,r? until ,end-lst)
        (for ,var = (cddr ,clist)))))
