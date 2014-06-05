@@ -475,3 +475,14 @@ Example:
 			slots))
 	 ,@body))))
 )
+;;
+(defmacro cart-etypecase (vars &body cases)
+  (let* ((decl (zipsym vars))
+	 (vars (mapcar #'car decl)))
+    `(let (,@decl)
+       (cond
+	 ,@(mapcar #'(lambda (clause)
+		       `((and ,@(mapcar #'(lambda (x y) `(typep ,x ',y)) vars (car clause)))
+			 ,@(cdr clause)))
+		   cases)
+	 (t (error "cart-etypecase: Case failure."))))))

@@ -120,8 +120,8 @@
 	     (assert (>= len (permutation-size perm)) nil
 		     'permutation-permute-error :seq-len len :per-size (permutation-size perm))))
   (:method :before ((ten standard-tensor) (perm permutation) &optional (arg 0))
-	   (assert (>= (aref (dimensions ten) arg) (permutation-size perm)) nil
-		   'permutation-permute-error :seq-len (aref (dimensions ten) arg) :permutation-size (permutation-size perm))))
+	   (assert (>= (dims ten arg) (permutation-size perm)) nil
+		   'permutation-permute-error :seq-len (dims ten arg) :permutation-size (permutation-size perm))))
 
 (definline permute (thing perm &optional (arg 0))
   (permute! (copy thing) perm arg))
@@ -207,7 +207,7 @@
 
 (defmethod permute! ((A standard-tensor) (perm permutation-pivot-flip) &optional (arg 0))
   (let ((t1 (slice~ A arg)) (t2 (slice~ A arg)))
-    (let-typed ((argstd (aref (strides A) arg) :type index-type)
+    (let-typed ((argstd (strides A arg) :type index-type)
 		(hd-sl (head t2) :type index-type)
 		(idiv (store perm) :type pindex-store-vector))
 	       (very-quickly

@@ -4,7 +4,7 @@
 (defclass coordinate-sparse-tensor (sparse-tensor)
   ((head :initarg :head :initform 0 :reader head :type index-type
 	 :documentation "Head for the store's accessor.")
-   (strides :initarg :strides :reader strides :type index-store-vector
+   (strides :initarg :strides :type index-store-vector
 	    :documentation "Strides for accesing elements of the tensor.")))
 
 ;; (defmethod initialize-instance :after ((tensor coordinate-sparse-tensor) &rest initargs)

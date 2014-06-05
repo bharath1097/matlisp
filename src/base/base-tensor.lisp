@@ -45,7 +45,7 @@
      (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
 ;;
 (defclass base-tensor ()
-  ((dimensions :reader dimensions :initarg :dimensions :type index-store-vector
+  ((dimensions :initarg :dimensions :type index-store-vector
    :documentation "Dimensions of the vector spaces in which the tensor's arguments reside.")
    (parent-tensor :reader parent-tensor :initform nil :initarg :parent-tensor :type (or null base-tensor)
     :documentation "If the tensor is a view of another tensor, then this slot is bound.")
@@ -55,8 +55,14 @@
     :documentation "Place for computable attributes of an object instance."))
   (:documentation "Basic tensor class."))
 
-(declaim (ftype (function (base-tensor) index-store-vector) dimensions)
+(declaim (ftype (function (base-tensor &optional index-type) (or index-type index-store-vector)) dimensions)
 	 (ftype (function (base-tensor) hash-table) attributes))
+
+(definline dimensions (x &optional idx)
+  (declare (type base-tensor x))
+  (if idx
+      (aref (the index-store-vector (slot-value x 'dimensions)) (modproj idx (order x) nil 0))
+      (the index-store-vector (slot-value x 'dimensions))))
 
 (defgeneric print-element (tensor
 			   element stream)
@@ -101,7 +107,7 @@
 ;;We use order (against cl convention) so as not to cause confusion with matrix rank.
 (definline order (tensor)
   (declare (type base-tensor tensor))
-  (length (the index-store-vector (dimensions tensor))))
+  (length (the index-store-vector (slot-value tensor 'dimensions))))
 ;; (definline tensor-rank (tensor) (order tensor))
 
 ;;
@@ -115,7 +121,7 @@
 
 (definline dims (tensor &optional idx)
   (declare (type base-tensor tensor))
-  (if idx (aref (dimensions tensor) idx)
+  (if idx (aref (dimensions tensor) (modproj idx (order tensor) nil 0))
       (memoizing (tensor dims)
 		 (lvec->list (the index-store-vector (dimensions tensor))))))
 ;;
@@ -272,7 +278,7 @@
 		(collect (* inc s) into stds))))
 	(finally (return (values hd dims stds)))))
 
-(definline slice~ (x axis &optional (idx 0) (preserve-rank? nil))
+(definline slice~ (x axis &optional (idx 0) (preserve-rank? (when (= (order x) 1) t)))
   (let* ((axis (modproj axis (order x) nil 0))
 	 (subs (iter (for i from 0 below (order x)) (collect (cond ((/= i axis) '(nil nil))
 								   (preserve-rank? (list idx (1+ idx)))
@@ -335,6 +341,15 @@
 (definline tensor-vectorp (ten)
   (declare (type base-tensor ten))
   (= (order ten) 1))
+
+(deftype base-square-matrix ()
+  `(and base-tensor (satisfies tensor-square-matrixp)))
+
+(deftype base-matrix ()
+  `(and base-tensor (satisfies tensor-matrixp)))
+
+(deftype base-vector ()
+  `(and base-tensor (satisfies tensor-vectorp)))
 
 (definline tensor-squarep (tensor)
   (declare (type base-tensor tensor))

@@ -3,13 +3,19 @@
 (defclass linear-store ()
   ((head :initarg :head :initform 0 :reader head :type index-type
     :documentation "Head for the store's accessor.")
-   (strides :initarg :strides :reader strides :type index-store-vector
+   (strides :initarg :strides :type index-store-vector
     :documentation "Strides for accesing elements of the tensor.")
    (store :initarg :store :reader store :type vector
     :documentation "The actual storage for the tensor.")))
 
-(declaim (ftype (function (base-tensor) index-store-vector) strides)
+(declaim (ftype (function (base-tensor &optional index-type) (or index-type index-store-vector)) strides)
 	 (ftype (function (base-tensor) index-type) head))
+
+(definline strides (x &optional idx)
+  (declare (type base-tensor x))
+  (if idx
+      (aref (the index-store-vector (slot-value x 'strides)) (modproj idx (order x) nil 0))
+      (the index-store-vector (slot-value x 'strides))))
 
 ;;
 (defun store-indexing-vec (idx hd strides dims)
