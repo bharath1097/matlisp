@@ -58,6 +58,10 @@
 (declaim (ftype (function (base-tensor &optional index-type) (or index-type index-store-vector)) dimensions)
 	 (ftype (function (base-tensor) hash-table) attributes))
 
+(definline orphanize (x)
+  (setf (slot-value x 'parent-tensor) nil)
+  x)
+
 (definline dimensions (x &optional idx)
   (declare (type base-tensor x))
   (if idx
