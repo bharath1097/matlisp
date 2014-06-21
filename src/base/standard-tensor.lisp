@@ -14,7 +14,7 @@
 (definline strides (x &optional idx)
   (declare (type base-tensor x))
   (if idx
-      (aref (the index-store-vector (slot-value x 'strides)) (modproj idx (order x) nil 0))
+      (aref (the index-store-vector (slot-value x 'strides)) (modproj (or idx 0) (order x) nil 0))
       (the index-store-vector (slot-value x 'strides))))
 
 ;;

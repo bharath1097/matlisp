@@ -65,7 +65,7 @@
 (definline dimensions (x &optional idx)
   (declare (type base-tensor x))
   (if idx
-      (aref (the index-store-vector (slot-value x 'dimensions)) (modproj idx (order x) nil 0))
+      (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0))
       (the index-store-vector (slot-value x 'dimensions))))
 
 (defgeneric print-element (tensor
@@ -125,7 +125,7 @@
 
 (definline dims (tensor &optional idx)
   (declare (type base-tensor tensor))
-  (if idx (aref (dimensions tensor) (modproj idx (order tensor) nil 0))
+  (if idx (aref (dimensions tensor) (modproj (or idx 0) (order tensor) nil 0))
       (memoizing (tensor dims)
 		 (lvec->list (the index-store-vector (dimensions tensor))))))
 ;;
