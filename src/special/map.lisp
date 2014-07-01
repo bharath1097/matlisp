@@ -206,4 +206,4 @@
 				xa sa))))
 	     (repeat ,dim)
 	     (progn
-	       ,@(mapcar #'(lambda (x s) `(when (> ,s 0) (incf (slot-value ,x 'head) ,s))) xa sa))))))))
+	       ,@(mapcar #'(lambda (x s) `(when ,x (incf (slot-value ,x 'head) ,s))) xa sa))))))))
