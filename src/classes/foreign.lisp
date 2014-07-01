@@ -12,11 +12,26 @@
 
 (deft/method t/store-ref (sym foreign-numeric-tensor) (store &rest idx)
    (assert (null (cdr idx)) nil "given more than one index for linear-store")
-   `(the ,(field-type sym) (fv-ref ,store ,(car idx))))
+   (with-gensyms (sto idx0)
+     `(let ((,idx0 ,(car idx))
+	    (,sto ,store))
+	(declare (type index-type ,idx0)
+		 (type foreign-vector ,sto))
+	(assert (eql (fv-type ,sto) ',(cl->cffi-type (store-element-type sym))) nil 'invalid-type)
+	(assert (< -1 ,idx0 (fv-size ,sto)) nil 'out-of-bounds-error :requested ,idx0 :bound (fv-size ,sto))
+	(the ,(store-element-type sym) (cffi:mem-aref (fv-pointer ,sto) ',(cl->cffi-type (store-element-type sym)) ,idx0)))))
 
 (deft/method t/store-set (sym foreign-numeric-tensor) (value store &rest idx)
    (assert (null (cdr idx)) nil "given more than one index for linear-store")
-  `(setf (fv-ref ,store ,(car idx)) (the ,(field-type sym) ,value)))
+   (with-gensyms (sto idx0)
+     `(let ((,idx0 ,(car idx))
+	    (,sto ,store))
+	(declare (type index-type ,idx0)
+		 (type foreign-vector ,sto))
+	(assert (eql (fv-type ,sto) ',(cl->cffi-type (store-element-type sym))) nil 'invalid-type)
+	(assert (< -1 ,idx0 (fv-size ,sto)) nil 'out-of-bounds-error :requested ,idx0 :bound (fv-size ,sto))
+	(setf (cffi:mem-aref (fv-pointer ,sto) ',(cl->cffi-type (store-element-type sym)) ,idx0)
+	      (the ,(store-element-type sym) ,value)))))
 
 ;;
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -28,6 +43,27 @@
       (string :string)
       (t (error 'unknown-token :token type
 		:message "Don't know how to convert type to CFFI.")))))
+
+(deft/method t/zeros (class foreign-numeric-tensor) (dims &optional data-pointer)
+  (using-gensyms (decl (dims data-pointer) (idims size strd idx sto ptr))
+    `(let (,@decl)
+       (let ((,idims (make-index-store ,dims)))
+	 (multiple-value-bind (,strd ,size) (make-stride ,idims)
+	   (let ((,sto (etypecase ,data-pointer
+			 (cffi:foreign-pointer
+			  (assert (not (cffi:null-pointer-p ,data-pointer)) nil 'invalid-arguments "NULL pointer given for data store.")
+			  (make-foreign-vector :pointer ,data-pointer :size ,size :type ',(cl->cffi-type (store-element-type class))))
+			 (matlisp-ffi:foreign-vector
+			  (assert (<= ,size (fv-size ,data-pointer)) nil 'tensor-insufficient-store :store-size (fv-size ,data-pointer) :max-idx (1- ,size))
+			  ,data-pointer))))
+	     #+nil(let ((,ptr (fv-pointer ,sto)))
+	       (iter (for ,idx from 0 below (* ,(cffi:foreign-type-size (cl->cffi-type (store-element-type class))) ,size))
+		     (setf (cffi:mem-aref ,ptr :uint8 ,idx) 0)))
+	     (with-no-init-checks
+		 (make-instance ',class
+				:dimensions ,idims
+				:strides ,strd
+				:store ,sto))))))))
 
 (deft/method with-field-element (sym foreign-numeric-tensor) (decl &rest body)
   (destructuring-bind (var val &optional (count 1)) decl
@@ -44,25 +80,13 @@
 		   ,@body))))))))
 ;;
 (defclass foreign-real-numeric-tensor (foreign-numeric-tensor real-numeric-tensor) ())
-(deft/method t/field-type (sym foreign-real-numeric-tensor) ()
-  'real)
-
 (defleaf foreign-real-tensor (foreign-real-numeric-tensor) ())
 (deft/method t/field-type (sym foreign-real-tensor) ()
   'double-float)
 
-(defun make-foreign-real-tensor (dims pointer)
-  (let ((dims (make-index-store (etypecase dims
-				  (vector (lvec->list dims))
-				  (cons dims)
-				  (fixnum (list dims))))))
-    (make-instance 'foreign-real-tensor
-		   :dimensions dims
-		   :store pointer
-		   :strides (make-stride dims))))
-
+#+nil
 (with-field-element foreign-real-tensor (fv 0d0 10)
-  (let ((tens (make-foreign-real-tensor (idxv 2 2) fv)))
+  (let ((tens (zeros '(2 2) 'foreign-real-tensor fv)))
     (axpy! 1 nil tens)
     (copy tens 'real-tensor)))
 

@@ -364,8 +364,9 @@
 		:finally (return t))))
 ;;
 (defun tensor-append (axis tensor &rest more-tensors)
-  (if (>= axis (order tensor))
-      (apply #'tensor-append axis (mapcar #'(lambda (x) (suptensor~ x (1+ axis))) (cons tensor more-tensors)))
+  (if (null tensor)
+      (when more-tensors
+	(apply #'tensor-append axis (car more-tensors) (cdr more-tensors)))
       (let ((dims (copy-seq (dimensions tensor))))
 	(iter (for ele in more-tensors) (incf (aref dims axis) (aref (dimensions ele) axis)))
 	(let* ((ret (zeros dims (class-of tensor)))

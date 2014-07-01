@@ -70,7 +70,7 @@
 ))
 
 (defpackage "MATLISP-UTILITIES"
-  (:use #:common-lisp #:iterate #:matlisp-conditions)
+  (:use #:common-lisp #:iterate #:optima #:matlisp-conditions)
   (:export #:ensure-list #:id #:ieql #:pophash
 	   #:vectorify #:copy-n
 	   #:ensure-args #:repsym #:findsym #:find-tag
@@ -104,7 +104,7 @@
 
 ;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
-  (:use #:common-lisp #:iterate #:named-readtables #:matlisp-conditions #:matlisp-utilities)
+  (:use #:common-lisp #:iterate #:optima #:named-readtables #:matlisp-conditions #:matlisp-utilities)
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
@@ -179,7 +179,7 @@
   (:documentation "BLAS routines"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:named-readtables
+  (:use #:common-lisp #:iterate #:optima #:named-readtables
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
   (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
