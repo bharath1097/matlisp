@@ -177,7 +177,15 @@
   (multiple-value-bind (hd dims stds) (parse-slice-for-strides subscripts (dimensions tensor) (strides tensor))
     (cond
       ((not hd) nil)
-      ((not dims) (store-ref tensor hd))
+      ((not dims) (if subscripts
+		      (store-ref tensor hd)
+		      (with-no-init-checks
+			  (make-instance (class-of tensor)
+					 :head (head tensor)
+					 :dimensions (copy-seq (dimensions tensor))
+					 :strides (copy-seq (strides tensor))
+					 :store (store tensor)
+					 :parent-tensor tensor))))
       (t (with-no-init-checks
 	     (make-instance (class-of tensor)
 			    :head (+ hd (head tensor))
@@ -203,3 +211,13 @@
 			   :head (head ten)
 			   :store (store ten)
 			   :parent-tensor ten)))))
+
+(defmethod reshape! ((ten standard-tensor) (dims cons))
+  (let ((idim (make-index-store dims)))
+    (setf (slot-value ten 'dimensions) idim
+	  (slot-value ten 'strides) (let ((strd (make-stride idim)))
+				      (when (< (strides ten 0) 0)
+					(iter (for i from 0 below (length strd))
+					      (setf (aref strd i) (- (aref strd i)))))
+				      strd))
+    ten))

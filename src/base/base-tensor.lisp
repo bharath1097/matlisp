@@ -301,6 +301,19 @@
 	   (let ((tord (order tensor)))
 	     (assert (and (< -1 start) (<= tord (order tensor)) (<= 0 start (- ord tord))) nil 'invalid-arguments))))
 
+(defgeneric reshape! (tensor dims)
+  (:method :before ((tensor standard-tensor) (dims cons))
+	   (assert (iter (for s in-vector (strides tensor))
+			 (unless (> (* s (strides tensor 0)) 0) (return nil))
+			 (finally (return t)))
+		   nil 'tensor-error :message "strides are not of the same sign." :tensor tensor)
+	   (assert (< (iter (for i in dims) (multiplying i)) (size tensor)) nil 'tensor-insufficient-store)))
+
+(definline reshape (tensor dims)
+  (let ((ret (reshape~ (copy tensor) dims)))
+    (setf (slot-value ret 'parent-tensor) nil)
+    ret))
+
 (definline matrixify~ (vec &optional (col-vector? t))
   (if (tensor-matrixp vec) vec (suptensor~ vec 2 (if col-vector? 0 1))))
 ;;
