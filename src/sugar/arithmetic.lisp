@@ -162,7 +162,7 @@
     ((base-vector base-vector) (dot a b nil))
     ((base-matrix base-matrix) (gemm 1 a b nil nil))
     ((base-matrix base-vector) (gemv 1 a b nil nil :n))
-    ((base-vector base-matrix) (gemv 1 a b nil nil :t))
+    ((base-vector base-matrix) (gemv 1 b a nil nil :t))
     ((base-tensor base-tensor) (tensor-contraction a b))
     ;;Permutation action on arguments. Left action unpermutes arguments, right action permutes them.
     ;;See tb* for comparison.

@@ -42,10 +42,13 @@
   (mapcar #'(lambda (x) (if (and (consp x) (eql (car x) :slice)) `(list* ,@(cdr x)) x)) args))
 
 (defmacro generic-ref (x &rest args)
-  (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-      `(matlisp::subtensor~ ,x (list ,@(process-slice args)))
-      `(etypecase ,x
-	 ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*)))))
+  (cond
+    ((null args) x)
+    ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+     `(matlisp::subtensor~ ,x (list ,@(process-slice args))))
+    (t
+     `(etypecase ,x
+	,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))))
 
 (define-setf-expander generic-ref (x &rest args &environment env)
   (multiple-value-bind (dummies vals newval setter getter)
@@ -55,10 +58,13 @@
 	      (append vals (list getter))
 	      `(,store)
 	      (let ((arr (car newval)))
-		`(prog1 ,(if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-			     `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store)
-			     `(etypecase ,arr
-				,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))
+		`(prog1 ,(cond
+			  ((null args)
+			   `(matlisp::copy! ,store ,arr))
+			  ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+			   `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store))
+			  (t`(etypecase ,arr
+			       ,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*)))))
 		   ,setter))
 	      `(generic-ref ,getter ,@args)))))
 
@@ -761,9 +767,7 @@
 
 (define-token-operator \[
     :infix (let ((indices (infix-read-delimited-list '\] '\, stream)))
-	     (if (null indices)
-		 (infix-error "No indices found in array reference.")
-		 `(generic-ref ,left ,@indices)))
+	     `(generic-ref ,left ,@indices))
     :prefix (let ((ele (infix-read-delimited-list '\] '\, stream)))
 	      (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) ele)
 		  `(list ,@(process-slice ele))
