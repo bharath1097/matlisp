@@ -212,6 +212,13 @@
 			   :store (store ten)
 			   :parent-tensor ten)))))
 
+(defmethod reshape! :before ((tensor standard-tensor) (dims cons))
+  (assert (iter (for s in-vector (strides tensor))
+		(unless (> (* s (strides tensor 0)) 0) (return nil))
+		(finally (return t)))
+	  nil 'tensor-error :message "strides are not of the same sign." :tensor tensor)
+  (assert (< (iter (for i in dims) (multiplying i)) (size tensor)) nil 'tensor-insufficient-store))
+
 (defmethod reshape! ((ten standard-tensor) (dims cons))
   (let ((idim (make-index-store dims)))
     (setf (slot-value ten 'dimensions) idim
