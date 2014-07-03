@@ -24,7 +24,7 @@
 	      (return nil))
 	  (finally (return t)))))
 
-(defun token-reader (stream end-char)
+(defun token-reader (stream &optional (enclosing-chars '(#\( . #\))))
   (let* ((stack nil)
      	 (expr nil))
     (labels ((read-stack (&optional (empty? t))
@@ -35,8 +35,9 @@
 		     (when fstack (push tok expr))
 		     (setf stack nil))))))
       (iter (for c next (peek-char nil stream t nil t))
+	    (summing (cond ((char= c (car enclosing-chars)) +1) ((char= c (cdr enclosing-chars)) -1) (t 0)) into count)
 	    (cond
-	      ((char=  c end-char)
+	      ((and (char= c (cdr enclosing-chars)) (= count -1))
 	       (read-stack)
 	       (return (reverse expr)))
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
@@ -92,7 +93,7 @@
    (expr #'list)
    (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (callable
-   (id |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
+   (term |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
   ;;
   (idxs
    expr
@@ -102,7 +103,8 @@
    (idxs #'list)
    (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (slice
-   (id [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
+   (term [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (term [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
   ;;
   (term
    number
@@ -200,4 +202,4 @@
   ;; Read either #I(...) or #I"..."
   (declare (ignore arg subchar))
   ;;(ignore-characters +blank-characters+ stream)
-  (op-overload (yacc:parse-with-lexer (list-lexer (print (token-reader stream (ecase (read-char stream t nil t) (#\( #\)) (#\[ #\]))))) *linfix-parser*)))
+  (op-overload (yacc:parse-with-lexer (list-lexer (print (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\])))))) *linfix-parser*)))
