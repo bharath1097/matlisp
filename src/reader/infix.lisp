@@ -167,7 +167,7 @@
     (walker expr)))
 
 ;; (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*)
-(defreadtable :infix-dispatch-table
+(named-readtables:defreadtable :infix-dispatch-table
   (:merge :standard)
   (:dispatch-macro-char #\# #\I #'infix-reader))
 

@@ -104,7 +104,7 @@
 
 ;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
-  (:use #:common-lisp #:iterate #:optima #:named-readtables #:matlisp-conditions #:matlisp-utilities)
+  (:use #:common-lisp #:iterate #:optima #:matlisp-conditions #:matlisp-utilities)
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
@@ -121,8 +121,7 @@
    #:fv-ref #:fv-pointer #:fv-size #:fv-type
    ;;Interface functions
    #:def-fortran-routine #:parse-fortran-file
-   #:with-vector-data-addresses
-   )
+   #:with-vector-data-addresses)
   (:documentation "Fortran foreign function interface"))
 
 (defpackage "MATLISP-BLAS"
@@ -179,7 +178,7 @@
   (:documentation "BLAS routines"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:optima #:named-readtables
+  (:use #:common-lisp #:iterate #:optima
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
   (:export #:index-type #:index-array #:allocate-index-store #:make-index-store

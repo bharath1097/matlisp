@@ -4,7 +4,7 @@
 (in-package #:matlisp-lri)
 
 (defparameter *linfix-reader* (copy-readtable))
-(defparameter *blank-characters* '(#\Space #\Tab))
+(defparameter *blank-characters* '(#\Space #\Tab #\Newline))
 
 (defparameter *operator-tokens*
   `(("^" ^) ("**" **)
@@ -16,7 +16,7 @@
     ("[" \[) ("]" \])
     (":" |:|)
     ("=" =) ("==" ==)
-    ("," \,) (";" \;)
+    ("," \,)
     ("'" htranspose) (".'" transpose)))
 
 (defun find-token (str stream)
@@ -31,7 +31,8 @@
 
 (defun token-reader (stream &optional (enclosing-chars '(#\( . #\))))
   (let* ((stack nil)
-     	 (expr nil))
+     	 (expr nil)
+	 (lspe nil))
     (labels ((read-stack (&optional (empty? t))
 	       (let* ((fstack (reverse (remove-if #'(lambda (x) (member x *blank-characters*)) stack)))
 		      (tok (and fstack (read-from-string (coerce fstack 'string)))))
@@ -40,12 +41,18 @@
 		     (when fstack (push tok expr))
 		     (setf stack nil))))))
       (iter (for c next (peek-char nil stream t nil t))
-	    (summing (cond ((char= c (car enclosing-chars)) +1) ((char= c (cdr enclosing-chars)) -1) (t 0)) into count)
+	    (summing (cond ((char= c (cdr enclosing-chars)) -1) ((char= c (car enclosing-chars)) +1) (t 0)) into count)
 	    (cond
 	      ((and (char= c (cdr enclosing-chars)) (= count -1))
 	       (read-char stream t nil t)
 	       (read-stack)
-	       (return (reverse expr)))
+	       (return (values (reverse expr) lspe)))
+	      ((member c '(#\# #\\))
+	       (when (char= c #\\) (read-char stream t nil t))
+	       (let ((word (read stream))
+		     (sym (gensym)))
+		 (push sym expr)
+		 (push (list sym word) lspe)))
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
 		 (read-stack)
 		 (push (second tok) expr)))
@@ -101,6 +108,7 @@
    (expr #'list)
    (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (callable
+   (term |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
    (term |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
   ;;
   (idxs
@@ -167,7 +175,7 @@
 	     (matlisp::base-tensor (matlisp::axpy! ,alpha ,val ,new))
 	     (t (setq ,new (+ ,new ,val))))
 	   ,setter)))))
-
+;;
 (defparameter *operator-assoc-table* '((* matlisp::tb*-opt)
 				       (.* matlisp::tb.*)
 				       (@ matlisp::tb@)
@@ -186,7 +194,7 @@
 	     (dwalker
 	      (cond
 		((atom expr) expr)
-		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (second expr))
+		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (walker (second expr)))
 		((eq (car expr) '*)
 		 (if (and (consp (second expr)) (eq (car (second expr)) '/) (not (cddr (second expr)))) ;;ldiv
 		     `(\\ (* ,@(cddr expr)) ,(cadr (second expr)))
@@ -214,14 +222,58 @@
 ;;
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
-  (declare (ignore arg subchar))
+  (declare (ignore subchar))
+  (assert (null arg) nil "given arg where none was required.")
   ;;(ignore-characters +blank-characters+ stream)
-  (op-overload (yacc:parse-with-lexer (list-lexer (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))) *linfix-parser*)))
+  (multiple-value-bind (iexpr bind) (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))
+    (setf iexpr (nconc (list 'progn '\() iexpr (list '\))))
+    (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
+      (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
+      lexpr)))
+;;
+(defparameter *tensor-symbol*
+  '((#\D matlisp::real-tensor)
+    (#\Z matlisp::complex-tensor)
+    (#\N matlisp::integer-tensor)
+    (#\B matlisp::boolean-tensor)))
 
-(named-readtables:defreadtable :lri-table
-  (:merge :standard)
-  (:dispatch-macro-char #\# #\I #'infix-reader))
+(defun tensor-reader (stream subchar arg)
+  (assert (null arg) nil "given arg where none was required.")
+  (labels ((ignore-characters (stream ignore)
+	     (iter (for c next (peek-char nil stream t nil t))
+		   (if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
+	   (list-reader (stream &optional (enclosing-chars (list #\[ #\])))
+	     (iter (for c next (peek-char nil stream t nil t))
+		   (with first-p = t)
+		   (cond
+		     ((char= c (second enclosing-chars))
+		      (read-char stream t nil t)
+		      (return (cons 'list ret)))
+		     ((member c *blank-characters*)
+		      (read-char stream t nil t))
+		     ((char= c #\[)
+		      (if first-p (setq first-p nil) (error "Missing delimiter ~a" #\,))
+		      (read-char stream t nil t)
+		      (collect (list-reader stream enclosing-chars) into ret))
+		     ((char= c #\,)
+		      (ignore-characters stream (cons #\, *blank-characters*))
+		      (unless (char= (read-char stream t nil t) #\[)
+			(error "Missing bracket"))
+		      (collect (list-reader stream enclosing-chars) into ret))
+		     (t (multiple-value-bind (iexpr bind) (token-reader stream (cons #\[ #\]))
+			  (setf iexpr (nconc (list 'list '\() iexpr (list '\))))
+			  (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
+			    (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
+			    (return lexpr))))))))
+    (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
+      (let ((c (read-char stream t nil t)))
+	(assert (char= c #\[) nil "given unknown token ~a" c))
+      `(matlisp::copy ,(list-reader stream) ',cl))))
 
-(defun coalesce (expr)
-  
-  )
+;;Define a readtable with dispatch characters
+(macrolet ((tensor-symbol-enumerate ()
+	     `(named-readtables:defreadtable :lri-table
+		(:merge :standard)
+		(:dispatch-macro-char #\# #\I #'infix-reader)
+		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
+  (tensor-symbol-enumerate))
