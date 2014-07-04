@@ -1,42 +1,134 @@
 (in-package #:matlisp-infix)
 (pushnew :matlisp-infix *features*)
 
-;;Precedence
-(defparameter *operator-ordering* 
-  '((\( \! \[ \.)                       ; \[ is array reference
-    (quote transpose ** )      	        ; exponentiation
-    ( ~ )				; lognot 
-    (^ @ .* ./ * / \\ % )		; % is mod, ^ is outer product (because it's similar to wedge :)
-    ( + - )
-    ( << >> )
-    ( < == > <= != >= )
-    ( & &&)				; and
-    ( \| \|\| )				; or
-    ;; Where should setf and friends go in the precedence?
-    ( = += -= *= /=)
-    (|:|) ;;slicing
-    ( \, )			; progn (statement delimiter)
-    ( \] \) )
-    ( %infix-end-token% ))		; end of infix expression
-  "Ordered list of operators of equal precedence.")
-(defparameter *right-associative-operators* '(** =))
+(defparameter *linfix-reader* (copy-readtable))
+(defparameter *blank-characters* '(#\Space #\Tab #\Newline))
 
-(defun same-token-p (x y)
-  (and (symbolp x) (symbolp y) (string-equal (symbol-name x) (symbol-name y))))
+(defparameter *operator-tokens*
+  `(("^" ^) ("**" **)
+    ("./" ./) ("/" /)
+    ("*" *) (".*" .*) ("@" @)
+    (".+" +) ("+" +)
+    (".-" -) ("-" -)
+    ("(" \() (")" \))
+    ("[" \[) ("]" \])
+    (":" |:|)
+    ("=" =) ("==" ==)
+    ("," \,)
+    ("'" htranspose) (".'" transpose)))
 
-(defun same-operator-p (x y)
-  (same-token-p x y))
+(defun find-token (str stream)
+  (let ((stack nil))
+    (iter (for r.i in-vector str)
+	  (for m.i next (read-char stream t nil t))
+	  (push m.i stack)
+	  (when (char/= r.i m.i)
+	      (map nil #'(lambda (x) (unread-char x stream)) stack)
+	      (return nil))
+	  (finally (return t)))))
 
-(defun operator-lessp (op1 op2)
-  (dolist (ops *operator-ordering* nil)
-    (cond ((find op1 ops :test #'same-token-p) (return nil))
-	  ((find op2 ops :test #'same-token-p) (return t)))))
+(defun token-reader (stream &optional (enclosing-chars '(#\( . #\))))
+  (let* ((stack nil)
+     	 (expr nil)
+	 (lspe nil))
+    (labels ((read-stack (&optional (empty? t))
+	       (let* ((fstack (reverse (remove-if #'(lambda (x) (member x *blank-characters*)) stack)))
+		      (tok (and fstack (read-from-string (coerce fstack 'string)))))
+		 (prog1 tok
+		   (when empty?
+		     (when fstack (push tok expr))
+		     (setf stack nil))))))
+      (iter (for c next (peek-char nil stream t nil t))
+	    (summing (cond ((char= c (cdr enclosing-chars)) -1) ((char= c (car enclosing-chars)) +1) (t 0)) into count)
+	    (cond
+	      ((and (char= c (cdr enclosing-chars)) (= count -1))
+	       (read-char stream t nil t)
+	       (read-stack)
+	       (return (values (reverse expr) lspe)))
+	      ((member c '(#\# #\\))
+	       (when (char= c #\\) (read-char stream t nil t))
+	       (let ((word (read stream))
+		     (sym (gensym)))
+		 (push sym expr)
+		 (push (list sym word) lspe)))
+	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
+		 (read-stack)
+		 (push (second tok) expr)))
+	      ((and (char= c #\i) (numberp (read-stack nil)))
+	       (read-char stream t nil t)
+	       (push (complex 0 (read-stack nil)) expr)
+	       (setf stack nil))
+	      ((member c *blank-characters*)
+	       (read-char stream t nil t)
+	       (read-stack))
+	      ((char= c #\\)
+	       (read-char stream t nil t)
+	       (read-stack)
+	       (push (read stream t nil nil) expr))
+	      (t
+	       (push (read-char stream t nil t) stack)))))))
 
-(defun operator-right-associative-p (operator)
-  (find operator *right-associative-operators*))
-
-;; Matlisp helpers
-(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref) ))
+(defun list-lexer (list)
+  #'(lambda () (if (null list) (values nil nil)
+		   (let* ((value (pop list)))
+		     (values (cond ((member value *operator-tokens* :key #'second) value)
+				   ((numberp value) 'number)
+				   ((symbolp value) 'id)
+				   (t (error "Unexpected value ~S" value)))
+			     value)))))
+;;
+(yacc:define-parser *linfix-parser*
+  (:start-symbol expr)
+  (:terminals (** ./ / * .* @ ^ + - = == |(| |)| [ ] |:| |,| htranspose transpose id number))
+  (:precedence ((:left htranspose transpose)
+		(:right **)
+		(:left ./ / * .* @ ^)
+		(:left + -)
+		(:left = ==)))
+  (expr
+   (expr htranspose #'(lambda (a b) (list b a)))
+   (expr transpose #'(lambda (a b) (list b a)))
+   (expr + expr #'(lambda (a b c) (list b a c)))
+   (expr - expr #'(lambda (a b c) (list b a c)))
+   (expr / expr #'(lambda (a b c) (list b a c)))
+   (expr ./ expr #'(lambda (a b c) (list b a c)))
+   (expr * expr #'(lambda (a b c) (list b a c)))
+   (expr .* expr #'(lambda (a b c) (list b a c)))
+   (expr @ expr #'(lambda (a b c) (list b a c)))
+   (expr ^ expr #'(lambda (a b c) (list b a c)))
+   (expr ** expr #'(lambda (a b c) (list b a c)))
+   (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
+   (expr == expr #'(lambda (a b c) (list b a c)))
+   callable slice
+   term)
+  ;;
+  (args
+   (expr #'list)
+   (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
+  (callable
+   (term |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
+   (term |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
+  ;;
+  (idxs
+   expr
+   (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c)))
+   (expr |:| expr |:| expr #'(lambda (a b c d e) (declare (ignore b d)) (list :slice a c e))))
+  (sargs
+   (idxs #'list)
+   (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
+  (slice
+   (term [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (term [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
+  ;;
+  (term
+   number
+   id
+   (- term)
+   (/ term)
+   (./ term)
+   (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b))))
+;;
+(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
 
 (defun process-slice (args)
   (mapcar #'(lambda (x) (if (and (consp x) (eql (car x) :slice)) `(list* ,@(cdr x)) x)) args))
@@ -81,66 +173,26 @@
 	     (matlisp::base-tensor (matlisp::axpy! ,alpha ,val ,new))
 	     (t (setq ,new (+ ,new ,val))))
 	   ,setter)))))
-
 ;;
-;; Peeking Token Reade
-(defvar *peeked-token* nil)
-(defun read-token (stream)
-  (if *peeked-token*
-      (pop *peeked-token*)
-      (read stream t nil t)))
-(defun peek-token (stream)
-  (unless *peeked-token*
-    (push (read stream t nil t) *peeked-token*))
-  (car *peeked-token*))
+(defparameter *operator-assoc-table* '((* matlisp::tb*-opt)
+				       (.* matlisp::tb.*)
+				       (@ matlisp::tb@)
+				       (^ matlisp::tb^)
+				       (+ matlisp::tb+)
+				       (- matlisp::tb-)
+				       (\\ matlisp::tb\\)
+				       (/ matlisp::tb/)
+				       (./ matlisp::tb./)
+				       (== matlisp::tb==)
+				       (transpose matlisp::transpose)
+				       (htranspose matlisp::htranspose)))
 
-;;
-(define-constant +blank-characters+ '(#\^m #\space #\tab #\return #\newline))
-(define-constant +newline-characters+ '(#\newline #\^m #\linefeed #\return))
-
-(defmacro infix-error (format-string &rest args)
-  `(progn
-     (setf *peeked-token* nil)
-     (error 'parser-error :message (format nil ,format-string ,@args))))
-
-(defun ignore-characters (ignore stream)
-  (iter (for char next (peek-char nil stream t nil t))
-  	(if (not (member char ignore :test #'char=)) (terminate)
-	    (collect (read-char stream t nil t) at beginning))))
-
-(defun unread-characters (chars stream)
-  (mapcar #'(lambda (x) (unread-char x stream)) chars))
-
-;;; Readtable
-(defparameter *infix-readtable* (copy-readtable nil))
-
-(defun infix-reader (stream subchar arg)
-  ;; Read either #I(...) or #I"..."
-  (declare (ignore arg subchar))
-  ;;(ignore-characters +blank-characters+ stream)
-  (ecase (peek-char nil stream t nil t)
-    (#\( (read-char stream)
-	 (let ((*readtable* *infix-readtable*))
-	   (op-overload (read-infix stream))))
-    (#\[ (iter (for c next (read-char stream t nil t))
-	       (collect c into clist)
-	       (when (char= c #\])
-		 (return (string->prefix (coerce clist 'string))))))))
-
-(defparameter *operator-assoc-table* '((* matlisp::t*)
-				       (.* matlisp::t.*)
-				       (@ matlisp::t@)
-				       (+ matlisp::t+)
-				       (- matlisp::t-)
-				       (\\ matlisp::t\\)
-				       (/ matlisp::t/)
-				       (./ matlisp::t./)))
 (defun op-overload (expr)
   (labels ((walker (expr)
 	     (dwalker
 	      (cond
 		((atom expr) expr)
-		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (second expr))
+		((and (member (car expr) '(+ * progn)) (not (cddr expr))) (walker (second expr)))
 		((eq (car expr) '*)
 		 (if (and (consp (second expr)) (eq (car (second expr)) '/) (not (cddr (second expr)))) ;;ldiv
 		     `(\\ (* ,@(cddr expr)) ,(cadr (second expr)))
@@ -165,636 +217,62 @@
 		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr))
 		       ,@(mapcar #'walker (cdr expr))))))))
     (walker expr)))
-
-;; (set-dispatch-macro-character #\# #\I #'infix-reader *readtable*)
-(named-readtables:defreadtable :infix-dispatch-table
-  (:merge :standard)
-  (:dispatch-macro-char #\# #\I #'infix-reader))
-
-(defmacro with-readtable ((name) &rest body)
-  `(let ((*readtable* (named-readtables:ensure-readtable ',name)))
-     ,@body))
-
 ;;
-(defun string->prefix (string)
-  "Convert a string to a prefix s-expression using the infix reader.
-  If the argument is not a string, just return it as is."
-  (if (stringp string)
-      (with-input-from-string (stream (concatenate 'string "#I(" string ")"))
-	(with-readtable (:infix-dispatch-table)
-	  (read stream)))
-      string))
-
-(defun read-infix (stream)
-  (let* ((result (gather-superiors '\) stream)) ; %infix-end-token%
-	 (next-token (read-token stream)))
-    (unless (same-token-p next-token '\)) ; %infix-end-token%
-      (infix-error "Infix expression ends with ~A." next-token))
-    result))
-
-(defun read-regular (stream)
-  (with-readtable (:infix-dispatch-table)
-    (read stream t nil t)))
-
-;;; Hack to work around + and - being terminating macro characters,
-;;; so 1e-3 doesn't normally work correctly.
-(defun fancy-number-format-p (left operator stream)
-  (when (symbolp left)
-    (let* ((name (symbol-name left))
-	   (length (length name)))
-      (when (valid-numberp (subseq name 0 (1- length)))
-	;; Exponent, Single, Double, Float, or Long, Imaginary
-	(cond
-	  ((member (aref name (1- length)) '(#\I #\J))
-	   (with-readtable (:common-lisp)
-	     (complex 0 (read-from-string (subseq name 0 (1- length))))))
-	  ((and (find operator '(+ -) :test #'same-operator-p)
-		(member (aref name (1- length)) '(#\E #\S #\D #\F #\L)))
-	   (read-token stream)
-	   (let* ((right (peek-token stream))
-		  (rname (and (symbolp right) (not (token-operator-p right)) (symbol-name right))))
-	     (cond ((integerp right) ;; it is one of the fancy numbers, so return it
-		    (read-token stream)
-		    (with-readtable (:common-lisp)
-		      (read-from-string (format nil "~A~A~A" left operator right))))
-		   ((and rname (> (length rname) 1) (every #'(lambda (x) (find x "0123456789" :test #'char=)) (subseq rname 0 (1- (length rname)))) (member (aref rname (1- (length rname))) '(#\I #\J)))
-		    (read-token stream)
-		    (complex 0 (with-readtable (:common-lisp)
-				 (read-from-string (format nil "~A~A~A" left operator (subseq rname 0 (1- (length rname))))))))
-		   (t ;; it isn't one of the fancy numbers, so unread the token
-		    (push operator *peeked-token*)
-		    nil)))))))));; and return nil
-
-(defun valid-numberp (string)
-  (when (stringp string)
-    (with-readtable (:common-lisp)
-      (realp (read-from-string string nil nil)))))
-;; (let ((saw-dot nil))
-;;   (when (> (length string) 0)
-;;     (dolist (char (coerce string 'list) t)
-;; 	(cond ((char= char #\.)
-;; 	       (if saw-dot
-;; 		   (return nil)
-;; 		   (setq saw-dot t)))
-;; 	      ((not (find char "01234567890" :test #'char=))
-;; 	       (return nil)))))))
-
-;;; Gobbles an expression from the stream.
-(defun gather-superiors (previous-operator stream)
-  "Gathers an expression whose operators all exceed the precedence of
-   the operator to the left."
-  (let ((left (get-first-token stream)))
-    (loop
-       (setq left (post-process-expression left))
-       (let* ((peeked-token (peek-token stream))
-	      (fancyp (fancy-number-format-p left peeked-token stream)))
-	 (when fancyp
-	   (setq left fancyp
-		 peeked-token (peek-token stream)))
-	 (when (eql peeked-token 'blank)
-	   (setq peeked-token (progn (read-token stream) (peek-token stream))))
-	 (unless (or (operator-lessp previous-operator peeked-token)
-		     (and (same-operator-p peeked-token previous-operator)
-			  (operator-right-associative-p previous-operator)))
-	   ;; The loop should continue when the peeked operator is
-	   ;; either superior in precedence to the previous operator,
-	   ;; or the same operator and right-associative.
-	   (return left)))
-       (setq left (get-next-token stream left)))))
-
-(defun get-first-token (stream)
-  (let ((token (iter (for tok next (read-token stream))
-		     (unless (eql tok 'blank) (return tok)))))
-    (if (token-operator-p token)
-	;; It's an operator in a prefix context.
-	(apply-token-prefix-operator token stream)
-	;; It's a regular token
-	token)))
-
-(defun apply-token-prefix-operator (token stream)
-  (let ((operator (get-token-prefix-operator token)))
-    (if operator
-	(funcall operator stream)
-	(infix-error "\"~A\" is not a prefix operator" token))))
-
-(defun get-next-token (stream left)
-  (let ((token (read-token stream)))
-    (apply-token-infix-operator token left stream)))
-
-(defun apply-token-infix-operator (token left stream)
-  (let ((operator (get-token-infix-operator token)))
-    (if operator
-	(funcall operator stream left)
-	(infix-error "\"~A\" is not an infix operator" token))))
-
-;;; Fix to read-delimited-list so that it works with tokens, not
-;;; characters.
-(defun infix-read-delimited-list (end-token delimiter-token stream)
-    (iter (for next-token next (peek-token stream))
-	  (counting t into count)	
-	  (if (same-token-p next-token end-token) (progn (read-token stream)
-							 (terminate))
-	      (progn (when (and (> count 1) (not (same-token-p (read-token stream) delimiter-token)))
-		       (infix-error "Missing delimiter: ~A" delimiter-token))
-		     (collect (gather-superiors delimiter-token stream))))))
-
-(defun read-slice (separator-token end-token delimiter-token stream)
-  (let ((stop-tokens (list separator-token end-token)))
-    (iter (for next-token next (peek-token stream))
-	  (counting t into count)
-	  (if (member next-token stop-tokens :test #'same-token-p) (terminate)
-	      (progn (when (and (> count 1) (not (same-token-p (prog1 (read-token stream) (setq next-token (peek-token stream))) delimiter-token)))
-		       (infix-error "Missing delimiter: ~A" delimiter-token))
-		     (collect (if (or (member next-token stop-tokens :test #'same-token-p) (eq next-token delimiter-token)) nil
-				  (gather-superiors delimiter-token stream))))))))
-;;; Syntactic Modifications
-;;; Post processes the expression to remove some unsightliness caused
-;;; by the way infix processes the input. Note that it is also required
-;;; for correctness in the a<b<=c case.
-
-;; a / b => a b^{-1}
-;; a \ b => a^{-1} b
-(defun post-process-expression (expression)
-  (or (cond
-	((and (consp expression)
-	      (eq (first expression) 'progn)
-	      (= (length expression) 2))
-	 (second expression))
-	((and (consp expression)
-	      (= (length expression) 3))
-	 (destructuring-bind (operator left right) expression
-	   (cond ((and (consp left)
-		       (same-operator-p (first left) operator)
-		       (find operator '(+ @ .* * ./ / - and or < > <= >= progn)
-			     :test #'same-operator-p))
-		  ;; Flatten the expression if possible
-		  (cond ((and (eq operator '-)
-			      (= (length left) 2))
-			 ;; -a-b --> (+ (- a) (- b)). 
-			 `(+ ,left (- ,right)))
-			((and (eq operator './)
-			      (= (length left) 2))
-			 ;; prefer multiplications over inversions.
-			 ;; works only with commutative rings!
-			 `(./ ,(post-process-expression `(.* ,(second left) ,right))))
-			(t
-			 ;; merges a+b+c as (+ a b c).
-			 (append left (list right)))))
-		 ((and (eq operator '*)
-		       (consp right) (eq (car right) '/)
-		       (consp left) (eq (car left) '/))
-		  `(* ,@(if (cddr left)
-			    `(,(cadr left) ,@(mapcar #'(lambda (x) `(/ ,x)) (cddr left)))
-			    `((/ ,(cadr left))))
-		      ,@(if (cddr right)
-			    `(,(cadr right) ,@(mapcar #'(lambda (x) `(/ ,x)) (cddr right)))
-			    `((/ ,(cadr right))))))
-		 ((and (eq operator '/))
-		  (post-process-expression `(* ,left (/ ,right))))
-		 ;; ((and (eq operator '*)
-		 ;;       (consp right)
-		 ;;       (= (length right) 2)
-		 ;;       (eq (car right) '/))
-		 ;;  `(/ ,left ,(second right)))
-		 ;; ((and (eq operator '*)
-		 ;;       (consp left)
-		 ;;       (
-		 ((and (consp left)
-		       (eq operator '-)
-		       (eq (first left) '+))
-		  ;; merges a+b-c as (+ a b (- c)).
-		  (append left (list `(- ,right))))
-		 ((and (consp left)
-		       (find operator '(< > <= >=))
-		       (find (first left) '(< > <= >=)))
-		  ;; a<b<c --> a<b and b<c
-		  `(and ,left
-			(,operator ,(first (last left))
-				   ,right)))))))
-      expression))
-;;; ********************************
-;;; Define Operators ***************
-;;; ********************************
-
-(defparameter *token-operators* nil)
-(defparameter *token-prefix-operator-table* (make-hash-table))
-(defparameter *token-infix-operator-table* (make-hash-table))
-(defun token-operator-p (token)
-  (find token *token-operators*))
-(defun get-token-prefix-operator (token)
-  (gethash token *token-prefix-operator-table*))
-(defun get-token-infix-operator (token)
-  (gethash token *token-infix-operator-table*))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defmacro define-token-operator (operator-name &key
-						   (prefix nil prefix-p)
-						   (infix nil infix-p))
-    `(progn
-       (pushnew ',operator-name *token-operators*)
-       ,(when prefix-p
-	      `(setf (gethash ',operator-name *token-prefix-operator-table*)
-		     #'(lambda (stream)
-			 ,@(cond ((and (consp prefix)
-				       (eq (car prefix) 'infix-error))
-				  ;; To avoid ugly compiler warnings.
-				  `((declare (ignore stream))
-				    ,prefix))
-				 (t
-				  (list prefix))))))
-       ,(when infix-p
-	      `(setf (gethash ',operator-name *token-infix-operator-table*)
-		     #'(lambda (stream left)
-			 ,@(cond ((and (consp infix)
-				       (eq (car infix) 'infix-error))
-				  ;; To avoid ugly compiler warnings.
-				  `((declare (ignore stream left))
-				    ,infix))
-				 (t
-				  (list infix)))))))))
-
-;;; Readtable definitions for characters, so that the right token is returned.
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defmacro define-character-tokenization (char function)
-    `(set-macro-character ,char ,function nil *infix-readtable*)))
-
-
-;;; ********************************
-;;; Operator Definitions ***********
-;;; ********************************
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\+
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '+=)
-	      (t
-	       '+))))
-
-(define-token-operator +
-    :infix `(+ ,left ,(gather-superiors '+ stream))
-    :prefix (gather-superiors '+ stream))
-(define-token-operator +=
-    :infix `(generic-incf ,left ,(gather-superiors '+= stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\-
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '-=)
-	      (t
-	       '-))))
-(define-token-operator -
-    :infix `(- ,left ,(gather-superiors '- stream))
-    :prefix `(- ,(gather-superiors '- stream)))
-(define-token-operator -=
-    :infix `(generic-incf ,left ,(gather-superiors '-= stream) -1))
-
-;;*--------------------------------------------------------------;;
-
-;; (defun read-num (stream char)
-;;   (unread-char char stream)
-;;   (with-readtable (:common-lisp)
-;;     (read stream)))
-
-;; (macrolet ((num-toks ()
-;; 	     `(eval-every
-;; 		,@(loop :for c :from 0 :below 10
-;; 		     :collect `(define-character-tokenization ,(aref (princ-to-string c) 0)
-;; 			      #'read-num))))
-;; 	   (unum-toks ()
-;; 	     `(eval-every
-;; 		,@(loop :for c :from 0 :below 10
-;; 		     :collect `(set-macro-character ,(aref (princ-to-string c) 0) nil)))))
-;;   (unum-toks))
-
+(defun infix-reader (stream subchar arg)
+  ;; Read either #I(...) or #I"..."
+  (declare (ignore subchar))
+  (assert (null arg) nil "given arg where none was required.")
+  ;;(ignore-characters +blank-characters+ stream)
+  (multiple-value-bind (iexpr bind) (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))
+    (setf iexpr (nconc (list 'progn '\() iexpr (list '\))))
+    (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
+      (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
+      lexpr)))
 ;;
-(define-character-tokenization #\.
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(case (peek-char nil stream t nil t)
-	  (#\* (read-char stream t nil t) '.*)
-	  (#\/ (read-char stream t nil t) './)
-	  ((#\') (read-char stream t nil t) 'transpose)
-	  ((#\^m #\space #\tab #\return #\newline) 'blank)
-	  (t '\.))))
+(eval-every
+  (defparameter *tensor-symbol*
+    '((#\D matlisp::real-tensor)
+      (#\Z matlisp::complex-tensor)
+      (#\N matlisp::integer-tensor)
+      (#\B matlisp::boolean-tensor))))
 
-(define-token-operator \.
-    :infix (let ((right (iter (for char next (peek-char nil stream t nil t))
-			      (if (or (member char +blank-characters+)
-				      (get-macro-character char *infix-readtable*))
-				  (return clist)
-				  (collect (read-char stream t nil t) into clist)))))
-	     (with-readtable (:common-lisp)
-	       (read-from-string (format nil "~a.~a" left (coerce right 'string))))))
+(defun tensor-reader (stream subchar arg)
+  (assert (null arg) nil "given arg where none was required.")
+  (labels ((ignore-characters (stream ignore)
+	     (iter (for c next (peek-char nil stream t nil t))
+		   (if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
+	   (list-reader (stream &optional (enclosing-chars (list #\[ #\])))
+	     (iter (for c next (peek-char nil stream t nil t))
+		   (with first-p = t)
+		   (cond
+		     ((char= c (second enclosing-chars))
+		      (read-char stream t nil t)
+		      (return (cons 'list ret)))
+		     ((member c *blank-characters*)
+		      (read-char stream t nil t))
+		     ((char= c #\[)
+		      (if first-p (setq first-p nil) (error "Missing delimiter ~a" #\,))
+		      (read-char stream t nil t)
+		      (collect (list-reader stream enclosing-chars) into ret))
+		     ((char= c #\,)
+		      (ignore-characters stream (cons #\, *blank-characters*))
+		      (unless (char= (read-char stream t nil t) #\[)
+			(error "Missing bracket"))
+		      (collect (list-reader stream enclosing-chars) into ret))
+		     (t (multiple-value-bind (iexpr bind) (token-reader stream (cons #\[ #\]))
+			  (setf iexpr (nconc (list 'list '\() iexpr (list '\))))
+			  (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
+			    (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
+			    (return lexpr))))))))
+    (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
+      (let ((c (read-char stream t nil t)))
+	(assert (char= c #\[) nil "given unknown token ~a" c))
+      `(matlisp::copy ,(list-reader stream) ',cl))))
 
-(define-character-tokenization #\Space
-    #'(lambda (stream char) (iter (for c next (peek-char nil stream t nil t))
-				  (if (member c +blank-characters+)
-				      (read-char stream t nil t)
-				      (return 'blank)))))
-
-(define-token-operator transpose
-    :infix `(matlisp::transpose ,left))
-
-(define-character-tokenization #\'
-    #'(lambda (stream char) (declare (ignore stream char)) 'quote))
-
-(define-token-operator quote
-    :infix `(matlisp::htranspose ,left)
-    :prefix `(cl:quote  ,(read-regular stream)))
-;;
-(define-character-tokenization #\*
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(let ((pchar (peek-char nil stream t nil t)))
-	  (case pchar
-	    (#\=
-	     (read-char stream t nil t)
-	     '*=)
-	    (#\*
-	     (read-char stream t nil t)
-	     '**)
-	    (t
-	     '*)))))
-
-(define-character-tokenization #\@
-    #'(lambda (stream char) (declare (ignore stream char)) '@))
-
-(define-token-operator @
-    :infix `(@ ,left ,(gather-superiors '@  stream)))
-
-(define-token-operator .*
-    :infix `(.* ,left ,(gather-superiors '.* stream)))
-
-(define-token-operator *
-    :infix `(* ,left ,(gather-superiors '* stream)))
-
-(define-token-operator *=
-    :infix `(,(if (symbolp left)
-		  'setq
-		  'setf)
-	      ,left 
-	      (* ,left ,(gather-superiors '*= stream))))
-
-(define-token-operator **
-    :infix `(expt ,left ,(gather-superiors '** stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\/
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '/=)
-	      (t
-	       '/))))
-
-;; Sure we can do what MATLAB does, but this means one can't use *'s in symbol names!
-;; (define-character-tokenization #\\
-;;     #'(lambda (stream char)
-;; 	(declare (ignore char stream))
-;; 	'\\))
-
-;; (define-token-operator \\
-;;     :infix `(\\ ,left ,(gather-superiors '\\ stream)))
-
-(define-token-operator ./
-    :infix `(./ ,left ,(gather-superiors './ stream))
-    :prefix `(./ ,(gather-superiors './ stream)))
-
-(define-token-operator /
-    :infix `(/ ,left ,(gather-superiors '/ stream))
-    :prefix `(/ ,(gather-superiors '/ stream)))
-
-(define-token-operator /=
-    :infix `(,(if (symbolp left)
-		  'setq
-		  'setf)
-	      ,left
-	      (/ ,left ,(gather-superiors '/= stream))))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\^
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'^))
-
-(define-token-operator ^
-    :infix `(matlisp::t^ ,left ,(gather-superiors '^ stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\|
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\|)
-	       (read-char stream t nil t)
-	       '\|\|)
-	      (t
-	       '\|))))
-(define-token-operator \|
-    :infix `(logior ,left ,(gather-superiors '\| stream)))
-
-(define-token-operator \|\|
-    :infix `(or ,left ,(gather-superiors '\|\| stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\&
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\&)
-	       (read-char stream t nil t)
-	       '&&)
-	      (t
-	       '&))))
-(define-token-operator &
-    :infix `(logand ,left ,(gather-superiors '\& stream)))
-
-(define-token-operator &&
-    :infix `(and ,left ,(gather-superiors '\& stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\%
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\%))
-
-(define-token-operator \%
-    :infix `(mod ,left ,(gather-superiors '\% stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\~
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\~))
-
-(define-token-operator \~
-    :prefix `(lognot ,(gather-superiors '\~ stream)))
-
-;;---------------------------------------------------------------;;
-(define-character-tokenization #\,
-    #'(lambda (stream char)
-	(declare (ignore char stream))
-	'\,))
-
-;;Get rid of this
-(define-token-operator \,
-    :infix `(progn ,left ,(gather-superiors '\, stream)))
-
-;; (define-character-tokenization #\Newline
-;;     #'(lambda (stream char)
-;; 	(declare (ignore char stream))
-;; 	'newline))
-
-;; (define-token-operator newline
-;;     :infix (progn
-;; 	     (ignore-characters +blank-characters+ stream)
-;; 	     (case (peek-char nil stream t nil t)
-;; 	       (#\)
-;; 		left)
-;; 	       (t
-;; 		`(progn ,left ,(gather-superiors 'newline stream))))))
-;;---------------------------------------------------------------;;
-
-(define-character-tokenization #\=
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '==)
-	      (t
-	       '=))))
-(define-token-operator ==
-    :infix `(= ,left ,(gather-superiors '== stream)))
-(define-token-operator =
-    :infix `(,(if (symbolp left)
-		  'setq
-		  'setf)
-	      ,(if (and (consp left) (eql (car left) 'progn))
-		   `(values ,@(cdr left))
-		   left)
-	      ,(gather-superiors '= stream)))
-
-(define-character-tokenization #\:	
-    #'(lambda (stream char)
-        (declare (ignore char))
-        (cond ((char= (peek-char nil stream t nil t) #\=)
-               (read-char stream t nil t)
-               '|:=|)
-              (t
-               '|:|))))
-
-(define-token-operator |:|
-    :infix (destructuring-bind (inc &optional (end nil endp)) (or (read-slice '\, '\] '|:| stream) (list nil nil))
-	     (unless endp (rotatef inc end))
-	     `(:slice ,left ,end ,inc))
-    :prefix (destructuring-bind (inc &optional (end nil endp)) (or (read-slice '\, '\] '|:| stream) (list nil nil))
-	      (unless endp (rotatef inc end))
-	      `(:slice nil ,end ,inc)))
-
-(define-token-operator |:=|
-    :infix `(,(if (symbolp left)
-                  'setq
-                  'setf)
-              ,left
-              ,(gather-superiors '|:=| stream)))
-
-(define-character-tokenization #\<
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '<=)
-	      ((char= (peek-char nil stream t nil t) #\<)
-	       (read-char stream t nil t)
-	       '<<)
-	      (t
-	       '<))))
-
-(define-token-operator <
-    :infix `(< ,left ,(gather-superiors '< stream)))
-
-(define-token-operator <=
-    :infix `(<= ,left ,(gather-superiors '<= stream)))
-
-(define-token-operator <<
-    :infix `(ash ,left ,(gather-superiors '<< stream)))
-
-(define-character-tokenization #\>
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '>=)
-	      ((char= (peek-char nil stream t nil t) #\>)
-	       (read-char stream t nil t)
-	       '>>)
-	      (t
-	       '>))))
-
-(define-token-operator >
-    :infix `(> ,left ,(gather-superiors '> stream)))
-
-(define-token-operator >=
-    :infix `(>= ,left ,(gather-superiors '>= stream)))
-
-(define-token-operator >>
-    :infix `(ash ,left (- ,(gather-superiors '>> stream))))
-
-(define-character-tokenization #\!
-    #'(lambda (stream char)
-	(declare (ignore char))
-	(cond ((char= (peek-char nil stream t nil t) #\=)
-	       (read-char stream t nil t)
-	       '!=)
-	      (t
-	       '!))))
-
-(define-token-operator !=
-    :infix `(not (= ,left ,(gather-superiors '!= stream))))
-
-(define-token-operator !
-    :prefix (read-regular stream))
-
-(define-character-tokenization #\[
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\[))
-
-(define-token-operator \[
-    :infix (let ((indices (infix-read-delimited-list '\] '\, stream)))
-	     `(generic-ref ,left ,@indices))
-    :prefix (let ((ele (infix-read-delimited-list '\] '\, stream)))
-	      (if (find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) ele)
-		  `(list ,@(process-slice ele))
-		  `(list ,@ele))))
-
-(define-character-tokenization #\(
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\())
-
-(define-token-operator \(
-    :infix `(,left ,@(infix-read-delimited-list '\) '\, stream))
-    :prefix (let ((list (infix-read-delimited-list '\) '\, stream)))
-	      `(progn ,@list)))
-
-(define-character-tokenization #\]
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\]))
-
-(define-token-operator \]
-    :infix (infix-error "Extra close bracket \"]\" in infix expression"))
-
-(define-character-tokenization #\)
-    #'(lambda (stream char)
-	(declare (ignore stream char))
-	'\)))
-
-(define-token-operator \)
-    :infix (infix-error "Extra close paren \")\" in infix expression"))
+;;Define a readtable with dispatch characters
+(macrolet ((tensor-symbol-enumerate ()
+	     `(named-readtables:defreadtable :infix-dispatch-table 
+		(:merge :standard)
+		(:dispatch-macro-char #\# #\I #'infix-reader)
+		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
+  (tensor-symbol-enumerate))
