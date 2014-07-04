@@ -15,7 +15,7 @@
     ("(" \() (")" \))
     ("[" \[) ("]" \])
     (":" |:|)
-    ("=" =)
+    ("=" =) ("==" ==)
     ("," \,) (";" \;)
     ("'" htranspose) (".'" transpose)))
 
@@ -74,12 +74,12 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (** ./ / * .* @ ^ + - = |(| |)| [ ] |:| |,| htranspose transpose id number))
+  (:terminals (** ./ / * .* @ ^ + - = == |(| |)| [ ] |:| |,| htranspose transpose id number))
   (:precedence ((:left htranspose transpose)
 		(:right **)
 		(:left ./ / * .* @ ^)
 		(:left + -)
-		(:left =)))
+		(:left = ==)))
   (expr
    (expr htranspose #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
@@ -92,6 +92,8 @@
    (expr @ expr #'(lambda (a b c) (list b a c)))
    (expr ^ expr #'(lambda (a b c) (list b a c)))
    (expr ** expr #'(lambda (a b c) (list b a c)))
+   (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
+   (expr == expr #'(lambda (a b c) (list b a c)))
    callable slice
    term)
   ;;
@@ -120,7 +122,7 @@
    (./ term)
    (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b))))
 ;;
-(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref) ))
+(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
 
 (defun process-slice (args)
   (mapcar #'(lambda (x) (if (and (consp x) (eql (car x) :slice)) `(list* ,@(cdr x)) x)) args))
@@ -174,7 +176,10 @@
 				       (- matlisp::tb-)
 				       (\\ matlisp::tb\\)
 				       (/ matlisp::tb/)
-				       (./ matlisp::tb./)))
+				       (./ matlisp::tb./)
+				       (== matlisp::tb==)
+				       (transpose matlisp::transpose)
+				       (htranspose matlisp::htranspose)))
 
 (defun op-overload (expr)
   (labels ((walker (expr)
@@ -216,3 +221,7 @@
 (named-readtables:defreadtable :lri-table
   (:merge :standard)
   (:dispatch-macro-char #\# #\I #'infix-reader))
+
+(defun coalesce (expr)
+  
+  )
