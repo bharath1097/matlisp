@@ -57,13 +57,8 @@
 	       (push (read-char stream t nil t) stack)
 	       (when (char= (peek-char nil stream t nil t) #\-)
 		 (push (read-char stream t nil t) stack)
-		 (iter (for c next (peek-char nil stream t nil t))
-		       (if (find c "0123456789")
-			   (push (read-char stream t nil t) stack)
-			   (progn
-			     (if-first-time
-			      (unread-char (pop stack) stream))
-			     (terminate))))))
+		 (unless (find (peek-char nil stream t nil t) "0123456789")
+		   (unread-char (pop stack) stream))))
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
 		 (read-stack)
 		 (push (second tok) expr)))
