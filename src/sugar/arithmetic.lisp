@@ -133,8 +133,9 @@
 (defgeneric gett! (alpha a b beta c)
   (:method :before (alpha (a base-tensor) (b base-tensor) beta (c base-tensor))
 	   (assert (and (= (dimensions a -1) (dimensions b 0))
+			(=  (+ (order a) (order b) -2) (order c))
 			(dotimes (i (1- (order a)) t) (unless (= (dimensions a i) (dimensions c i)) (return nil)))
-			(dotimes (i (1- (order b)) t) (unless (= (dimensions b i) (dimensions c (+ (order a) i))) (return nil))))
+			(dotimes (i (1- (order b)) t) (unless (= (dimensions b (1+ i)) (dimensions c (+ (order a) i -1))) (return nil))))
 		   nil 'tensor-dimension-mismatch)))
 
 (define-tensor-method gett! (alpha (a standard-tensor :input) (b standard-tensor :input) beta (c standard-tensor :output))
