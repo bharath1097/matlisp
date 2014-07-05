@@ -64,8 +64,8 @@
 		 (push (second tok) expr)))
 	      ((and (char= c #\i) (numberp (read-stack nil)))
 	       (read-char stream t nil t)
-	       (push (complex 0 (read-stack nil)) expr)
-	       (setf stack nil))
+	       (push (complex 0 (read-stack nil)) expr))
+	      (setf stack nil)
 	      ((member c *blank-characters*)
 	       (read-char stream t nil t)
 	       (read-stack))
@@ -107,17 +107,18 @@
    (expr ** expr #'(lambda (a b c) (list b a c)))
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
-   callable slice list
+   slice
    term)
   ;;
   (args
    (expr #'list)
    (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
-  (callable
-   (term |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
-   (term |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
   (list
    ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
+  (callable
+   (id |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
+   (id |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c)))
+   (callable |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
   ;;
   (idxs
    expr
@@ -132,12 +133,13 @@
    (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (slice
    (term [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
-   (callable [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
    (term [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
   ;;
   (term
    number
    id
+   callable
+   list
    (- term)
    (/ term)
    (./ term)
