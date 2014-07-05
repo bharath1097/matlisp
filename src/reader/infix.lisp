@@ -99,7 +99,7 @@
    (expr ** expr #'(lambda (a b c) (list b a c)))
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
-   callable slice
+   callable slice list
    term)
   ;;
   (args
@@ -108,16 +108,23 @@
   (callable
    (term |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
    (term |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
+  (list
+   ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
   ;;
   (idxs
    expr
-   (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c)))
+   (|:| #'(lambda (a) (declare (ignore a)) (list :slice nil nil nil)))
+   (|:| expr  #'(lambda (a b) (declare (ignore a)) (list :slice nil b nil)))
+   (expr |:| #'(lambda (a b) (declare (ignore b)) (list :slice a nil nil)))   
+   (|:| expr |:|  #'(lambda (a b c) (declare (ignore a c)) (list :slice nil nil b)))   
+   (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c nil)))
    (expr |:| expr |:| expr #'(lambda (a b c d e) (declare (ignore b d)) (list :slice a c e))))
   (sargs
    (idxs #'list)
    (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (slice
    (term [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (callable [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
    (term [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
   ;;
   (term
@@ -238,36 +245,13 @@
 
 (defun tensor-reader (stream subchar arg)
   (assert (null arg) nil "given arg where none was required.")
-  (labels ((ignore-characters (stream ignore)
-	     (iter (for c next (peek-char nil stream t nil t))
-		   (if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
-	   (list-reader (stream &optional (enclosing-chars (list #\[ #\])))
-	     (iter (for c next (peek-char nil stream t nil t))
-		   (with first-p = t)
-		   (cond
-		     ((char= c (second enclosing-chars))
-		      (read-char stream t nil t)
-		      (return (cons 'list ret)))
-		     ((member c *blank-characters*)
-		      (read-char stream t nil t))
-		     ((char= c #\[)
-		      (if first-p (setq first-p nil) (error "Missing delimiter ~a" #\,))
-		      (read-char stream t nil t)
-		      (collect (list-reader stream enclosing-chars) into ret))
-		     ((char= c #\,)
-		      (ignore-characters stream (cons #\, *blank-characters*))
-		      (unless (char= (read-char stream t nil t) #\[)
-			(error "Missing bracket"))
-		      (collect (list-reader stream enclosing-chars) into ret))
-		     (t (multiple-value-bind (iexpr bind) (token-reader stream (cons #\[ #\]))
-			  (setf iexpr (nconc (list 'list '\() iexpr (list '\))))
-			  (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
-			    (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
-			    (return lexpr))))))))
-    (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
-      (let ((c (read-char stream t nil t)))
-	(assert (char= c #\[) nil "given unknown token ~a" c))
-      `(matlisp::copy ,(list-reader stream) ',cl))))
+  (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
+    (assert (char= (peek-char nil stream t nil t) #\[) nil "given unknown token ~a" (peek-char nil stream t nil t))
+    (let ((expr (let ((ret (infix-reader stream #\I nil)))
+		  (list* 'list (if (and (listp ret) (eql (car ret) 'progn))
+				   (cdr ret)
+				   (list ret))))))
+      `(matlisp::copy ,expr ',cl))))
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()

@@ -178,7 +178,7 @@
   (:documentation "BLAS routines"))
 
 (defpackage "MATLISP"
-  (:use #:common-lisp #:iterate #:optima
+  (:use #:common-lisp #:iterate #:optima #:named-readtables
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
   (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
