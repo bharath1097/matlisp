@@ -29,7 +29,7 @@
 
 (defun token-reader (stream &optional (enclosing-chars '(#\( . #\))))
   (let* ((stack nil)
-     	 (expr nil)
+	 (expr nil)
 	 (lspe nil))
     (labels ((read-stack (&optional (empty? t))
 	       (let* ((fstack (reverse (remove-if #'(lambda (x) (member x *blank-characters*)) stack)))
@@ -115,8 +115,8 @@
    expr
    (|:| #'(lambda (a) (declare (ignore a)) (list :slice nil nil nil)))
    (|:| expr  #'(lambda (a b) (declare (ignore a)) (list :slice nil b nil)))
-   (expr |:| #'(lambda (a b) (declare (ignore b)) (list :slice a nil nil)))   
-   (|:| expr |:|  #'(lambda (a b c) (declare (ignore a c)) (list :slice nil nil b)))   
+   (expr |:| #'(lambda (a b) (declare (ignore b)) (list :slice a nil nil)))
+   (|:| expr |:|  #'(lambda (a b c) (declare (ignore a c)) (list :slice nil nil b)))
    (expr |:| expr #'(lambda (a b c) (declare (ignore b)) (list :slice a c nil)))
    (expr |:| expr |:| expr #'(lambda (a b c d e) (declare (ignore b d)) (list :slice a c e))))
   (sargs
@@ -224,12 +224,16 @@
 		    `(,(or (second (assoc (car expr) *operator-assoc-table*)) (car expr))
 		       ,@(mapcar #'walker (cdr expr))))))))
     (walker expr)))
+
+(defun ignore-characters (ignore stream)
+  (iter (for c next (peek-char nil stream t nil t))
+	(if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
 ;;
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
   (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
-  ;;(ignore-characters +blank-characters+ stream)
+  (ignore-characters *blank-characters* stream)
   (multiple-value-bind (iexpr bind) (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))
     (setf iexpr (nconc (list 'progn '\() iexpr (list '\))))
     (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
@@ -246,6 +250,7 @@
 (defun tensor-reader (stream subchar arg)
   (assert (null arg) nil "given arg where none was required.")
   (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
+    (ignore-characters *blank-characters* stream)
     (assert (char= (peek-char nil stream t nil t) #\[) nil "given unknown token ~a" (peek-char nil stream t nil t))
     (let ((expr (let ((ret (infix-reader stream #\I nil)))
 		  (list* 'list (if (and (listp ret) (eql (car ret) 'progn))
@@ -255,7 +260,7 @@
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()
-	     `(named-readtables:defreadtable :infix-dispatch-table 
+	     `(named-readtables:defreadtable :infix-dispatch-table
 		(:merge :standard)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
