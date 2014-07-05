@@ -173,7 +173,7 @@
 (definline t@ (&rest objs)
   (reduce #'tb@ objs))
 ;;
-(definline t/ (b a)
+(definline tb/ (b a)
   "Solve x a = b"
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
@@ -192,7 +192,7 @@
     ((permutation permutation)
      (compose b (inv a)))))
 
-(definline t\\ (b a)
+(definline tb\\ (b a)
   "Solve a x = b"
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
