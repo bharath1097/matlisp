@@ -141,7 +141,7 @@
    callable
    list
    (- term)
-   (/ term)
+   (/ term #'(lambda (a b) (list a nil b)))
    (./ term)
    (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b))))
 ;;
