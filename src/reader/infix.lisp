@@ -17,6 +17,8 @@
     ("," \,)
     ("'" htranspose) (".'" transpose)))
 
+(defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
+
 (defun find-token (str stream)
   (let ((stack nil))
     (iter (for r.i in-vector str)
@@ -51,6 +53,17 @@
 		     (sym (gensym)))
 		 (push sym expr)
 		 (push (list sym word) lspe)))
+	      ((and (member (char-upcase c) *exponent-tokens*) (numberp (read-stack nil)))
+	       (push (read-char stream t nil t) stack)
+	       (when (char= (peek-char nil stream t nil t) #\-)
+		 (push (read-char stream t nil t) stack)
+		 (iter (for c next (peek-char nil stream t nil t))
+		       (if (find c "0123456789")
+			   (push (read-char stream t nil t) stack)
+			   (progn
+			     (if-first-time
+			      (unread-char (pop stack) stream))
+			     (terminate))))))
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
 		 (read-stack)
 		 (push (second tok) expr)))
