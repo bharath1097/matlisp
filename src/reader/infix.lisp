@@ -108,17 +108,23 @@
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
-   slice
    term)
+  ;;
+  (lid
+   id
+   (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b)))
   ;;
   (args
    (expr #'list)
    (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
+  ;;
   (list
    ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
+  ;;
   (callable
-   (id |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
-   (id |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c)))
+   (lid |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
+   (lid |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c)))
+   (callable |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
    (callable |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
   ;;
   (idxs
@@ -132,20 +138,20 @@
   (sargs
    (idxs #'list)
    (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
+  ;;
   (slice
-   (term [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
-   (term [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
+   (lid [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (lid [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
+   (slice [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (slice [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c))))
   ;;
   (term
-   number
-   id
+   number lid
    (htranspose id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
-   callable
-   list
+   list callable slice
    (- term)
    (/ term #'(lambda (a b) (list a nil b)))
-   (./ term)
-   (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b))))
+   (./ term)))
 ;;
 (defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
 
