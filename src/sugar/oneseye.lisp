@@ -3,6 +3,9 @@
 (defun ones (dims &optional (type *default-tensor-type*))
   (zeros dims type 1))
 
+(defun eye! (tensor)
+  (tricopy! 1 tensor :d))
+
 (defun eye (dims &optional (type *default-tensor-type*))
   (tricopy! 1 (zeros dims type) :d))
 
