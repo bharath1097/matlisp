@@ -12,7 +12,7 @@
     (".-" -) ("-" -)
     ("(" \() (")" \))
     ("[" \[) ("]" \])
-    (":" |:|)
+    (":" |:|) (":=" :=)
     ("=" =) ("==" ==)
     ("," \,)
     ("'" htranspose) (".'" transpose)))
@@ -87,12 +87,12 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (** ./ / * .* @ ^ + - = == |(| |)| [ ] |:| |,| htranspose transpose id number))
+  (:terminals (** ./ / * .* @ ^ + - := = == |(| |)| [ ] |:| |,| htranspose transpose id number))
   (:precedence ((:left htranspose transpose)
 		(:right **)
 		(:left ./ / * .* @ ^)
 		(:left + -)
-		(:left = ==)))
+		(:left := = ==)))
   (expr
    (expr htranspose #'(lambda (a b) (list b a)))
    (expr transpose #'(lambda (a b) (list b a)))
@@ -106,6 +106,7 @@
    (expr ^ expr #'(lambda (a b c) (list b a c)))
    (expr ** expr #'(lambda (a b c) (list b a c)))
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
+   (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
    slice
    term)
@@ -138,6 +139,7 @@
   (term
    number
    id
+   (htranspose id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
    callable
    list
    (- term)
@@ -239,13 +241,19 @@
   (iter (for c next (peek-char nil stream t nil t))
 	(if (member c ignore :test #'char=) (read-char stream t nil t) (terminate))))
 ;;
+(defmacro inlet (&rest body)
+  (let* ((decls nil)
+	 (code (mapcons #'(lambda (mrk) (push (second mrk) decls) `(setq ,@(cdr mrk))) body '(:deflet))))
+    `(let* (,@decls)
+       ,@code)))
+;;
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
   (declare (ignore subchar))
   (assert (null arg) nil "given arg where none was required.")
   (ignore-characters *blank-characters* stream)
   (multiple-value-bind (iexpr bind) (token-reader stream (ecase (read-char stream t nil t) (#\( (cons #\( #\))) (#\[ (cons #\[ #\]))))
-    (setf iexpr (nconc (list 'progn '\() iexpr (list '\))))
+    (setf iexpr (nconc (list 'inlet '\() iexpr (list '\))))
     (let ((lexpr (op-overload (yacc:parse-with-lexer (list-lexer iexpr) *linfix-parser*))))
       (map nil #'(lambda (x) (setf lexpr (subst (second x) (first x) lexpr))) bind)
       lexpr)))
@@ -261,12 +269,14 @@
   (assert (null arg) nil "given arg where none was required.")
   (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
     (ignore-characters *blank-characters* stream)
-    (assert (char= (peek-char nil stream t nil t) #\[) nil "given unknown token ~a" (peek-char nil stream t nil t))
-    (let ((expr (let ((ret (infix-reader stream #\I nil)))
-		  (list* 'list (if (and (listp ret) (eql (car ret) 'progn))
-				   (cdr ret)
-				   (list ret))))))
-      `(matlisp::copy ,expr ',cl))))
+    (ecase (peek-char nil stream t nil t)
+      (#\[ (let ((expr (let ((ret (infix-reader stream #\I nil)))
+			 (list* 'list (if (and (listp ret) (eql (car ret) 'progn))
+					  (cdr ret)
+					  (list ret))))))
+	     `(matlisp::copy ,expr ',cl)))
+      (#\( (let ((expr (cdr (ensure-list (infix-reader stream #\I nil)))))
+	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()

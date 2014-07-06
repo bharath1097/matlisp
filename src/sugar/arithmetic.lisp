@@ -89,6 +89,8 @@
 	     (cart-etypecase (,ma ,mb)
 	       ((base-matrix base-matrix)
 		(gemm 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N) (or (op b) #\N)) 'string) :keyword)))
+	       ((base-matrix base-vector) ;;The other case involves a complex conjugate.
+		(gemv 1 ,ma ,mb nil nil ,(intern (coerce (list (or (op a) #\N)) 'string) :keyword)))
 	       ((t t)
 		(tb* ,(if (op a) `(,(car a) ,ma) ma) ,(if (op b) `(,(car b) ,mb) mb))))))
 	`(tb* ,a ,b))))
