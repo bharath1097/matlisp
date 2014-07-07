@@ -253,7 +253,7 @@
 			    `(setq ,@(mapcan #'(lambda (z) (push (car z) decls) `(,(car z) ,(cadr z)))
 					     (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
 						 (zip (cdr (second mrk)) (cdr (third mrk)))
-						 (cdr mrk)))))
+						 (list (cdr mrk))))))
 			body '(:deflet))))
     `(let* (,@decls)
        ,@code)))
