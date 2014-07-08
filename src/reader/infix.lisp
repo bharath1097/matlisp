@@ -250,10 +250,13 @@
 (defmacro inlet (&rest body)
   (let* ((decls nil)
 	 (code (mapcons #'(lambda (mrk)
-			    `(setq ,@(mapcan #'(lambda (z) (push (car z) decls) `(,(car z) ,(cadr z)))
-					     (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
-						 (zip (cdr (second mrk)) (cdr (third mrk)))
-						 (list (cdr mrk))))))
+			    (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
+				(progn
+				  (map nil #'(lambda (x) (push x decls)) (cdr (second mrk)))
+				  `(setf (values ,@(cdr (second mrk))) ,(third mrk)))
+				(progn
+				  (push (second mrk) decls)
+				  `(setq ,@(cdr mrk)))))
 			body '(:deflet))))
     `(let* (,@decls)
        ,@code)))
