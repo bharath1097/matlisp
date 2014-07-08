@@ -281,12 +281,9 @@
   (let ((cl (second (find subchar *tensor-symbol* :key #'car))))
     (ignore-characters *blank-characters* stream)
     (ecase (peek-char nil stream t nil t)
-      (#\[ (let ((expr (let ((ret (infix-reader stream #\I nil)))
-			 (list* 'list (if (and (listp ret) (eql (car ret) 'progn))
-					  (cdr ret)
-					  (list ret))))))
-	     `(matlisp::copy ,expr ',cl)))
-      (#\( (let ((expr (cdr (ensure-list (infix-reader stream #\I nil)))))
+      (#\[ (let ((expr (cdr (infix-reader stream #\I nil))))
+	     `(matlisp::copy (list ,@expr) ',cl)))
+      (#\( (let ((expr (cdr (infix-reader stream #\I nil))))
 	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
 ;;Define a readtable with dispatch characters

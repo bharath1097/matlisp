@@ -10,5 +10,5 @@
   (tricopy! 1 (zeros dims type) :d))
 
 (defun diag (tens &optional (order 2))
-  (let ((ret (zeros (make-list order :initial-element (aref (dimensions tens) 0)) (type-of tens))))
+  (let ((ret (zeros (make-list order :initial-element (dimensions tens 0)) (type-of tens))))
     (tricopy! tens ret :d)))

@@ -112,7 +112,8 @@
 	;;
 	(labels ((testgen ()
 		   `((assert (and ,@(mapcar #'(lambda (idx)
-						`(= ,@(mapcar #'(lambda (x) `(aref ,(car (get-prop (car x) :dimensions)) ,(cadr x))) (cdr idx)))) indices))
+						`(= ,@(mapcar #'(lambda (x) `(aref ,(car (get-prop (car x) :dimensions)) ,(cadr x))) (cdr idx)))) indices)
+				  ,@(mapcar #'(lambda (r) `(= (length ,(car (get-prop (second r) :dimensions))) ,(length (cddr r)))) refs))
 			     nil "error: arguments are not of appropriate sizes.")
 		     ,@(when tight-iloop
 			     `((assert (= 1 ,@(mapcar #'(lambda (x) `(aref ,(car (get-prop (car x) :strides)) ,(cadr x))) (cdar (last indices)))) nil "error: Inner loop strides are not 1.")))))
