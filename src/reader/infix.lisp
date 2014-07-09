@@ -164,8 +164,10 @@
     ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
      `(matlisp::subtensor~ ,x (list ,@(process-slice args))))
     (t
-     `(etypecase ,x
-	,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,x ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))))
+     (with-gensyms (xeval)
+       `(let ((,xeval ,x))
+	  (etypecase ,xeval
+	    ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,xeval ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))))))
 
 (define-setf-expander generic-ref (x &rest args &environment env)
   (multiple-value-bind (dummies vals newval setter getter)
