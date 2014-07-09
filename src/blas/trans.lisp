@@ -57,7 +57,7 @@
 		  (strd-A (strides A) :type index-store-vector))
 		 (rotatef (aref dim-A (1- rnk)) (aref dim-A 0))
 		 (rotatef (aref strd-A (1- rnk)) (aref strd-A 0))))
-  A)
+  (delete-attributes A))
 
 (definline (setf transpose!) (value A &optional permutation)
   (copy! value (transpose! A permutation)))
@@ -197,8 +197,7 @@
   =======
   Like HTRANSPOSE!, but non-destructive."
   (declare (type standard-tensor A))
-  (let ((result (copy A)))
-    (htranspose! result permutation)))
+  (mconjugate! (copy (transpose~ A permutation))))
 
 (definline ctranspose (A &optional permutation)
   "

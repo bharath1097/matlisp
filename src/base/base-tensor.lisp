@@ -89,6 +89,10 @@
   (or (slot-value x 'attributes)
       (setf (slot-value x 'attributes) (make-hash-table))))
 
+(definline delete-attributes (x)
+  (setf (slot-value x 'attributes) nil)
+  x)
+
 (defmacro memoizing ((tensor name) &rest body)
   (declare (type symbol name))
   (with-gensyms (tens)
