@@ -14,7 +14,7 @@
     ("[" \[) ("]" \])
     (":" |:|) (":=" :=)
     ("=" =) ("==" ==)
-    ("," \,)
+    ("," \,) ("." \.)
     ("'" htranspose) (".'" transpose)))
 
 (defparameter *exponent-tokens* '(#\E #\S #\D #\F #\L))
@@ -60,8 +60,11 @@
 		 (unless (find (peek-char nil stream t nil t) "0123456789")
 		   (unread-char (pop stack) stream))))
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
-		 (read-stack)
-		 (push (second tok) expr)))
+		 (if (and (eql (second tok) '|.|) (integerp (read-stack nil)))
+		     (push #\. stack)
+		     (progn
+		       (read-stack)
+		       (push (second tok) expr)))))
 	      ((and (char= c #\i) (numberp (read-stack nil)))
 	       (read-char stream t nil t)
 	       (push (complex 0 (read-stack nil)) expr)
@@ -87,8 +90,8 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (** ./ / * .* @ ^ + - := = == |(| |)| [ ] |:| |,| htranspose transpose id number))
-  (:precedence ((:left htranspose transpose)
+  (:terminals (** ./ / * .* @ ^ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
+  (:precedence ((:left |.| htranspose transpose)
 		(:right **)
 		(:left ./ / * .* @ ^)
 		(:left + -)
@@ -112,6 +115,7 @@
   ;;
   (lid
    id
+   (lid |.| id #'(lambda (a b c) (declare (ignore b) (type (not number) a) (type symbol c)) `(slot-value ,a ',c)))
    (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b)))
   ;;
   (args
@@ -140,6 +144,8 @@
    (idxs |,| sargs #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   ;;
   (slice
+   (callable [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
+   (callable [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))  
    (lid [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
    (lid [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
    (slice [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
@@ -153,8 +159,6 @@
    (/ term #'(lambda (a b) (list a nil b)))
    (./ term)))
 ;;
-(defparameter *ref-list* '((cons elt) (array aref) (matlisp::base-tensor matlisp:ref)))
-
 (defun process-slice (args)
   (mapcar #'(lambda (x) (if (and (consp x) (eql (car x) :slice)) `(list* ,@(cdr x)) x)) args))
 
@@ -163,11 +167,7 @@
     ((null args) x)
     ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
      `(matlisp::subtensor~ ,x (list ,@(process-slice args))))
-    (t
-     (with-gensyms (xeval)
-       `(let ((,xeval ,x))
-	  (etypecase ,xeval
-	    ,@(mapcar #'(lambda (l) `(,(car l) (,(cadr l) ,xeval ,@args))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*))))))))
+    (t `(matlisp::ref ,x ,@args))))
 
 (define-setf-expander generic-ref (x &rest args &environment env)
   (multiple-value-bind (dummies vals newval setter getter)
@@ -182,8 +182,7 @@
 			   `(matlisp::copy! ,store ,arr))
 			  ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
 			   `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store))
-			  (t`(etypecase ,arr
-			       ,@(mapcar #'(lambda (l) `(,(car l) (setf (,(cadr l) ,arr ,@args) ,store))) (if (> (length args) 1) (cdr *ref-list*) *ref-list*)))))
+			  (t `(setf (matlisp::ref ,arr ,@args) ,store)))
 		   ,setter))
 	      `(generic-ref ,getter ,@args)))))
 
