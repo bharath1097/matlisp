@@ -210,6 +210,7 @@
 				       (/ matlisp::tb/)
 				       (./ matlisp::tb./)
 				       (== matlisp::tb==)
+				       (** cl:expt)
 				       (transpose matlisp::transpose)
 				       (htranspose matlisp::htranspose)))
 
