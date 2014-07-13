@@ -8,7 +8,7 @@
 
 ;; (apply* (#'(lambda (x) (+ x 1)) #'(lambda (x) (- x 1))) (values 1 2))
 
-(defun loadtxt (fname &key (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)) (skip-rows 0))
+(defun loadtxt (fname &key (type 'real-tensor) (delimiters '(#\Space #\Tab #\,)) (newlines '(#\Newline #\;)) (skip-rows 0))
   (let* ((f-string (file->string fname))
 	 (*read-default-float-format* 'double-float))
     (multiple-value-bind (lns nrows) (split-seq #'(lambda (x) (member x newlines)) f-string)
@@ -16,20 +16,20 @@
 	    lns (nthcdr skip-rows lns))
       (unless (null lns)
 	(let* ((ncols (1+ (nth-value 1 (split-seq #'(lambda (x) (member x delimiters)) (car lns)))))
-	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) 'real-tensor)))
+	       (ret (zeros (if (> ncols 1) (list nrows ncols) (list nrows)) type)))
 	  (if (> ncols 1)
 	      (loop :for line :in lns
 		 :for i := 0 :then (1+ i)
 		 :do (loop :for num :in (split-seq #'(lambda (x) (member x delimiters)) line)
 			:for j := 0 :then (1+ j)
-			:do (setf (ref ret i j) (t/coerce (t/field-type real-tensor) (read-from-string num)))))
+			:do (setf (ref ret i j) (read-from-string num))))
 	      (loop :for line :in lns
 		 :for i := 0 :then (1+ i)
-		 :do (setf (ref ret i) (t/coerce (t/field-type real-tensor) (read-from-string (car (split-seq #'(lambda (x) (member x delimiters)) line)))))))
+		 :do (setf (ref ret i) (read-from-string (car (split-seq #'(lambda (x) (member x delimiters)) line))))))
 	  ret)))))
 
 (defun savetxt (fname mat &key (delimiter #\Tab) (newline #\Newline))
-  (with-open-file (out fname :direction :output :if-exists :overwrite :if-does-not-exist :create)
+  (with-open-file (out fname :direction :output :if-exists :supersede :if-does-not-exist :create)
     (cond
       ((tensor-matrixp mat)
        (let ((ncols (ncols mat)))

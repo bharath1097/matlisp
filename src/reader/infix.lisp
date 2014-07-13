@@ -47,35 +47,34 @@
 	       (read-char stream t nil t)
 	       (read-stack)
 	       (return (values (reverse expr) lspe)))
-	      ((member c '(#\# #\\))
+	      ;;
+	      ((member c '(#\# #\\ #\"))
 	       (when (char= c #\\) (read-char stream t nil t))
 	       (let ((word (read stream))
 		     (sym (gensym)))
 		 (push sym expr)
 		 (push (list sym word) lspe)))
+	      ;;
 	      ((and (member (char-upcase c) *exponent-tokens*) (numberp (read-stack nil)))
 	       (push (read-char stream t nil t) stack)
 	       (when (char= (peek-char nil stream t nil t) #\-)
 		 (push (read-char stream t nil t) stack)
 		 (unless (find (peek-char nil stream t nil t) "0123456789")
 		   (unread-char (pop stack) stream))))
+	      ((and (char= c #\i) (numberp (read-stack nil)))
+	       (read-char stream t nil t)
+	       (push (complex 0 (read-stack nil)) expr)
+	       (setf stack nil))
+	      ;;
 	      ((when-let (tok (find-if #'(lambda (x) (find-token (first x) stream)) (sort (remove-if-not #'(lambda (x) (char= c (aref (first x) 0))) *operator-tokens*) #'> :key #'(lambda (x) (length (first x))))))
 		 (if (and (eql (second tok) '|.|) (integerp (read-stack nil)))
 		     (push #\. stack)
 		     (progn
 		       (read-stack)
 		       (push (second tok) expr)))))
-	      ((and (char= c #\i) (numberp (read-stack nil)))
-	       (read-char stream t nil t)
-	       (push (complex 0 (read-stack nil)) expr)
-	       (setf stack nil))
 	      ((member c *blank-characters*)
 	       (read-char stream t nil t)
 	       (read-stack))
-	      ((char= c #\\)
-	       (read-char stream t nil t)
-	       (read-stack)
-	       (push (read stream t nil nil) expr))
 	      (t
 	       (push (read-char stream t nil t) stack)))))))
 
@@ -145,7 +144,7 @@
   ;;
   (slice
    (callable [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
-   (callable [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))  
+   (callable [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
    (lid [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
    (lid [ sargs ] #'(lambda (a b c d) (declare (ignore b d)) (list* 'matlisp-infix::generic-ref a c)))
    (slice [ ] #'(lambda (a b c) (declare (ignore b c)) (list 'matlisp-infix::generic-ref a)))
@@ -154,6 +153,7 @@
   (term
    number lid
    (htranspose id #'(lambda (a b) (declare (ignore a)) (list 'quote b)))
+   (htranspose |:| id #'(lambda (a b c) (declare (ignore a b)) (intern (symbol-name c) :keyword)))
    list callable slice
    (- term)
    (/ term #'(lambda (a b) (list a nil b)))
