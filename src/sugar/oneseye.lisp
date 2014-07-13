@@ -23,3 +23,6 @@
 					:dimensions (make-index-store (list dim))
 					:head (head a)
 					:strides (make-index-store (list str))))))
+
+(defun (setf diag~) (value tensor) (copy! value (diag~ tensor)))
+(definline (setf diag) (value tensor) (setf (diag~ tensor) value))
