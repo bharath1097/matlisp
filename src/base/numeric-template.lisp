@@ -2,20 +2,37 @@
 
 ;;Field templates
 (deft/generic (t/f+ #'subtypep) ty (&rest nums))
-(deft/method t/f+ (ty number) (&rest nums)
- `(cl:+ ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
-
 (deft/generic (t/f- #'subtypep) ty (&rest nums))
-(deft/method t/f- (ty number) (&rest nums)
- `(cl:- ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
-
 (deft/generic (t/f* #'subtypep) ty (&rest nums))
-(deft/method t/f* (ty number) (&rest nums)
- `(cl:* ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
-
 (deft/generic (t/f/ #'subtypep) ty (&rest nums))
-(deft/method t/f/ (ty number) (&rest nums)
- `(cl:/ ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
+
+(macrolet ((def-marith (tname clop)
+	     `(deft/method ,tname (ty number) (&rest nums)
+		(if (and (consp ty) (eql (first ty) 'mod))
+		    `(mod (,',clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)) ,(second ty))
+		    `(,', clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))))
+	   (genarith ((&rest args))
+	     `(progn ,@(mapcar #'(lambda (x) `(def-marith ,(car x) ,(cadr x))) args))))
+  (genarith ((t/f+ cl:+)
+	     (t/f- cl:-)
+	     (t/f* cl:*)
+	     (t/f/ cl:*))))
+
+#+nil(definline ldio (a b)
+  (labels ((estep (r1 r2)
+	     (if (= r2 0)
+		 (values 1 0 r1)
+		 (multiple-value-bind (q2 r3) (floor r1 r2)
+		   (multiple-value-bind (x2 x3 g) (estep r2 r3)
+		     ;;(+ (* x2 r2) (* x3 (- r1 (* q2 r2))))
+		     (values x3 (- x2 (* x3 q2)) g))))))
+
+    (estep a b)))
+
+#+nil(deft/method t/f/ (ty number) (&rest nums)
+  (if (and (consp ty) (eql (car ty) 'mod))
+      `(mod (,',clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)) ,base)
+      `(,', clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums))))
 
 (deft/generic (t/f= #'subtypep) ty (&rest nums))
 (deft/method t/f= (ty number) (&rest nums)
@@ -71,7 +88,9 @@
 
 (deft/generic (t/coerce #'subtypep) ty (val))
 (deft/method t/coerce (ty number) (val)
-  `(coerce ,val ',ty))
+  (if (and (consp ty) (eql (first ty) 'mod))
+      `(mod (coerce ,val 'integer) ,(second ty))
+      `(coerce ,val ',ty)))
 
 (eval-every
   (defun strict-compare (func-list a b)
