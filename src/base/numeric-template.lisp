@@ -5,6 +5,7 @@
 (deft/generic (t/f- #'subtypep) ty (&rest nums))
 (deft/generic (t/f* #'subtypep) ty (&rest nums))
 (deft/generic (t/f/ #'subtypep) ty (&rest nums))
+(deft/generic (t/f= #'subtypep) ty (&rest nums))
 
 (macrolet ((def-marith (tname clop)
 	     `(deft/method ,tname (ty number) (&rest nums)
@@ -15,29 +16,50 @@
 	     `(progn ,@(mapcar #'(lambda (x) `(def-marith ,(car x) ,(cadr x))) args))))
   (genarith ((t/f+ cl:+)
 	     (t/f- cl:-)
-	     (t/f* cl:*)
-	     (t/f/ cl:*))))
+	     (t/f* cl:*))))
 
-#+nil(definline ldio (a b)
-  (labels ((estep (r1 r2)
-	     (if (= r2 0)
-		 (values 1 0 r1)
-		 (multiple-value-bind (q2 r3) (floor r1 r2)
-		   (multiple-value-bind (x2 x3 g) (estep r2 r3)
-		     ;;(+ (* x2 r2) (* x3 (- r1 (* q2 r2))))
-		     (values x3 (- x2 (* x3 q2)) g))))))
-
-    (estep a b)))
-
-#+nil(deft/method t/f/ (ty number) (&rest nums)
-  (if (and (consp ty) (eql (car ty) 'mod))
-      `(mod (,',clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)) ,base)
-      `(,', clop ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums))))
-
-(deft/generic (t/f= #'subtypep) ty (&rest nums))
 (deft/method t/f= (ty number) (&rest nums)
  `(cl:= ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums)))
 
+;;
+(definline eeuclid (a b)
+  (declare (type fixnum a b))
+  (let ((ss 0) (s.pr 1)
+	(tt 1) (t.pr 0)
+	(r b) (r.pr a)
+	(tmp 0))
+    (declare (type fixnum ss s.pr tt t.pr r r.pr tmp))
+    (very-quickly
+      (loop :while (/= r 0)
+	 :do (multiple-value-bind (quo rem) (floor r.pr r)
+	       (declare (type fixnum quo rem))
+	       (setf r.pr r
+		     r rem
+		     tmp ss
+		     ss (- s.pr (the fixnum (* quo ss)))
+		     s.pr tmp
+		     tmp tt
+		     tt (- t.pr (the fixnum (* quo tt)))
+		     t.pr tmp))))
+    (values s.pr t.pr r.pr)))
+
+(deft/method t/f/ (ty number) (&rest nums)
+  (if (and (consp ty) (eql (car ty) 'mod))
+      (cond
+	((cddr nums) `(t/f/ ,ty ,(car nums) (t/f* ,ty ,@(cdr nums))))
+	((not (cdr nums)) `(t/f/ ,ty (t/fid* ,ty) ,(car nums)))
+	(t
+	 (with-gensyms (s tt g a b)
+	   `(let ((,a ,(first nums)) (,b ,(second nums)))
+	      (declare (type ,ty ,a ,b))
+	      (multiple-value-bind (,s ,tt ,g) (eeuclid ,(second ty) ,b)
+		(declare (ignore ,s))
+		(if (cl:= ,g (cl:gcd ,a ,g))
+		    (t/coerce ,ty (cl:* ,tt (cl:/ ,a ,g)))
+		    (error "Cannot solve equation ~a * x = ~a mod ~a" ,a ,b ,(second ty))))))))
+      `(cl:/ ,@(mapcar #'(lambda (x) `(the ,ty ,x)) nums))))
+
+;;
 (deft/generic (t/fid+ #'subtypep) ty ())
 (deft/method t/fid+ (ty number) ()
   (coerce 0 ty))
@@ -89,7 +111,7 @@
 (deft/generic (t/coerce #'subtypep) ty (val))
 (deft/method t/coerce (ty number) (val)
   (if (and (consp ty) (eql (first ty) 'mod))
-      `(mod (coerce ,val 'integer) ,(second ty))
+      `(mod (coerce ,val 'fixnum) ,(second ty))
       `(coerce ,val ',ty)))
 
 (eval-every

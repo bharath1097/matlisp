@@ -136,6 +136,8 @@
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
 	    :components ((:file "numeric")
+			 (:file "integer"
+				:depends-on ("numeric"))
 			 (:file "sparse")
 			 #+maxima
 			 (:file "symbolic-tensor")
