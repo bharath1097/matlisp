@@ -156,6 +156,9 @@
 (deft/method t/strict-coerce ((from number) (to (complex single-float))) (val)
  `(coerce ,val ',to))
 
+(deft/method t/strict-coerce ((from rational) (to rational)) (val)
+  val)
+
 ;;
 ;; (deft/method t/strict-coerce ((from fixnum) (to (complex fixnum))) (val)
 ;;  `(coerce ,val ',to))
