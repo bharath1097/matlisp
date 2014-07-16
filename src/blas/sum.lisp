@@ -132,3 +132,5 @@
 		    (and dims (zeros dims (class-of x))))
 		axis))
 	(prod! x nil))))
+
+(definline normalize! (x) (scal! (/ (sum x nil)) x))
