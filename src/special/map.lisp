@@ -148,12 +148,12 @@
 					     (incf (slot-value ,x 'head) (* ,e.step ,s))))
 			    (mapcar #'car ts)))
 	   (error 'tensor-error :message "Can't find slice-increment in tensor's attributes"))
-	 ,@body
-	 (unless (and
-		  ,@(mapcar #'(lambda (x) `(when-let (,s (gethash 'slice-increment (attributes ,x)))
-					     (decf (slot-value ,x 'head) (* ,e.step ,s))))
-			    (mapcar #'car ts)))
-	   (error 'tensor-error :message "Can't find slice-increment in tensor's attributes"))))))
+	 (prog1 (progn ,@body)
+	   (unless (and
+		    ,@(mapcar #'(lambda (x) `(when-let (,s (gethash 'slice-increment (attributes ,x)))
+					       (decf (slot-value ,x 'head) (* ,e.step ,s))))
+			      (mapcar #'car ts)))
+	     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes")))))))
 
 (definline peek-tensor! (x &optional (step 1))
   (if-let (s (gethash 'slice-increment (attributes x)))
@@ -187,7 +187,7 @@
 			(standard-tensor
 			 (let* ((,tmp-axis (modproj (car,asym) (order ,xsym))))
 			   (let ((,tmp-x ,(if (or start oend cend dend)
-					      `(let ((,tmp-dim (dimensions ,xsym ,tmp-axis))
+					      `(let ((,tmp-dim (dimensions ,xsym (the index-type ,tmp-axis)))
 						     (,slst (make-list (order ,xsym) :initial-element '(nil nil))))
 						 (declare (ignorable ,tmp-dim))
 						 (setf (nth ,tmp-axis ,slst) ,(cond
@@ -197,8 +197,8 @@
 									       (t `(list ,start nil))))
 						 (subtensor~ ,xsym ,slst))
 					      xsym)))
-			     (when (or (< ,dim 0) (> ,dim (dimensions ,tmp-x ,tmp-axis)))
-			       (setf ,dim (dimensions ,tmp-x ,tmp-axis)))
+			     (when (or (< ,dim 0) (> ,dim (dimensions ,tmp-x (the index-type ,tmp-axis))))
+			       (setf ,dim (dimensions ,tmp-x (the index-type ,tmp-axis))))
 			     (setf (car ,asym) (cons ,(with-gensyms (tmp)
 								    `(let ((,tmp (slice~ ,tmp-x ,tmp-axis)))
 								       (setf (gethash 'slice-increment (attributes ,tmp)) (strides ,tmp-x ,tmp-axis))

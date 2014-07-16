@@ -65,8 +65,10 @@
 (definline dimensions (x &optional idx)
   (declare (type base-tensor x))
   (if idx
-      (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0))
+      (the index-type (aref (the index-store-vector (slot-value x 'dimensions)) (modproj (or idx 0) (order x) nil 0)))
       (the index-store-vector (slot-value x 'dimensions))))
+
+(declaim (ftype (function (base-tensor &optional index-type) (or index-store-vector index-type)) dimensions))
 
 (defgeneric print-element (tensor
 			   element stream)

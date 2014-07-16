@@ -217,7 +217,7 @@
 		(unless (> (* s (strides tensor 0)) 0) (return nil))
 		(finally (return t)))
 	  nil 'tensor-error :message "strides are not of the same sign." :tensor tensor)
-  (assert (<= (iter (for i in dims) (multiplying i)) (size tensor)) nil 'tensor-insufficient-store))
+  (assert (<= (iter (for i in dims) (multiplying i)) (store-size tensor)) nil 'tensor-insufficient-store))
 
 (defmethod reshape! ((ten standard-tensor) (dims cons))
   (let ((idim (make-index-store dims)))

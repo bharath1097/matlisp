@@ -193,3 +193,23 @@
   ;;TODO: There is an issue here when x is not coerceable into the tensor class of alpha
   (:method ((alpha standard-tensor) (x t))
     (div! alpha (copy! x (zeros (dimensions alpha) (class-of alpha))))))
+
+;;Diagonal scaling.
+(defgeneric scald! (x m &optional axis)
+  (:method :before ((x standard-tensor) (m standard-tensor) &optional (axis 0))
+	   (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch)))
+
+(define-tensor-method scald! ((x standard-tensor :input) (m standard-tensor :output) &optional (axis 0))
+  `(let-typed ((sto-m (store m) :type ,(store-type (cl m)))
+	       (sto-x (store x) :type ,(store-type (cl x)))
+	       (axis (modproj axis (order m))))
+     (very-quickly
+       (mod-dotimes (idx (dimensions m))
+	 :with (linear-sums
+		(of-m (strides m) (head m))
+		(of-x (let ((tmp (allocate-index-store (order m))))
+			(setf (aref tmp axis) (strides x 0))
+			tmp)
+		      (head x)))
+	 :do (t/store-set ,(cl m) (t/f* ,(field-type (cl m)) (t/store-ref ,(cl x) sto-x of-x) (t/store-ref ,(cl m) sto-m of-m)) sto-m of-m))))
+  'm)
