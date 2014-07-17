@@ -139,8 +139,8 @@
 
   (tensor-imagpart~ A) <- (- (tensor-imagpart~ A)) "
   (etypecase A
-    (real-tensor A)
-    (complex-tensor
+    (real-numeric-tensor A)
+    (complex-numeric-tensor
      (scal! -1d0 (tensor-imagpart~ A))
      A)
     (number (conjugate A))))

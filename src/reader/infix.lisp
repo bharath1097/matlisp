@@ -90,14 +90,12 @@
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
   (:terminals (** ./ / * .* @ ^ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
-  (:precedence ((:left |.| htranspose transpose)
+  (:precedence (#+nil(:left |.| htranspose transpose)
 		(:right **)
 		(:left ./ / * .* @ ^)
 		(:left + -)
 		(:left := = ==)))
   (expr
-   (expr htranspose #'(lambda (a b) (list b a)))
-   (expr transpose #'(lambda (a b) (list b a)))
    (expr + expr #'(lambda (a b c) (list b a c)))
    (expr - expr #'(lambda (a b c) (list b a c)))
    (expr / expr #'(lambda (a b c) (list b a c)))
@@ -114,6 +112,8 @@
   ;;
   (lid
    id
+   (lid htranspose #'(lambda (a b) (list b a)))
+   (lid transpose #'(lambda (a b) (list b a)))
    (lid |.| id #'(lambda (a b c) (declare (ignore b) (type (not number) a) (type symbol c)) `(slot-value ,a ',c)))
    (|(| expr |)| #'(lambda (a b c) (declare (ignore a c)) b)))
   ;;
@@ -278,7 +278,7 @@
   (defparameter *tensor-symbol*
     '((#\D matlisp::real-tensor)
       (#\Z matlisp::complex-tensor)
-      (#\N matlisp::integer-tensor)
+      (#\Q matlisp::rational-tensor)
       (#\B matlisp::boolean-tensor))))
 
 (defun tensor-reader (stream subchar arg)

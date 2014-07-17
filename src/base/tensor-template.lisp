@@ -171,6 +171,7 @@
 		       (or (null ,oclasses) (coerceable? (cclass-max ,iclasses) (car ,oclasses))))
 		  (let* ((clm (or (car ,oclasses) (cclass-max ,iclasses)))
 			 ,@(mapcar #'(lambda (x) `(,x (lazy-coerce ,x clm))) inputs))
+		    (declare (ignorable clm))
 		    (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args)))))
 		 (t
 		  (error "Don't know how to apply ~a to classes ~a, ~a." ',name ,iclasses ,oclasses))))))))))

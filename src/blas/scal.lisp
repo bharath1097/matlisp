@@ -197,6 +197,7 @@
 ;;Diagonal scaling.
 (defgeneric scald! (x m &optional axis)
   (:method :before ((x standard-tensor) (m standard-tensor) &optional (axis 0))
+	   (declare (type index-type axis))
 	   (assert (and (tensor-vectorp x) (= (dimensions x 0) (dimensions m axis))) nil 'tensor-dimension-mismatch)))
 
 (define-tensor-method scald! ((x standard-tensor :input) (m standard-tensor :output) &optional (axis 0))

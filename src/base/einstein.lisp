@@ -189,6 +189,7 @@
 ;;Push this code into loop-generator-base ?
 (defun loop-generator (type index-order place clause &key (testp t))
   (multiple-value-bind (refs tlist indices) (parse-loopx type place clause)
+    (declare (ignore refs tlist))
     (let ((in-idx (find (car (last index-order)) indices :key #'car)))
       `(if (= 1 ,@(mapcar #'(lambda (x) `(aref (the index-store-vector (strides ,(car x))) ,(cadr x))) (cdr in-idx)))
 	   ,(loop-generator-base type index-order place clause :testp testp :tight-iloop t)

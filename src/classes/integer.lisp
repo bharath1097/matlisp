@@ -1,6 +1,6 @@
 (in-package :matlisp)
 
-(defleaf rational-tensor (numeric-tensor) ())
+(defleaf rational-tensor (real-numeric-tensor) ())
 (deft/method t/field-type (sym rational-tensor) ()
   'rational)
 
