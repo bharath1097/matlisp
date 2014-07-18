@@ -181,14 +181,17 @@
   (:use #:common-lisp #:iterate #:optima #:named-readtables
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
-  (:export #:index-type #:index-array #:allocate-index-store #:make-index-store
+  ;;Shadow iterate:sum
+  (:shadow :sum)
+  ;;Let's keep everything in house for now.
+  #+nil(:export #:index-type #:index-array #:allocate-index-store #:make-index-store
 	   ;;Standard-tensor
 	   #:standard-tensor
-	   #:rank #:dimensions #:number-of-elements
+	   #:order #:dimensions #:number-of-elements
 	   #:head #:strides #:store-size #:store
 	   #:parent-tensor
 	   ;;Sub-tensor
-	   #:subtensor~ #:subtensor
+	   #:subtensor~
 	   ;;Store indexers
 	   #:store-indexing
 	   #:store-indexing-vec #:store-indexing-lst

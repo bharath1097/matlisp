@@ -49,13 +49,13 @@
   (let ((ret (zeros (dimensions x) (or output-type (class-of x)))))
     (mapsor! #'(lambda (idx x y) (declare (ignore idx y)) (funcall func x)) x ret)))
 
-(defmacro map-tensor! (type x func)
+(defmacro map-tensor! (type x func &optional null-arity?)
   (using-gensyms (decl (x) (idx ref))
     `(let (,@decl)
        (declare (type ,type ,x))
        (very-quickly (dorefs (,idx (dimensions ,x))
 			     ((,ref ,x :type ,type))
-			     (setf ,ref (,func ,ref))))
+			     (setf ,ref (,func ,@(unless null-arity? `(,ref))))))
        ,x)))
 
 ;;

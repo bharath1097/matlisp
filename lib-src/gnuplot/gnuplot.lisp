@@ -1,67 +1,81 @@
 (in-package :matlisp)
 (defvar *current-gnuplot-process* nil)
 
-(defun open-gnuplot-stream (&key (gnuplot-binary
-				  #+darwin
-				  (pathname "/opt/local/bin/gnuplot")
-				  #+linux
-				  (pathname "/usr/bin/gnuplot"))
-			      (terminal "wxt"))
-  (setf *current-gnuplot-process* (#+:sbcl
-				   sb-ext:run-program
-				   #+:ccl
-				   ccl:run-program
-				   gnuplot-binary nil :input :stream :wait nil :output t))
-  (gnuplot-send "
-set datafile fortran
-set term ~a
-" terminal)
-  *current-gnuplot-process*)
+(defun open-gnuplot (&key (gnuplot-binary (pathname
+					   #+darwin "/opt/local/bin/gnuplot"
+					   #+linux "/usr/bin/gnuplot"))
+		       (terminal "wxt"))
+  (or *current-gnuplot-process*
+      (progn
+	(setf *current-gnuplot-process* (#+:sbcl sb-ext:run-program
+					 #+:ccl ccl:run-program
+					 gnuplot-binary nil :input :stream :wait nil :output t))
+	(gnuplot-send "~%set datafile fortran~%set term ~a~%" terminal)
+	*current-gnuplot-process*)))
 
-(defun close-gnuplot-stream ()
+(defun close-gnuplot ()
   (when *current-gnuplot-process*
     (gnuplot-send "quit~%")
     (setf *current-gnuplot-process* nil)))
 
-(defun gnuplot-send (str &rest args)
-  (unless *current-gnuplot-process*
-    (setf *current-gnuplot-process* (open-gnuplot-stream)))
-  (let ((stream (#+:sbcl
-		 sb-ext:process-input
-		 #+:ccl
-		 ccl:external-process-input-stream
-		 *current-gnuplot-process*)))
-    (apply #'format (append (list stream str) args))
-    (finish-output stream)))
+(defmacro with-gnuplot-stream ((stream) &rest body)
+  `(let ((,stream (#+:sbcl sb-ext:process-input
+		   #+:ccl ccl:external-process-input-stream
+		   (open-gnuplot))))
+     (unwind-protect (progn ,@body) (finish-output ,stream))))
 
-(defun splitcol (num)
+(defun gnuplot-send (str &rest args)
+  (with-gnuplot-stream (s)
+    (apply #'format s str args)))
+;;
+(defun split-color (num)
   (multiple-value-bind (a b0) (floor num 256)
     (multiple-value-bind (b2 b1) (floor a 256)
       (list b2 b1 b0))))
 
-(defun plot (data &key (lines t) (color nil))
-  (let ((fname "/tmp/matlisp-gnuplot.out"))
-    (with-open-file (s fname :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (loop :for i :from 0 :below (loop :for x :in data :minimizing (size x))
-	 :do (loop :for x :in data :do (format s "~a " (coerce (ref x i) 'single-float)) :finally (format s "~%"))))
-    (let ((col (if (listp color) color
-		   (let ((lst (list color)))
-		     (setf (cdr lst) lst)
-		     lst))))
-      (let ((cmd (apply #'string+ (cons "plot " (loop :for x :in (cdr data)
-						   :for i := 2 :then (1+ i)
-						   :for clist := col :then (cdr clist)
-						   :collect (string+ "'" fname "' using 1:" (format nil "~a " i)
-								     "with " (if lines "lines" "points") " "
-								     (if (car clist)
-									 (apply #'(lambda (r g b) (format nil "linecolor rgb(~a, ~a, ~a)" r g b))
-										(splitcol (car clist)))
-									 "")
-								     (format nil "title \"~a\"" (1- i))
-								     ", "))))))
-	(setf (aref cmd (- (length cmd) 2)) #\;
-	      (aref cmd (- (length cmd) 1)) #\Newline)
-	(gnuplot-send cmd)))))
+(defmacro with-gnuplot-term ((stream num &key multiplot (terminal "wxt") output) &rest body)
+  (using-gensyms (decl (num output terminal multiplot))
+    `(let (,@decl)
+       (with-gnuplot-stream (,stream)
+	 (format ,stream "set term push~%set term ~a ~a~%" ,terminal ,num)
+	 (when ,output (format ,stream "set output '~a'~%" (etypecase ,output (pathname (pathname-name ,output)) (string ,output))))
+	 (when ,multiplot (format ,stream "set multiplot~%"))
+	 (unwind-protect (progn ,@body)
+	   (when ,multiplot (format ,stream "unset multiplot~%"))
+	   (when ,output (format ,stream "set output~%"))
+	   (format ,stream "set term pop~%"))))))
+
+(defun plot (data &key (lines t) color)
+  (declare (type (and real-numeric-tensor (or tensor-matrixp tensor-vectorp)) data))
+  (let* ((color (if (listp color) color (let ((lst (list color))) (setf (cdr lst) lst))))
+	 (data (suptensor~ data 2))
+	 (n (dimensions data 1)))
+    (labels ((pcom (x y s)
+	       (let ((out (zeros (list (dimensions data 0) 2))))
+		 #i(out[:, 0][] = x, out[:, 1][] = y)
+		 (format s "")
+		 ))))
+    (with-gnuplot-stream (s)
+      (if (= n 1)
+	  (format s "plot ")
+	  ))
+    (with-gnuplot-stream (s)
+      
+      )
+    (let ((cmd (apply #'string+ (cons "plot " (loop :for x :in (cdr data)
+						 :for i := 2 :then (1+ i)
+						 :for clist := col :then (cdr clist)
+						 :collect (string+ "'" fname "' using 1:" (format nil "~a " i)
+								   "with " (if lines "lines" "points") " "
+								   (if (car clist)
+								       (apply #'(lambda (r g b) (format nil "linecolor rgb(~a, ~a, ~a)" r g b))
+									      (split-color (car clist)))
+								       "")
+								   (format nil "title \"~a\"" (1- i))
+								   ", "))))))
+      (setf (aref cmd (- (length cmd) 2)) #\;
+	    (aref cmd (- (length cmd) 1)) #\Newline)
+      (gnuplot-send cmd))))
 
 (defun splot (data)
   (let ((fname "/tmp/matlisp-gnuplot.out"))
