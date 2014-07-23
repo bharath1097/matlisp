@@ -153,11 +153,9 @@
   (:method :before ((A standard-tensor) (B standard-tensor) &optional (job :n) ipiv)
 	   (declare (type (or null permutation) ipiv))
 	   (assert (and (tensor-matrixp A) (tensor-matrixp B)
-			(= (nrows A) (ncols A) (nrows B))
+			(= (nrows A) (ncols A) (dimensions B (ecase job (:n 0) ((:t :c) 1))))
 			(or (not ipiv) (<= (permutation-size ipiv) (nrows A))))
-		   nil 'tensor-dimension-mismatch)
-	   (assert (member job '(:n :t :c)) nil 'invalid-value
-		   :given job :expected `(member job '(:n :t :c)))))
+		   nil 'tensor-dimension-mismatch)))
 
 (define-tensor-method getrs! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :output) &optional (job :n) ipiv)
   `(let ((upiv (if ipiv
