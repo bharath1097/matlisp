@@ -138,6 +138,19 @@
        ,init))))
 
 ;;
+(defmacro values-n (n &rest values)
+  (using-gensyms (decl (n))
+    (labels ((make-cd (i rets vrets)
+	       `((let (,(car rets))
+		   ,(if (null (cdr rets))
+			`(values ,@(reverse vrets) ,(caar rets))
+			`(if (<= ,n ,i)
+			     (values ,@(reverse vrets) ,(caar rets))
+			     ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))))))
+      `(let (,@decl)
+	 ,@(make-cd 1 (zipsym values) nil)))))
+
+;;
 (defmacro with-peeky! (((&rest tensors) &optional (step 1)) &rest body)
   (let ((ts (zipsym tensors)))
     (with-gensyms (e.step s)
@@ -214,14 +227,12 @@
 		 `(iter (for ,tmp in ,alist)
 			(when ,tmp (incf (slot-value (car ,tmp) 'head) (cdr ,tmp))))))))))))
 
-(defmacro values-n (n &rest values)
-  (using-gensyms (decl (n))
-    (labels ((make-cd (i rets vrets)
-	       `((let (,(car rets))
-		   ,(if (null (cdr rets))
-			`(values ,@(reverse vrets) ,(caar rets))
-			`(if (<= ,n ,i)
-			     (values ,@(reverse vrets) ,(caar rets))
-			     ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))))))
-      `(let (,@decl)
-	 ,@(make-cd 1 (zipsym values) nil)))))
+(defmacro-clause (FOR xa in-vectors x)
+  (let ((syms (zipsym xa)))
+    (with-gensyms (xeval)
+      `(progn
+	 ,@(mapcar #'(lambda (x) `(with ,(car x) = nil)) syms)
+	 (initially (let ((,xeval ,x))
+		      (setf ,@(mapcan #'(lambda (x) `(,(car x) (car ,xeval)
+						       ,xeval (cdr ,xeval))) syms))))
+	 ,@(mapcar #'(lambda (x) `(for ,(cadr x) in-vector ,(car x))) syms)))))
