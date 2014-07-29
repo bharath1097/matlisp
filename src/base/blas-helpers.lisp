@@ -3,23 +3,21 @@
 (defun consecutive-storep (tensor)
   (declare (type standard-tensor tensor))
   (memoizing (tensor consecutive-storep)
-    (mlet* (((sort-std std-perm) (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<))
-	     :type (index-store-vector pindex-store-vector))
+    (letv* ((sort-std std-perm (very-quickly (sort-permute-base (copy-seq (the index-store-vector (strides tensor))) #'<)) :type index-store-vector pindex-store-vector)
 	    (perm-dims (very-quickly (apply-action! (copy-seq (the index-store-vector (dimensions tensor))) std-perm)) :type index-store-vector))
-	   (very-quickly
-	     (loop
-		:for so-st :across sort-std
-		:for so-di :across perm-dims
-		:and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
-		:unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
-		:finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
+      (very-quickly
+	(loop
+	   :for so-st :across sort-std
+	   :for so-di :across perm-dims
+	   :and accumulated-off := (aref sort-std 0) :then (the index-type (* accumulated-off so-di))
+	   :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
+	   :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
 
 (definline blas-copyablep (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (when (= (order ten-a) (order ten-b))
-    (mlet*
-     (((csto-a? pdims-a tmp perm-a) (consecutive-storep ten-a) :type (t index-store-vector nil pindex-store-vector))
-      ((csto-b? pdims-b tmp perm-b) (consecutive-storep ten-b) :type (t index-store-vector nil pindex-store-vector)))
+    (letv* ((csto-a? pdims-a tmp perm-a (consecutive-storep ten-a) :type t index-store-vector nil pindex-store-vector)
+	    (csto-b? pdims-b tmp perm-b (consecutive-storep ten-b) :type t index-store-vector nil pindex-store-vector))
      (when (and csto-a? csto-b? (very-quickly (lvec-eq perm-a perm-b)) (very-quickly (lvec-eq pdims-a pdims-b)))
        (list csto-a? csto-b?)))))
 

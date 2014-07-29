@@ -83,8 +83,8 @@
     Computes the solution to the Sylvester equation:
 	    A X + X B = C
     using Schur decomposition."
-  (mlet* (((l.a t.a u.a) (schur A) :type (nil real-tensor real-tensor))
-	  ((l.b t.b u.b) (schur B) :type (nil real-tensor real-tensor))
+  (letv* ((l.a t.a u.a (schur A) :type nil real-tensor real-tensor)
+	  (l.b t.b u.b (schur B) :type nil real-tensor real-tensor)
 	  ;;We can't use infix-dispatch-table just yet :(
 	  (ucu (gemm 1 u.a (gemm 1 c u.b nil nil :nn) nil nil :cn)))
     (trsyl! t.a t.b ucu)

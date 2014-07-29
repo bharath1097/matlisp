@@ -123,6 +123,29 @@ Example:
 	`(progn
 	   ,@body))))
 
+(defmacro letv* (bindings &rest body)
+  (labels ((pdecl (lst)
+	     (let ((tpos (position :type lst))
+		   (len (length lst)))
+	       (list (subseq lst 0 (1- (or tpos len)))
+		     (nth (1- (or tpos len)) lst)
+		     (when tpos
+		       (let ((tlst (nthcdr (1+ tpos) lst)))
+			 (assert (= (length tlst) (1- tpos)) nil "missing types in declaration")
+			 tlst))))))
+    (apply #'recursive-append (append
+			       (mapcar #'(lambda (x)
+					   (let ((pbind (pdecl x)))
+					     (recursive-append
+					      (if (> (length (first pbind)) 1)
+						  `(multiple-value-bind (,@(first pbind)) ,(second pbind))
+						  (if (consp (caar pbind))
+						      `(destructuring-bind (,@(caar pbind)) ,(second pbind))
+						      `(let ((,(car (first pbind)) ,(second pbind))))))
+					      (when (third pbind) `(declare ,@(mapcar #'(lambda (y x) (if x `(type ,x ,y) `(ignore ,y))) (first pbind) (third pbind)))))))
+				       bindings)
+			       `((progn ,@body))))))
+
 (defmacro make-array-allocator (allocator-name type init &optional doc)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (definline ,allocator-name (size &optional (initial-element ,init))

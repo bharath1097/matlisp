@@ -91,7 +91,7 @@
 	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:with-marking #:with-fslots
-	   #:mlet* #:make-array-allocator #:let-typed #:let*-typed
+	   #:mlet* #:letv* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant #:eval-every
 	   #:macrofy #:defun-compiler-macro #:cart-etypecase
 	   ;;
