@@ -214,7 +214,7 @@
 		 `(iter (for ,tmp in ,alist)
 			(when ,tmp (incf (slot-value (car ,tmp) 'head) (cdr ,tmp))))))))))))
 
-(defmacro values-n ((n) &rest values)
+(defmacro values-n (n &rest values)
   (using-gensyms (decl (n))
     (labels ((make-cd (i rets vrets)
 	       `((let (,(car rets))
