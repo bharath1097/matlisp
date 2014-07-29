@@ -138,7 +138,7 @@
        ,init))))
 
 ;;
-(defmacro values-n ((n) &rest values)
+(defmacro values-n (n &rest values)
   (using-gensyms (decl (n))
     (labels ((make-cd (i rets vrets)
 	       `((let (,(car rets))
