@@ -129,10 +129,7 @@ Example:
 		   (len (length lst)))
 	       (list (subseq lst 0 (1- (or tpos len)))
 		     (nth (1- (or tpos len)) lst)
-		     (when tpos
-		       (let ((tlst (nthcdr (1+ tpos) lst)))
-			 (assert (= (length tlst) (1- tpos)) nil "missing types in declaration")
-			 tlst))))))
+		     (when tpos (nthcdr (1+ tpos) lst))))))
     (apply #'recursive-append (append
 			       (mapcar #'(lambda (x)
 					   (let ((pbind (pdecl x)))
