@@ -236,3 +236,12 @@
 		      (setf ,@(mapcan #'(lambda (x) `(,(car x) (car ,xeval)
 						       ,xeval (cdr ,xeval))) syms))))
 	 ,@(mapcar #'(lambda (x) `(for ,(cadr x) in-vector ,(car x))) syms)))))
+;;
+
+(defun meshgrid (a b)
+  (declare (type base-vector a b))
+  (let ((x (zeros (list (dims a 0) (dims b 0)) (class-of a)))
+	(y (zeros (list (dims a 0) (dims b 0)) (class-of a))))
+    (ger! 1 a (ones (dims b 0) (class-of b)) x)
+    (ger! 1 (ones (dims a 0) (class-of a)) b y)
+    (values x y)))
