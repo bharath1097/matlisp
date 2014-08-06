@@ -227,7 +227,7 @@
 		 `(iter (for ,tmp in ,alist)
 			(when ,tmp (incf (slot-value (car ,tmp) 'head) (cdr ,tmp))))))))))))
 
-(defmacro-clause (FOR xa in-vectors x)
+(defmacro-clause (FOR xa in-vectors x &optional FROM start BELOW oend TO cend DOWNTO dend)
   (let ((syms (zipsym xa)))
     (with-gensyms (xeval)
       `(progn
@@ -235,7 +235,7 @@
 	 (initially (let ((,xeval ,x))
 		      (setf ,@(mapcan #'(lambda (x) `(,(car x) (car ,xeval)
 						       ,xeval (cdr ,xeval))) syms))))
-	 ,@(mapcar #'(lambda (x) `(for ,(cadr x) in-vector ,(car x))) syms)))))
+	 ,@(mapcar #'(lambda (x) `(for ,(cadr x) in-vector ,(car x) FROM ,start BELOW ,oend TO ,cend DOWNTO ,dend)) syms)))))
 ;;
 
 (defun meshgrid (a b)
