@@ -41,10 +41,10 @@
 	       :do (t/store-set real-tensor ori sto i)))
 	  ret))))
 
-(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))  
+(defun linspace (start end &optional (num-points (1+ (abs (- start end)))))
   (let* ((num-points (floor num-points))
 	 (h (/ (- end start) (1- num-points))))
-    (range start (+ h end) (abs h))))
+    (range start (+ (/ h 2) end) (abs h))))
 
 (defun list-range (start end &optional (h 1))
   (declare (type real start end h))
@@ -59,4 +59,3 @@
   (let* ((num-points (floor num-points))
 	 (h (/ (- end start) (1- num-points))))
     (list-range start (+ h end) (abs h))))
-
