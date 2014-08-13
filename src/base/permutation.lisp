@@ -55,7 +55,7 @@
 (defmethod print-object ((per permutation) stream)
   (print-unreadable-object (per stream :type t)
     (format stream "S_~a~%" (permutation-size per))
-    (if (= (permutation-size per) 1)
+    (if (<= (permutation-size per) 1)
 	(format stream "ID~%")
 	(format stream "~a~%" (store per)))))
 
@@ -81,7 +81,7 @@
   (declare (ignore initargs))
   (when *check-after-initializing?*
     (if (null (store per))
-	(setf (slot-value per 'permutation-size) 1)
+	(setf (slot-value per 'permutation-size) 0)
 	(loop
 	   :for cyc :of-type pindex-store-vector :in (store per)
 	   :with ss :of-type pindex-type := 0
