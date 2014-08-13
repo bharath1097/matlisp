@@ -245,3 +245,11 @@
     (ger! 1 a (ones (dims b 0) (class-of b)) x)
     (ger! 1 (ones (dims a 0) (class-of a)) b y)
     (values x y)))
+
+(defmacro with-coordinates ((&rest syms) vector &body code)
+  (with-gensyms (vec)
+    `(let ((,vec ,vector))
+       (declare (type base-vector ,vec))
+       (assert (= (dimensions ,vec 0) ,(length syms)) nil 'tensor-dimension-mismatch)
+       (symbol-macrolet (,@(mapcar (let ((i -1)) #'(lambda (x) `(,x (ref ,vec ,(incf i))))) syms))
+	 ,@code))))
