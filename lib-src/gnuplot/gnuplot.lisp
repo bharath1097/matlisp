@@ -4,12 +4,14 @@
 (defun open-gnuplot (&key (gnuplot-binary (pathname
 					   #+darwin "/opt/local/bin/gnuplot"
 					   #+linux "/usr/bin/gnuplot"))
-		       (terminal "wxt"))
+		       (terminal "wxt")
+		       hostname)
   (or *current-gnuplot-process*
       (progn
 	(setf *current-gnuplot-process* (#+:sbcl sb-ext:run-program
 					 #+:ccl ccl:run-program
-					 gnuplot-binary nil :input :stream :wait nil :output t))
+					 (if hostname "/usr/bin/ssh" gnuplot-binary) (when hostname (list hostname)) :input :stream :wait nil :output t))
+	(when hostname (gnuplot-send "export DISPLAY=:0~%/usr/bin/gnuplot~%"))
 	(gnuplot-send "~%set datafile fortran~%set term ~a~%" terminal)
 	*current-gnuplot-process*)))
 

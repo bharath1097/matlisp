@@ -168,11 +168,11 @@
 		   (,vd (store ,x) :type ,(store-type clx)))
 	 (if (transpose? ,x)
 	     (very-quickly
-	       (loop :for ,j :from 0 :below (length ,vi)
+	       (loop :for ,j :from 0 :below (1- (length ,vi))
 		  :do (loop :for ,i :from (aref ,vi ,j) :below (aref ,vi (1+ ,j))
 			 :do (setf (ref ,y ,j (aref ,vr ,i)) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (aref ,vd ,i))))))
 	     (very-quickly
-	       (loop :for ,j :from 0 :below (length ,vi)
+	       (loop :for ,j :from 0 :below (1- (length ,vi))
 		  :do (loop :for ,i :from (aref ,vi ,j) :below (aref ,vi (1+ ,j))
 			 :do (setf (ref ,y (aref ,vr ,i) ,j) (t/strict-coerce (,(field-type clx) ,(field-type cly)) (aref ,vd ,i))))))))
        ,y)))

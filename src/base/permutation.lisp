@@ -42,7 +42,7 @@
     (values ret perm)))
 #+nil(sort seq #'> :key #'(lambda (x) (declare (ignore x)) (random 1.0)))
 
-(defun shuffle (seq)
+(defun shuffle! (seq)
   "Randomize the elements of a sequence. Destructive on SEQ."
   (let* ((len (length seq))
 	 (perm (nth-value 1 (pick-random len len))))
@@ -58,7 +58,6 @@
     (if (<= (permutation-size per) 1)
 	(format stream "ID~%")
 	(format stream "~a~%" (store per)))))
-
 ;;
 (defclass permutation-action (permutation)
   ((store :type pindex-store-vector)))
@@ -106,6 +105,33 @@
 		 (loop :for i :of-type index-type :from 0 :below len
 		    :do (assert (< -1 (aref repr i) len) nil 'permutation-invalid-error)))
 	       (setf (slot-value per 'permutation-size) len))))
+;;
+;; (deft/method t/zeros (class permutation-cycle) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;;	   (make-instance ',class
+;;			  :store nil
+;;			  :size 0)))))
+
+;; (deft/method t/zeros (class permutation-action) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;;	   (make-instance ',class
+;;			  :store (pindex-id ,dims)
+;;			  :size ,dims)))))
+
+;; (deft/method t/zeros (class permutation-pivot-flip) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;;	   (make-instance ',class
+;;			  :store (pindex-id ,dims)
+;;			  :size ,dims)))))
 
 ;;Generic permute! method.
 (defgeneric permute! (thing permutation &optional argument)
@@ -295,7 +321,7 @@
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
   (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
 ;;
-(defgeneric inv (obj))  
+(defgeneric inv (obj))
 
 (defmethod inv ((obj permutation-action))
   (let*-typed ((sto (store obj) :type pindex-store-vector)
@@ -322,57 +348,56 @@
       (permute! ret b)
       (permute! ret a)
       (loop :for i :from (1- (length ret)) :downto 0
-	 :do (when (/= i (aref ret i))
-	       (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i)))))
-	 :finally (return (with-no-init-checks (make-instance 'permutation-cycle :store nil :size 1)))))))
+	 :do (when (/= i (aref ret i)) (loop-finish))
+	 :finally (return (with-no-init-checks (make-instance 'permutation-action :store (subseq ret 0 (1+ i)) :size (1+ i))))))))
 
 ;;Uber-functional stuff
 ;;None of these are ever useful (I've found); neat things for showing off though :]
 ;; (defun permute-arguments-and-compile (func perm)
 ;;   (declare (type function func)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (let ((args (loop :for i :from 0 :below (permutation-size perm)
-;; 		 :collect (gensym))))
+;;		 :collect (gensym))))
 ;;     (compile-and-eval `(lambda (,@args &rest rest)
-;; 			 (apply ,func (append (list ,@(permute! args perm)) rest))))))
+;;			 (apply ,func (append (list ,@(permute! args perm)) rest))))))
 
 ;; (defun permute-arguments (func perm)
 ;;   (declare (type function func)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (lambda (&rest args)
 ;;     (apply func (permute! args perm))))
 
 ;; (defun curry (func perm &rest curried-args)
 ;;   (declare (type function func)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (lambda (&rest args)
 ;;     (apply func (permute! (append curried-args args) perm))))
 
 ;; (defun curry-and-compile (func perm &rest curried-args)
 ;;   (declare (type function func)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (let ((args (loop :for i :from 0 :below (permutation-size perm)
-;; 		 :collect (gensym))))
+;;		 :collect (gensym))))
 ;;     (compile-and-eval
 ;;      `(let (,@(mapcar #'(lambda (a b) `(,a ,b)) args curried-args))
-;; 	(lambda (,@(nthcdr (length curried-args) args) &rest rest)
-;; 	  (apply ,func (append (list ,@(permute! args perm)) rest)))))))
+;;	(lambda (,@(nthcdr (length curried-args) args) &rest rest)
+;;	  (apply ,func (append (list ,@(permute! args perm)) rest)))))))
 
 ;; (defun compose (func-a func-b perm)
 ;;   (declare (type function func-a func-b)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (lambda (&rest args)
 ;;     (apply func-a (permute! (multiple-value-list (funcall func-b args)) perm))))
 
 ;; (defun compose-and-compile (func-a func-b perm)
 ;;   (declare (type function func-a func-b)
-;; 	   (type permutation perm))
+;;	   (type permutation perm))
 ;;   (let ((syms (loop :for i :from 0 :below (permutation-size perm)
-;; 		 :collect (gensym))))
-;;     (compile-and-eval     
+;;		 :collect (gensym))))
+;;     (compile-and-eval
 ;;      `(lambda (&rest args)
-;; 	(destructuring-bind (,@syms &rest rest) (multiple-value-list (apply ,func-b args))
-;; 	  (apply ,func-a (append (list ,@(permute! syms perm)) rest)))))))
+;;	(destructuring-bind (,@syms &rest rest) (multiple-value-list (apply ,func-b args))
+;;	  (apply ,func-a (append (list ,@(permute! syms perm)) rest)))))))
 
 ;;Back to practical matters.
 ;;This function is ugly of-course, but is also very very quick!

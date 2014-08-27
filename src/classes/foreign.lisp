@@ -10,6 +10,16 @@
 (deft/method t/store-size (sym foreign-numeric-tensor) (vec)
   `(fv-size ,vec))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (definline cl->cffi-type (type)
+    (ecase type
+      (character :char)
+      (single-float :float)
+      (double-float :double)
+      (string :string)
+      (t (error 'unknown-token :token type
+		:message "Don't know how to convert type to CFFI.")))))
+
 (deft/method t/store-ref (sym foreign-numeric-tensor) (store &rest idx)
    (assert (null (cdr idx)) nil "given more than one index for linear-store")
    (with-gensyms (sto idx0)
@@ -34,16 +44,6 @@
 	      (the ,(store-element-type sym) ,value)))))
 
 ;;
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (definline cl->cffi-type (type)
-    (ecase type
-      (character :char)
-      (single-float :float)
-      (double-float :double)
-      (string :string)
-      (t (error 'unknown-token :token type
-		:message "Don't know how to convert type to CFFI.")))))
-
 (deft/method t/zeros (class foreign-numeric-tensor) (dims &optional data-pointer)
   (using-gensyms (decl (dims data-pointer) (idims size strd idx sto ptr))
     `(let (,@decl)

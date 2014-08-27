@@ -126,7 +126,7 @@
   (let ((realpart (realpart element))
 	(imagpart (imagpart element)))
     (if (not (zerop imagpart))
-	(format stream "~,4,-2,,,,'Eg + ~,4,-2,,,,'Egi"  realpart imagpart)
+	(format stream "~,4,-2,,,,'Eg ~a ~,4,-2,,,,'Egi"  realpart (if (>= imagpart 0) #\+ #\-) (abs imagpart))
 	(format stream "~,4,-2,,,,'Eg" realpart))))
 ;;
 (defleaf complex-tensor (complex-blas-tensor) ())

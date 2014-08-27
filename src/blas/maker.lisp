@@ -35,6 +35,34 @@
 			:store vd)))))
 
 ;;
+;; (deft/method t/zeros (class permutation-cycle) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;; 	   (make-instance ',class
+;; 			  :store nil
+;; 			  :size 0)))))
+
+;; (deft/method t/zeros (class permutation-action) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;; 	   (make-instance ',class
+;; 			  :store (pindex-id ,dims)
+;; 			  :size ,dims)))))
+
+;; (deft/method t/zeros (class permutation-pivot-flip) (dims &optional nz)
+;;   (using-gensyms (decl (dims))
+;;     `(let (,@decl)
+;;        (declare (type index-type ,dims))
+;;        (with-no-init-checks
+;; 	   (make-instance ',class
+;; 			  :store (pindex-id ,dims)
+;; 			  :size ,dims)))))
+
+;;
 (defgeneric zeros-generic (dims dtype &optional initial-element)
   (:documentation "
     A generic version of @func{zeros}.
