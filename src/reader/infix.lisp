@@ -86,6 +86,10 @@
 				   ((symbolp value) 'id)
 				   (t (error "Unexpected value ~S" value)))
 			     value)))))
+
+(defun funcify (lst)
+  (if (symbolp (car lst)) lst
+      `(funcall ,(car lst) ,@(cdr lst))))
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
@@ -125,10 +129,10 @@
    ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
   ;;
   (callable
-   (lid |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
-   (lid |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c)))
-   (callable |(| |)| #'(lambda (a b c) (declare (ignore b c)) (list a)))
-   (callable |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (list* a c))))
+   (lid |(| |)| #'(lambda (a b c) (declare (ignore b c)) (funcify (list a))))
+   (lid |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (funcify (list* a c))))
+   (callable |(| |)| #'(lambda (a b c) (declare (ignore b c)) (funcify (list a))))
+   (callable |(| args |)| #'(lambda (a b c d) (declare (ignore b d)) (funcify (list* a c)))))
   ;;
   (idxs
    expr
