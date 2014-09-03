@@ -34,7 +34,7 @@
 (in-package #:matlisp-system)
 
 (asdf:defsystem matlisp-packages
-  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:yacc)
+  :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc)
   :pathname #.(translate-logical-pathname "matlisp:srcdir;")
   :components
   ((:file "packages")))

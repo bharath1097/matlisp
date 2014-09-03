@@ -5,9 +5,11 @@
 (defparameter *blank-characters* '(#\Space #\Tab #\Newline))
 
 (defparameter *operator-tokens*
-  `(("^" ^) ("**" **)
+  `(("⊗" ⊗) ;;<- CIRCLE TIMES
+    ("^" ^)
     ("./" ./) ("/" /)
     ("*" *) (".*" .*) ("@" @)
+    ("·" @) ;; <- MIDDLE DOT
     (".+" +) ("+" +)
     (".-" -) ("-" -)
     ("(" \() (")" \))
@@ -93,10 +95,10 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (** ./ / * .* @ ^ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
+  (:terminals (^ ./ / * .* @ ⊗ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
   (:precedence ((:left |.| htranspose transpose)
-		(:right **)
-		(:left ./ / * .* @ ^)
+		(:right ^)
+		(:left ./ / * .* @ ⊗)
 		(:left + -)
 		(:left := = ==)))
   (expr
@@ -109,8 +111,8 @@
    (expr * expr #'(lambda (a b c) (list b a c)))
    (expr .* expr #'(lambda (a b c) (list b a c)))
    (expr @ expr #'(lambda (a b c) (list b a c)))
+   (expr ⊗ expr #'(lambda (a b c) (list b a c)))
    (expr ^ expr #'(lambda (a b c) (list b a c)))
-   (expr ** expr #'(lambda (a b c) (list b a c)))
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
@@ -125,8 +127,14 @@
    (expr #'list)
    (expr |,| args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   ;;
+  #+nil
+  (1+args
+   (expr |,| expr #'(lambda (a b c) (declare (ignore b)) (list a c)))
+   (expr |,| 1+args #'(lambda (a b c) (declare (ignore b)) (if (consp c) (list* a c) (list a c)))))
   (list
-   ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
+   ([ args ] #'(lambda (a b c) (declare (ignore a c)) (list* 'list b)))
+   #+nil
+   (|(| 1+args |)| #'(lambda (a b c) (declare (ignore a c)) (list* 'list b))))
   ;;
   (callable
    (lid |(| |)| #'(lambda (a b c) (declare (ignore b c)) (funcify (list a))))
@@ -207,14 +215,14 @@
 (defparameter *operator-assoc-table* '((* matlisp::tb*-opt)
 				       (.* matlisp::tb.*)
 				       (@ matlisp::tb@)
-				       (^ matlisp::tb^)
+				       (⊗ matlisp::tb^)
 				       (+ matlisp::tb+)
 				       (- matlisp::tb-)
 				       (\\ matlisp::tb\\)
 				       (/ matlisp::tb/)
 				       (./ matlisp::tb./)
 				       (== matlisp::tb==)
-				       (** cl:expt)
+				       (^ cl:expt)
 				       (transpose matlisp::transpose)
 				       (htranspose matlisp::htranspose)))
 
@@ -295,10 +303,20 @@
       (#\( (let ((expr (cdr (infix-reader stream #\I nil))))
 	     `(matlisp::zeros (list ,@expr) ',cl))))))
 
+(defun permutation-cycle-reader (stream subchar arg)
+  (assert (null arg) nil "given arg where none was required.")
+  (ignore-characters *blank-characters* stream)
+  (ecase (peek-char nil stream t nil t)
+    (#\[ (let ((expr (cdr (infix-reader stream #\I nil))))
+	   (with-gensyms (sto)
+	     `(let ((,sto (mapcar #'(lambda (x) (apply #'matlisp::pidxv x)) (list ,@expr))))
+		(make-instance 'matlisp::permutation-cycle :store ,sto )))))))
+
 ;;Define a readtable with dispatch characters
 (macrolet ((tensor-symbol-enumerate ()
 	     `(named-readtables:defreadtable :infix-dispatch-table
-		(:merge :standard)
+		(:merge :λ-standard)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
+		(:dispatch-macro-char #\# #\P #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
   (tensor-symbol-enumerate))

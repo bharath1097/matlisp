@@ -3,14 +3,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Copyright (c) 2000 The Regents of the University of California.
-;;; All rights reserved. 
-;;; 
+;;; All rights reserved.
+;;;
 ;;; Permission is hereby granted, without written agreement and without
 ;;; license or royalty fees, to use, copy, modify, and distribute this
 ;;; software and its documentation for any purpose, provided that the
 ;;; above copyright notice and the following two paragraphs appear in all
 ;;; copies of this software.
-;;; 
+;;;
 ;;; IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 ;;; FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
 ;;; ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
@@ -105,6 +105,7 @@
 ;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
   (:use #:common-lisp #:iterate #:optima #:matlisp-conditions #:matlisp-utilities)
+  (:import-from :λ-reader #:λ)
   (:export #:test-infix #:string->prefix))
 
 (defpackage "MATLISP-FFI"
@@ -149,7 +150,7 @@
    ;;------------
    ;;Real-double
    #:dgemm #:dsyrk #:dsyr2k #:dtrmm #:dtrsm
-   ;;Complex-double  
+   ;;Complex-double
    #:zgemm #:ztrmm #:ztrsm #:zherk #:zher2k)
   (:documentation "BLAS routines"))
 
@@ -181,6 +182,7 @@
   (:use #:common-lisp #:iterate #:optima #:named-readtables
 	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
 	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
+  (:import-from :λ-reader #:λ)
   ;;Shadow iterate:sum
   (:shadow :sum)
   ;;Let's keep everything in house for now.
@@ -203,7 +205,7 @@
 
 ;;Transitioning to using the tensor-datastructures; eventually move things back to :matlisp
 
-;; Stolen from f2cl.  
+;; Stolen from f2cl.
 ;; (defpackage :f2cl-lib
 ;;   (:use :cl)
 ;;   (:documentation "The package holding all symbols used by the fortran to lisp library.")
@@ -283,61 +285,61 @@
 ;;   (:use :common-lisp :fortran-ffi-accessors :blas :lapack :dfftpack :quadpack :matlisp-lib :utilities)
 ;;   (:shadow #:real)
 ;;   (:export #:*print-matrix*
-;; 	   ;;
-;; 	   #:integer4-type #:integer4-array #:allocate-integer4-store
-;; 	   #:index-type #:index-array #:allocate-index-store #:make-index-store
-;; 	   ;;Standard-tensor
-;; 	   #:standard-tensor
-;; 	   #:rank #:dimensions #:number-of-elements
-;; 	   #:head #:strides #:store-size #:store
-;; 	   ;;Sub-tensor
-;; 	   #:sub-tensor
-;; 	   #:parent-tensor
-;; 	   ;;Store indexers
-;; 	   #:store-indexing
-;; 	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
-;; 	   ;;Store accessors
-;; 	   #:tensor-store-ref
-;; 	   #:tensor-ref
-;; 	   ;;Type checking
-;; 	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
-	   
-;; 	   ;;Level 1 BLAS
-;; 	   #:axpy! #:axpy
-;; 	   #:copy! #:copy
-;; 	   #:scal! #:scal
-;; 	   ;;Level 2 BLAS
-;; 	   #:gemv! #:gemv
-;; 	   ;;Level 3 BLAS
-;; 	   #:gemm! #:gemm	   
-;; 	   ;;Fortran stuff
-;; 	   #:blas-copyable-p #:blas-matrix-compatible-p
-;; 	   #:fortran-op #:fortran-nop #:fortran-snop
-;; 	   ;;Standard-matrix
-;; 	   #:standard-matrix
-;; 	   #:nrows #:ncols #:number-of-elements
-;; 	   #:head #:row-stride #:col-stride
-;; 	   #:store #:store-size	  
-;; 	   ;;Generic functions on standard-matrix
-;; 	   #:fill-matrix
-;; 	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
-;; 	   ;;Submatrix ops
-;; 	   #:row~ #:row
-;; 	   #:col~ #:col
-;; 	   #:diag~ #:diag
-;; 	   #:sub-matrix~ #:sub-matrix
-;; 	   ;;Transpose
-;; 	   #:transpose~ #:transpose! #:transpose
-;; 	   #:ctranspose! #:ctranspose	   
-;; 	   ;;Real-double-matrix
-;; 	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
-;; 	   ;;Complex-double-matrix
-;; 	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
-;; 	   ;;Real and imaginary parts
-;; 	   #:mrealpart~ #:mrealpart #:real
-;; 	   #:mimagpart~ #:mimagpart #:imag
-;; 	   ;;
-;; 	   "CONVERT-TO-LISP-ARRAY"
+;;	   ;;
+;;	   #:integer4-type #:integer4-array #:allocate-integer4-store
+;;	   #:index-type #:index-array #:allocate-index-store #:make-index-store
+;;	   ;;Standard-tensor
+;;	   #:standard-tensor
+;;	   #:rank #:dimensions #:number-of-elements
+;;	   #:head #:strides #:store-size #:store
+;;	   ;;Sub-tensor
+;;	   #:sub-tensor
+;;	   #:parent-tensor
+;;	   ;;Store indexers
+;;	   #:store-indexing
+;;	   #:store-indexing-internal #:store-indexing-vec #:store-indexing-lst
+;;	   ;;Store accessors
+;;	   #:tensor-store-ref
+;;	   #:tensor-ref
+;;	   ;;Type checking
+;;	   #:tensor-type-p #:vector-p #:matrix-p #:square-p
+
+;;	   ;;Level 1 BLAS
+;;	   #:axpy! #:axpy
+;;	   #:copy! #:copy
+;;	   #:scal! #:scal
+;;	   ;;Level 2 BLAS
+;;	   #:gemv! #:gemv
+;;	   ;;Level 3 BLAS
+;;	   #:gemm! #:gemm
+;;	   ;;Fortran stuff
+;;	   #:blas-copyable-p #:blas-matrix-compatible-p
+;;	   #:fortran-op #:fortran-nop #:fortran-snop
+;;	   ;;Standard-matrix
+;;	   #:standard-matrix
+;;	   #:nrows #:ncols #:number-of-elements
+;;	   #:head #:row-stride #:col-stride
+;;	   #:store #:store-size
+;;	   ;;Generic functions on standard-matrix
+;;	   #:fill-matrix
+;;	   #:row-or-col-vector-p #:row-vector-p #:col-vector-p
+;;	   ;;Submatrix ops
+;;	   #:row~ #:row
+;;	   #:col~ #:col
+;;	   #:diag~ #:diag
+;;	   #:sub-matrix~ #:sub-matrix
+;;	   ;;Transpose
+;;	   #:transpose~ #:transpose! #:transpose
+;;	   #:ctranspose! #:ctranspose
+;;	   ;;Real-double-matrix
+;;	   #:real-matrix #:real-matrix-element-type #:real-matrix-store-type
+;;	   ;;Complex-double-matrix
+;;	   #:complex-matrix #:complex-matrix-element-type #:complex-matrix-store-type #:complex-coerce #:complex-double-float
+;;	   ;;Real and imaginary parts
+;;	   #:mrealpart~ #:mrealpart #:real
+;;	   #:mimagpart~ #:mimagpart #:imag
+;;	   ;;
+;;	   "CONVERT-TO-LISP-ARRAY"
 ;;    "DOT"
 ;;    "EIG"
 ;;    "EYE"

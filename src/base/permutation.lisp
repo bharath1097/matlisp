@@ -58,8 +58,10 @@
     (if (<= (permutation-size per) 1)
 	(format stream "ID~%")
 	(format stream "~a~%" (store per)))))
+
+(defclass permutation-index-stored (permutation) ())
 ;;
-(defclass permutation-action (permutation)
+(defclass permutation-action (permutation-index-stored)
   ((store :type pindex-store-vector)))
 
 (defmethod initialize-instance :after ((perm permutation-action) &rest initargs)
@@ -93,7 +95,7 @@
 	   :finally (setf (slot-value per 'permutation-size) (1+ ss))))))
 
 ;;
-(defclass permutation-pivot-flip (permutation)
+(defclass permutation-pivot-flip (permutation-index-stored)
   ((store :type pindex-store-vector)))
 
 (defmethod initialize-instance :after ((per permutation-pivot-flip) &rest initargs)
@@ -220,6 +222,11 @@
   A)
 
 ;;Conversions----------------------------------------------------;;
+(defmethod copy! ((from permutation) (to permutation))
+  (if (typep to (type-of from))
+      (copy! (store from) (store to))
+      (copy! (store (copy from (type-of to))) (store to))))
+
 (defmethod copy-generic ((act permutation-action) (type (eql 'permutation-cycle)))
   (let-typed ((arr (store act) :type pindex-store-vector)
 	      (midx 0 :type pindex-type))

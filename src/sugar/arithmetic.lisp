@@ -169,7 +169,7 @@
     ;;Permutation action on arguments. Left action unpermutes arguments, right action permutes them.
     ;;See tb* for comparison.
     ((permutation base-tensor) (transpose b (inv a)))
-    ((base-tensor permutation) (transpose b a))
+    ((base-tensor permutation) (transpose a b))
     ;;The correctness of this depends on the left-right order in reduce (foldl).
     ((permutation permutation) (compose a b))))
 
@@ -181,7 +181,7 @@
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
     ((base-tensor number) (scal (cl:/ a) b))
-    (((eql nil) (and base-square-matrix blas-numeric-tensor))
+    (((eql nil) (or permutation (and base-square-matrix blas-numeric-tensor)))
      (inv a))
     (((and base-matrix blas-numeric-tensor) (and base-square-matrix blas-numeric-tensor))
      (transpose (with-colm (getrs! (getrf! (copy a)) (transpose b) :t))))
@@ -200,7 +200,7 @@
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
     ((base-tensor number) (scal (cl:/ a) b))
-    (((eql nil) (and base-square-matrix blas-numeric-tensor))
+    (((eql nil) (or permutation (and base-square-matrix blas-numeric-tensor)))
      (inv a))
     (((and base-matrix blas-numeric-tensor) (and base-square-matrix blas-numeric-tensor))
      (getrs! (getrf! (with-colm (copy a))) (copy b)))
@@ -213,7 +213,8 @@
     ;;The correctness of this depends on the left-right order in reduce (foldl).
     ((permutation permutation)
      (compose (inv a) b))))
-;;
+
+;;This conflicts semantically with Wedge product.
 (defgeneric tb^ (a b)
   (:documentation "Returns the tensor outer product of a and b."))
 
