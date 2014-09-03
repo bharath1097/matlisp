@@ -57,7 +57,6 @@
 			     ((,ref ,x :type ,type))
 			     (setf ,ref (,func ,@(unless null-arity? `(,ref))))))
        ,x)))
-
 ;;
 (defun check-dims (axlst tensors)
   (let ((axlst (if (numberp axlst) (make-list (length tensors) :initial-element axlst) axlst)))

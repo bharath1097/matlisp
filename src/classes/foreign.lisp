@@ -56,7 +56,7 @@
 			 (matlisp-ffi:foreign-vector
 			  (assert (<= ,size (fv-size ,data-pointer)) nil 'tensor-insufficient-store :store-size (fv-size ,data-pointer) :max-idx (1- ,size))
 			  ,data-pointer))))
-	     #+nil(let ((,ptr (fv-pointer ,sto)))
+	     (let ((,ptr (fv-pointer ,sto)))
 	       (iter (for ,idx from 0 below (* ,(cffi:foreign-type-size (cl->cffi-type (store-element-type class))) ,size))
 		     (setf (cffi:mem-aref ,ptr :uint8 ,idx) 0)))
 	     (with-no-init-checks
@@ -79,7 +79,7 @@
 	       (locally
 		   ,@body))))))))
 ;;
-(defclass foreign-real-numeric-tensor (foreign-numeric-tensor real-numeric-tensor) ())
+(defclass foreign-real-numeric-tensor (foreign-numeric-tensor real-blas-tensor) ())
 (defleaf foreign-real-tensor (foreign-real-numeric-tensor) ())
 (deft/method t/field-type (sym foreign-real-tensor) ()
   'double-float)

@@ -148,6 +148,16 @@ to simplify writing very tight loops.
    * einstein macro works, can produce optimized loops.
 
 ** TODO : What remains ? (Help!)
+*** Get rid of the build system
+    Use cffi:foreign-symbol-pointer and things to check for Fortran name mangling convention; and move things
+    requiring a fortran compiler to their own packages. Matlisp can then be made available on Quicklisp. BLAS/LAPACK
+    code will obviously have to go too (we have more Fortran code than lisp!).
+
+*** Unify slicing syntax
+    Things are currently done using the iter slice macro (and mapslice*'s), mod-dotimes, and einstein-loop generator. The more 
+    elegant course to take would be unify these with a nice syntactic glue; sadly as far I know this hasn't been done before. 
+    This will require quite a bit of prototyping.
+
 *** Functionality
    * Make everything in src/old/ compatible with new datastrutures.
    * Add negative stride support, ala Python.
@@ -159,10 +169,6 @@ to simplify writing very tight loops.
    * MINPACK: Move from f2cl-ed version to the Fortran one.
    * ODEPACK: Add abstraction for DLSODE, and DLSODAR may others too.
 
-*** Syntactic sugar
-   * Add array slicing macros
-   * Might have to add something to make it compatible with old Matlisp.
-
 *** Gnuplot interface
    * Make gnuplot interface more usable.
 
@@ -172,10 +178,6 @@ to simplify writing very tight loops.
 
     Getting standard-tensor <-> numpy tranlation should be enough. Mostly care about
     matplotlib at the moment.
-
-*** Add infix to Matlisp
-    Added Mark Kantrowicz' infix package into lib-src. Should be straight forward to use it,
-    although changes are not strictly local.
 
 *** Support linking to libraries ?
     Parse header files with cffi-grovel.
