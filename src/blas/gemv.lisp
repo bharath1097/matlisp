@@ -36,8 +36,7 @@
       (declare (type ,sym ,A ,x ,y)
 	       (type ,(field-type sym) ,alpha ,beta)
 	       (type character ,transp))
-      (unless (t/f= ,(field-type sym) ,beta (t/fid* ,(field-type sym)))
-	(scal! ,beta ,y))
+      (scal! ,beta ,y)
       ,@(when (field-realp (field-type sym))
 	      `((when (char= ,transp #\C) (setq ,transp #\T))))
       ;;These loops are optimized for column major matrices

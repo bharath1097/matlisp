@@ -104,11 +104,12 @@
 (define-tensor-method scal! ((x t) (y standard-tensor :output))
   `(let ((x (t/coerce ,(field-type (cl y)) x)))
      (declare (type ,(field-type (cl y)) x))
-     ,(recursive-append
-       (when (subtypep (cl y) 'blas-numeric-tensor)
-	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
-	    (t/blas-scdi! ,(cl y) x nil y strd t)))
-       `(t/scdi! ,(cl y) x y :scal? t :numx? t))
+     (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
+       ,(recursive-append
+	 (when (subtypep (cl y) 'blas-numeric-tensor)
+	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	      (t/blas-scdi! ,(cl y) x nil y strd t)))
+	 `(t/scdi! ,(cl y) x y :scal? t :numx? t)))
      y))
 
 (defgeneric scal (alpha x)
@@ -156,7 +157,7 @@
 	   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil
 		   'tensor-dimension-mismatch)))
 
-(define-tensor-method div! ((x standard-tensor :input) (y standard-tensor :output))
+(define-tensor-method div! ((x standard-tensor :input) (y standard-tensor :output))  
   (recursive-append
    (when (subtypep (cl x) 'blas-numeric-tensor)
      `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
@@ -165,13 +166,14 @@
   'y)
 
 (define-tensor-method div! ((x t) (y standard-tensor :output))
-  `(let ((x (t/coerce ,(field-type (cl y)) x)))
+  `(let ((x (t/coerce ,(field-type (cl y)) x)))     
      (declare (type ,(field-type (cl y)) x))
-     ,(recursive-append
-       (when (subtypep (cl y) 'blas-numeric-tensor)
-	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
-	    (t/blas-scdi! ,(cl y) x nil y strd nil)))
-       `(t/scdi! ,(cl y) x y :scal? nil :numx? t))
+     (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
+       ,(recursive-append
+	 (when (subtypep (cl y) 'blas-numeric-tensor)
+	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	      (t/blas-scdi! ,(cl y) x nil y strd nil)))
+	 `(t/scdi! ,(cl y) x y :scal? nil :numx? t)))
      y))
 
 (defgeneric div (x y)

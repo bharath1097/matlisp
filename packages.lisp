@@ -77,7 +77,7 @@
 	   #:zip #:zip-eq #:zipsym
 	   #:list-eq #:setadd #:setrem #:set-eq
 	   #:cut-cons-chain!
-	   #:slot-values #:remmeth
+	   #:slot-values #:slot-values-list #:remmeth
 	   #:recursive-append #:unquote-args #:flatten
 	   #:string+ #:file->string #:split-seq #:splitlines
 	   #:linear-array-type
@@ -90,7 +90,7 @@
 	   ;;dlist
 	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:with-marking #:with-fslots
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:with-marking #:with-fslots
 	   #:mlet* #:letv* #:make-array-allocator #:let-typed #:let*-typed
 	   #:nconsc #:define-constant #:eval-every
 	   #:macrofy #:defun-compiler-macro #:cart-etypecase

@@ -302,7 +302,8 @@
 (defmethod copy-generic ((pflip permutation-pivot-flip) (type (eql 'permutation-pivot-flip)))
   (with-no-init-checks (make-instance 'permutation-pivot-flip :store (copy-seq (store pflip)) :size (permutation-size pflip))))
 ;;
-(defgeneric inv (obj))
+(defgeneric inv (obj)
+  (:method ((obj number)) (/ obj)))
 
 (defmethod inv ((obj permutation-action))
   (let*-typed ((sto (store obj) :type pindex-store-vector)

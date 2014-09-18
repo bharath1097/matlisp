@@ -118,11 +118,12 @@
   `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
      (declare (type ,(field-type (cl y)) alpha))
      (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
-     ,(recursive-append
-       (when (subtypep (cl y) 'blas-numeric-tensor)
-	 `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
-	    (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
-       `(t/axpy! ,(cl y) alpha nil y))
+     (unless (t/f= ,(field-type (cl y)) x (t/fid+ ,(field-type (cl y))))
+       ,(recursive-append
+	 (when (subtypep (cl y) 'blas-numeric-tensor)
+	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
+	      (t/blas-axpy! ,(cl y) alpha nil nil y strd)))
+	 `(t/axpy! ,(cl y) alpha nil y)))
      y))
 ;;
 (defgeneric axpy (alpha x y)

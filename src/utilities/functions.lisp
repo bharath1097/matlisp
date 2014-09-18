@@ -117,6 +117,11 @@
   (if (atom lst) (eq lst sym)
       (or (findsym (car lst) sym) (findsym (cdr lst) sym))))
 
+(declaim (inline slot-values-list))
+(defun slot-values-list (obj slots)
+  (loop :for slt :in slots
+     :collect (slot-value obj slt)))
+
 (declaim (inline slot-values))
 (defun slot-values (obj slots)
   "
@@ -132,9 +137,8 @@
   => 1 2
   @end lisp
   "
-  (values-list
-   (loop :for slt :in slots
-      :collect (slot-value obj slt))))
+  (values-list (slot-values-list obj slots)))
+
 
 (declaim (inline linear-array-type))
 (defun linear-array-type (type-sym &optional (size '*))

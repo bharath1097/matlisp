@@ -22,10 +22,6 @@
 
 (definline t+ (&rest objs)
   (reduce #'tb+ objs))
-(definline m+ (&rest objs)
-  (apply #'t+ objs))
-(definline m.+(&rest objs)
-  (apply #'t+ objs))
 ;;
 (definline tb- (a &optional b)
   "
@@ -53,10 +49,6 @@
   (if (cdr objs)
       (reduce #'tb- objs)
       (tb- (car objs))))
-(definline m- (&rest objs)
-  (apply #'t- objs))
-(definline m.- (&rest objs)
-  (apply #'t- objs))
 ;;
 (definline tb* (a &optional b)
   (if b
@@ -97,8 +89,6 @@
 
 (definline t* (&rest objs)
   (reduce #'tb* objs))
-(definline m* (&rest objs)
-  (apply #'t* objs))
 ;;
 (definline tb.* (a &optional b)
   (if b
@@ -110,8 +100,6 @@
 
 (definline t.* (&rest objs)
   (reduce #'tb.* objs))
-(definline m.* (&rest objs)
-  (apply #'t.* objs))
 ;;
 (definline tb./ (a &optional b)
   (if b
@@ -127,9 +115,6 @@
   (if (cdr objs)
       (reduce #'tb./ objs)
       (tb./ (car objs))))
-
-(definline m./ (&rest objs)
-  (apply #'t./ objs))
 ;;
 (defparameter *tensor-contraction-functable* (make-hash-table :test 'equal))
 (defgeneric gett! (alpha a b beta c)
@@ -181,7 +166,7 @@
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
     ((base-tensor number) (scal (cl:/ a) b))
-    (((eql nil) (or permutation (and base-square-matrix blas-numeric-tensor)))
+    (((eql nil) (or number permutation (and base-square-matrix blas-numeric-tensor)))
      (inv a))
     (((and base-matrix blas-numeric-tensor) (and base-square-matrix blas-numeric-tensor))
      (transpose (with-colm (getrs! (getrf! (copy a)) (transpose b) :t))))
@@ -200,7 +185,7 @@
   (cart-etypecase (b a)
     ((number number) (cl:/ b a))
     ((base-tensor number) (scal (cl:/ a) b))
-    (((eql nil) (or permutation (and base-square-matrix blas-numeric-tensor)))
+    (((eql nil) (or number permutation (and base-square-matrix blas-numeric-tensor)))
      (inv a))
     (((and base-matrix blas-numeric-tensor) (and base-square-matrix blas-numeric-tensor))
      (getrs! (getrf! (with-colm (copy a))) (copy b)))

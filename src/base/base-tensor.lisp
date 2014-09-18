@@ -258,7 +258,9 @@
   verbose (unlike MATLAB, Python). However, this function has been designed with the
   express purpose of using it with a Lisp reader macro. The slicing semantics is
   essentially the same as MATLAB except for the zero-based indexing.
-"))
+")
+  (:method :before ((tensor base-tensor) (subscripts list))
+	   (assert (or (null subscripts) (= (length subscripts) (order tensor))) nil 'tensor-index-rank-mismatch)))
 
 (defun (setf subtensor~) (value tensor subscripts)
   (copy! value (subtensor~ tensor subscripts)))

@@ -256,12 +256,19 @@ Example:
      ,@body))
 
 (defmacro using-gensyms ((decl (&rest syms) &optional gensyms) &rest body)
-  `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))     
+  `(let ((,decl (zip ',(mapcar #'(lambda (x) (gensym (symbol-name x))) syms) (list ,@syms))))
      (destructuring-bind (,@syms) (mapcar #'car ,decl)
        ,(append
 	 (if gensyms
 	   `(with-gensyms (,@gensyms)) `(progn))
 	 body))))
+
+(defmacro binding-gensyms ((mname &optional (fname (gensym))) &rest body)
+  (with-gensyms (htbl)
+    `(let ((,htbl (make-hash-table)))
+       (labels ((,fname (x) (or (gethash x ,htbl) (setf (gethash x ,htbl) (gensym (symbol-name x))))))
+	 (macrolet ((,mname (x) `(,', fname ',x)))
+	   ,@body)))))
 
 (defmacro nconsc (var &rest args)
   "
