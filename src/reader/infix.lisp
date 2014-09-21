@@ -272,8 +272,9 @@
 				  (push (second mrk) decls)
 				  `(setq ,@(cdr mrk)))))
 			body '(:deflet))))
-    `(let* (,@decls)
-       ,@code)))
+    (recursive-append
+     (when decls `(let* (,@decls)))
+     code)))
 ;;
 (defun infix-reader (stream subchar arg)
   ;; Read either #I(...) or #I"..."
