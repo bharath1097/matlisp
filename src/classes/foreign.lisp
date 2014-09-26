@@ -10,7 +10,7 @@
 (deft/method t/store-size (sym foreign-numeric-tensor) (vec)
   `(fv-size ,vec))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-every
   (definline cl->cffi-type (type)
     (ecase type
       (character :char)

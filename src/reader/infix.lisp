@@ -6,7 +6,7 @@
 
 (defparameter *operator-tokens*
   `(("⊗" ⊗) ;;<- CIRCLE TIMES
-    ("^" ^)
+    ("^" ^) ("⟼" ⟼)
     ("./" ./) ("/" /)
     ("*" *) (".*" .*) ("@" @)
     ("·" @) ;; <- MIDDLE DOT
@@ -95,11 +95,12 @@
 ;;
 (yacc:define-parser *linfix-parser*
   (:start-symbol expr)
-  (:terminals (^ ./ / * .* @ ⊗ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
+  (:terminals (⟼ ^ ./ / * .* @ ⊗ + - := = == |(| |)| [ ] |:| |.| |,| htranspose transpose id number))
   (:precedence ((:left |.| htranspose transpose)
 		(:right ^)
 		(:left ./ / * .* @ ⊗)
 		(:left + -)
+		(:left ⟼)
 		(:left := = ==)))
   (expr
    (expr htranspose #'(lambda (a b) (list b a)))
@@ -113,6 +114,7 @@
    (expr @ expr #'(lambda (a b c) (list b a c)))
    (expr ⊗ expr #'(lambda (a b c) (list b a c)))
    (expr ^ expr #'(lambda (a b c) (list b a c)))
+   (list ⟼ expr #'(lambda (a b c) (declare (ignore b)) `(lambda (,@(cdr a)) ,c)))
    (expr = expr #'(lambda (a b c) (declare (ignore b)) (list 'setf a c)))
    (expr := expr #'(lambda (a b c) (declare (ignore b)) (list :deflet a c)))
    (expr == expr #'(lambda (a b c) (list b a c)))
@@ -273,7 +275,7 @@
 				  `(setq ,@(cdr mrk)))))
 			body '(:deflet))))
     (recursive-append
-     (when decls `(let* (,@decls)))
+     (when decls `(let (,@decls)))
      code)))
 ;;
 (defun infix-reader (stream subchar arg)

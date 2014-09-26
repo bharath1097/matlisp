@@ -118,7 +118,7 @@
   `(let ((alpha (t/coerce ,(field-type (cl y)) alpha)))
      (declare (type ,(field-type (cl y)) alpha))
      (when x (setq alpha (t/f* ,(field-type (cl y)) alpha (t/coerce ,(field-type (cl y)) x))))
-     (unless (t/f= ,(field-type (cl y)) x (t/fid+ ,(field-type (cl y))))
+     (unless (t/f= ,(field-type (cl y)) alpha (t/fid+ ,(field-type (cl y))))
        ,(recursive-append
 	 (when (subtypep (cl y) 'blas-numeric-tensor)
 	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
