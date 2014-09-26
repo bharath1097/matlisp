@@ -318,6 +318,6 @@
 	     `(named-readtables:defreadtable :infix-dispatch-table
 		(:merge :λ-standard)
 		(:dispatch-macro-char #\# #\I #'infix-reader)
-		(:dispatch-macro-char #\# #\P #'permutation-cycle-reader)
+		(:dispatch-macro-char #\# #\S #'permutation-cycle-reader)
 		,@(mapcar #'(lambda (x) `(:dispatch-macro-char #\# ,(car x) #'tensor-reader)) *tensor-symbol*))))
   (tensor-symbol-enumerate))
