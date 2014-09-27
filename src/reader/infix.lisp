@@ -184,20 +184,19 @@
     (t `(matlisp::ref ,x ,@args))))
 
 (define-setf-expander generic-ref (x &rest args &environment env)
-  (multiple-value-bind (dummies vals newval setter getter)
-      (get-setf-expansion x env)
+  (multiple-value-bind (dummies vals newval setter getter) (get-setf-expansion x env)
+    (declare (ignore setter))
     (with-gensyms (store)
       (values (append dummies newval)
 	      (append vals (list getter))
 	      `(,store)
 	      (let ((arr (car newval)))
-		`(prog1 ,(cond
-			  ((null args)
-			   `(matlisp::copy! ,store ,arr))
-			  ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
-			   `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store))
-			  (t `(setf (matlisp::ref ,arr ,@args) ,store)))
-		   ,setter))
+		(cond
+		  ((null args)
+		   `(matlisp::copy! ,store ,arr))
+		  ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
+		   `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store))
+		  (t `(setf (matlisp::ref ,arr ,@args) ,store))))
 	      `(generic-ref ,getter ,@args)))))
 
 (defmacro generic-incf (x expr &optional (alpha 1) &environment env)
@@ -275,7 +274,7 @@
 				  `(setq ,@(cdr mrk)))))
 			body '(:deflet))))
     (recursive-append
-     (when decls `(let (,@decls)))
+     (when (or decls (cdr code)) `(let (,@decls)))
      code)))
 ;;
 (defun infix-reader (stream subchar arg)

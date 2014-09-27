@@ -53,7 +53,7 @@
   (format s "e~%"))
 
 (defun plot (data &key (style "lines") (color #x0000ff))
-  (declare (type (and real-numeric-tensor (or tensor-matrixp tensor-vectorp)) data))
+  ;; (declare (type (and real-numeric-tensor (or base-vector base-matrix)) data))
   (labels ((ppair (s x y color style)
 	     (let ((*print-max-len* t))
 	       (format s "'-' using 1:2 with ~a linecolor rgb \"#~X\"~%" style color)
