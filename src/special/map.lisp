@@ -138,10 +138,9 @@
 
 ;;
 (defmacro values-n (n &rest values)
-  (using-gensyms (decl (n))
+  (using-gensyms (decl (n) (idx))
     (labels ((make-cd (i rets vrets)
-	       `((let ((,(first (car rets)) ,(mapcons #'(λ (x) (destructuring-bind (i) (cdr x) (elt (reverse vrets) i)))
-						      (second (car rets)) '(previous-value))))
+	       `((let ((,(first (car rets)) (macrolet ((previous-value (,idx) (elt ',(reverse vrets) ,idx))) ,(second (car rets)))))
 		   ,(recursive-append
 		     (when (cdr rets)
 		       `(if (> ,n ,i) ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))
