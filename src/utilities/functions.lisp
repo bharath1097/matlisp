@@ -87,13 +87,17 @@
 	  (list lst)
 	  (append (getcons (car lst) sym) (getcons (cdr lst) sym)))))
 
-(defun mapcons (func lst keys)
-  (if (atom lst) lst
-      (let ((tlst (if (member (car lst) keys)
-			(funcall func lst)
-			lst)))
-	(if (atom tlst) tlst
-	    (mapcar #'(lambda (x) (mapcons func x keys)) tlst)))))
+(defun maptree-if (predicate transformer tree)
+  (multiple-value-bind (t-tree control) (if (funcall predicate tree)
+					    (funcall transformer tree)
+					    (values tree #'mapcar))
+    (if (and (consp t-tree) control)
+	(funcall control #'(lambda (x) (maptree-if predicate transformer x)) t-tree)
+	t-tree)))
+
+(defun maptree (keys transformer tree)
+  (maptree-if #'(lambda (x) (and (consp x) (member (car x) keys)))
+	      transformer tree))
 
 (defun find-tag (lst tag)
   (let ((car (car lst)))

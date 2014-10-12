@@ -17,11 +17,10 @@
 		      (type index-type ,axis))
 	     (let ((,view (slice~ ,x ,axis))
 		   (,ret (if (= (order ,ret) (order ,x)) (slice~ ,ret ,axis) ,ret))
-		   (,argstd (aref (the index-store-vector (strides ,x)) ,axis)))
+		   (,argstd (strides ,x ,axis)))
 	       (declare (type ,sym ,view)
 			(type index-type ,argstd))
-	       (copy! (t/fid+ ,(field-type sym)) ,ret)
-	       (loop :for i :from 0 :below (aref (the index-store-vector (dimensions ,x)) ,axis)
+	       (loop :for i :from 0 :below (dimensions ,x ,axis)
 		  :do (progn
 			(axpy! (t/fid* ,(field-type sym)) ,view ,ret)
 			(incf (slot-value ,view 'head) ,argstd))))
@@ -65,6 +64,7 @@
     (compile-and-eval
      `(progn
 	(defmethod sum! ((x ,clx) (y ,clx) &optional (axis 0))
+	  (copy! (t/fid+ ,(field-type clx)) y)
 	  (t/sum ,clx x y axis))
 	(defmethod sum! ((x ,clx) (y (eql nil)) &optional (axis 0))
 	  (declare (ignore axis))
@@ -88,16 +88,19 @@
     (assert (member clx *tensor-type-leaves*)
 	    nil 'tensor-abstract-class :tensor-class (list clx))
     (labels ((*-ify (code)
-	       (mapcons #'(lambda (x) (ecase (car x)
-					(t/fid+ `(t/fid* ,@(cdr x)))
-					(axpy! `(scal! ,@(cddr x)))
-					(t/f+ `(t/f* ,@(cdr x)))))
-			code
-			`(t/fid+ t/f+ axpy!))))
+	       (maptree `(t/fid+ t/f+ axpy!)
+			#'(lambda (x) (values
+				       (ecase (car x)
+					 (t/fid+ `(t/fid* ,@(cdr x)))
+					 (axpy! `(scal! ,@(cddr x)))
+					 (t/f+ `(t/f* ,@(cdr x))))
+				       #'mapcar))
+			code)))
       ;;Don't you just love lisp :)
       (compile-and-eval
        `(progn
 	  (defmethod prod! ((x ,clx) (y ,clx) &optional (axis 0))
+	    (copy! (t/fid* ,(field-type clx)) y)
 	    ,(*-ify (macroexpand-1 `(t/sum ,clx x y axis))))
 	  (defmethod prod! ((x ,clx) (y (eql nil)) &optional (axis 0))
 	    (declare (ignore axis))

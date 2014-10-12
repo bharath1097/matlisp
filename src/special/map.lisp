@@ -137,19 +137,6 @@
        ,init))))
 
 ;;
-(defmacro values-n (n &rest values)
-  (using-gensyms (decl (n) (idx))
-    (labels ((make-cd (i rets vrets)
-	       `((let ((,(first (car rets)) (macrolet ((previous-value (,idx) (elt ',(reverse vrets) ,idx))) ,(second (car rets)))))
-		   ,(recursive-append
-		     (when (cdr rets)
-		       `(if (> ,n ,i) ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))
-		     `(values ,@(reverse vrets) ,(caar rets)))))))
-      `(let (,@decl)
-	 (when (> ,n 0)
-	   ,@(make-cd 1 (zipsym values) nil))))))
-
-;;
 (defmacro with-peeky! (((&rest tensors) &optional (step 1)) &rest body)
   (let ((ts (zipsym tensors)))
     (with-gensyms (e.step s)

@@ -38,7 +38,8 @@ Example:
 "
   (let* ((decls nil)
 	 (types nil)
-	 (code (mapcons #'(lambda (mrk)
+	 (code (maptree '(:mark* :mark :memo)
+			#'(lambda (mrk)
 			    (ecase (car mrk)
 			      (:mark*
 			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
@@ -66,7 +67,7 @@ Example:
 					 (when type
 					   (push `(type ,type ,rsym) types))
 					 rsym)))))))
-			body '(:mark* :mark :memo))))
+			body)))
     `(let* (,@decls)
        ,@(when types `((declare ,@types)))
        ,@code)))
@@ -501,8 +502,7 @@ Example:
 			      `(,name (&rest ,args) (apply (the function (slot-value ,obj ',slot-name)) ,args))))
 			slots))
 	 ,@body))))
-)
-;;
+
 (defmacro cart-etypecase (vars &body cases)
   (let* ((decl (zipsym vars))
 	 (vars (mapcar #'car decl)))
@@ -513,3 +513,22 @@ Example:
 			 ,@(cdr clause)))
 		   cases)
 	 (t (error "cart-etypecase: Case failure."))))))
+
+(defmacro values-n (n &rest values)
+  (using-gensyms (decl (n))
+    (labels ((make-cd (i rets vrets)
+	       `((let ((,(first (car rets)) ,(maptree '(values-n previous-value) #'(lambda (x) (case (car x)
+												 (values-n (print x))
+												 (previous-value
+												  (destructuring-bind (&optional (idx (- i 2))) (cdr x)
+												    (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
+												    (elt (reverse vrets) idx)))))
+						      (second (car rets)))))
+		   ,(recursive-append
+		     (when (cdr rets)
+		       `(if (> ,n ,i) ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))
+		     `(values ,@(reverse vrets) ,(caar rets)))))))
+      `(let (,@decl)
+	 (when (> ,n 0)
+	   ,@(make-cd 1 (zipsym values) nil))))))
+)

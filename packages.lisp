@@ -86,7 +86,7 @@
 	   #:lvec-map-foldl! #:lvec-map-foldr!
 	   #:lvec->list #:lvec->list!
 	   #:compile-and-eval
-	   #:getcons #:mapcons
+	   #:getcons #:maptree-if #:maptree #:values-n
 	   ;;dlist
 	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros

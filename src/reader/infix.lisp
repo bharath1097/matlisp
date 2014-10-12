@@ -264,15 +264,16 @@
 ;;
 (defmacro inlet (&rest body)
   (let* ((decls nil)
-	 (code (mapcons #'(lambda (mrk)
-			    (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
-				(progn
-				  (map nil #'(lambda (x) (push x decls)) (cdr (second mrk)))
-				  `(setf (values ,@(cdr (second mrk))) ,(third mrk)))
-				(progn
-				  (push (second mrk) decls)
-				  `(setq ,@(cdr mrk)))))
-			body '(:deflet))))
+	 (code (maptree '(:deflet) #'(lambda (mrk)
+				       (values (if (and (consp (second mrk)) (eql (car (second mrk)) 'list))
+						   (progn
+						     (map nil #'(lambda (x) (push x decls)) (cdr (second mrk)))
+						     `(setf (values ,@(cdr (second mrk))) ,(third mrk)))
+						   (progn
+						     (push (second mrk) decls)
+						     `(setq ,@(cdr mrk))))
+					       #'mapcar))
+			body)))
     (recursive-append
      (when (or decls (cdr code)) `(let (,@decls)))
      code)))
