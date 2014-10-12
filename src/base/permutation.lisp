@@ -46,7 +46,7 @@
   "Randomize the elements of a sequence. Destructive on SEQ."
   (let* ((len (length seq))
 	 (perm (nth-value 1 (pick-random len len))))
-    (apply-action! seq perm)))
+    (permute! seq (with-no-init-checks (make-instance 'permutation-action :store perm :size len)))))
 ;;Class definitions----------------------------------------------;;
 (defclass permutation ()
   ((store :reader store :initarg :store)
