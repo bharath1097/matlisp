@@ -132,7 +132,7 @@
       `(progn
 	 (multiple-value-bind (val exists?) (gethash ',name *generated-methods*)
 	   (if exists?
-	       (let ((type-meths (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr val) :test #'list-eq)))
+	       (let ((type-meths (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr val) :test #'tree-equal)))
 		 (if type-meths
 		     (progn
 		       (loop :for ele in (cdr type-meths)
@@ -163,7 +163,7 @@
 		  (assert (member (car ,classes) *tensor-type-leaves*)
 			  nil 'tensor-abstract-class :tensor-class ,classes)
 		  (let* ((method (compile-and-eval (generate-code (car ,classes))))
-			 (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr (gethash ',name *generated-methods*)) :test #'list-eq)))
+			 (lst (assoc ',(mapcar #'(lambda (x) (if (consp x) (cadr x) t)) dargs) (cdr (gethash ',name *generated-methods*)) :test #'tree-equal)))
 		    (assert lst nil "Method table missing from *generated-methods* !")
 		    (setf (cdr lst) (list* method (cdr lst))))
 		  (,name ,@(mapcar  #'(lambda (x) (if (consp x) (car x) x)) (remove-if #'(lambda (x) (member x cl:lambda-list-keywords)) args))))

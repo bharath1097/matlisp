@@ -10,232 +10,6 @@
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,@(when doc (list doc))))
 
-(defmacro with-marking (&rest body)
-  "
- This macro basically declares local-variables globally,
- while keeping semantics and scope local.
-
-Example:
-  > (macroexpand-1
-      `(with-marking
-	   (loop :for i := 0 :then (1+ i)
-	      :do (mark* ((xi (* 10 2) :type index-type)
-			  (sum 0 :type index-type))
-			 (incf sum (mark (* 10 2)))
-			 (if (= i 10)
-			     (return sum))))))
-
-      (LET* ((#:G1083 (* 10 2)) (#:SUM1082 0) (#:XI1081 (* 10 2)))
-	(DECLARE (TYPE INDEX-TYPE #:SUM1082)
-		 (TYPE INDEX-TYPE #:XI1081))
-	(LOOP :FOR I := 0 :THEN (1+ I)
-	      :DO (SYMBOL-MACROLET ((XI #:XI1081) (SUM #:SUM1082))
-		    (INCF SUM #:G1083)
-		    (IF (= I 10)
-			(RETURN SUM)))))
-     T
-  >
-"
-  (let* ((decls nil)
-	 (types nil)
-	 (code (maptree '(:mark* :mark :memo)
-			#'(lambda (mrk)
-			    (ecase (car mrk)
-			      (:mark*
-			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
-									       (let ((rsym (gensym (symbol-name ref))))
-										 (push `(,rsym ,code) decls)
-										 (when type
-										   (push `(type ,type ,rsym) types))
-										 `(,ref ,rsym))))
-							    (cadr mrk)))
-				  ,@(cddr mrk)))
-			      (:mark
-			       (destructuring-bind (code &key type) (cdr mrk)
-				 (let ((rsym (gensym)))
-				   (push `(,rsym ,code) decls)
-				   (when type
-				     (push `(type ,type ,rsym) types))
-				   rsym)))
-			      (:memo
-			       (destructuring-bind (code &key type) (cdr mrk)
-				 (let ((memo (find code decls :key #'cadr :test #'list-eq)))
-				   (if memo
-				       (car memo)
-				       (let ((rsym (gensym)))
-					 (push `(,rsym ,code) decls)
-					 (when type
-					   (push `(type ,type ,rsym) types))
-					 rsym)))))))
-			body)))
-    `(let* (,@decls)
-       ,@(when types `((declare ,@types)))
-       ,@code)))
-
-(defmacro mlet* (vars &rest body)
-  "
-  This macro extends the syntax of let* to handle multiple values, it also handles
-  type declarations. The declarations list @arg{vars} is similar to that in let: look
-  at the below examples.
-
-  Examples:
-  @lisp
-  > (macroexpand-1
-       `(mlet* ((x 2 :type fixnum :declare ((optimize (safety 0) (speed 3))))
-		((a b) (floor 3) :type (nil fixnum)))
-	   (+ x b)))
-  => (LET ((X 2))
-       (DECLARE (OPTIMIZE (SAFETY 0) (SPEED 3))
-		(TYPE FIXNUM X))
-       (MULTIPLE-VALUE-BIND (A B)
-	  (FLOOR 3)
-	  (DECLARE (IGNORE A)
-		   (TYPE FIXNUM B))
-	  (+ X B)))
-  @end lisp
-  "
-  (labels ((mlet-decl (vars type decls)
-	     (when (or type decls)
-	       `((declare ,@decls
-			  ,@(when type
-				  (mapcar #'(lambda (tv) (if (null (first tv))
-							     `(ignore ,(second tv))
-							     `(type ,(first tv) ,(second tv))))
-					  (map 'list #'list type vars)))))))
-	   (mlet-transform (elst nest-code)
-	     (destructuring-bind (vars form &key declare type) elst
-	       `(,(append (cond
-			    ;;If there is only one element use let
-			    ;;instead of multiple-value-bind
-			    ((or (symbolp vars))
-			     `(let ((,vars ,form))))
-			    (t
-			     `(multiple-value-bind (,@vars) ,form)))
-			  (if (symbolp vars)
-			      (mlet-decl (list vars) (when type (list type)) declare)
-			      (mlet-decl vars type declare))
-			  nest-code))))
-	   (mlet-walk (elst body)
-	     (if (null elst)
-		 `(,@body)
-		 (mlet-transform (car elst) (mlet-walk (cdr elst) body)))))
-    (if vars
-	(car (mlet-walk vars body))
-	`(progn
-	   ,@body))))
-
-(defmacro letv* (bindings &rest body)
-  (labels ((pdecl (lst)
-	     (let ((tpos (position :type lst))
-		   (len (length lst)))
-	       (list (subseq lst 0 (1- (or tpos len)))
-		     (nth (1- (or tpos len)) lst)
-		     (when tpos (nthcdr (1+ tpos) lst))))))
-    (apply #'recursive-append (append
-			       (mapcar #'(lambda (x)
-					   (let ((pbind (pdecl x)))
-					     (recursive-append
-					      (if (> (length (first pbind)) 1)
-						  `(multiple-value-bind (,@(first pbind)) ,(second pbind))
-						  (if (consp (caar pbind))
-						      `(destructuring-bind (,@(caar pbind)) ,(second pbind))
-						      `(let ((,(car (first pbind)) ,(second pbind))))))
-					      (when (third pbind) `(declare ,@(mapcar #'(lambda (y x) (if x `(type ,x ,y) `(ignore ,y))) (first pbind) (third pbind)))))))
-				       bindings)
-			       `((progn ,@body))))))
-
-(defmacro make-array-allocator (allocator-name type init &optional doc)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (definline ,allocator-name (size &optional (initial-element ,init))
-       ,@(unless (null doc)
-		 `(,doc))
-       (make-array size
-		   :element-type ,type :initial-element initial-element))))
-
-(defmacro let-typed (bindings &rest body)
-  "
-  This macro works basically like let, but also allows type-declarations
-  with the key :type.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(let-typed ((x 1 :type fixnum))
-	  (+ 1 x)))
-  => (LET ((X 1))
-	(DECLARE (TYPE FIXNUM X))
-	(+ 1 X))
-  @end lisp
-  "
-  (labels ((parse-bindings (bdng let-decl type-decl)
-	     (if (null bdng) (values (reverse let-decl) (reverse type-decl))
-		 ;;Unless the user gives a initialisation form, no point declaring type
-		 ;; {var is bound to nil}.
-		 (destructuring-bind (var &optional form &key (type nil)) (ensure-list (car bdng))
-		   (parse-bindings (cdr bdng)
-				   (cons (if form `(,var ,form) var) let-decl)
-				   (if type
-				       (cons `(type ,type ,var) type-decl)
-				       type-decl))))))
-    (multiple-value-bind (let-bdng type-decl) (parse-bindings bindings nil nil)
-      (let ((decl-code (recursive-append
-			(cond
-			  ((and (consp (first body))
-				(eq (caar body) 'declare))
-			   (first body))
-			  ((consp type-decl)
-			   '(declare ))
-			  (t nil))
-			type-decl)))
-      `(let (,@let-bdng)
-	 ,@(if (null decl-code) nil `(,decl-code))
-	 ,@(if (and (consp (first body))
-		    (eq (caar body) 'declare))
-	       (cdr body)
-	       body))))))
-
-(defmacro let*-typed (bindings &rest body)
-  "
-  This macro works basically like let*, but also allows type-declarations
-  with the key :type.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(let*-typed ((x 1 :type fixnum))
-	  (+ 1 x)))
-  => (LET* ((X 1))
-	(DECLARE (TYPE FIXNUM X))
-	(+ 1 X))
-  @end lisp
-  "
-  (labels ((parse-bindings (bdng let-decl type-decl)
-	     (if (null bdng) (values (reverse let-decl) (reverse type-decl))
-		 ;;Unless the user gives a initialisation form, no point declaring type
-		 ;; {var is bound to nil}.
-		 (destructuring-bind (var &optional form &key (type nil)) (ensure-list (car bdng))
-		   (parse-bindings (cdr bdng)
-				   (cons (if form `(,var ,form) var) let-decl)
-				   (if type
-				       (cons `(type ,type ,var) type-decl)
-				       type-decl))))))
-    (multiple-value-bind (let-bdng type-decl) (parse-bindings bindings nil nil)
-      (let ((decl-code (recursive-append
-			(cond
-			  ((and (consp (first body))
-				(eq (caar body) 'declare))
-			   (first body))
-			  ((consp type-decl)
-			   '(declare ))
-			  (t nil))
-			type-decl)))
-      `(let* (,@let-bdng)
-	 ,@(if (null decl-code) nil `(,decl-code))
-	 ,@(if (and (consp (first body))
-		    (eq (caar body) 'declare))
-	       (cdr body)
-	       body))))))
-
 (defmacro with-gensyms (symlist &body body)
   "
   Binds every variable in @arg{symlist} to a (gensym).
@@ -271,32 +45,174 @@ Example:
 	 (macrolet ((,mname (x) `(,', fname ',x)))
 	   ,@body)))))
 
-(defmacro nconsc (var &rest args)
+(defmacro ziprm ((r m) &rest args)
   "
-  Macro to do setf and nconc for destructive list updates. If @arg{var}
-  is null then @arg{var} is set to (apply #'nconc @arg{args}), else
-  does (apply #'nconc (cons @arg{var} @arg{args})).
+  Does reduce-map on @arg{args}.
 
   Example:
   @lisp
-  > (let ((x nil))
-      (nconsc x (list 1 2 3) (list 'a 'b 'c))
-      x)
-  => (1 2 3 A B C)
-
-  > (let ((x (list 'a 'b 'c)))
-      (nconsc x (list 1 2 3))
-       x)
-  => (A B C 1 2 3)
+  > (macroexpand-1
+       `(ziprm (and =) (a b c) (1 2 3)))
+  => (AND (= A 1) (= B 2) (= C 3))
   @end lisp
   "
-  (assert (and (symbolp var) (not (member var '(t nil)))))
-  (if (null args) var
-      `(if (null ,var)
-	   (progn
-	     (setf ,var ,(car args))
-	     (nconc ,var ,@(cdr args)))
-	   (nconc ,var ,@args))))
+  `(,r ,@(apply #'mapcar #'(lambda (&rest atoms) (cons m atoms)) (mapcar #'ensure-list args))))
+;;
+(defmacro cart-case ((&rest vars) &body cases)
+  (let ((decl (zipsym vars)))
+    `(let (,@decl)
+       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and eql) ,(mapcar #'car decl) ,(first clause)) ,@(cdr clause))) cases)))))
+
+(defmacro cart-ecase ((&rest vars) &body cases)
+  (let ((decl (zipsym vars)))
+    `(let (,@decl)
+       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and eql) ,(mapcar #'car decl) ,(first clause)) ,@(cdr clause))) cases)
+	 (t (error "cart-ecase: Case failure."))))))
+
+(defmacro cart-typecase (vars &body cases)
+  (let* ((decl (zipsym vars)))
+    `(let (,@decl)
+       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause))) ,@(cdr clause))) cases)))))
+
+(defmacro cart-etypecase (vars &body cases)
+  (let* ((decl (zipsym vars)))
+    `(let (,@decl)
+       (cond ,@(mapcar #'(lambda (clause) `((ziprm (and typep) ,(mapcar #'car decl) ,(mapcar #'(lambda (x) `(quote ,x)) (first clause))) ,@(cdr clause))) cases)
+	     (t (error "cart-etypecase: Case failure."))))))
+;;
+(defmacro values-n (n &rest values)
+  (using-gensyms (decl (n))
+    (labels ((make-cd (i rets vrets)
+	       `((let ((,(first (car rets)) ,(maptree '(values-n previous-value) #'(lambda (x) (case (car x)
+												 (values-n (print x))
+												 (previous-value
+												  (destructuring-bind (&optional (idx (- i 2))) (cdr x)
+												    (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
+												    (elt (reverse vrets) idx)))))
+						      (second (car rets)))))
+		   ,(recursive-append
+		     (when (cdr rets)
+		       `(if (> ,n ,i) ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))
+		     `(values ,@(reverse vrets) ,(caar rets)))))))
+      `(let (,@decl)
+	 (when (> ,n 0)
+	   ,@(make-cd 1 (zipsym values) nil))))))
+
+(loop :for (a b) :on (print (flatten (ziptree '(a (b) c) '(1 2 3))))
+   :with skip? := nil
+   :do (if (or skip? (not a)) (setf skip? nil)
+	   (progn (print (list a b)) (setf skip? t))))
+
+(defmacro letv* (bindings &rest body)
+  "
+  This macro extends the syntax of let* to handle multiple values and destructuring bind,
+  it also handles type declarations. The declarations list @arg{vars} is similar to that in let:
+  look at the below examples.
+
+  Examples:
+  @lisp
+  > (macroexpand-1 `(letv* ((x 2 :type fixnum)
+                            ((a &optional (c 2)) b (values (list 1) 3) :type (fixnum &optional (t)) t))
+                      t))
+  => (LET ((X 2))
+           (DECLARE (TYPE FIXNUM X))
+       (MULTIPLE-VALUE-BIND (#:G1120 B) (VALUES (LIST 1) 3)
+         (DECLARE (TYPE T B))
+         (DESTRUCTURING-BIND (A &OPTIONAL (C 2)) #:G1120
+           (DECLARE (TYPE FIXNUM A)
+                    (TYPE T C))
+           (PROGN T))))
+  @end lisp
+  "
+  (labels ((typedecl (syms alist)
+	     (let ((decls (remove-if #'null (mapcar #'(lambda (s)
+							(let ((ts (assoc s alist)))
+							  (when ts
+							    (if (cdr ts)
+								`(type ,(cdr ts) ,s)
+								`(ignore ,s)))))
+						    syms))))
+	       (when decls `((declare ,@decls))))))
+    (apply #'recursive-append
+	   (append
+	    (mapcan #'(lambda (x)
+			(destructuring-bind (bind expr type) (let ((tpos (position :type x)) (len (length x)))
+							       (list (subseq x 0 (1- (or tpos len))) (nth (1- (or tpos len)) x) (when tpos (nthcdr (1+ tpos) x))))
+			  (let* ((typa (iter (for (s ty) on (flatten (ziptree bind type)))
+					     (with skip? = nil)
+					     (if (or skip? (null s)) (setf skip? nil)
+						 (progn (setf skip? t)
+							(unless (member s cl:lambda-list-keywords)
+							  (collect (cons s ty)))))))
+				 (vsyms (mapcar #'(lambda (x) (if (consp x)
+								  (let ((g (gensym)))
+								    (list g
+									  `(destructuring-bind (,@x) ,g
+									     ,@(typedecl (flatten x) typa))))
+								  (list x)))
+						bind)))
+			    (list*
+			     (recursive-append
+			      (if (> (length bind) 1)
+				  `(multiple-value-bind (,@(mapcar #'car vsyms)) ,expr)
+				  `(let ((,@(mapcar #'car vsyms) ,expr))))
+			      (car (typedecl (mapcar #'car vsyms) typa)))
+			     (remove-if #'null (mapcar #'cadr vsyms))))))
+		    bindings)
+	    `((progn ,@body))))))
+
+(defmacro let-typed (bindings &rest body)
+  "
+  This macro works basically like let, but also allows type-declarations
+  with the key :type.
+
+  Example:
+  @lisp
+  > (macroexpand-1
+      `(let-typed ((x 1 :type fixnum))
+	  (+ 1 x)))
+  => (LET ((X 1))
+	(DECLARE (TYPE FIXNUM X))
+	(+ 1 X))
+  @end lisp
+  "
+  `(let (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
+     ,@(let ((types (remove-if #'null (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
+							      (declare (ignore e))
+							      (unless (eql type t)
+								(if (null type)
+								    `(ignore ,s)
+								    `(type ,type ,s)))))
+					      bindings))))
+	    (when types `((declare ,@types))))
+     ,@body))
+
+(defmacro let*-typed (bindings &rest body)
+  "
+  This macro works basically like let*, but also allows type-declarations
+  with the key :type.
+
+  Example:
+  @lisp
+  > (macroexpand-1
+      `(let*-typed ((x 1 :type fixnum))
+	  (+ 1 x)))
+  => (LET* ((X 1))
+	(DECLARE (TYPE FIXNUM X))
+	(+ 1 X))
+  @end lisp
+  "
+  `(let* (,@(mapcar #'(lambda (x) (subseq x 0 2)) bindings))
+     ,@(let ((types (remove-if #'null
+			       (mapcar #'(lambda (x) (destructuring-bind (s e &key (type t)) x
+						       (declare (ignore e))
+						       (unless (eql type t)
+							 (if (null type)
+							     `(ignore ,s)
+							     `(type ,type ,s)))))
+				       bindings))))
+	    (when types `((declare ,@types))))
+     ,@body))
 
 (defmacro if-ret (form &rest else-body)
   "
@@ -359,59 +275,6 @@ Example:
      (if ,var
 	 ,@body)))
 
-(defmacro zip-eq (a b)
-  "
-  Macro which which checks for eq over respective elements of the lists
-  @arg{a} and @arg{b}.
-
-  Example:
-  @lisp
-  > (macroexpand-1
-       `(zip-eq (a b c) (1 2 3)))
-  => (AND (EQ A 1) (EQ B 2) (EQ C 3))
-  @end lisp
-  "
-  `(and ,@(mapcar (lambda (pair) (cons 'eq pair))
-		  (zip (ensure-list a) (ensure-list b)))))
-
-(defmacro macrofy (lambda-func)
-  "
-  Macrofies a lambda function, for use later inside macros (or for symbolic math ?).
-  Returns a macro-function like function which can be called later for use inside
-  macros.
-
-  DO NOT USE backquotes in the lambda function!
-
-  Example:
-  @lisp
-  > (macroexpand-1 `(macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))))
-  =>   (LAMBDA (X Y Z)
-	   (LIST '+ (LIST 'SIN X) Y (LIST 'APPLY (LIST 'FUNCTION 'COS) (LIST 'LIST Z))))
-  T
-
-  > (funcall (macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))) 'a 'b 'c)
-  => (+ (SIN A) B (APPLY #'COS (LIST C)))
-
-  @end lisp
-  "
-  (destructuring-bind (labd args &rest body) lambda-func
-    (assert (eq labd 'lambda))
-    `(lambda ,args ,@(cdr (unquote-args body args)))))
-
-(defmacro inlining (&rest definitions)
-  "
-  Function created in the body of code @arg{definitions} with @macro{defun} isand declaims
-  them as inline.
-  Example:
-  @lisp
-  > (macroexpand-1
-      `(inlining
-	 (defun sum (a b) (+ a b))))
-  => (PROGN (DECLAIM (INLINE SUM)) (DEFUN SUM (A B) (+ A B)))
-  "
-  `(progn ,@(loop :for def :in definitions :when (eq (first def) 'defun) :collect
-		  `(declaim (inline ,(second def))) collect def)))
-
 (defmacro definline (name &rest rest)
   "
   Creates a function and declaims them inline: short form for defining an inlined function.
@@ -421,7 +284,9 @@ Example:
   > (macroexpand-1 `(definline f (a b) (+ a b)))
   => (INLINING (DEFUN F (A B) (+ A B)))
   "
-  `(inlining (defun ,name ,@rest)))
+  `(progn
+     (declaim (inline ,name))
+     (defun ,name ,@rest)))
 
 ;;---------------------------------------------------------------;;
 ;; Optimization
@@ -453,14 +318,6 @@ Example:
 	   (cdar forms)))
      ,@(if (and (consp (car forms)) (eq (caar forms) 'declare)) (cdr forms) forms)))
 
-(defmacro quickly (&body forms)
-  "
-  Macro which encloses @arg{forms} inside
-  (declare (optimize (speed 3))).
-  "
-  `(with-optimization (:speed 3)
-     ,@forms))
-
 (defmacro very-quickly (&body forms)
   "
   Macro which encloses @arg{forms} inside
@@ -481,19 +338,11 @@ Example:
        (:safety 0 :space 0 :speed 3)
      ,@forms))
 
-(defmacro slowly (&body forms)
-  "
-  Macro which encloses @arg{forms} inside
-  (declare (optimize (speed 1) (debug 3)))
-  "
-  `(with-optimization (:speed 1 :debug 3)
-     ,@forms))
-;;
 (defmacro eval-every (&body forms)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      ,@forms))
 
-;;Slots
+;;
 (defmacro with-fslots (slots instance &rest body)
   (with-gensyms (obj args)
     `(let ((,obj ,instance))
@@ -503,32 +352,99 @@ Example:
 			slots))
 	 ,@body))))
 
-(defmacro cart-etypecase (vars &body cases)
-  (let* ((decl (zipsym vars))
-	 (vars (mapcar #'car decl)))
-    `(let (,@decl)
-       (cond
-	 ,@(mapcar #'(lambda (clause)
-		       `((and ,@(mapcar #'(lambda (x y) `(typep ,x ',y)) vars (car clause)))
-			 ,@(cdr clause)))
-		   cases)
-	 (t (error "cart-etypecase: Case failure."))))))
+(defmacro with-marking (&rest body)
+  "
+ This macro basically declares local-variables globally,
+ while keeping semantics and scope local.
 
-(defmacro values-n (n &rest values)
-  (using-gensyms (decl (n))
-    (labels ((make-cd (i rets vrets)
-	       `((let ((,(first (car rets)) ,(maptree '(values-n previous-value) #'(lambda (x) (case (car x)
-												 (values-n (print x))
-												 (previous-value
-												  (destructuring-bind (&optional (idx (- i 2))) (cdr x)
-												    (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
-												    (elt (reverse vrets) idx)))))
-						      (second (car rets)))))
-		   ,(recursive-append
-		     (when (cdr rets)
-		       `(if (> ,n ,i) ,@(make-cd (1+ i) (cdr rets) (cons (caar rets) vrets))))
-		     `(values ,@(reverse vrets) ,(caar rets)))))))
-      `(let (,@decl)
-	 (when (> ,n 0)
-	   ,@(make-cd 1 (zipsym values) nil))))))
-)
+Example:
+  > (macroexpand-1
+      `(with-marking
+	   (loop :for i := 0 :then (1+ i)
+	      :do (mark* ((xi (* 10 2) :type index-type)
+			  (sum 0 :type index-type))
+			 (incf sum (mark (* 10 2)))
+			 (if (= i 10)
+			     (return sum))))))
+
+      (LET* ((#:G1083 (* 10 2)) (#:SUM1082 0) (#:XI1081 (* 10 2)))
+	(DECLARE (TYPE INDEX-TYPE #:SUM1082)
+		 (TYPE INDEX-TYPE #:XI1081))
+	(LOOP :FOR I := 0 :THEN (1+ I)
+	      :DO (SYMBOL-MACROLET ((XI #:XI1081) (SUM #:SUM1082))
+		    (INCF SUM #:G1083)
+		    (IF (= I 10)
+			(RETURN SUM)))))
+     T
+  >
+"
+  (let* ((decls nil)
+	 (types nil)
+	 (code (maptree '(:mark* :mark :memo)
+			#'(lambda (mrk)
+			    (ecase (car mrk)
+			      (:mark*
+			       `(symbol-macrolet (,@(mapcar #'(lambda (decl) (destructuring-bind (ref code &key type) decl
+									       (let ((rsym (gensym (symbol-name ref))))
+										 (push `(,rsym ,code) decls)
+										 (when type
+										   (push `(type ,type ,rsym) types))
+										 `(,ref ,rsym))))
+							    (cadr mrk)))
+				  ,@(cddr mrk)))
+			      (:mark
+			       (destructuring-bind (code &key type) (cdr mrk)
+				 (let ((rsym (gensym)))
+				   (push `(,rsym ,code) decls)
+				   (when type
+				     (push `(type ,type ,rsym) types))
+				   rsym)))
+			      (:memo
+			       (destructuring-bind (code &key type) (cdr mrk)
+				 (let ((memo (find code decls :key #'cadr :test #'tree-equal)))
+				   (if memo
+				       (car memo)
+				       (let ((rsym (gensym)))
+					 (push `(,rsym ,code) decls)
+					 (when type
+					   (push `(type ,type ,rsym) types))
+					 rsym)))))))
+			body)))
+    `(let* (,@decls)
+       ,@(when types `((declare ,@types)))
+       ,@code)))
+
+(defmacro make-array-allocator (allocator-name type init &optional doc)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (definline ,allocator-name (size &optional (initial-element ,init))
+       ,@(unless (null doc)
+		 `(,doc))
+       (make-array size
+		   :element-type ,type :initial-element initial-element))))
+
+(defmacro nconsc (var &rest args)
+  "
+  Macro to do setf and nconc for destructive list updates. If @arg{var}
+  is null then @arg{var} is set to (apply #'nconc @arg{args}), else
+  does (apply #'nconc (cons @arg{var} @arg{args})).
+
+  Example:
+  @lisp
+  > (let ((x nil))
+      (nconsc x (list 1 2 3) (list 'a 'b 'c))
+      x)
+  => (1 2 3 A B C)
+
+  > (let ((x (list 'a 'b 'c)))
+      (nconsc x (list 1 2 3))
+       x)
+  => (A B C 1 2 3)
+  @end lisp
+  "
+  (assert (and (symbolp var) (not (member var '(t nil)))))
+  (if (null args) var
+      `(if (null ,var)
+	   (progn
+	     (setf ,var ,(car args))
+	     (nconc ,var ,@(cdr args)))
+	   (nconc ,var ,@args)))))

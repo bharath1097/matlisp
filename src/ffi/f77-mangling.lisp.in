@@ -2,6 +2,10 @@
 
 (in-package #:matlisp-ffi)
 
+(letv* ((q r (floor (position-if #'(lambda (x) (cffi:foreign-symbol-pointer x)) '("dgeev" "DGEEV" "dgeev_" "DGEEV_" "dgeev__" "DGEEV__")) 2)))
+  
+  )
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +f77-lower-case+ @F77_LOWER_CASE@
     "Fortran names are lower case if non-NIL")

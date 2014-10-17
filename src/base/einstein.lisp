@@ -8,21 +8,27 @@
 (defun generate-permutations (lst)
   (if (null (cdr lst)) (list lst)
       (apply #'append (mapcar #'(lambda (x)
-				  (let ((pop-x (setrem lst x)))
+				  (let ((pop-x (set-difference lst (list x))))
 				    (mapcar #'(lambda (y) (cons x y)) (generate-permutations pop-x))))
 			      lst))))
+
+(defun getcons (lst sym)
+  (if (atom lst) nil
+      (if (eq (car lst) sym)
+	  (list lst)
+	  (append (getcons (car lst) sym) (getcons (cdr lst) sym)))))
 
 (defun parse-loopx (type place clause)
   (let* ((refs (let ((tmp (getcons (list place clause) 'ref))
 		     (ret nil))
 		 (loop :for ele :in tmp
-		    :do (setf ret (setadd ret ele #'equal)))
+		    :do (setf ret (union ret (list ele) :test #'equal)))
 		 ret))
 	 (tens (let ((ret nil))
 		 (loop :for ele :in refs
-		    :do (setf ret (setadd ret (if (symbolp (second ele))
-						  (second ele)
-						  (error "error: tensor argument is not a symbol.")))))
+		    :do (setf ret (union ret (if (symbolp (second ele))
+						 (list (second ele))
+						 (error "error: tensor argument is not a symbol.")))))
 		 ret))
 	 (tlist (mapcar #'(lambda (sym)
 			    (let* ((gsym sym)
@@ -64,7 +70,7 @@
 		       (getf plst prop)
 		       plst)))
 	       (get-offset (x)
-		 (caar (second (find (cdr x) (get-prop (car x) :offsets) :key #'car :test #'list-eq)))))
+		 (caar (second (find (cdr x) (get-prop (car x) :offsets) :key #'car :test #'tree-equal)))))
 	;;Populate offsets
 	(loop :for ref :in refs
 	   :do (let* ((plist (get-prop (second ref)))
@@ -162,7 +168,7 @@
 													     clause))
 										       decl)))
 									       (get-prop ten :offsets)))
-								   (setrem tens (cadr place))))))))
+								   (set-difference tens (list (cadr place)))))))))
 			    (list
 			     (recursive-append
 			      (unless (null tdecl)

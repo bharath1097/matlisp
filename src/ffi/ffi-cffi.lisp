@@ -11,30 +11,22 @@
 (in-package #:matlisp-ffi)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (define-constant +ffi-styles+
-      '(:input :input-reference :input-value
-	:input-output :output :workspace-output
-	:workspace))
 
-  (define-constant +ffi-types+
-      '(:single-float :double-float
-	:complex-single-float :complex-double-float
-	:integer :long
-	:string :character
-	:callback))
+(define-constant +ffi-styles+
+    '(:input :input-reference :input-value
+      :input-output :output :workspace-output
+      :workspace))
 
-  (define-constant +ffi-array-types+
-      '(:single-float :double-float
-	:integer :long))
+(define-constant +ffi-types+
+    '(:single-float :double-float
+      :complex-single-float :complex-double-float
+      :integer :long
+      :string :character
+      :callback))
 
-  ;; Separte the body of code into documentation and parameter lists.
-  (defun parse-doc-&-parameters (body &optional header footer)
-    (if (stringp (first body))
-	(values `(,(%cat% header (first body) footer)) (rest body))
-	(values (if (or header footer)
-		    (%cat% header "" footer)
-		    nil)
-		body))))
+(define-constant +ffi-array-types+
+    '(:single-float :double-float
+      :integer :long))
 
 ;; Create objects on the heap and run some stuff.
 (defmacro with-foreign-objects-heaped (declarations &rest body)
@@ -200,3 +192,5 @@ Example:
 							       (frob (rest v) body))))))
 	   `(with-fortran-float-modes
 	      ,@(frob vlist body))))
+
+)

@@ -12,7 +12,7 @@
   Copies the contents of X into Y. Returns Y.
 ")
   (:method :before ((x array) (y array))
-	   (assert (list-eq (array-dimensions x) (array-dimensions y))
+	   (assert (tree-equal (array-dimensions x) (array-dimensions y))
 		   nil 'dimension-mismatch)))
 
 (defmethod copy! ((from cons) (to cons))
@@ -44,10 +44,10 @@
 
 ;;
 (defmethod copy! :before ((x array) (y standard-tensor))
-  (assert (list-eq (array-dimensions x) (lvec->list (dimensions y)))
+  (assert (tree-equal (array-dimensions x) (lvec->list (dimensions y)))
 	  nil 'dimension-mismatch))
 (defmethod copy! :before ((x standard-tensor) (y array))
-  (assert (list-eq (array-dimensions y) (lvec->list (dimensions x)))
+  (assert (tree-equal (array-dimensions y) (lvec->list (dimensions x)))
 	  nil 'dimension-mismatch))
 
 (defmethod copy! ((x array) (y standard-tensor))

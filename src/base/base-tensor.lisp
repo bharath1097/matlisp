@@ -39,10 +39,23 @@
   clobbering the generation of more sophisticated (read faster)
   methods.")
 
+(declaim (inline simple-array-type))
+(defun simple-array-type (type-sym &optional (size 'cl:*))
+  "
+  Creates the list representing simple-array with type @arg{type-sym}.
+
+  Example:
+  @lisp
+  > (linear-array-type 'double-float 10)
+  => (simple-array double-float (10))
+  @end lisp
+  "
+  `(simple-array ,type-sym (,size)))
+
 (defmacro defleaf (name direct-superclasses direct-slots &rest options)
   `(eval-every
      (defclass ,name ,direct-superclasses ,direct-slots ,@options)
-     (setf *tensor-type-leaves* (setadd *tensor-type-leaves* ',name))))
+     (setf *tensor-type-leaves* (union *tensor-type-leaves* (list ',name)))))
 ;;
 (defclass base-tensor ()
   ((dimensions :initarg :dimensions :type index-store-vector

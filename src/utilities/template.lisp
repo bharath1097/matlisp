@@ -68,7 +68,7 @@
 	   (pred (getf data :predicate))
 	   (meth (getf data :methods)))
       (car (or
-	    (find args meth :test #'list-eq :key #'second)
+	    (find args meth :test #'tree-equal :key #'second)
 	    (find args meth :test pred :key #'second)
 	    (error "could not find a \"~a\" template for : ~a~%" name args))))))
 
@@ -126,7 +126,7 @@
 				,@body))))
 	      (,sort-sym (getf ,data-sym :sorter)))
 	 (declare (ignorable ,data-sym ,meth-sym ,afun-sym ,sort-sym))
-	 (setf ,meth-sym (,(getf data :sort-function) (setadd ,meth-sym (list ,afun-sym ',disp-spls) #'(lambda (a b) (list-eq (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
+	 (setf ,meth-sym (,(getf data :sort-function) (union ,meth-sym (list (list ,afun-sym ',disp-spls)) :test #'(lambda (a b) (tree-equal (second a) (second b)))) #'(lambda (a b) (funcall ,sort-sym (second a) (second b)))))
 	 (setf (getf ,data-sym :methods) ,meth-sym)
 	 ,afun-sym)))))
 
@@ -134,7 +134,7 @@
   (let* ((data (or (gethash name *template-table*)
 		   (error "Undefined template : ~a~%" name)))
 	 (meth (getf data :methods)))
-    (setf (getf data :methods) (setrem meth spls  #'(lambda (a b) (list-eq (second a) b))))
+    (setf (getf data :methods) (set-difference meth (list spls) :test #'(lambda (a b) (tree-equal (second a) b))))
     nil))
 
 )

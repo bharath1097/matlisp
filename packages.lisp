@@ -71,32 +71,30 @@
 
 (defpackage "MATLISP-UTILITIES"
   (:use #:common-lisp #:iterate #:optima #:matlisp-conditions)
-  (:export #:ensure-list #:id #:ieql #:pophash
-	   #:vectorify #:copy-n
-	   #:ensure-args #:repsym #:findsym #:find-tag
-	   #:zip #:zip-eq #:zipsym
-	   #:list-eq #:setadd #:setrem #:set-eq
-	   #:cut-cons-chain!
-	   #:slot-values #:slot-values-list #:remmeth
-	   #:recursive-append #:unquote-args #:flatten
-	   #:string+ #:file->string #:split-seq #:splitlines
-	   #:linear-array-type
+  (:export #:id #:pophash
+	   #:vectorify #:copy-n #:ensure-list
+	   #:zip #:zipsym
+	   #:slot-values #:remmeth
 	   #:list-dimensions
+	   #:maptree-if #:maptree #:flatten #:ziptree
+	   #:recursive-append #:unquote-args
+	   #:compile-and-eval
+	   ;;string
+	   #:string+ #:file->string #:split-seq #:splitlines
+	   ;;lvec
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec-map-foldl! #:lvec-map-foldr!
 	   #:lvec->list #:lvec->list!
-	   #:compile-and-eval
-	   #:getcons #:maptree-if #:maptree #:values-n
 	   ;;dlist
 	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
-	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:with-marking #:with-fslots
-	   #:mlet* #:letv* #:make-array-allocator #:let-typed #:let*-typed
+	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:with-marking #:with-fslots #:values-n
+	   #:letv* #:let-typed #:let*-typed #:make-array-allocator
 	   #:nconsc #:define-constant #:eval-every
-	   #:macrofy #:defun-compiler-macro #:cart-etypecase
+	   #:macrofy
+	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase 
 	   ;;
-	   #:inlining #:definline
-	   #:with-optimization #:quickly #:very-quickly #:slowly #:quickly-if))
+	   #:definline #:with-optimization #:very-quickly))
 
 (defpackage "MATLISP-TEMPLATE"
   (:use #:common-lisp #:matlisp-utilities)

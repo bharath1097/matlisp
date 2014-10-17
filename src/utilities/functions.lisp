@@ -11,12 +11,6 @@
     (when existsp (remhash key hash-table))
     (values value existsp)))
 
-(defun ieql (&rest args)
-  (loop :for ele :in (cdr args)
-     :do (unless (eql (car args) ele)
-	   (return nil))
-     :finally (return t)))
-
 (declaim (inline vectorify))
 (defun vectorify (seq n &optional (element-type t))
   (declare (type (or vector list) seq))
@@ -34,43 +28,6 @@
 	  :do (setf (aref ret i) ele)
 	  :finally (return ret))))))
 
-(defun zipsym (lst)
-  (zip (loop :repeat (length lst)
-	  :collect (gensym))
-       lst))
-
-(defun list-eq (a b &optional (test #'eq))
-  (if (or (atom a) (atom b)) (funcall test a b)
-      (and (list-eq (car a) (car b) test) (list-eq (cdr a) (cdr b) test))))
-
-(defun remmeth (func spls &optional quals)
-  (let ((meth (find-method func quals (mapcar #'(lambda (x) (if (consp x) x (find-class x))) spls) nil)))
-    (when meth
-      (remove-method func meth)
-      meth)))
-      
-(defun setadd (lst a &optional (test #'eq))
-  (if (null lst) (list a)
-      (if (funcall test (car lst) a)
-	  (cons a (cdr lst))
-	  (cons (car lst) (setadd (cdr lst) a test)))))
-
-(defun setrem (lst a &optional (test #'eq))
-  (unless (null lst)
-    (if (funcall test (car lst) a)
-	(cdr lst)
-	(cons (car lst) (setrem (cdr lst) a test)))))
-
-(defun set-eq (a b &key (test #'eql))
-  (and (loop :for ele :in a
-	  :do (unless (member ele b :test test)
-		(return nil))
-	  :finally (return t))
-       (loop :for ele :in b
-	  :do (unless (member ele a :test test)
-		(return nil))
-	  :finally (return t))))
-
 (declaim (inline copy-n))
 (defun copy-n (vec lst n)
   (declare (type vector vec)
@@ -81,13 +38,34 @@
      :do (setf (car vlst) (aref vec i)))
   lst)
 
-(defun getcons (lst sym)
-  (if (atom lst) nil
-      (if (eq (car lst) sym)
-	  (list lst)
-	  (append (getcons (car lst) sym) (getcons (cdr lst) sym)))))
+(defun remmeth (func spls &optional quals)
+  (let ((meth (find-method func quals (mapcar #'(lambda (x) (if (consp x) x (find-class x))) spls) nil)))
+    (when meth
+      (remove-method func meth)
+      meth)))
 
 (defun maptree-if (predicate transformer tree)
+  "
+  Returns a new tree by recursively calling @arg{transformer} on sub-trees which satisfy the @arg{predicate}.
+  @arg{predicate} : tree -> boolean
+  @arg{transformer}: tree -> (or tree atom) *control
+  If the transformer returns a @arg{control} function, then the tree returned by
+  the transformer is replaced in-turn by the result of:
+  > (funcall @arg{control} #'(lambda (x) (maptree-if @arg{predicate} @arg{transformer} x)) transformed-tree)
+  , otherwise it is left as it is.
+
+  Example:
+  @lisp
+  > (maptree-if #'(λ (x) (and (consp x) (eq (car x) 'ping)))
+                #'(λ (x) `(pong ,@(cdr x)))
+                '(progn (ping (ping (ping 1)))))
+  >= (PROGN (PONG (PING (PING 1))))
+  > (maptree-if #'(λ (x) (and (consp x) (eq (car x) 'ping)))
+                #'(λ (x) (values `(pong ,@(cdr x)) #'mapcar))
+                '(progn (ping (ping (ping 1)))))
+  >= (PROGN (PONG (PONG (PONG 1))))
+  @end lisp
+  "
   (multiple-value-bind (t-tree control) (if (funcall predicate tree)
 					    (funcall transformer tree)
 					    (values tree #'mapcar))
@@ -99,37 +77,24 @@
   (maptree-if #'(lambda (x) (and (consp x) (member (car x) keys)))
 	      transformer tree))
 
-(defun find-tag (lst tag)
-  (let ((car (car lst)))
-    (if (atom car)
-	(if (or (null car) (eq car tag))
-	    (cadr lst)
-	    (find-tag (cdr lst) tag))
-	(or (find-tag car tag) (find-tag (cdr lst) tag)))))
+(defun flatten (x)
+  "
+  Returns a new list by collecting all the symbols found in @arg{x}.
 
-(defun ensure-args (args)
-  (if (null args) t
-      (and (symbolp (car args)) (ensure-args (cdr args)))))
-
-(defun repsym (lst sym rep)
-  (if (atom lst) lst
-      (if (and (symbolp (car lst)) (eq (car lst) sym))
-	  (cons rep (repsym (cdr lst) sym rep))
-	  (cons (repsym (car lst) sym rep) (repsym (cdr lst) sym rep)))))
-
-(defun findsym (lst sym)
-  (if (atom lst) (eq lst sym)
-      (or (findsym (car lst) sym) (findsym (cdr lst) sym))))
+  Example:
+  @lisp
+  > (flatten '(let ((x 1)) (+ x 2)))
+  => (LET X 1 + X 2)
+  @end lisp
+  "
+  (let ((acc nil))
+    (maptree-if #'atom #'(lambda (x) (push x acc)) x)
+    (reverse acc)))
 
 (declaim (inline slot-values-list))
-(defun slot-values-list (obj slots)
-  (loop :for slt :in slots
-     :collect (slot-value obj slt)))
-
-(declaim (inline slot-values))
 (defun slot-values (obj slots)
   "
-  Returns the slots of the @arg{obj} corresponding to symbols in the list @arg{slots}.
+  Returns a list containing slot-values of @arg{obj} corresponding to symbols in the list @arg{slots}.
 
   Example:
   @lisp
@@ -138,24 +103,10 @@
 
   > (let ((thing (make-obj :a 1 :b 2)))
       (slot-values thing '(a b)))
-  => 1 2
+  => (1 2)
   @end lisp
   "
-  (values-list (slot-values-list obj slots)))
-
-
-(declaim (inline linear-array-type))
-(defun linear-array-type (type-sym &optional (size '*))
-  "
-  Creates the list representing simple-array with type @arg{type-sym}.
-
-  Example:
-  @lisp
-  > (linear-array-type 'double-float 10)
-  => (simple-array double-float (10))
-  @end lisp
-  "
-  `(simple-array ,type-sym (,size)))
+  (mapcar #'(lambda (s) (slot-value obj s)) slots))
 
 (declaim (inline ensure-list))
 (defun ensure-list (lst)
@@ -168,30 +119,7 @@
   => (a)
   @end lisp
   "
-  (if (listp lst) lst `(,lst)))
-
-(defun cut-cons-chain! (lst test)
-  "
-  Destructively cuts @arg{lst} into two parts, at the element where the function
-  @arg{test} returns a non-nil value.
-
-  Example:
-  @lisp
-  > (let ((x (list 3 5 2 1 7 9)))
-      (values-list (cons x (multiple-value-list (cut-cons-chain! x #'evenp)))))
-  => (3 5) (3 5) (2 1 7 9)
-  @end lisp
-  "    
-  (declare (type list lst))
-  (labels ((cut-cons-chain-tin (lst test parent-lst)
-	     (cond
-	       ((null lst) nil)
-	       ((funcall test (cadr lst))
-		(let ((keys (cdr lst)))
-		  (setf (cdr lst) nil)
-		  (values parent-lst keys)))
-	       (t (cut-cons-chain-tin (cdr lst) test parent-lst)))))
-    (cut-cons-chain-tin lst test lst)))
+  (if (listp lst) lst (list lst)))
 
 (declaim (inline zip))
 (defun zip (&rest args)
@@ -205,6 +133,24 @@
   @end lisp
   "
   (apply #'map 'list #'list args))
+
+(defun ziptree (&rest args)
+  (if (and (some #'atom args) (some #'consp args)) nil
+      (if (every #'atom args) args
+	  (apply #'mapcar #'ziptree args))))
+
+(declaim (inline zipsym))
+(defun zipsym (lst)
+  "
+  Zips a unique gensym with each element of @arg{lst}.
+
+  Example:
+  @lisp
+  > (zipsym '(a b c))
+  => ((#:G1064 A) (#:G1065 B) (#:G1066 C))
+  @end lisp
+  "  
+  (map 'list #'(lambda (x) (list (gensym) x)) lst))
 
 (defun recursive-append (&rest lsts)
   "
@@ -254,12 +200,11 @@
        X)
   @end lisp
   "
-  (labels ((bin-append (x y)
-	     (if (null x)
-		 (if (typep (car y) 'symbol) y (car y))
-		 (append x (if (null y) nil
-			       (if (typep (car y) 'symbol) `(,y) y))))))
-    (reduce #'bin-append lsts :from-end t)))
+  (reduce #'(lambda (x y)
+	      (if (null x)
+		  (if (typep (car y) 'symbol) y (car y))
+		  (append x (and y (if (typep (car y) 'symbol) `(,y) y)))))
+	  lsts :from-end t))
 
 (defun unquote-args (lst args)
   "
@@ -276,50 +221,11 @@
   => (LIST 'LET (LIST (LIST X '1)) (LIST '+ X '1))
   @end lisp
   "
-  (labels ((replace-atoms (lst ret)
-	     (cond
-	       ((null lst) (reverse ret))
-	       ((atom lst)
-		(let ((ret (reverse ret)))
-		  (rplacd (last ret) lst)
-		  ret))
-	       ((consp lst)
-		(replace-atoms (cdr lst) (let ((fst (car lst)))
-					   (cond 
-					     ((atom fst)
-					      (if (member fst args)
-						  (cons fst ret)
-						  (append `(',fst) ret)))
-					     ((consp fst)
-					      (cons (replace-lst fst nil) ret))))))))
-	   (replace-lst (lst acc)
-	     (cond
-	       ((null lst) acc)
-	       ((consp lst)
-		(if (eq (car lst) 'quote)
-		    lst
-		    (cons 'list (replace-atoms lst nil))))
-	       ((atom lst) lst))))
-    (replace-lst lst nil)))
-
-(defun flatten (x)
-  "
-  Returns a new list by collecting all the symbols found in @arg{x}.
-  Borrowed from Onlisp.
-
-  Example:
-  @lisp
-  > (flatten '(let ((x 1)) (+ x 2)))
-  => (LET X 1 + X 2)
-  @end lisp
-  "
-  (labels ((rec (x acc)
-	     (cond ((null x) acc)
-		   ((atom x) (cons x acc))
-		   (t (rec
-		       (car x)
-		       (rec (cdr x) acc))))))
-    (rec x nil)))
+  (maptree-if #'(lambda (x) (or (symbolp x) (consp x)))
+	      #'(lambda (x) (etypecase x
+			      (symbol (if (member x args) x `(quote ,x)))
+			      (cons (values `(list ,@x) #'mapcar))))
+	      lst))
 
 (defun list-dimensions (lst)
   "
@@ -333,15 +239,8 @@
   => (2 3)
   @end lisp
   "
-  (declare (type list lst))
-  (labels ((lst-tread (idx lst)
-	     (if (null lst) (reverse idx)
-		 (progn
-		   (setf (car idx) (length lst))
-		   (if (consp (car lst))
-		       (lst-tread (cons 0 idx) (car lst))
-		       (reverse idx))))))
-    (lst-tread (list 0) lst)))
+  (if (atom lst) nil
+      (cons (length lst) (list-dimensions (car lst)))))
 
 (defun compile-and-eval (source)
   "
