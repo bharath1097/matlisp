@@ -153,7 +153,7 @@
     (setf (fv-ref ydot 0) xdot
 	  (fv-ref ydot 1) thetadot
 	  (fv-ref ydot 2) (/ (+ (* (cos theta) (sin theta)) (* (sin theta) (expt thetadot 2))) (- 2 (expt (cos theta) 2)))
-          (fv-ref ydot 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2))))))
+          (fv-ref ydot 3) (/ (+ (* 2 (sin theta)) (* (cos theta) (sin theta) (expt thetadot 2))) (- (expt (cos theta) 2) 2)))))
 			
 (defun pcart-report (ts y)
   (format t "~A ~A ~A ~A ~A ~%" ts (aref y 0) (aref y 1) (aref y 2) (aref y 3)))

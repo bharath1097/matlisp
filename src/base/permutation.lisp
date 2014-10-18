@@ -323,7 +323,8 @@
 
 (defmethod inv ((flip permutation-pivot-flip))
   (copy (inv (copy flip 'permutation-action)) 'permutation-pivot-flip))
-;;
+
+;;Move this to t* or something of the sort.
 (defgeneric compose (a b)
   (:method ((a permutation) (b permutation))
     (let ((ret (pindex-id (max (permutation-size a) (permutation-size b)))))

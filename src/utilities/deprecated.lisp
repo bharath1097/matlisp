@@ -137,29 +137,6 @@
 	    (decf count))))))
 ;;
 
-(defmacro macrofy (lambda-func)
-  "
-  Macrofies a lambda function, for use later inside macros (or for symbolic math ?).
-  Returns a macro-function like function which can be called later for use inside
-  macros.
-
-  DO NOT USE backquotes in the lambda function!
-
-  Example:
-  @lisp
-  > (macroexpand-1 `(macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))))
-  =>   (LAMBDA (X Y Z)
-	   (LIST '+ (LIST 'SIN X) Y (LIST 'APPLY (LIST 'FUNCTION 'COS) (LIST 'LIST Z))))
-  T
-
-  > (funcall (macrofy (lambda (x y z) (+ (sin x) y (apply #'cos (list z))))) 'a 'b 'c)
-  => (+ (SIN A) B (APPLY #'COS (LIST C)))
-
-  @end lisp
-  "
-  (destructuring-bind (labd args &rest body) lambda-func
-    (assert (eq labd 'lambda))
-    `(lambda ,args ,@(cdr (unquote-args body args)))))
 
 (defmacro inlining (&rest definitions)
   "

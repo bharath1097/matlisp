@@ -91,6 +91,14 @@
     (maptree-if #'atom #'(lambda (x) (push x acc)) x)
     (reverse acc)))
 
+(defun cart (list &rest more-lists)
+  (if more-lists
+      (mapcan #'(lambda (y) (mapcar #'(lambda (x) (cons x y)) list)) (apply #'cart more-lists))
+      (mapcar #'list list)))
+
+(defun mapcart (function list &rest more-lists)
+  (mapcar (lambda (args) (apply function args)) (apply #'cart list more-lists)))
+
 (declaim (inline slot-values-list))
 (defun slot-values (obj slots)
   "
@@ -224,7 +232,7 @@
   (maptree-if #'(lambda (x) (or (symbolp x) (consp x)))
 	      #'(lambda (x) (etypecase x
 			      (symbol (if (member x args) x `(quote ,x)))
-			      (cons (values `(list ,@x) #'mapcar))))
+			      (cons (values `(list ,@x) #'(lambda (f x) (cons (first x) (mapcar f (cdr x))))))))
 	      lst))
 
 (defun list-dimensions (lst)

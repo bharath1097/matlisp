@@ -36,10 +36,22 @@
 (in-package #:matlisp)
 
 ;; Tell cffi where our libraries are.
-(push "@libdir@/" cffi:*foreign-library-directories*)
+(push "@libdir@/" )
+
+;; (push
+;;  (pathname #+darwin"/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/Versions/A/"
+;; 	   #+linux"/usr/lib/")
+;;  cffi:*foreign-library-directories*)
+
+(progn
+  (cffi:define-foreign-library blas
+    (:darwin (:or "libBLAS.dylib" "libblas.dylib"))
+    (t (:default "@BLAS_LAPACK_DIR@/libblas")))
+  (cffi:define-foreign-library lapack
+    (:darwin (:or "libLAPACK.dylib" "liblapack.dylib"))
+    (t (:default "@BLAS_LAPACK_DIR@/liblapack"))))
 
 ;; Define our libraries.
-
 ;; For some reason, on Darwin (OSX), we can't load the libraries if we
 ;; specify the full path.  Loading the library fails because there are
 ;; undefined symbols (__gfortran_stop_numeric) referenced from the
