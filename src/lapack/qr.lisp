@@ -108,7 +108,14 @@
   I.e., A*P = Q*R is computed where P is a column pivoting matrix.
 "))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define-tensor-method geqp! ((a blas-numeric-tensor :output))
+  `(let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)))
+	       (tau (t/store-allocator ,(cl a) (lvec-min (dimensions a))) :type ,(store-type (cl a))))
+     (with-columnification (() (a))
+       (let ((info (t/lapack-geqp! ,(cl a) a (or (blas-matrix-compatiblep a #\N) 0) jpvt tau)))
+	 (unless (= info 0) (error "GEQP3: the ~a'th argument had an illegal value." (- info)))))
+     (values A jpvt tau)))
+
 (defmethod geqp! ((a real-matrix))
 
   ;; Set up the work spaces need by DGEQP3
