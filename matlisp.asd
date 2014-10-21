@@ -49,12 +49,7 @@
   :pathname #.(translate-logical-pathname "matlisp:builddir;src;foreign-core;")
   :depends-on (#:cffi "matlisp-packages" "matlisp-config")
   :components
-  ((:file "lazy-loader"
-	  ;; you need the load-only here,
-	  ;; otherwise, Allegro tries to
-	  ;; load the DLL (SO)'s twice
-	  ;; and fails.
-	  )))
+  ((:file "lazy-loader")))
 
 (asdf:defsystem matlisp-conditions
   :depends-on ("matlisp-packages" "matlisp-config")
@@ -89,24 +84,11 @@
   :components
   ((:module "foreign-interface"
 	    :pathname "ffi"
-	    :components ((:file "ffi-cffi")
-			 (:file "ffi-cffi-implementation-specific")
-			 (:file "foreign-vector")
-			 (:file "f77-ffi"
-				:depends-on ("ffi-cffi"
-					     "ffi-cffi-implementation-specific"
-					     "foreign-vector"))
-			 (:file "f77-parser")
-			 ))
-   (:module "foreign-core"
-	    :pathname "foreign-core"
-	    :depends-on ("foreign-interface")
-	    :components ((:file "blas")
-			 (:file "lapack")
-			 (:file "dfftpack")
-			 (:file "libmatlisp")))
+	    :components ((:file "foreign-vector")
+			 (:file "cffi")			 
+			 (:file "ffi")
+			 #+nil(:file "f77-parser")))
    (:module "matlisp-base"
-	    :depends-on ("foreign-core")
 	    :pathname "base"
 	    :components ((:file "tweakable")
 			 (:file "base-tensor")
@@ -143,7 +125,7 @@
 				:depends-on ("numeric"))))
    (:module "matlisp-blas"
 	    :pathname "blas"
-	    :depends-on ("matlisp-base" "matlisp-classes" "foreign-core")
+	    :depends-on ("matlisp-base" "matlisp-classes")
 	    :components ((:file "maker")
 			 (:file "copy"
 				:depends-on ("maker"))
@@ -165,7 +147,8 @@
 			 (:file "ger"
 				:depends-on ("copy"))
 			 (:file "gemm"
-				:depends-on ("copy"))))
+				:depends-on ("copy"))
+			 (:file "trsm")))
    (:module "matlisp-lapack"
 	    :pathname "lapack"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
@@ -176,7 +159,7 @@
 			 #+nil(:file "qr")
 			 (:file "schur")
 			 (:file "svd")
-			 (:file "syl")))
+			 (:file "syl" :depends-on ("schur"))))
    (:module "matlisp-special"
 	    :pathname "special"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas")
@@ -195,7 +178,7 @@
 			 (:file "loadsave")))
    (:module "matlisp-graph"
 	    :pathname "graph"
-	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" "matlisp-lapack")
+	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" #+nil"matlisp-lapack")
 	    :components ((:file "fibonacci")))))
 
 

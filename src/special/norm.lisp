@@ -2,15 +2,16 @@
 
 (defgeneric norm (vec &optional n))
 (define-tensor-method norm ((vec numeric-tensor :input) &optional (n 2))
-  `(cond
-     ((typep n 'real)
-      (let-typed ((sum (t/fid+ ,(field-type (cl vec))) :type ,(field-type (cl vec))))
-	(dorefs (idx (dimensions vec))
-		((ref vec :type ,(cl vec)))
-	  (setf sum (t/f+ ,(field-type (cl vec)) sum (expt (abs ref) n))))
-	(expt sum (/ n))))
-     ((eql n :sup)
-      (tensor-foldl ,(cl vec) max vec (t/fid+ ,(field-type (cl vec))) :key abs))))
+  (let ((rtype (field-type (realified-type (cl vec)))))
+    `(cond
+       ((typep n 'real)
+	(let-typed ((sum (t/fid+ ,rtype) :type ,rtype))
+	  (dorefs (idx (dimensions vec))
+		  ((ref vec :type ,(cl vec)))
+		  (setf sum (t/f+ ,rtype sum (expt (abs ref) n))))
+	  (expt sum (/ n))))
+       ((eql n :sup)
+	(tensor-foldl ,(cl vec) max vec (t/fid+ ,rtype) :init-type ,rtype :key cl:abs)))))
 
 (defgeneric tensor-max (vec &optional key))
 (define-tensor-method tensor-max ((vec standard-tensor :input) &optional key)

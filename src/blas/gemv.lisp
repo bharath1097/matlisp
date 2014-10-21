@@ -1,30 +1,23 @@
 (in-package #:matlisp)
 
-(deft/generic (t/blas-gemv-func #'subfieldp) sym ())
-(deft/method t/blas-gemv-func (sym real-tensor) ()
-  'dgemv)
-(deft/method t/blas-gemv-func (sym complex-tensor) ()
-  'zgemv)
-;;
 (deft/generic (t/blas-gemv! #'subtypep) sym (alpha A lda x st-x beta y st-y transp))
-
 (deft/method t/blas-gemv! (sym blas-numeric-tensor) (alpha A lda x st-x beta y st-y transp)
-  (using-gensyms (decl (alpha A lda x st-x beta y st-y transp))
-    (with-gensyms (m n)
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (alpha A lda x st-x beta y st-y transp) (m n))
       `(let* (,@decl
-	      (,m (aref (the index-store-vector (dimensions ,A)) 0))
-	      (,n (aref (the index-store-vector (dimensions ,A)) 1)))
+	      (,m (dimensions ,A 0))
+	      (,n (dimensions ,A 1)))
 	 (declare (type ,sym ,A ,x ,y)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,st-x ,st-y ,lda ,m ,n))
-	 (,(macroexpand-1 `(t/blas-gemv-func ,sym))
-	   ,transp ,m ,n
-	   ,alpha
-	   (the ,(store-type sym) (store ,A)) ,lda
-	   (the ,(store-type sym) (store ,x)) ,st-x
-	   ,beta
-	   (the ,(store-type sym) (store ,y)) ,st-y
-	   (the index-type (head ,A)) (the index-type (head ,x)) (the index-type (head ,y)))
+	 (ffuncall ,(blas-func "gemv" ftype)
+		   (:& :character) ,transp
+		   (:& :integer) ,m (:& :integer) ,n
+		   (:& ,(lisp->ffc ftype t)) ,alpha
+		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
+		   (:& ,(lisp->ffc ftype t)) ,beta
+		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
 	 ,y))))
 
 ;;
@@ -85,10 +78,10 @@
 	    :message "GEMV!: x and y cannot be the same vector")
     (assert (and
 	     (tensor-vectorp x) (tensor-vectorp y) (tensor-matrixp A)
-	     (= (aref (the index-store-vector (dimensions x)) 0)
-		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :c)) 0 1)))
-	     (= (aref (the index-store-vector (dimensions y)) 0)
-		(aref (the index-store-vector (dimensions A)) (if (member job '(:t :c)) 1 0))))
+	     (= (dimensions x 0)
+		(dimensions A (if (member job '(:t :c)) 0 1)))
+	     (= (dimensions y 0)
+		(dimensions A (if (member job '(:t :c)) 1 0))))
 	    nil 'tensor-dimension-mismatch)))
 
 (define-tensor-method gemv! (alpha (A standard-tensor :input) (x standard-tensor :input) beta (y standard-tensor :output) &optional (job :n))
@@ -103,9 +96,9 @@
 	      (with-columnification (((A cjob)) ())
 		(multiple-value-bind (lda opa) (blas-matrix-compatiblep A cjob)
 		  (t/blas-gemv! ,(cl a) alpha A lda
-				x (aref (the index-store-vector (strides x)) 0)
+				x (strides x 0)
 				beta
-				y (aref (the index-store-vector (strides y)) 0)
+				y (strides y 0)
 				opa)))))
        `(t/gemv! ,(cl a) alpha A x beta y cjob)))
   'y)

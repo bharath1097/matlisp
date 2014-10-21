@@ -27,37 +27,24 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/blas-scdi-func #'subfieldp) sym (&optional scal?))
-
-(deft/method t/blas-scdi-func (sym real-tensor) (&optional (scal? t))
-  (if scal?
-      'descal
-      'dediv))
-
-(deft/method t/blas-scdi-func (sym complex-tensor) (&optional (scal? t))
-  (if scal?
-      'zescal
-      'zediv))
 ;;
 (deft/generic (t/blas-scdi! #'subfieldp) sym (x st-x y st-y &optional scal?))
-(deft/generic (t/scdi! #'subtypep) sym (x y &key scal? numx?))
-
 (deft/method t/blas-scdi! (sym blas-numeric-tensor) (x st-x y st-y &optional (scal? t))
-  (let ((numx? (null st-x)))
-    (using-gensyms (decl (x y))
-      (with-gensyms (sto-x)
-        `(let (,@decl)
-	   (declare (type ,sym ,@(unless numx? `(,x)) ,y)
-		    ,@(when numx? `((type ,(field-type sym) ,x))))
-	   ,(recursive-append
-	     (when numx? `(with-field-element ,sym (,sto-x ,x)))
-	     `(,(macroexpand-1 `(t/blas-scdi-func ,sym ,scal?))
-		(the index-type (size ,y))
-		,(if numx? sto-x `(the ,(store-type sym) (store ,x))) (the index-type ,(if numx? 0 st-x))
-		(the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-		,(if numx? 0 `(head ,x)) (head ,y)))
-	   ,y)))))
+  (let ((numx? (null st-x)) (ftype (field-type sym)))
+    (using-gensyms (decl (x y) (sto-x))
+      `(let (,@decl)
+	 (declare (type ,sym ,@(unless numx? `(,x)) ,y)
+		  ,@(when numx? `((type ,(field-type sym) ,x))))
+	 ,(recursive-append
+	   (when numx? `(with-field-element ,sym (,sto-x ,x)))
+	   `(ffuncall ,(blas-func (if scal? "escalm" "edivm") ftype)
+	      (:& :integer) (the index-type (size ,y))
+	      (:* ,(lisp->ffc ftype) ,@(unless numx? `(:+ (head ,x)))) ,(if numx? sto-x `(the ,(store-type sym) (store ,x)))
+	      (:& :integer) (the index-type ,(if numx? 0 st-x))
+	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) (the index-type ,st-y)))
+	 ,y))))
 
+(deft/generic (t/scdi! #'subtypep) sym (x y &key scal? numx?))
 (deft/method t/scdi! (sym standard-tensor) (x y &key (scal? t) (numx? nil))
   (using-gensyms (decl (x y))
     (with-gensyms (sto-x sto-y of-x of-y idx)
@@ -147,7 +134,7 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
   ======
   (DIV! alpha x)
 
-  Purpose
+s  Purpose
   =======
   X <- X ./ alpha
 

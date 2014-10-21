@@ -1,97 +1,63 @@
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-geev-func #'subfieldp) sym ())
-
-(deft/method t/lapack-geev-func (sym real-tensor) ()
-  'matlisp-lapack:dgeev)
-;;Make API for real and complex versions similar.
-(definline mzgeev (jobvl jobvr n a lda w rwork vl ldvl vr ldvr work lwork info &optional (head-a 0) (head-vl 0) (head-vr 0))
-  (matlisp-lapack:zgeev jobvl jobvr n a lda w vl ldvl vr ldvr work lwork rwork info head-a head-vl head-vr))
-(deft/method t/lapack-geev-func (sym complex-tensor) ()
-  'mzgeev)
 ;;
 (deft/generic (t/lapack-geev! #'subtypep) sym (A lda vl ldvl vr ldvr wr wi))
 (deft/method t/lapack-geev! (sym blas-numeric-tensor) (A lda vl ldvl vr ldvr wr wi)
-  (using-gensyms (decl (A lda vl ldvl vr ldvr wr wi) (lwork xxx))
-    `(let (,@decl
-	   (,lwork -1))
-       (declare (type ,sym ,A)
-		(type index-type ,lda ,lwork)
-		(type ,(store-type sym) ,wr ,wi))
-       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
-	 (,(macroexpand-1 `(t/lapack-geev-func ,sym))
-	   (if ,vl #\V #\N) (if ,vr #\V #\N)
-	   (nrows ,A)
-	   ,xxx ,lda
-	   ,xxx ,xxx
-	   ,xxx (if ,vl ,ldvl 1)
-	   ,xxx (if ,vr ,ldvr 1)
-	   ,xxx -1
-	   0)
-	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
-       (,(macroexpand-1 `(t/lapack-geev-func ,sym))
-	 (if ,vl #\V #\N) (if ,vr #\V #\N)
-	 (nrows ,A)
-	 (the ,(store-type sym) (store ,A)) ,lda
-	 ,wr ,wi
-	 (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (if ,vl ,ldvl 1)
-	 (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (if ,vr ,ldvr 1)
-	 (t/store-allocator ,sym ,lwork) ,lwork
-	 0
-	 (the index-type (head ,A)) (if ,vl (the index-type (head ,vl)) 0) (if ,vr (the index-type (head ,vr)) 0)))))
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (A lda vl ldvl vr ldvr wr wi) (lwork xxx))
+      `(let (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda)
+		  (type ,(store-type sym) ,wr ,wi))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func "geev" ftype) ,@(apply #'append (permute! (pair `(
+	     (:& :character) (if ,vl #\V #\N) (:& :character) (if ,vr #\V #\N)
+	     (:& :integer) (dimensions ,A 0)
+	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wr) (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,wi)
+	     (:* ,(lisp->ffc ftype) :+ (if ,vl (head ,vl) 0)) (if ,vl (the ,(store-type sym) (store ,vl)) (cffi:null-pointer)) (:& :integer) (if ,vl ,ldvl 1)
+	     (:* ,(lisp->ffc ftype) :+ (if ,vr (head ,vr) 0)) (if ,vr (the ,(store-type sym) (store ,vr)) (cffi:null-pointer)) (:& :integer) (if ,vr ,ldvr 1)
+	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
+	     (:& :integer :output) 0))
+									   ;;Flip rwork to the end in the case of {z,c}geev.
+									   (make-instance 'permutation-cycle
+											  :store (when (subtypep ftype 'cl:complex)
+												   (list (pidxv 12 11 10 9 8 7 6))))))))))))
 ;;
-(deft/generic (t/lapack-heev-func #'subfieldp) sym ())
-(deft/method t/lapack-heev-func (sym real-tensor) ()
-  'matlisp-lapack:dsyev)
-(deft/method t/lapack-heev-func (sym complex-tensor) ()
-  'matlisp-lapack:zheev)
-
 (deft/generic (t/lapack-heev! #'subtypep) sym (jobz uplo A lda w))
-;;This will not work if you choose (simple-array (complex double-float) (*)) for complex-tensor.
 (deft/method t/lapack-heev! (sym blas-numeric-tensor) (jobz uplo A lda w)
-  (using-gensyms (decl (jobz A lda w uplo) (n lwork xxx))
-    (let ((complex? (subtypep (field-type sym) 'complex)))
-      `(let (,@decl
-	     (,lwork -1))
+  (using-gensyms (decl (jobz A lda w uplo) (lwork xxx xxr))
+    (let ((complex? (subtypep (field-type sym) 'complex))
+	  (ftype (field-type sym)))
+      `(let (,@decl)
        (declare (type ,sym ,A)
 		(type character ,jobz ,uplo)
-		(type index-type ,lda ,lwork)
+		(type index-type ,lda)
 		(type ,(store-type (realified-type sym)) ,w))
-       (let-typed ((,n (nrows ,A) :type index-type))
-	 (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
-	   (,(macroexpand-1 `(t/lapack-heev-func ,sym))
-	     ,jobz ,uplo
-	     ,n
-	     ,xxx ,lda
-	     ,xxx
-	     ,xxx -1
-	     ,@(when complex? `(,xxx))
-	     0)
-	   (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
-	 (,(macroexpand-1 `(t/lapack-heev-func ,sym))
-	   ,jobz ,uplo
-	   ,n
-	   (the ,(store-type sym) (store ,A)) ,lda
-	   ,w
-	   (t/store-allocator ,sym ,lwork) ,lwork
-	   ,@(when complex? `((t/store-allocator (t/realified-type ,sym) (* 3 ,n))))
-	   0
-	   (the index-type (head ,A))))))))
+       (with-field-elements ,(realified-type sym) (,@(when complex? `((,xxr (t/fid+ (t/field-type (t/realified-type ,sym))) (* 3 (dimensions ,A 0))))))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func (if complex? "heev" "syev") ftype)
+	     (:& :character) ,jobz (:& :character) ,uplo
+	     (:& :integer) (dimensions ,A 0)
+	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* ,(lisp->ffc ftype)) ,w
+	     (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
+	     ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
+	     (:& :integer :output) 0)))))))
 
 ;;
 (deft/generic (t/geev-output-fix #'subtypep) sym (wr wi))
 (deft/method t/geev-output-fix (sym real-numeric-tensor) (wr wi)
   (let ((csym (complexified-type sym)))
-    (using-gensyms (decl (wr wi))
-      (with-gensyms (ret i)
-	`(let* (,@decl
-		(,ret (t/store-allocator ,csym (length ,wr))))
-	   (declare (type ,(store-type sym) ,wr ,wi)
-		    (type ,(store-type csym) ,ret))
-	   (very-quickly
-	     (loop :for ,i :from 0 :below (length ,wr)
-		:do (t/store-set ,csym (complex (aref ,wr ,i) (aref ,wi ,i)) ,ret ,i)))
-	   ,ret)))))
+    (using-gensyms (decl (wr wi) (ret i))
+      `(let* (,@decl
+	      (,ret (t/store-allocator ,csym (length ,wr))))
+	 (declare (type ,(store-type sym) ,wr ,wi)
+		  (type ,(store-type csym) ,ret))
+	 (very-quickly
+	   (loop :for ,i :from 0 :below (length ,wr)
+	      :do (t/store-set ,csym (complex (aref ,wr ,i) (aref ,wi ,i)) ,ret ,i)))
+	 ,ret))))
 
 (deft/method t/geev-output-fix (sym complex-numeric-tensor) (wr wi)
   (using-gensyms (decl (wr))
@@ -151,33 +117,31 @@
 	  (wr (t/store-allocator ,(cl a) n))
 	  (wi (t/store-allocator ,(cl a) n)))
      (ecase jobvl
-       ,@(loop :for jvl :in '(#\N #\V)
-	    :collect `(,jvl
-		       (ecase jobvr
-			 ,@(loop :for jvr :in '(#\N #\V)
-			      :collect `(,jvr
-					 (with-columnification (() (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
-					   (multiple-value-bind (osto owr owi ovl ovr owork info)
-					       (t/lapack-geev! ,(cl a)
-							       A (or (blas-matrix-compatiblep A #\N) 0)
-							       ,@(if (char= jvl #\N) `(nil 1) `(vl (or (blas-matrix-compatiblep vl #\N) 0)))
-							       ,@(if (char= jvr #\N) `(nil 1) `(vr (or (blas-matrix-compatiblep vr #\N) 0)))
-							       wr wi)
-					     (declare (ignore osto owr owi ovl ovr owork))
-					     (unless (= info 0)
-					       (if (< info 0)
-						   (error "GEEV: Illegal value in the ~:r argument." (- info))
-						   (error "GEEV: the QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed;
+       ,@(loop :for jvl :in '(#\N #\V) :collect
+	    `(,jvl
+	      (ecase jobvr
+		,@(loop :for jvr :in '(#\N #\V) :collect
+		     `(,jvr
+		       (with-columnification (() (A ,@(when (char= jvl #\V) `(vl)) ,@(when (char= jvr #\V) `(vr))))
+			 (let ((info (t/lapack-geev! ,(cl a)
+						     A (or (blas-matrix-compatiblep A #\N) 0)
+						     ,@(if (char= jvl #\N) `(nil 1) `(vl (or (blas-matrix-compatiblep vl #\N) 0)))
+						     ,@(if (char= jvr #\N) `(nil 1) `(vr (or (blas-matrix-compatiblep vr #\N) 0)))
+						     wr wi)))
+			   (unless (= info 0)
+			     (if (< info 0)
+				 (error "GEEV: Illegal value in the ~:r argument." (- info))
+				 (error "GEEV: the QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed;
 elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))))))))))
      (let ((ret nil))
-       (and vr (push vr ret))
-       (and (or vr vl) (push vl ret))
-       (values-list (cons (with-no-init-checks
-			      (make-instance ',(complexified-type (cl a))
-					     :dimensions (make-index-store (list (nrows A)))
-					     :strides (make-index-store (list 1))
-					     :head 0
-					     :store (t/geev-output-fix ,(cl a) wr wi)))
+       (when vr (push vr ret))
+       (when vl (push vl ret))
+       (values-list (list* (with-no-init-checks
+			       (make-instance ',(complexified-type (cl a))
+					      :dimensions (make-index-store (list (nrows A)))
+					      :strides (make-index-store (list 1))
+					      :head 0
+					      :store (t/geev-output-fix ,(cl a) wr wi)))
 			  ret)))))
 ;;
 (defgeneric heev! (a &optional job uplo?)
@@ -206,9 +170,7 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
 	   (if (< info 0)
 	       (error "(SY/HE)EV: Illegal value in the ~:r argument." (- info))
 	       (error "(SY/HE)EV: the algorithm failed to converge; ~a off-diagonal elements of an intermediate tridiagonal form did not converge to zero." info)))))
-     (if (eql job :v)
-	 (values evals A)
-	 (values evals))))
+     (values-n (if (eq job :v) 2 1) evals A)))
 ;;
 (defgeneric eig (matrix &optional job uplo)
   (:method :before ((matrix standard-tensor) &optional (job :nn) (uplo *default-uplo*))
@@ -220,7 +182,7 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
     ((:nn :nv :vn :vv)
      (letv* ((n (nrows matrix))
 	     ((levec? revec?) (mapcar #'(lambda (x) (char= x #\V)) (split-job job))))
-	    (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix))))))
+       (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix))))))
     ((:n :v)
      (heev! (copy matrix) job uplo))))
 
@@ -246,10 +208,25 @@ elements ~a:~a of WR and WI contain eigenvalues which have converged." info n)))
      (letv* ((n (nrows matrix))
 	     ((levec? revec?) (mapcar #'(lambda (x) (char= x #\V)) (split-job job)))
 	     (ret (multiple-value-list (geev! (copy matrix) (when levec? (zeros (list n n) (class-of matrix))) (when revec? (zeros (list n n) (class-of matrix)))))))
-	    (let ((eval (car ret)))
-	      (unless (dotimes (i n t) (unless (zerop (imagpart (ref eval i))) (return nil)))
-		(when levec? (setf (second ret) (geev-fix-up-eigvec n eval (second ret))))
-		(when revec? (setf (third ret) (geev-fix-up-eigvec n eval (third ret))))))
-	    (values-list ret)))
+       (let ((eval (first ret)))
+	 (unless (dotimes (i n t) (unless (zerop (imagpart (ref eval i))) (return nil)))
+	   (print "he")
+	   (setq ret (list* eval (mapcar #'(lambda (x) (geev-fix-up-eigvec n eval x)) (cdr ret))))))
+       (values-list ret)))
     ((:n :v)
      (heev! (copy matrix) job uplo))))
+
+;; (let ((a  #i(randn([3, 3]) + 1i * randn ([3, 3]))))
+;;   ;;(octave-send-tensor a "a")
+;;   ;;(octave-send "[v, l] = eig(a);~%")
+;;   (letv* ((s vl vr (eig a :vv)))
+;;     (values #i(a - (/vl)' * diag(s, 2) * vl')
+;; 	    #i(a - vr * diag(s, 2) * /vr))
+    
+;;     ;;(geev! a nil (zeros (dims a) (class-of a)))
+   
+;;     #+nil(norm #i(vr * diag(s, 2) * /vr - a))
+;;     #+nil(norm (t- a (t* v (diag s 2) (inv v))))
+;;     #+nil(values (norm (t- (diag~ (octave-read-tensor "l")) s))
+;; 	    (norm (t- (octave-read-tensor "v") v))
+;; 	    )))

@@ -129,6 +129,10 @@
   "
   (if (listp lst) lst (list lst)))
 
+(declaim (inline pair))
+(defun pair (list)
+  (loop :for (a . b) :on list :by #'cddr :collect (if b (list a (first b)) (list a))))
+
 (declaim (inline zip))
 (defun zip (&rest args)
   "

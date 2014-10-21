@@ -64,27 +64,28 @@
 	      (octave-send "~a(~{~a~^, ~}) = ~a;~%" name (mapcar #'1+ (lvec->list idx)) ref)))))
 
 (defun octave-read-tensor (name)
-    (let ((stream (#+:sbcl
-		   sb-ext:process-output
-		   *current-octave-process*))
-	  (dims nil)
-	  (ret nil)
-	  (complex? nil))
-      ;;
-      (octave-send "size(~a)~%" name)
-      (read-line stream) (read-line stream)
-      (let ((out (mapcar
-		   #'(lambda (x) (setf (aref x (position #\E x)) #\D) (ceiling (read-from-string x)))
-		   (split-seq #'(lambda (c) (char= c #\Space)) (read-line stream)))))
-	(read-line stream)
-	(setq dims out))
-      ;;
-      (octave-send "sum(abs(imag(~a(:))))~%" name)
-      (setq ret
-	    (if (= (octave-readnum) 0d0)
-		(zeros dims 'real-tensor)
-		(prog1 (zeros dims 'complex-tensor) (setq complex? t))))
-      ;;
-      (mod-dotimes (idx (dimensions ret))
-	:do (setf (ref ret idx) (progn (octave-send "~a(~{~a~^, ~})~%" name (mapcar #'1+ (lvec->list idx))) (octave-readnum))))
-      ret))
+  (let ((stream (#+:sbcl
+		 sb-ext:process-output
+		 *current-octave-process*))
+	(dims nil)
+	(ret nil)
+	(complex? nil))
+    (clear-input stream)
+    ;;
+    (octave-send "size(~a)~%" name)
+    (read-line stream) (read-line stream)
+    (let ((out (mapcar
+		#'(lambda (x) (setf (aref x (position #\E x)) #\D) (ceiling (read-from-string x)))
+		(split-seq #'(lambda (c) (char= c #\Space)) (read-line stream)))))
+      (read-line stream)
+      (setq dims out))
+    ;;
+    (octave-send "sum(abs(imag(~a(:))))~%" name)
+    (setq ret
+	  (if (= (octave-readnum) 0d0)
+	      (zeros dims 'real-tensor)
+	      (prog1 (zeros dims 'complex-tensor) (setq complex? t))))
+    ;;
+    (mod-dotimes (idx (dimensions ret))
+      :do (setf (ref ret idx) (progn (octave-send "~a(~{~a~^, ~})~%" name (mapcar #'1+ (lvec->list idx))) (octave-readnum))))
+    ret))

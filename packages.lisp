@@ -76,7 +76,7 @@
 	   #:zip #:zipsym
 	   #:slot-values #:remmeth
 	   #:list-dimensions
-	   #:maptree-if #:maptree #:flatten #:ziptree #:cart #:mapcart
+	   #:maptree-if #:maptree #:flatten #:pair #:ziptree #:cart #:mapcart
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval
 	   ;;string
@@ -118,6 +118,7 @@
    ;;Foreign-pointer enclosing structure.
    #:foreign-vector #:make-foreign-vector #:foreign-vector-p
    #:fv-ref #:fv-pointer #:fv-size #:fv-type
+   #:ffuncall #:lisp->ffc
    ;;Interface functions
    #:def-fortran-routine #:parse-fortran-file
    #:with-vector-data-addresses)

@@ -9,30 +9,27 @@
 (deft/generic (t/blas-gemm! #'subtypep) sym (alpha A lda B ldb beta C ldc transa opa opb))
 
 (deft/method t/blas-gemm! (sym blas-numeric-tensor) (alpha A lda B ldb beta C ldc transa opa opb)
-  (using-gensyms (decl (alpha A lda B ldb beta C ldc transa opa opb))
-    (with-gensyms (m n k)
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (alpha A lda B ldb beta C ldc transa opa opb) (m n k))   
       `(let* (,@decl
-	      (,m (aref (the index-store-vector (dimensions ,C)) 0))
-	      (,n (aref (the index-store-vector (dimensions ,C)) 1))
-	      (,k (aref (the index-store-vector (dimensions ,A)) (ecase (char-upcase ,transa) (#\N 1) ((#\T #\C) 0)))))
+	      (,m (dimensions ,C 0)) (,n (dimensions ,C 1))
+	      (,k (dimensions ,A (ecase ,transa (#\N 1) ((#\T #\C) 0)))))
 	 (declare (type ,sym ,A ,B ,C)
 		  (type ,(field-type sym) ,alpha ,beta)
 		  (type index-type ,lda ,ldb ,ldc ,m ,n ,k)
 		  (type character ,transa ,opa ,opb))
-	 (,(macroexpand-1 `(t/blas-gemm-func ,sym))
-	   ,opa ,opb
-	   ,m ,n ,k
-	   ,alpha
-	   (the ,(store-type sym) (store ,A)) ,lda
-	   (the ,(store-type sym) (store ,B)) ,ldb
-	   ,beta
-	   (the ,(store-type sym) (store ,C)) ,ldc
-	   (the index-type (head ,A)) (the index-type (head ,B)) (the index-type (head ,C)))
+	 (ffuncall ,(blas-func "gemm" ftype)
+		   (:& :character) ,opa (:& :character) ,opb
+		   (:& :integer) ,m (:& :integer) ,n (:& :integer) ,k
+		   (:& ,(lisp->ffc ftype t)) ,alpha
+		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+		   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
+		   (:& ,(lisp->ffc ftype t)) ,beta
+		   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ldc)
 	 ,C))))
 
 ;;
 (deft/generic (t/gemm! #'subtypep) sym (alpha A B beta C transa transb))
-
 (deft/method t/gemm! (sym standard-tensor) (alpha A B beta C transa transb)
   (using-gensyms (decl (alpha A B beta C transa transb))
    `(let (,@decl)

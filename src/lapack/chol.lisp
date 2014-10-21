@@ -27,26 +27,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-potrf-func #'subfieldp) sym ())
-(deft/method t/lapack-potrf-func (sym real-tensor) ()
-  'dpotrf)
-(deft/method t/lapack-potrf-func (sym complex-tensor) ()
-  'zpotrf)
-;;
 (deft/generic (t/lapack-potrf! #'subtypep) sym (A lda uplo))
-
 (deft/method t/lapack-potrf! (sym blas-numeric-tensor) (A lda uplo)
-  (using-gensyms (decl (A lda uplo))
-    `(let* (,@decl)
-       (declare (type ,sym ,A)
-		(type index-type ,lda)
-		(type character ,uplo))
-       (,(macroexpand-1 `(t/lapack-potrf-func ,sym))
-	 ,uplo
-	 (nrows ,A)
-	 (the ,(store-type sym) (store ,A)) ,lda
-	 0
-	 (the index-type (head ,A))))))
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (A lda uplo))
+      `(let* (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda)
+		  (type character ,uplo))
+	 (ffuncall ,(blas-func "potrf" ftype)
+		   (:& :character) ,uplo
+		   (:& :integer) (dimensions ,A 0)
+		   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+		   (:& :integer :output) 0)))))
 
 ;;
 (defgeneric potrf! (a &optional uplo)
@@ -77,35 +70,27 @@
 
 (define-tensor-method potrf! ((a blas-numeric-tensor :output) &optional (uplo *default-uplo*))
   `(with-columnification (() (A))
-     (multiple-value-bind (sto info) (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))
-       (declare (ignore sto))
+     (let ((info (t/lapack-potrf! ,(cl a) A (or (blas-matrix-compatiblep A #\N) 0) (char-upcase (aref (symbol-name uplo) 0)))))
        (unless (= info 0)
 	 (if (< info 0)
 	     (error "POTRF: the ~a'th argument had an illegal value." (- info))
 	     (error 'matrix-not-pd :message "POTRF: the leading minor of order ~a is not p.d; the factorization could not be completed." :position info)))))
   'A)
 ;;
-(deft/generic (t/lapack-potrs-func #'subfieldp) sym ())
-(deft/method t/lapack-potrs-func (sym real-tensor) ()
-  'dpotrs)
-(deft/method t/lapack-potrs-func (sym complex-tensor) ()
-  'zpotrs)
-;;
 (deft/generic (t/lapack-potrs! #'subtypep) sym (A lda B ldb uplo))
-
 (deft/method t/lapack-potrs! (sym blas-numeric-tensor) (A lda B ldb uplo)
-  (using-gensyms (decl (A lda B ldb uplo))
-    `(let* (,@decl)
-       (declare (type ,sym ,A ,B)
-		(type index-type ,lda ,ldb)
-		(type character ,uplo))
-       (,(macroexpand-1 `(t/lapack-potrs-func ,sym))
-	 ,uplo
-	 (nrows ,A) (ncols ,B)
-	 (the ,(store-type sym) (store ,A)) ,lda
-	 (the ,(store-type sym) (store ,B)) ,ldb
-	 0
-	 (the index-type (head ,A)) (the index-type (head ,B))))))
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (A lda B ldb uplo))
+      `(let* (,@decl)
+	 (declare (type ,sym ,A ,B)
+		  (type index-type ,lda ,ldb)
+		  (type character ,uplo))
+	 (ffuncall ,(blas-func "potrs" ftype)
+	   (:& :character) ,uplo
+	   (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,B 1)
+	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
+	   (:& :integer :output) 0)))))
 
 ;;
 (defgeneric potrs! (A B &optional uplo)
@@ -144,13 +129,11 @@
   `(if (tensor-vectorp B)
        (potrs! A (suptensor~ B 2) uplo)
        (with-columnification (((A #\C)) (B))
-	 (multiple-value-bind (sto info) (t/lapack-potrs! ,(cl a)
-							  A (or (blas-matrix-compatiblep A #\N) 0)
-							  B (or (blas-matrix-compatiblep B #\N) 0)
-							  (aref (symbol-name uplo) 0))
-	   (declare (ignore sto))
-	   (unless (= info 0)
-	     (error "POTRS returned ~a. the ~:*~a'th argument had an illegal value." (- info))))))
+	 (let ((info (t/lapack-potrs! ,(cl a)
+				      A (or (blas-matrix-compatiblep A #\N) 0)
+				      B (or (blas-matrix-compatiblep B #\N) 0)
+				      (aref (symbol-name uplo) 0))))
+	   (unless (= info 0) (error "POTRS returned ~a. the ~:*~a'th argument had an illegal value." (- info))))))
   'B)
 ;;
 (defgeneric chol (a &optional uplo)
@@ -177,3 +160,9 @@
       (tricopy! 0d0 l (ecase uplo (:u :l) (:l :u)))
       (tricopy! diag l :d))
     l))
+;;
+
+;; (let* ((a #i(a := randn([10, 10]), a + a' + 20 * eye([10, 10])))
+;;        (x (randn '(10 5)))
+;;        (b #i(a * x)))
+;;   (norm (t- x (potrs! (chol a) b))))

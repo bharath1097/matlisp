@@ -1,43 +1,26 @@
 (in-package :matlisp)
-
-(deft/generic (t/lapack-gelsy-func #'subfieldp) sym ())
-(deft/method t/lapack-gelsy-func (sym real-tensor) ()
-  'matlisp-lapack:dgelsy)
-
-(definline mzgelsy (m n nrhs a lda b ldb jpvt rcond rank work lwork info &optional (head-a 0) (head-b 0))
-  (matlisp-lapack:zgelsy m n nrhs a lda b ldb jpvt rcond rank work lwork (t/store-allocator complex-tensor n) info head-a head-b))
-(deft/method t/lapack-gelsy-func (sym complex-tensor) ()
-  'mzgelsy)
 ;;
 (deft/generic (t/lapack-gelsy! #'subtypep) sym (A lda B ldb rcond))
 (deft/method t/lapack-gelsy! (sym blas-numeric-tensor) (A lda B ldb rcond)
-  (using-gensyms (decl (A lda B ldb rcond) (lwork xxx))
-    (with-gensyms (jpvt)
-    `(let* (,@decl
-	    (,jpvt (make-array (ncols ,A) :element-type '(unsigned-byte 32) :initial-element 0))
-	    (,lwork -1))
-       (declare (type ,sym ,A ,B)
-		(type index-type ,lda ,ldb ,lwork)
-		;;BEWARE: This will throw an error, if you use (simple-array (complex double-float) (*)) for store.
-		(type ,(store-element-type sym) ,rcond)
-		(type (simple-array (unsigned-byte 32) (*)) ,jpvt))
-       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
-	 (,(macroexpand-1 `(t/lapack-gelsy-func ,sym))
-	   (nrows ,A) (ncols ,A) (ncols ,B)
-	   ,xxx ,lda
-	   ,xxx ,ldb
-	   ,jpvt ,rcond 0
-	   ,xxx -1
-	   0)
-	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
-       (,(macroexpand-1 `(t/lapack-gelsy-func ,sym))
-	 (nrows ,A) (ncols ,A) (ncols ,B)
-	 (the ,(store-type sym) (store ,A)) ,lda
-	 (the ,(store-type sym) (store ,B)) ,ldb
-	 ,jpvt ,rcond 0
-	 (t/store-allocator ,sym ,lwork) ,lwork
-	 0
-	 (the index-type (head ,A)) (the index-type (head ,B)))))))
+  (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex))
+	 (rtype (field-type (realified-type sym))))
+    (using-gensyms (decl (A lda B ldb rcond) (lwork xxx xxr jpvt))
+      `(let* (,@decl
+	      (,jpvt (make-array (ncols ,A) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0)))
+	 (declare (type ,sym ,A ,B)
+		  (type index-type ,lda ,ldb)
+		  (type ,(field-type (realified-type sym)) ,rcond)
+		  (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt))
+	 (with-field-elements ,sym (,@(when complex? `((,xxr (t/fid+ ,ftype) (dimensions ,A 1)))))
+	   (with-lapack-query ,sym (,xxx ,lwork)
+	     (ffuncall ,(blas-func "gelsy" ftype)
+	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) (dimensions ,B 1)
+	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	       (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ldb
+	       (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt) (:& ,(lisp->ffc rtype t)) ,rcond (:& :integer :output) 0
+	       (:* ,(lisp->ffc ftype)) ,xxx (:& :integer) ,lwork
+	       ,@(when complex? `((:* ,(lisp->ffc ftype)) ,xxr))
+	       (:& :integer :output) 0)))))))
 ;;
 (defgeneric gelsy (A B &optional rcond)
   (:documentation "
@@ -117,8 +100,7 @@
      (let* ((mn (max (nrows A) (ncols A)))
 	    (X (with-colm (zeros (list mn (ncols B)) ',(cl b)))))
        (copy! B (subtensor~ X `((0 ,(nrows B)) (nil nil))))
-       (multiple-value-bind (sto-a sto-b jpvt rank work-out info) (t/lapack-gelsy! ,(cl b) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)
-	 (declare (ignore sto-a sto-b work-out jpvt))
+       (letv* ((rank info (t/lapack-gelsy! ,(cl b) A (or (blas-matrix-compatiblep A #\N) 0) X (or (blas-matrix-compatiblep X #\N) 0) rcond)))
 	 (unless (= info 0)
 	   (error "gelsy returned ~a." info))
 	 (values (copy (subtensor~ X `((0 ,(ncols A)) (nil nil)))) rank)))))
@@ -128,3 +110,8 @@
     (if rcond-p
 	(gelsy A B rcond)
 	(gelsy A B))))
+
+;; (let* ((a (randn '(10 5)))
+;;        (x (randn '(5 5)))
+;;        (b (t* a x)))
+;;   (norm (t- x (lstsq a b))))

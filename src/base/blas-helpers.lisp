@@ -13,6 +13,16 @@
 	   :unless (= so-st accumulated-off) :do (return (values nil perm-dims sort-std std-perm))
 	   :finally (return (values (aref sort-std 0) perm-dims sort-std std-perm)))))))
 
+(definline blas-func (name type)
+  (string+
+   (cond
+     ((eq type 'single-float) "s")
+     ((eq type 'double-float) "d")
+     ((tree-equal type '(complex single-float)) "c")
+     ((tree-equal type '(complex double-float)) "z")
+     (t "error: unknown BLAS type."))
+   name))
+
 (definline blas-copyablep (ten-a ten-b)
   (declare (type standard-tensor ten-a ten-b))
   (when (= (order ten-a) (order ten-b))
@@ -80,7 +90,7 @@
 	 nil)))))
 
 (definline pflip.f->l (uidiv)
-  (declare (type (simple-array (unsigned-byte 32) (*)) uidiv))
+  (declare (type (simple-array (signed-byte 32) (*)) uidiv))
   (let ((ret (make-array (length uidiv) :element-type 'pindex-type)))
     (declare (type pindex-store-vector ret))
     (very-quickly
@@ -90,9 +100,17 @@
 
 (definline pflip.l->f (idiv)
   (declare (type pindex-store-vector idiv))
-  (let ((ret (make-array (length idiv) :element-type '(unsigned-byte 32))))
-    (declare (type (simple-array (unsigned-byte 32) (*)) ret))
+  (let ((ret (make-array (length idiv) :element-type '(signed-byte 32))))
+    (declare (type (simple-array (signed-byte 32) (*)) ret))
     (very-quickly
       (loop :for i :from 0 :below (length idiv)
 	 :do (setf (aref ret i) (1+ (aref idiv i)))))
     ret))
+
+(defmacro with-lapack-query (class (work lwork) &rest code)
+  `(let-typed ((,lwork -1 :type index-type))
+     (with-field-element ,class (,work (t/fid+ ,(field-type class)) 1)
+       (progn ,@code)
+       (setq ,lwork (ceiling (t/frealpart ,(field-type class) (t/store-ref ,class ,work 0)))))
+     (with-field-element ,class (,work (t/fid+ ,(field-type class)) ,lwork)
+       ,@code)))

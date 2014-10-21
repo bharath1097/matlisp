@@ -84,7 +84,7 @@
   (using-gensyms (decl (n))
     (labels ((make-cd (i rets vrets)
 	       `((let ((,(first (car rets)) ,(maptree '(values-n previous-value) #'(lambda (x) (case (car x)
-												 (values-n (print x))
+												 (values-n x)
 												 (previous-value
 												  (destructuring-bind (&optional (idx (- i 2))) (cdr x)
 												    (assert (< -1 idx (length vrets)) nil 'invalid-arguments)
@@ -97,11 +97,6 @@
       `(let (,@decl)
 	 (when (> ,n 0)
 	   ,@(make-cd 1 (zipsym values) nil))))))
-
-(loop :for (a b) :on (print (flatten (ziptree '(a (b) c) '(1 2 3))))
-   :with skip? := nil
-   :do (if (or skip? (not a)) (setf skip? nil)
-	   (progn (print (list a b)) (setf skip? t))))
 
 (defmacro letv* (bindings &rest body)
   "

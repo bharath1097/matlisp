@@ -94,6 +94,11 @@
     `(let-typed ((,var (t/store-allocator ,sym ,count ,init) :type ,(store-type sym)))
        (locally
 	   ,@body))))
+
+(defmacro with-field-elements (sym decls &rest body)
+  (if (null decls) `(progn ,@body)
+      `(with-field-element ,sym ,(first decls)
+	 (with-field-elements ,sym ,(cdr decls) ,@body))))
 ;;
 (deft/method t/store-ref (sym linear-store) (store &rest idx)
    (assert (null (cdr idx)) nil "given more than one index for linear-store")

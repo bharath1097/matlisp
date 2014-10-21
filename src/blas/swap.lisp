@@ -35,36 +35,35 @@
 ;;
 (deft/generic (t/blas-swap! #'subtypep) sym (x st-x y st-y))
 (deft/method t/blas-swap! (sym blas-numeric-tensor) (x st-x y st-y)
-  (using-gensyms (decl (x y))
-    `(let (,@decl)
-       (declare (type ,sym ,x ,y))
-       (,(macroexpand-1 `(t/blas-swap-func ,sym))
-	 (the index-type (size ,y))
-	 (the ,(store-type sym) (store ,x)) (the index-type ,st-x)
-	 (the ,(store-type sym) (store ,y)) (the index-type ,st-y)
-	 (head ,x) (head ,y))
-       ,y)))
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (x y))
+      `(let (,@decl)
+	 (declare (type ,sym ,x ,y))
+	 (ffuncall ,(blas-func "swap" ftype)
+		   (:& :integer) (size ,y)
+		   (:* ,(lisp->ffc ftype) :+ (head ,x)) (the ,(store-type sym) (store ,x)) (:& :integer) ,st-x
+		   (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) ,st-y)
+	 ,y))))
   
 (deft/generic (t/swap! #'subtypep) sym (x y))
 (deft/method t/swap! (sym standard-tensor) (x y)
-  (using-gensyms (decl (x y))
-    (with-gensyms (idx sto-x sto-y of-x of-y y-val)
-      `(let* (,@decl
-	      (,sto-x (store ,x))
-	      (,sto-y (store ,y)))
-	 (declare (type ,sym ,x ,y)
-		  (type ,(store-type sym) ,sto-x ,sto-y))
-	 (very-quickly
-	   (mod-dotimes (,idx (dimensions ,x))
-	     :with (linear-sums
-		    (,of-x (strides ,x) (head ,x))
-		    (,of-y (strides ,y) (head ,y)))
-	     :do (let-typed ((,y-val (t/store-ref ,sym ,sto-y ,of-y) :type ,(field-type sym)))
-			    (t/store-set ,sym
-					 (t/store-ref ,sym ,sto-x ,of-x) ,sto-y ,of-y)
-			    (t/store-set ,sym
-					 ,y-val ,sto-x ,of-x)))
-	   ,y)))))
+  (using-gensyms (decl (x y) (idx sto-x sto-y of-x of-y y-val))
+    `(let* (,@decl
+	    (,sto-x (store ,x))
+	    (,sto-y (store ,y)))
+       (declare (type ,sym ,x ,y)
+		(type ,(store-type sym) ,sto-x ,sto-y))
+       (very-quickly
+	 (mod-dotimes (,idx (dimensions ,x))
+	   :with (linear-sums
+		  (,of-x (strides ,x) (head ,x))
+		  (,of-y (strides ,y) (head ,y)))
+	   :do (let-typed ((,y-val (t/store-ref ,sym ,sto-y ,of-y) :type ,(field-type sym)))
+		 (t/store-set ,sym
+			      (t/store-ref ,sym ,sto-x ,of-x) ,sto-y ,of-y)
+		 (t/store-set ,sym
+			      ,y-val ,sto-x ,of-x)))
+	 ,y))))
 ;;---------------------------------------------------------------;;
 (defmethod swap! :before ((x standard-tensor) (y standard-tensor))
   (assert (very-quickly (lvec-eq (the index-store-vector (dimensions x)) (the index-store-vector (dimensions y)) #'=)) nil

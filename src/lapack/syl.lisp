@@ -1,26 +1,21 @@
 (in-package #:matlisp)
-
-(deft/generic (t/lapack-trsyl-func #'subfieldp) sym ())
-(deft/method t/lapack-trsyl-func (sym real-tensor) ()
-  'matlisp-lapack:dtrsyl)
-(deft/method t/lapack-trsyl-func (sym complex-tensor) ()
-  'matlisp-lapack:ztrsyl)
 ;;
 (deft/generic (t/lapack-trsyl! #'subtypep) sym (op.A op.B sgn A ld.a B ld.b C ld.c))
 (deft/method t/lapack-trsyl! (sym blas-numeric-tensor) (op.A op.B sgn A ld.a B ld.b C ld.c)
-  (using-gensyms (decl (op.A op.B sgn A ld.a B ld.b C ld.c))
-    `(let (,@decl)
-      (declare (type character ,op.A ,op.B ,sgn)
-	       (type ,sym ,A ,B ,C)
-	       (type index-type ,ld.a ,ld.b ,ld.c))
-      (,(macroexpand-1 `(t/lapack-trsyl-func ,sym))
-	,op.a ,op.b (if (char= ,sgn #\P) 1 -1)
-	(nrows ,c) (ncols ,c)
-	(the ,(store-type sym) (store ,A)) ,ld.a
-	(the ,(store-type sym) (store ,B)) ,ld.b
-	(the ,(store-type sym) (store ,C)) ,ld.c
-	(t/fid* ,(field-type (realified-type sym))) 0
-	(the index-type (head ,A)) (the index-type (head ,B)) (the index-type (head ,C))))))
+  (let ((ftype (field-type sym)))
+    (using-gensyms (decl (op.A op.B sgn A ld.a B ld.b C ld.c))
+      `(let (,@decl)
+	 (declare (type character ,op.A ,op.B ,sgn)
+		  (type ,sym ,A ,B ,C)
+		  (type index-type ,ld.a ,ld.b ,ld.c))
+	 (ffuncall ,(blas-func "trsyl" ftype)
+	   (:& :character) ,op.a (:& :character) ,op.b (:& :integer) (if (char= ,sgn #\P) 1 -1)
+	   (:& :integer) (dimensions ,C 0) (:& :integer) (dimensions ,C 1)
+	   (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,ld.a
+	   (:* ,(lisp->ffc ftype) :+ (head ,B)) (the ,(store-type sym) (store ,B)) (:& :integer) ,ld.b
+	   (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ld.c
+	   (:& ,(lisp->ffc (field-type (realified-type sym))) :output) (t/fid* ,(field-type (realified-type sym)))
+	   (:& :integer :output) 0)))))
 
 (defgeneric trsyl! (A B C &optional job)
   (:documentation "
@@ -60,10 +55,10 @@
 (define-tensor-method trsyl! ((A blas-numeric-tensor :input) (B blas-numeric-tensor :input) (C blas-numeric-tensor :output) &optional (job :nnp))
   `(destructuring-bind (op.a op.b sgn) (split-job job)
      (with-columnification (((A #\C) (B #\C)) (C))
-       (multiple-value-bind (scale info) (t/lapack-trsyl! ,(cl a) op.a op.b sgn
-							  A (or (blas-matrix-compatiblep A #\N) 0)
-							  B (or (blas-matrix-compatiblep B #\N) 0)
-							  C (or (blas-matrix-compatiblep C #\N) 0))
+       (letv* ((scale info (t/lapack-trsyl! ,(cl a) op.a op.b sgn
+					    A (or (blas-matrix-compatiblep A #\N) 0)
+					    B (or (blas-matrix-compatiblep B #\N) 0)
+					    C (or (blas-matrix-compatiblep C #\N) 0))))
 	 (unless (= info 0)
 	   (if (< info 0)
 	       (error "TRSYL: Illegal value in the ~:r argument." (- info))
@@ -89,3 +84,9 @@
 	  (ucu (gemm 1 u.a (gemm 1 c u.b nil nil :nn) nil nil :cn)))
     (trsyl! t.a t.b ucu)
     (gemm 1 u.a (gemm 1 ucu u.b nil nil :nc) nil nil)))
+
+;; (letv* ((a (randn '(10 10)))
+;; 	(b (randn '(10 10)))
+;; 	(x (randn '(10 10)))
+;; 	(c #i(a * x + x * b)))
+;;   (norm (t- (syl a b c) x)))

@@ -1,219 +1,83 @@
 (in-package #:matlisp)
 
-(deft/generic (t/lapack-geqrf-func #'subfieldp) sym ())
-(deft/generic (t/lapack-orgqr-func #'subfieldp) sym ())
-(deft/generic (t/lapack-geqp3-func #'subfieldp) sym ())
-
-(deft/method t/lapack-geqrf-func (sym real-tensor) () 'matlisp-lapack:dgeqrf)
-(deft/method t/lapack-orgqr-func (sym real-tensor) () 'matlisp-lapack:dorgqr)
-(deft/method t/lapack-geqp3-func (sym real-tensor) () 'matlisp-lapack:dgeqp3)
-
-(deft/method t/lapack-geqrf-func (sym complex-tensor) () 'matlisp-lapack:zgeqrf)
-(deft/method t/lapack-orgqr-func (sym complex-tensor) ()'matlisp-lapack:zungqr)
-(deft/method t/lapack-geqp3-func (sym complex-tensor) () 'matlisp-lapack:zgeqp3)
 ;;
-(deft/generic (t/lapack-qr! #'subtypep) sym (A lda tau))
+(deft/generic (t/lapack-geqp! #'subtypep) sym (A lda jpvt tau))
+(deft/method t/lapack-geqp! (sym blas-numeric-tensor) (A lda jpvt tau)
+  (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
+    (using-gensyms (decl (A lda jpvt tau) (xxx xxr lwork))
+      `(let (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda)
+		  (type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt)
+		  (type ,(store-type sym) ,tau))
+	 (with-field-elements ,sym (,@(when complex? `((,xxr (t/fid+ ,ftype) (dimensions ,A 1)))))
+	   (with-lapack-query ,sym (,xxx ,lwork)
+	     (ffuncall ,(blas-func "geqp3" ftype)
+	       (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1)	     
+	       (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	       (:* :integer) (the (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)) ,jpvt)
+	       (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
+	       (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
+	       ,@(when complex? `((:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxr)))
+	       (:& :integer :output) 0)))))))
+
+(deft/generic (t/lapack-geqr! #'subtypep) sym (A lda tau))
 (deft/method t/lapack-geqr! (sym blas-numeric-tensor) (A lda tau)
-  (using-gensyms (decl (A lda tau) (xxx lwork))
-    `(let (,@decl
-	   (,lwork -1))
-       (declare (type ,sym ,A)
-		(type index-type ,lda ,lwork)
-		(type ,(store-type sym) ,tau))
-       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
-	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
-	   (nrows ,A) (ncols ,A)
-	   ,xxx ,lda
-	   ,xxx
-	   ,xxx -1
-	   0)
-	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
-       (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
-	 (nrows ,A) (ncols ,A)
-	 (the ,(store-type sym) (store A)) ,lda
-	 ,tau
-	 (t/store-allocator ,sym ,lwork) ,lwork
-	 0
-	 (head ,A))
-       (,(macroexpand-1 `(t/lapack-orgqr-func ,sym))
+  (let* ((ftype (field-type sym)))
+    (using-gensyms (decl (A lda tau) (xxx lwork))
+      `(let (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda)
+		  (type ,(store-type sym) ,tau))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func "geqrf" ftype)
+	     (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1)
+	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
+	     (:& :integer :output) 0))))))
 
-	 )
-       )))
+(deft/generic (t/lapack-orgqr! #'subtypep) sym (rank A lda tau))
+(deft/method t/lapack-orgqr! (sym blas-numeric-tensor) (rank A lda tau)
+  (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
+    (using-gensyms (decl (A lda tau) (xxx lwork))
+      `(let (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda ,rank)
+		  (type ,(store-type sym) ,tau))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func (if complex? "ungqr" "orgqr") ftype)
+	     (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) ,rank
+	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
+	     (:& :integer :output) 0))))))
 
-(deft/generic (t/lapack-orqr! #'subtypep) sym (A lda tau))
-(deft/method t/lapack-geqr! (sym blas-numeric-tensor) (A lda tau)
-  (using-gensyms (decl (A lda tau) (xxx lwork))
-    `(let (,@decl
-	   (,lwork -1))
-       (declare (type ,sym ,A)
-		(type index-type ,lda ,lwork)
-		(type ,(store-type sym) ,tau))
-       (let-typed ((,xxx (t/store-allocator ,sym 1) :type ,(store-type sym)))
-	 (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
-	   (nrows ,A) (ncols ,A)
-	   ,xxx ,lda
-	   ,xxx
-	   ,xxx -1
-	   0)
-	 (setq ,lwork (ceiling (t/frealpart ,(field-type sym) (t/store-ref ,sym ,xxx 0)))))
-       (,(macroexpand-1 `(t/lapack-geqrf-func ,sym))
-	 (nrows ,A) (ncols ,A)
-	 (the ,(store-type sym) (store A)) ,lda
-	 ,tau
-	 (t/store-allocator ,sym ,lwork) ,lwork
-	 0
-	 (head ,A)))))
+(deft/generic (t/lapack-ormqr! #'subtypep) sym (side trans rank A lda tau c ldc))
+(deft/method t/lapack-ormqr! (sym blas-numeric-tensor) (side trans rank A lda tau c ldc)
+  (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
+    (using-gensyms (decl (side trans A lda tau c ldc) (xxx lwork))
+      `(let (,@decl)
+	 (declare (type ,sym ,A)
+		  (type index-type ,lda ,ldc ,rank)
+		  (type ,(store-type sym) ,tau)
+		  (type character ,side ,trans))
+	 (with-lapack-query ,sym (,xxx ,lwork)
+	   (ffuncall ,(blas-func (if complex? "unmqr" "ormqr") ftype)
+	     (:& :character) ,side (:& :character) ,trans
+	     (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) ,rank
+	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
+	     (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ldc
+	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
+	     (:& :integer :output) 0))))))
 ;;
-
-
-
-;;
-(defgeneric geqr! (a)
-  (:documentation
-   "
- Syntax
- ======
- (GEQR! a)
-
- Purpose:
- ========
-
- Use QR or QR! for access to this routine.
-
- Computes the QR factorization of an M-by-N matrix A: A = Q * R where
- R is an M-by-N upper trapezoidal (triangular) matrix and Q is
- M-by-M unitary matrix.
-
- Return Values:
- ==============
-
-   [1] Q
-   [2] R
-
- If the factorization can not be done, Q and R are set to NIL.
-")
-  (:method :before ((a standard-tensor))
-	   (assert (tensor-matrixp a) nil 'tensor-dimension-mismatch)))
-
-(define-tensor-method geqr! ((a standard-tensor :output))
-  (let* ((m (nrows a))
-	 (n (ncols a))
-	 (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
-	 (tau (t/store-allocator ,cla k))	; reflection factors
-	 (lwork (t/lapack-geqrf-workspace-inquiry m n))	; optimum work array size
-	 (work (t/store-allocator ,cla lwork))) ; and the work area
-    (declare (type index-type lwork m n k)
-	     (type ,(store-type cla) tau work))
-    ;; Do the Householder portion of the decomposition
-    (with-columnification (() (A))
-      (multiple-value-bind (q-r new-tau new-work info)
-	  (,(macroexpand-1 `(t/lapack-geqrf-func ,cla))
-	    m n
-	    (the ,(store-type cla) (store A)) (or (blas-matrix-compatiblep A #\N) 0)
-	    tau work lwork 0 (the index-type (head A)))
-	(declare (ignore q-r new-tau new-work))
-	(unless (= info 0)
-	  (error "geqrf returned ~a~%" info))
-
-
-
-	  ;; If we are here, then INFO == 0 and all is well...
-	  (let ((r (make-real-matrix k n)))
-	  ;; Extract the matrix R from Q-R
-	  (dotimes (row k)
-	    (loop for col from row below n do
-		  (setf (matrix-ref r row col)
-			(aref q-r (fortran-matrix-indexing row col m)))))
-
-	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	  ;; Now compute Q via DORGQR and return.  This is always
-	  ;; the economy representation of Q.  I.e., Q1 in Q = [Q1 Q2]
-	  (multiple-value-bind (new-q-r new-work info)
-	      (lapack:dorgqr m k k q-r m new-tau work lwork 0)
-
-	    (declare (ignore new-work))
-
-	    (if (not (zerop info))
-		(progn (warn "Error in DORGQR in argument ~d.  Returning nil." (- info))
-		       (values nil nil))
-
-		(let ((q (make-real-matrix m k)))
-
-		  (dotimes (row m)
-		    (dotimes (col k)
-		      (setf (matrix-ref q row col)
-			    (aref new-q-r (fortran-matrix-indexing row col m)))))
-
-		  ;; We're done!
-		  (values q r)))))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmethod geqr! ((a complex-matrix))
-
-  (let* ((m (nrows a))
-	 (n (ncols a))
-	 (k (min m n))			; THESE ROUTINES ONLY RETURN A MINIMUM Q!
-	 (tau (allocate-complex-store k))	; reflection factors
-	 (lwork (zgeqrf-workspace-inquiry m n))	; optimum work array size
-	 (work (allocate-complex-store lwork))) ; and the work area
-
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Do the Householder portion of the decomposition
-    (multiple-value-bind (q-r new-tau new-work info)
-	(lapack:zgeqrf m n (store a) m tau work lwork 0)
-
-      (declare (ignore new-work))
-      ;; Q-R and NEW-TAU aren't needed either since the (STORE A) and WORK
-      ;; get modified
-
-      (if (not (zerop info))
-	  ;; If INFO is not zero, then an error occured.  Return Nil
-	  ;; for the Q and R and print a warning
-	  (progn (warn "QR Decomp failed:  Argument ~d in call to DGEQRF is bad" (- info))
-		 (values nil nil))
-
-	;; If we are here, then INFO == 0 and all is well...
-	(let ((r (make-complex-matrix k n))
-	      (idx-fortran 0))
-
-	  ;; Extract the matrix R from Q-R
-	  (dotimes (row k)
-	    (loop for col from row below n do
-		  (setf idx-fortran (fortran-complex-matrix-indexing row col m)
-			(matrix-ref r row col) (complex (aref q-r idx-fortran)
-							(aref q-r (1+ idx-fortran))))))
-
-	  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	  ;; Now compute Q via ZUNGQR and return.  This is always
-	  ;; the economy representation of Q.  I.e., Q1 in Q = [Q1 Q2]
-	  (multiple-value-bind (new-q-r new-work info)
-	      (lapack:zungqr m k k q-r m new-tau work lwork 0)
-
-	    (declare (ignore new-work))
-
-	    (if (not (zerop info))
-		(progn (warn "Error in DORGQR in argument ~d.  Returning nil." (- info))
-		       (values nil nil))
-
-		(let ((q (make-complex-matrix m k)))
-
-		  (dotimes (row m)
-		    (dotimes (col k)
-		      (setf idx-fortran (fortran-complex-matrix-indexing row col m)
-			    (matrix-ref q row col) (complex (aref new-q-r idx-fortran)
-							    (aref new-q-r (1+ idx-fortran))))))
-
-		  ;; We're done!
-		  (values q r)))))))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defgeneric geqp! (a)
   (:documentation
    "
   SYNTAX
   ======
-  (DEQP A)
+  (GEQP! A)
 
   INPUT
   -----
@@ -243,21 +107,6 @@
   Computes the QR factorization of an M-by-N matrix A using column pivoting.
   I.e., A*P = Q*R is computed where P is a column pivoting matrix.
 "))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(let ((xx (allocate-real-store 1))
-      (xxint (allocate-integer4-store 1))
-      (work (allocate-real-store 1)))
-
-  (defun dgeqp3-workspace-inquiry (m n)
-    (multiple-value-bind (a jpvt tau work info)
-	(lapack:dgeqp3 m n xx m xxint xx work -1 0)
-
-	(declare (ignore a jpvt tau))
-	(unless (zerop info)
-	  (error "Error in computing required work space dimensions"))
-
-	(values (ceiling (aref work 0))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod geqp! ((a real-matrix))
@@ -466,6 +315,7 @@
 		  (geqr! (copy a))
 		(values
 
+		 ;;
 		 (join q1
 		       (matrix-ref (svd a :a)	; the Q2 part
 				   (seq 0 (1- (number-of-rows a)))

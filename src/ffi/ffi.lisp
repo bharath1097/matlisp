@@ -57,6 +57,18 @@
 	(:* 'cffi:foreign-pointer)
 	(:callback 'symbol))))
 
+(defun lisp->ffc (type &optional refp)
+  "Convert the given matlisp-ffi type into one understood by Lisp"
+  (cond
+    ((eq type 'cl:single-float) :single-float)
+    ((eq type 'cl:double-float) :double-float)
+    ((eq type 'cl:character) :character)
+    ((eq type 'cl:string) :string)
+    ((tree-equal type '(cl:complex cl:single-float)) (if refp :complex-single-float :single-float))
+    ((tree-equal type '(cl:complex cl:double-float)) (if refp :complex-double-float :double-float))
+    ((tree-equal type '(cl:signed-byte 32)) :integer)
+    ((tree-equal type '(cl:signed-byte 64)) :long)))
+
 ;; type -> Pass by value
 ;; (:& type &key output) -> Pass by reference, if 'output' return value after exiting from foreign function.
 ;; (:* type &key +) -> Pointer/Array/Foreign-vector, if '+' increment pointer by '+' times foreign-type-size.
@@ -76,8 +88,9 @@
 				     (list :argument `(the ,(%ffc->lisp type) ,expr))))
 			(t (list :argument `(the ,(%ffc->lisp type) ,expr)))))
 	      (cons (ecase (first type)
-		      (:& (destructuring-bind (tok sub-type &key output) type
+		      (:& (destructuring-bind (tok sub-type &optional output) type
 			    (declare (ignore tok))
+			    (when output (assert (eq output :output)) nil "unknown token.")
 			    (ecase sub-type
 			      ((:complex-double-float :complex-single-float)
 			       (let ((utype (second (%ffc->cffi type))))
@@ -88,12 +101,14 @@
 						  (setf (cffi:mem-aref ,var ,utype 0) (realpart ,c)
 							(cffi:mem-aref ,var ,utype 1) (imagpart ,c)))
 					 :output (when output
-						   `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))
+						   `(complex (cffi:mem-aref ,var ,utype 0) (cffi:mem-aref ,var ,utype 1)))))))			      
 			      ((:double-float :single-float :character :integer :long)
 			       (let ((utype (second (%ffc->cffi type))))
 				 (with-gensyms (var)
 				   (list :argument `(the cffi:foreign-pointer ,var)
-					 :alloc `(,var ,utype :initial-element (the ,(%ffc->lisp type) ,expr))
+					 :alloc `(,var ,utype :initial-element ,(recursive-append
+										 (when (eq sub-type :character) `(char-code))
+										 `(the ,(%ffc->lisp type) ,expr)))
 					 :output (when output `(cffi:mem-ref ,var ,utype)))))))))
 		      (:* (destructuring-bind (tok sub-type &key +) type
 			    (declare (ignore tok))
@@ -149,7 +164,7 @@ Example:
 "
   (destructuring-bind (name &optional (return-type :void) (mode :f2c)) (ensure-list name-&-return-type)
     (if (member return-type '(:complex-single-float :complex-double-float))
-	`(ffuncall (,name ,mode) (:& ,return-type) ,(coerce #c(0 0) (%ffc->lisp `(:& ,return-type))) ,@args)
+	`(ffuncall (,name :void ,mode) (:& ,return-type :output) ,(coerce #c(0 0) (%ffc->lisp `(:& ,return-type))) ,@args)
 	(let ((pargs (%ffc.parse-ffargs args (when (eq mode :f2c) t))))
 	  (labels ((mapf (place) (remove-if #'null (mapcar #'(lambda (x) (getf x place)) pargs))))
 	    `(with-fortran-float-modes
