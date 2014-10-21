@@ -1,0 +1,7 @@
+The plan is to add an add-on library which can be compiled together
+to give the following libraries
+* dfftpack
+* toms715
+* odepack 
+* colnew
+* cpoly
