@@ -125,8 +125,7 @@
 
 (defpackage "MATLISP"
   (:use #:common-lisp #:iterate #:optima #:named-readtables
-	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template
-	#:matlisp-blas #:matlisp-lapack #:matlisp-dfftpack #:matlisp-libmatlisp)
+	#:matlisp-conditions #:matlisp-utilities #:matlisp-ffi #:matlisp-template)
   (:import-from :λ-reader #:λ)
   ;;Shadow iterate:sum
   (:shadow :sum)
