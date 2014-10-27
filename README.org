@@ -108,7 +108,8 @@ to simplify writing very tight loops.
 
 * Example usage
   More documentation will be added as things reach a nicer stage of development.
-
+  
+#+BEGIN_SRC lisp   
   ;;Creation
   MATLISP> (copy! (randn '(2 2)) (zeros '(2 2) 'complex-tensor))
   #<COMPLEX-TENSOR #(2 2)
@@ -133,6 +134,7 @@ to simplify writing very tight loops.
   #<REAL-TENSOR #(2)
   0.62586     -1.1128
   >
+#+END_SRC
 
 * Progress Tracker
 ** What works ?

@@ -144,30 +144,30 @@ CL-USER> (in-package :matlisp)
 
 More documentation will be added as things reach a nicer stage of development.
 
-;;Creation
-MATLISP> (copy! (randn '(2 2)) (zeros '(2 2) 'complex-tensor))
-\\#<COMPLEX-TENSOR #(2 2)
--1.5330     -1.67578E-2
--.62578     -.63278
->
-
-;;gemv
-MATLISP> (let ((a (randn '(2 2)))
-               (b (randn 2)))
-           (gemv 1 a b nil nil))
-\\#<REAL-TENSOR #(2)
-1.1885     0.95746
->
-
-;;Tensor contraction
-MATLISP> (let ((H (randn '(2 2 2)))
-               (b (randn 2))
-               (c (randn 2))
-               (f (zeros 2)))
-           (einstein-sum real-tensor (i j k) (ref f i) (\* (ref H i j k) (ref b j) (ref c k))))
-\\#<REAL-TENSOR #(2)
-0.62586     -1.1128
->
+    ;;Creation
+    MATLISP> (copy! (randn '(2 2)) (zeros '(2 2) 'complex-tensor))
+    #<COMPLEX-TENSOR #(2 2)
+    -1.5330     -1.67578E-2
+    -.62578     -.63278
+    >
+    
+    ;;gemv
+    MATLISP> (let ((a (randn '(2 2)))
+                   (b (randn 2)))
+               (gemv 1 a b nil nil))
+    #<REAL-TENSOR #(2)
+    1.1885     0.95746
+    >
+    
+    ;;Tensor contraction
+    MATLISP> (let ((H (randn '(2 2 2)))
+                   (b (randn 2))
+                   (c (randn 2))
+                   (f (zeros 2)))
+               (einstein-sum real-tensor (i j k) (ref f i) (* (ref H i j k) (ref b j) (ref c k))))
+    #<REAL-TENSOR #(2)
+    0.62586     -1.1128
+    >
 
 # Progress Tracker<a id="sec-4" name="sec-4"></a>
 
