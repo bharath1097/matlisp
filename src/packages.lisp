@@ -80,7 +80,7 @@
 	   #:recursive-append #:unquote-args
 	   #:compile-and-eval
 	   ;;string
-	   #:string+ #:file->string #:split-seq #:splitlines
+	   #:string+ #:string-join #:file->string #:split-seq #:splitlines
 	   ;;lvec
 	   #:lvec-foldl #:lvec-foldr #:lvec-max #:lvec-min #:lvec-eq
 	   #:lvec-map-foldl! #:lvec-map-foldr!
@@ -89,7 +89,7 @@
 	   #:dcons #:dpush #:dpop #:dlist #:dappend! #:dcar #:dcdr #:drdc
 	   ;;Macros
 	   #:when-let #:if-let #:if-ret #:with-gensyms #:using-gensyms #:binding-gensyms #:with-marking #:with-fslots #:values-n
-	   #:letv* #:let-typed #:let*-typed #:make-array-allocator
+	   #:letv* #:let-typed #:let*-typed #:make-array-allocator #:ziprm
 	   #:nconsc #:define-constant #:eval-every
 	   #:macrofy
 	   #:cart-case #:cart-ecase #:cart-typecase #:cart-etypecase 
@@ -100,7 +100,6 @@
   (:use #:common-lisp #:matlisp-utilities)
   (:export #:deft/generic #:deft/method #:remt/method))
 
-;;Modified version of Mark Kantrowitz' infix package.
 (defpackage "MATLISP-INFIX"
   (:use #:common-lisp #:iterate #:optima #:matlisp-conditions #:matlisp-utilities)
   (:import-from :λ-reader #:λ)
@@ -123,59 +122,6 @@
    #:def-fortran-routine #:parse-fortran-file
    #:with-vector-data-addresses)
   (:documentation "Fortran foreign function interface"))
-
-(defpackage "MATLISP-BLAS"
-  (:use #:common-lisp #:matlisp-ffi #:matlisp-utilities)
-  (:export
-   ;;BLAS Level 1
-   ;;------------
-   ;;Real-double
-   #:ddot #:dnrm2 #:dasum #:dscal #:daxpy #:drot
-   #:dswap #:dcopy #:idamax
-   ;;Real-single
-   #:saxpy #:scopy
-   ;;Complex-double
-   #:zdotc #:zdotu #:zdscal #:zscal #:zswap #:zcopy #:zaxpy
-   #:dcabs1 #:dzasum #:dznrm2 #:izamax
-   ;;Complex-single
-   #:caxpy #:ccopy
-   ;;BLAS Level 2
-   ;;------------
-   ;;Real-double
-   #:dgemv #:dsymv  #:dtrmv #:dtrsv #:dger #:dsyr #:dsyr2
-   ;;Complex-double
-   #:zgemv #:zhemv #:ztrmv #:ztrsv #:zgerc #:zgeru #:zher2
-   ;;BLAS Level 3
-   ;;------------
-   ;;Real-double
-   #:dgemm #:dsyrk #:dsyr2k #:dtrmm #:dtrsm
-   ;;Complex-double
-   #:zgemm #:ztrmm #:ztrsm #:zherk #:zher2k)
-  (:documentation "BLAS routines"))
-
-(defpackage "MATLISP-LAPACK"
-  (:use #:common-lisp #:matlisp-ffi)
-  (:export
-   #:dgetri #:zgetri #:dsyev #:zheev
-   #:dgesv #:dgeev #:dgetrf #:dgetrs #:dgesvd #:dgees #:dtrsyl
-   #:zgesv #:zgeev #:zgetrf #:zgetrs #:zgesvd #:zgees #:ztrsyl
-   #:dgeqrf #:zgeqrf #:dgeqp3 #:zgeqp3
-   #:dorgqr #:zungqr
-   #:dpotrs #:zpotrs #:dpotrf #:zpotrf
-   #:dgelsy #:zgelsy)
-  (:documentation "LAPACK routines"))
-
-(defpackage "MATLISP-DFFTPACK"
-  (:use #:common-lisp #:matlisp-ffi)
-  (:export #:zffti #:zfftf #:zfftb #:zffti #:zfftf #:zfftb)
-  (:documentation "FFT routines"))
-
-(defpackage "MATLISP-LIBMATLISP"
-  (:use #:common-lisp #:matlisp-ffi)
-  (:export
-   #:descal #:dediv
-   #:zescal #:zediv)
-  (:documentation "BLAS routines"))
 
 (defpackage "MATLISP"
   (:use #:common-lisp #:iterate #:optima #:named-readtables

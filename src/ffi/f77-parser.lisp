@@ -3,17 +3,11 @@
 ;;Adapted from cl-blapack.
 (defun %f77.tokenize (line)
   (declare (type string))
-  (split-seq #'(lambda (c)
-		 (cond
-		   ((member c '(#\Space #\,)) t)
-		   ((member c '(#\( #\))) :keep)))
-	     line))
+  (split-seq #'(lambda (c) (case c ((#\Space #\,) t) ((#\( #\)) :keep))) line))
 
 (defun %f77.splitlines (line)
-  "
-Split lines of a Fortran 77 file, whilst removing comments, and taking care of
-line continuations.
-"  
+  "Split lines of a Fortran 77 file, whilst removing comments, and taking care of
+line continuations."
   (declare (type string line))
   (split-seq (let ((newline-state 0)
 		   (comment-state nil))

@@ -40,7 +40,7 @@
 (deft/generic (t/lapack-orgqr! #'subtypep) sym (rank A lda tau))
 (deft/method t/lapack-orgqr! (sym blas-numeric-tensor) (rank A lda tau)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
-    (using-gensyms (decl (A lda tau) (xxx lwork))
+    (using-gensyms (decl (A lda tau rank) (xxx lwork))
       `(let (,@decl)
 	 (declare (type ,sym ,A)
 		  (type index-type ,lda ,rank)
@@ -56,7 +56,7 @@
 (deft/generic (t/lapack-ormqr! #'subtypep) sym (side trans rank A lda tau c ldc))
 (deft/method t/lapack-ormqr! (sym blas-numeric-tensor) (side trans rank A lda tau c ldc)
   (let* ((ftype (field-type sym)) (complex? (subtypep ftype 'cl:complex)))
-    (using-gensyms (decl (side trans A lda tau c ldc) (xxx lwork))
+    (using-gensyms (decl (side trans A lda tau c ldc rank) (xxx lwork))
       `(let (,@decl)
 	 (declare (type ,sym ,A)
 		  (type index-type ,lda ,ldc ,rank)
@@ -65,56 +65,60 @@
 	 (with-lapack-query ,sym (,xxx ,lwork)
 	   (ffuncall ,(blas-func (if complex? "unmqr" "ormqr") ftype)
 	     (:& :character) ,side (:& :character) ,trans
-	     (:& :integer) (dimensions ,A 0) (:& :integer) (dimensions ,A 1) (:& :integer) ,rank
+	     (:& :integer) (dimensions ,C 0) (:& :integer) (dimensions ,C 1) (:& :integer) ,rank
 	     (:* ,(lisp->ffc ftype) :+ (head ,A)) (the ,(store-type sym) (store ,A)) (:& :integer) ,lda
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,tau)
 	     (:* ,(lisp->ffc ftype) :+ (head ,C)) (the ,(store-type sym) (store ,C)) (:& :integer) ,ldc
 	     (:* ,(lisp->ffc ftype)) (the ,(store-type sym) ,xxx) (:& :integer) ,lwork
 	     (:& :integer :output) 0))))))
 ;;
-(defgeneric geqp! (a)
-  (:documentation
-   "
-  SYNTAX
-  ======
-  (GEQP! A)
-
-  INPUT
-  -----
-  A    A Matlisp M x N matrix
-
-  OUTPUT (VALUES Q R PVT-VEC)
-  ------
-  Q, R     Matlisp matricies representing the QR composition of A*P
-  JPVT     A lisp sequence of integers representing the column pivoting.
-	   This is the variable JPVT in LAPACK's [DZ]GEGP3.F:
-
-	   JPVT    (input/output) INTEGER array, dimension (N)
-		   On entry, if JPVT(J).ne.0, the J-th column of A is permuted
-		   to the front of A*P (a leading column); if JPVT(J)=0,
-		   the J-th column of A is a free column.
-		   On exit, if JPVT(J)=K, then the J-th column of A*P was the
-		   the K-th column of A.
-
-	  *** THE EXCEPTION TAKEN HERE IS THAT \"JPVT - 1\" IS RETURNED TO COMPLY ***
-	  *** WITH THE ZERO BASED INDEXING OF LISP. ***
-
-  PURPOSE
-  =======
-
-  Use QR or QR! for access to this routine.
-
-  Computes the QR factorization of an M-by-N matrix A using column pivoting.
-  I.e., A*P = Q*R is computed where P is a column pivoting matrix.
-"))
-
+(defgeneric geqp! (a))
 (define-tensor-method geqp! ((a blas-numeric-tensor :output))
   `(let-typed ((jpvt (make-array (dimensions a 1) :element-type ',(matlisp-ffi::%ffc->lisp :integer) :initial-element 0) :type (simple-array ,(matlisp-ffi::%ffc->lisp :integer) (*)))
 	       (tau (t/store-allocator ,(cl a) (lvec-min (dimensions a))) :type ,(store-type (cl a))))
      (with-columnification (() (a))
        (let ((info (t/lapack-geqp! ,(cl a) a (or (blas-matrix-compatiblep a #\N) 0) jpvt tau)))
 	 (unless (= info 0) (error "GEQP3: the ~a'th argument had an illegal value." (- info)))))
-     (values A jpvt tau)))
+     (values A tau jpvt)))
+
+(defgeneric geqr! (a))
+(define-tensor-method geqr! ((a blas-numeric-tensor :output))
+  `(let-typed ((tau (t/store-allocator ,(cl a) (lvec-min (dimensions a))) :type ,(store-type (cl a))))
+     (with-columnification (() (a))
+       (let ((info (t/lapack-geqr! ,(cl a) a (or (blas-matrix-compatiblep a #\N) 0) tau)))
+	 (unless (= info 0) (error "GEQRF: the ~a'th argument had an illegal value." (- info)))))
+     (values A tau)))
+
+;;(defgeneric geqrs! (a tau b))
+(defun geqrs! (a b)
+  (letv* ((q tau (geqr! (copy a))))
+    (t/lapack-ormqr! real-tensor #\L #\T (lvec-min (dimensions q)) q (or (blas-matrix-compatiblep q) 0) tau b (or (blas-matrix-compatiblep b) 0))
+    (t/blas-trsm! real-tensor #\L #\U #\N #\N 1d0 q (or (blas-matrix-compatiblep q) 0) b (or (blas-matrix-compatiblep b) 0))
+    )
+  b)
+
+;;
+(defun qr (a)
+  (letv* ((r tau (geqr! (copy a)))
+	  (q (copy r)))
+    (t/lapack-orgqr! real-tensor (lvec-min (dimensions q)) q (or (blas-matrix-compatiblep q ) 0) tau)
+    (values q (tricopy! r (zeros (dimensions r)) :u)
+	    #+nil(let* ((n (length jpvt))
+		    (sto (allocate-pindex-store n)))
+	       (loop :for i :from 0 :below n
+		  :do (setf (aref sto i) (1- (aref jpvt i))))
+	       (make-instance 'permutation-action :size (length jpvt) :store sto)))))
+
+(defun qr (a)
+  (letv* ((r tau jpvt (geqp! (copy a)))
+	  (q (copy r)))
+    (t/lapack-orgqr! real-tensor (lvec-min (dimensions q)) q (or (blas-matrix-compatiblep q ) 0) tau)
+    (values q (tricopy! r (zeros (dimensions r)) :u)
+	    (let* ((n (length jpvt))
+		    (sto (allocate-pindex-store n)))
+	       (loop :for i :from 0 :below n
+		  :do (setf (aref sto i) (1- (aref jpvt i))))
+	       (make-instance 'permutation-action :size (length jpvt) :store sto)))))
 
 (defmethod geqp! ((a real-matrix))
 

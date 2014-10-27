@@ -48,7 +48,7 @@
     (:row-major :col-major)
     (:col-major :row-major)))
 
-(definline blas-matrix-compatiblep (matrix op)
+(definline blas-matrix-compatiblep (matrix &optional (op #\N))
   (declare (type standard-tensor matrix)
 	   (type character op))
   (assert (tensor-matrixp matrix) nil 'tensor-not-matrix)

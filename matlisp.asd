@@ -27,65 +27,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package #:common-lisp-user)
-
-(defpackage #:matlisp-system
-  (:use #:cl :asdf))
-
+(defpackage #:matlisp-system (:use #:cl :asdf))
 (in-package #:matlisp-system)
 
-(asdf:defsystem matlisp-packages
+(asdf:defsystem :matlisp-basic
   :depends-on (#:cffi #:iterate #:optima #:named-readtables #:lambda-reader #:yacc #:trivial-garbage)
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;")
+  :pathname "src"
   :components
-  ((:file "packages")))
+  ((:file "packages")
+   (:file "conditions" :depends-on ("packages"))
+   (:module "utilities" 
+	    :pathname "utilities" :depends-on ("conditions")
+	    :components ((:file "functions")
+			 (:file "string")
+			 (:file "macros" :depends-on ("functions"))
+			 (:file "dlist" :depends-on ("macros" "functions"))
+			 (:file "lvec" :depends-on ("macros" "functions"))
+			 (:file "template" :depends-on ("macros" "functions"))))
+   (:file "lazy-loader" :depends-on ("utilities"))))
 
-(asdf:defsystem matlisp-config
-  :pathname #.(translate-logical-pathname "matlisp:builddir;")
-  :depends-on ("matlisp-packages")
-  :components
-  ((:file "config")))
-
-(asdf:defsystem lazy-loader
-  :pathname #.(translate-logical-pathname "matlisp:builddir;src;foreign-core;")
-  :depends-on (#:cffi "matlisp-packages" "matlisp-config")
-  :components
-  ((:file "lazy-loader")))
-
-(asdf:defsystem matlisp-conditions
-  :depends-on ("matlisp-packages" "matlisp-config")
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
-  :components ((:file "conditions")))
-
-(asdf:defsystem matlisp-utilities
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;utilities;")
-  :depends-on ("matlisp-packages" "matlisp-conditions")
-  :components ((:file "functions")
-	       (:file "string")
-	       (:file "macros"
-		      :depends-on ("functions"))
-	       (:file "dlist"
-		      :depends-on ("macros" "functions"))
-	       (:file "lvec"
-		      :depends-on ("macros" "functions"))
-	       (:file "template"
-		      :depends-on ("macros" "functions"))))
-
-(asdf:defsystem fortran-names
-  :pathname #.(translate-logical-pathname "matlisp:builddir;src;ffi;")
-  :depends-on ("matlisp-packages" "matlisp-conditions")
-  :components
-  ((:file "f77-mangling")))
-
-(asdf:defsystem matlisp
-  :pathname #.(translate-logical-pathname "matlisp:srcdir;src;")
-  :depends-on (#:cffi "lazy-loader"
-	       "matlisp-packages" "matlisp-conditions"
-	       "matlisp-utilities" "fortran-names")
+(asdf:defsystem :matlisp
+  :depends-on ("matlisp-basic")
+  :pathname "src"
   :components
   ((:module "foreign-interface"
 	    :pathname "ffi"
 	    :components ((:file "foreign-vector")
-			 (:file "cffi")			 
+			 (:file "cffi")
 			 (:file "ffi")
 			 #+nil(:file "f77-parser")))
    (:module "matlisp-base"
@@ -113,7 +81,6 @@
 				:depends-on ("base-tensor" "standard-tensor"))
 			 (:file "coordinate-sparse")
 			 (:file "compressed-sparse")))
-
    (:module "matlisp-classes"
 	    :pathname "classes"
 	    :depends-on ("matlisp-base")
@@ -180,7 +147,6 @@
 	    :pathname "graph"
 	    :depends-on ("matlisp-base" "matlisp-classes" "matlisp-blas" #+nil"matlisp-lapack")
 	    :components ((:file "fibonacci")))))
-
 
 ;; (defclass f2cl-cl-source-file (asdf:cl-source-file)
 ;;   ())
@@ -442,18 +408,18 @@
 ;;      (:file "colnew-demo1" :depends-on ("colnew"))
 ;;      (:file "colnew-demo2" :depends-on ("colnew"))))))
 
-(defmethod perform ((op asdf:test-op) (c (eql (asdf:find-system :matlisp))))
-  (oos 'asdf:test-op 'matlisp-tests))
+;; (defmethod perform ((op asdf:test-op) (c (eql (asdf:find-system :matlisp))))
+;;   (oos 'asdf:test-op 'matlisp-tests))
 
-(asdf:defsystem matlisp-tests
-  :depends-on (matlisp)
-  :in-order-to ((compile-op (load-op :rt))
-		(test-op (load-op :rt :matlisp)))
-  :components
-  ((:module "tests"
-	    :components
-	    ((:file "blas")))))
+;; (asdf:defsystem matlisp-tests
+;;   :depends-on (matlisp)
+;;   :in-order-to ((compile-op (load-op :rt))
+;;		(test-op (load-op :rt :matlisp)))
+;;   :components
+;;   ((:module "tests"
+;;	    :components
+;;	    ((:file "blas")))))
 
-(defmethod perform ((op test-op) (c (eql (asdf:find-system :matlisp-tests))))
-  (or (funcall (intern "DO-TESTS" (find-package "RT")))
-      (error "TEST-OP failed for MATLISP-TESTS")))
+;; (defmethod perform ((op test-op) (c (eql (asdf:find-system :matlisp-tests))))
+;;   (or (funcall (intern "DO-TESTS" (find-package "RT")))
+;;       (error "TEST-OP failed for MATLISP-TESTS")))
