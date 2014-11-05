@@ -49,14 +49,25 @@
   (let ((ret (zeros (dimensions x) (or output-type (class-of x)))))
     (mapsor! #'(lambda (idx x y) (declare (ignore idx y)) (funcall func x)) x ret)))
 
+#+nil
 (defmacro map-tensor! (type x func &optional null-arity?)
   (using-gensyms (decl (x) (idx ref))
     `(let (,@decl)
        (declare (type ,type ,x))
        (very-quickly (dorefs (,idx (dimensions ,x))
 			     ((,ref ,x :type ,type))
-			     (setf ,ref (,func ,@(unless null-arity? `(,ref))))))
+	 (setf ,ref (,func ,@(unless null-arity? `(,ref))))))
        ,x)))
+
+(defmacro map-tensor! (type (x tensor) &body body)
+  (declare (type symbol x))
+  (using-gensyms (decl (tensor) (idx ref))
+    `(let (,@decl)
+       (declare (type ,type ,tensor))
+       (very-quickly (dorefs (,idx (dimensions ,tensor))
+			     ((,ref ,tensor :type ,type))
+			     (setf ,ref (let-typed ((,x ,ref :type ,(field-type type))) ,@body))))
+       ,tensor)))
 ;;
 (defun check-dims (axlst tensors)
   (let ((axlst (if (numberp axlst) (make-list (length tensors) :initial-element axlst) axlst)))
@@ -166,7 +177,7 @@
     (error 'tensor-error :message "Can't find slice-increment in tensor's attributes" :tensor x)))
 
 (defmacro-clause (FOR xa SLICING x ALONG axis &optional FROM start BELOW oend TO cend DOWNTO dend WITH-INDEX index BY step)
-  (when (or (and oend cend) (and dend (or cend oend))) (error "Use only one of BELOW TO DOWNTO."))  
+  (when (or (and oend cend) (and dend (or cend oend))) (error "Use only one of BELOW TO DOWNTO."))
   (when (setq xa (ensure-list xa))
     (binding-gensyms (hy hyf)
       (let ((n (length xa)))

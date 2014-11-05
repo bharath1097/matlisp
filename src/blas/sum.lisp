@@ -28,25 +28,21 @@
 ;;
 (defun reduce-check (x y axis)
   (declare (base-tensor x y))
-  (let ((dims-x (dimensions x))	(dims-y (dimensions y)))
+  (let ((dims-x (dimensions x))	(dims-y (dimensions y))
+	(axis (modproj (or axis 0) (order x) nil 0)))
     (declare (type index-store-vector dims-x dims-y))
     (cond
       ((= (1- (order x)) (order y))
-       (loop
-	  :for i :from 0 :below (order x)
+       (loop :for i :from 0 :below (order x)
 	  :and j := 0 :then (if (= i axis) j (1+ j))
-	  :do (unless (or (= i axis) (= (aref dims-x i) (aref dims-y j))) (return nil))
-	  :finally (return t)))
+	  :always (or (= i axis) (= (aref dims-x i) (aref dims-y j)))))
       ((= (order x) (order y))
-       (loop
-	  :for i :from 0 :below (order x)
-	  :do (unless (if (= i axis) (= (aref dims-y i) 1) (= (aref dims-x i) (aref dims-y i))) (return nil))
-	  :finally (return t)))
-      (t nil))))
+       (loop :for i :from 0 :below (order x)
+	  :always (if (= i axis) (= (aref dims-y i) 1) (= (aref dims-x i) (aref dims-y i))))))))
 
-(defgeneric sum! (x y &optional axis)
+(defgeneric sum! (x y &optional axis beta)
   (:documentation "
-  (SUM! x y [axis 0])
+  (SUM! x y [axis 0] [beta 0])
 
        --
   y <- \  x(:, : ..., i, :, :..)
@@ -54,25 +50,18 @@
 	i
   where the index to be summed over is chosen using @arg{axis}.
 ")
-  (:method :before ((x standard-tensor) (y standard-tensor) &optional (axis 0))
+  (:method :before ((x standard-tensor) (y standard-tensor) &optional (axis 0) beta)
+	   (declare (ignore beta))
 	   (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch)))
 
-(defmethod sum! ((x standard-tensor) (y t) &optional (axis 0))
-  (let ((clx (class-name (class-of x))))
-    (assert (member clx *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class (list clx))
-    (compile-and-eval
-     `(progn
-	(defmethod sum! ((x ,clx) (y ,clx) &optional (axis 0))
-	  (copy! (t/fid+ ,(field-type clx)) y)
-	  (t/sum ,clx x y axis))
-	(defmethod sum! ((x ,clx) (y (eql nil)) &optional (axis 0))
-	  (declare (ignore axis))
-	  (t/sum ,clx x nil))))
-    (sum! x y axis)))
+(define-tensor-method sum! ((x standard-tensor :input) (y standard-tensor :output) &optional (axis 0) beta)
+  `(t/sum ,(cl y) x (if beta (scal! beta y) (copy! (t/fid+ ,(field-type (cl y))) y)) axis))
 
+(define-tensor-method sum! ((x standard-tensor :input) (y (eql nil)) &optional (axis 0) beta)
+  `(declare (ignore axis beta))
+  `(t/sum ,(cl x) x nil))
 ;;
-(defgeneric prod! (x y &optional axis)
+(defgeneric prod! (x y &optional axis beta)
   (:documentation "
   (PROD! x y [axis 0])
        __
@@ -80,32 +69,24 @@
 	i
   where the index to be summed over is chosen using @arg{axis}.
 ")
-  (:method :before ((x standard-tensor) (y standard-tensor) &optional (axis 0))
+  (:method :before ((x standard-tensor) (y standard-tensor) &optional (axis 0) beta)
+	   (declare (ignore beta))
 	   (assert (reduce-check x y axis) nil 'tensor-dimension-mismatch)))
 
-(defmethod prod! ((x standard-tensor) (y t) &optional (axis 0))
-  (let ((clx (class-name (class-of x))))
-    (assert (member clx *tensor-type-leaves*)
-	    nil 'tensor-abstract-class :tensor-class (list clx))
-    (labels ((*-ify (code)
-	       (maptree `(t/fid+ t/f+ axpy!)
-			#'(lambda (x) (values
-				       (ecase (car x)
-					 (t/fid+ `(t/fid* ,@(cdr x)))
-					 (axpy! `(scal! ,@(cddr x)))
-					 (t/f+ `(t/f* ,@(cdr x))))
-				       #'mapcar))
-			code)))
-      ;;Don't you just love lisp :)
-      (compile-and-eval
-       `(progn
-	  (defmethod prod! ((x ,clx) (y ,clx) &optional (axis 0))
-	    (copy! (t/fid* ,(field-type clx)) y)
-	    ,(*-ify (macroexpand-1 `(t/sum ,clx x y axis))))
-	  (defmethod prod! ((x ,clx) (y (eql nil)) &optional (axis 0))
-	    (declare (ignore axis))
-	    ,(*-ify (macroexpand-1 `(t/sum ,clx x nil))))))))
-  (prod! x y axis))
+(labels ((*-ify (code)
+	   (maptree `(t/fid+ t/f+ axpy!)
+	     #'(lambda (x) (values (ecase (car x)
+				     (t/fid+ `(t/fid* ,@(cdr x)))
+				     (axpy! `(scal! ,@(cddr x)))
+				     (t/f+ `(t/f* ,@(cdr x))))
+				   #'mapcar))
+	     (macroexpand-1 code))))
+  ;;Don't you just love lisp :)
+  (define-tensor-method prod! ((x standard-tensor :input) (y standard-tensor :output) &optional (axis 0) beta)
+    (*-ify `(t/sum ,(cl y) x (if beta (scal! beta y) (copy! (t/fid* ,(field-type (cl y))) y)) axis)))
+  (define-tensor-method prod! ((x standard-tensor :input) (y (eql nil)) &optional axis beta)
+    `(declare (ignore axis beta))
+    (*-ify `(t/sum ,(cl x) x nil))))
 ;;
 (defgeneric sum (x &optional axis preserve-rank?)
   (:method ((x standard-tensor) &optional (axis 0) (preserve-rank? nil))
