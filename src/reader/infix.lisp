@@ -197,7 +197,7 @@
 		  ((find-if #'(lambda (sarg) (and (consp sarg) (eql (car sarg) ':slice))) args)
 		   `(setf (matlisp::subtensor~ ,arr (list ,@(process-slice args))) ,store))
 		  (t `(setf (matlisp::ref ,arr ,@args) ,store))))
-	      `(generic-ref ,getter ,@args)))))
+	      `(generic-ref ,(car newval) ,@args)))))
 
 (defmacro generic-incf (x expr &optional (alpha 1) &environment env)
   (multiple-value-bind (dummies vals new setter getter) (get-setf-expansion x env)
