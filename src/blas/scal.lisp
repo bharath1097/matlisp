@@ -27,23 +27,6 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:matlisp)
 
-;;
-(deft/generic (t/blas-scdi! #'subfieldp) sym (x st-x y st-y &optional scal?))
-(deft/method t/blas-scdi! (sym blas-numeric-tensor) (x st-x y st-y &optional (scal? t))
-  (let ((numx? (null st-x)) (ftype (field-type sym)))
-    (using-gensyms (decl (x y) (sto-x))
-      `(let (,@decl)
-	 (declare (type ,sym ,@(unless numx? `(,x)) ,y)
-		  ,@(when numx? `((type ,(field-type sym) ,x))))
-	 ,(recursive-append
-	   (when numx? `(with-field-element ,sym (,sto-x ,x)))
-	   `(ffuncall ,(blas-func (if scal? "escalm" "edivm") ftype)
-	      (:& :integer) (the index-type (size ,y))
-	      (:* ,(lisp->ffc ftype) ,@(unless numx? `(:+ (head ,x)))) ,(if numx? sto-x `(the ,(store-type sym) (store ,x)))
-	      (:& :integer) (the index-type ,(if numx? 0 st-x))
-	      (:* ,(lisp->ffc ftype) :+ (head ,y)) (the ,(store-type sym) (store ,y)) (:& :integer) (the index-type ,st-y)))
-	 ,y))))
-
 (deft/generic (t/scdi! #'subtypep) sym (x y &key scal? numx?))
 (deft/method t/scdi! (sym standard-tensor) (x y &key (scal? t) (numx? nil))
   (using-gensyms (decl (x y))
@@ -81,22 +64,14 @@ t;;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: :matlisp; Base: 10 -*-
 		   'tensor-dimension-mismatch)))
 
 (define-tensor-method scal! ((x standard-tensor :input) (y standard-tensor :output))
-  (recursive-append
-   (when (subtypep (cl x) 'blas-numeric-tensor)
-     `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
-	(t/blas-scdi! ,(cl x) x (first strd) y (second strd) t)))
-   `(t/scdi! ,(cl x) x y :scal? t :numx? nil))
+  `(t/scdi! ,(cl x) x y :scal? t :numx? nil)
   'y)
 
 (define-tensor-method scal! ((x t) (y standard-tensor :output))
   `(let ((x (t/coerce ,(field-type (cl y)) x)))
      (declare (type ,(field-type (cl y)) x))
      (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
-       ,(recursive-append
-	 (when (subtypep (cl y) 'blas-numeric-tensor)
-	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
-	      (t/blas-scdi! ,(cl y) x nil y strd t)))
-	 `(t/scdi! ,(cl y) x y :scal? t :numx? t)))
+       (t/scdi! ,(cl y) x y :scal? t :numx? t))
      y))
 
 (defgeneric scal (alpha x)
@@ -145,22 +120,14 @@ s  Purpose
 		   'tensor-dimension-mismatch)))
 
 (define-tensor-method div! ((x standard-tensor :input) (y standard-tensor :output))  
-  (recursive-append
-   (when (subtypep (cl x) 'blas-numeric-tensor)
-     `(if-let (strd (and (call-fortran? x (t/l1-lb ,(cl x))) (blas-copyablep x y)))
-	(t/blas-scdi! ,(cl x) x (first strd) y (second strd) nil)))
-   `(t/scdi! ,(cl x) x y :scal? nil :numx? nil))
+  `(t/scdi! ,(cl x) x y :scal? nil :numx? nil)
   'y)
 
 (define-tensor-method div! ((x t) (y standard-tensor :output))
   `(let ((x (t/coerce ,(field-type (cl y)) x)))     
      (declare (type ,(field-type (cl y)) x))
      (unless (t/f= ,(field-type (cl y)) x (t/fid* ,(field-type (cl y))))
-       ,(recursive-append
-	 (when (subtypep (cl y) 'blas-numeric-tensor)
-	   `(if-let (strd (and (call-fortran? y (t/l1-lb ,(cl y))) (consecutive-storep y)))
-	      (t/blas-scdi! ,(cl y) x nil y strd nil)))
-	 `(t/scdi! ,(cl y) x y :scal? nil :numx? t)))
+       (t/scdi! ,(cl y) x y :scal? nil :numx? t))
      y))
 
 (defgeneric div (x y)
